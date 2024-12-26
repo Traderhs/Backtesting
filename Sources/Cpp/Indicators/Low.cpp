@@ -7,6 +7,5 @@ Low::Low(const string& name, const string& timeframe)
 }
 
 double Low::Calculate() {
-  return bar.GetPrice(this->GetTimeframe(), 0,
-                      BarDataManager::PriceType::LOW);
+  return bar.GetBar(this->GetTimeframe(), 0).low;
 }

@@ -118,18 +118,15 @@ BarDataManager::GetSubBarData() {
   return sub_bar_data;
 }
 
-string& BarDataManager::GetCurrentSymbol() { return current_symbol; }
-
 string& BarDataManager::GetTradingTimeframe() { return trading_timeframe; }
 
 string& BarDataManager::GetMagnifierTimeframe() { return trading_timeframe; }
 
 set<string>& BarDataManager::GetSubTimeframe() { return sub_timeframe; }
 
-size_t BarDataManager::GetCurrentIndex(const BarDataType bar_data_type,
-                                       const string& symbol,
+size_t BarDataManager::GetCurrentIndex(const string& symbol,
                                        const string& timeframe) {
-  switch (bar_data_type) {
+  switch (current_bar_data_type) {
     case BarDataType::TRADING:
       return trading_index[symbol];
 
@@ -162,8 +159,8 @@ size_t BarDataManager::GetCurrentIndex(const BarDataType bar_data_type,
   }
 }
 
-double BarDataManager::GetPrice(const string& timeframe, const size_t index,
-                                const PriceType price_type) {
+BarDataManager::bar_data BarDataManager::GetBar(const string& timeframe,
+                                                const size_t index) {
   vector<bar_data> current_bar_data;
   size_t current_index;
 
@@ -185,17 +182,15 @@ double BarDataManager::GetPrice(const string& timeframe, const size_t index,
       auto& sub_bar_data_it = sub_bar_data.find(current_symbol)->second;
       const auto sub_bar_data_timeframe_it = sub_bar_data_it.find(timeframe);
 
-      if (sub_bar_data_timeframe_it == sub_bar_data_it.end()) {
-        return nan("");  // 타임프레임이 존재하지 않으면 nan 반환
-      }
+      // 찾지 못하면 기본 bar_data 반환
+      if (sub_bar_data_timeframe_it == sub_bar_data_it.end()) bar_data{};
 
       // 해당 심볼과 타임프레임에 해당되는 서브 인덱스 찾기
       auto& sub_index_it = sub_index.find(current_symbol)->second;
       const auto sub_index_timeframe_it = sub_index_it.find(timeframe);
 
-      if (sub_index_timeframe_it == sub_index_it.end()) {
-        return nan("");  // 타임프레임이 존재하지 않으면 nan 반환
-      }
+      // 찾지 못하면 기본 bar_data 반환
+      if (sub_index_timeframe_it == sub_index_it.end()) bar_data{};
 
       auto&& sub_bar_data = move(sub_bar_data_timeframe_it->second);
       auto&& sub_index = sub_index_timeframe_it->second;
@@ -205,37 +200,16 @@ double BarDataManager::GetPrice(const string& timeframe, const size_t index,
       break;
 
     default:
-      return nan("");
+      return bar_data{};
   }
 
   // 인덱스 범위 체크
   if (current_index < index ||
       (current_index - index) >= current_bar_data.size()) {
-    return nan("");  // 범위 벗어난 경우 nan 반환
+    return bar_data{};
   }
 
-  switch (price_type) {
-    case PriceType::OPEN:
-      return current_bar_data[current_index - index].open;
-    case PriceType::HIGH:
-      return current_bar_data[current_index - index].high;
-    case PriceType::LOW:
-      return current_bar_data[current_index - index].low;
-    case PriceType::CLOSE:
-      return current_bar_data[current_index - index].close;
-    case PriceType::VOLUME:
-      return current_bar_data[current_index - index].volume;
-    default:
-      return nan("");
-  }
-}
-
-void BarDataManager::SetCurrentBarDataType(const BarDataType bar_data_type) {
-  current_bar_data_type = bar_data_type;
-}
-
-void BarDataManager::SetCurrentSymbol(const string& symbol) {
-  current_symbol = symbol;
+  return current_bar_data[current_index - index];
 }
 
 void BarDataManager::SetTimeframe(const BarDataType bar_data_type,
@@ -254,11 +228,10 @@ void BarDataManager::SetTimeframe(const BarDataType bar_data_type,
   }
 }
 
-void BarDataManager::SetCurrentIndex(const BarDataType bar_data_type,
-                                     const string& symbol,
+void BarDataManager::SetCurrentIndex(const string& symbol,
                                      const string& timeframe,
                                      const size_t index) {
-  switch (bar_data_type) {
+  switch (current_bar_data_type) {
     case BarDataType::TRADING:
       trading_index[symbol] = index;
       return;

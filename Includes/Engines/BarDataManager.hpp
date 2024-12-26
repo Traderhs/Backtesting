@@ -16,24 +16,36 @@ using namespace std;
  */
 class BarDataManager final {
  public:
-  // 하나의 바 구조를 나타내는 구조체
+  /// 하나의 바 구조를 나타내는 구조체
   struct bar_data {
-    int64_t open_time;   // 바 시작 시간
-    double open;         // 시가
-    double high;         // 고가
-    double low;          // 저가
-    double close;        // 종가
-    double volume;       // 거래량
-    int64_t close_time;  // 바 종료 시간
+    int64_t open_time = -1;      // 바 시작 시간
+    double open = nan("");    // 시가
+    double high = nan("");    // 고가
+    double low = nan("");     // 저가
+    double close = nan("");   // 종가
+    double volume = nan("");  // 거래량
+    int64_t close_time = -1;     // 바 종료 시간
   };
 
-  // 바 데이터 타입을 지정하는 열거형 클래스
+  /// 바 데이터 타입을 지정하는 열거형 클래스
   enum class BarDataType { TRADING, MAGNIFIER, SUB };
 
-  // 가격 타입을 지정하는 열거형 클래스
-  enum class PriceType { OPEN, HIGH, LOW, CLOSE, VOLUME };
+  // 현재 사용 중인 바 데이터 타입: TRADING, MAGNIFIER, SUB
+  BarDataType current_bar_data_type;
 
-  // BarDataManager의 싱글톤 인스턴스를 반환하는 함수
+  // 현재 사용 중인 심볼
+  string current_symbol;
+
+  // 현재 심볼과 현재 바의 정보들
+  int64_t current_open_time;
+  double current_open;
+  double current_high;
+  double current_low;
+  double current_close;
+  double current_volume;
+  int64_t current_close_time;
+
+  /// BarDataManager의 싱글톤 인스턴스를 반환하는 함수
   static BarDataManager& GetBarDataManager();
 
   /**
@@ -67,50 +79,39 @@ class BarDataManager final {
   void AddMagnifierBarData(const string& name, const string& file_path,
                            const vector<int>& columns);
 
-  // 트레이딩 바 데이터를 반환하는 함수
+  /// 트레이딩 바 데이터를 반환하는 함수
   unordered_map<string, vector<bar_data>>& GetTradingBarData();
 
-  // 돋보기 바 데이터를 반환하는 함수
+  /// 돋보기 바 데이터를 반환하는 함수
   unordered_map<string, vector<bar_data>>& GetMagnifierBarData();
 
-  // 서브 바 데이터를 반환하는 함수
+  /// 서브 바 데이터를 반환하는 함수
   unordered_map<string, unordered_map<string, vector<bar_data>>>&
   GetSubBarData();
 
-  // 현재 사용하고 있는 심볼을 반환하는 함수
-  string& GetCurrentSymbol();
-
-  // 엔진에 추가된 트레이딩 바 데이터의 타임프레임을 반환하는 함수
+  /// 엔진에 추가된 트레이딩 바 데이터의 타임프레임을 반환하는 함수
   string& GetTradingTimeframe();
 
-  // 엔진에 추가된 돋보기 바 데이터의 타임프레임을 반환하는 함수
+  /// 엔진에 추가된 돋보기 바 데이터의 타임프레임을 반환하는 함수
   string& GetMagnifierTimeframe();
 
-  // 엔진에 추가된 서브 바 데이터의 타임프레임을 반환하는 함수
+  /// 엔진에 추가된 서브 바 데이터의 타임프레임을 반환하는 함수
   set<string>& GetSubTimeframe();
 
-  // 바 데이터 타입 및 심볼과 타임프레임에 해당되는 바 데이터의
-  // 현재 인덱스를 반환하는 함수
-  size_t GetCurrentIndex(BarDataType bar_data_type, const string& symbol,
-                         const string& timeframe);
+  /// 심볼과 타임프레임 및 바 데이터 타입에 해당되는 바 데이터의
+  /// 현재 인덱스를 반환하는 함수
+  size_t GetCurrentIndex(const string& symbol, const string& timeframe);
 
-  // 타임프레임, 인덱스 오류를 확인하고 가격 타입과 바 데이터 타입에 따라
-  // 적절한 시고저종거래량 혹은 nan을 반환하는 함수
-  double GetPrice(const string& timeframe, size_t index, PriceType price_type);
+  /// 타임프레임, 인덱스 오류를 확인하고 가격 타입과 바 데이터 타입에 따라
+  /// 해당 바를 반환하는 함수
+  bar_data GetBar(const string& timeframe, size_t index);
 
-  // 현재 사용 중인 바 데이터 타입을 설정하는 함수
-  void SetCurrentBarDataType(BarDataType bar_data_type);
-
-  // 현재 사용 중인 심볼을 설정하는 함수
-  void SetCurrentSymbol(const string& symbol);
-
-  // 해당되는 바 데이터 타입의 타임프레임을 설정하는 함수
+  /// 해당되는 바 데이터 타입의 타임프레임을 설정하는 함수
   void SetTimeframe(BarDataType bar_data_type, const string& timeframe);
 
-  // 바 데이터 타입 및 심볼과 타임프레임에 해당되는 바 데이터의
-  // 현재 인덱스를 설정하는 함수
-  void SetCurrentIndex(BarDataType bar_data_type, const string& symbol,
-                       const string& timeframe, size_t index);
+  /// 바 데이터 타입 및 심볼과 타임프레임에 해당되는 바 데이터의
+  /// 현재 인덱스를 설정하는 함수
+  void SetCurrentIndex(const string& symbol, const string& timeframe, size_t index);
 
  protected:
   // Google Test용 Protected
@@ -135,40 +136,33 @@ class BarDataManager final {
   static DataManager& data;
   static Logger& logger;
 
-  // 거래를 위한 바 데이터: 심볼간 타임프레임을 통일
+  /// 거래를 위한 바 데이터. 심볼간 타임프레임을 통일
   unordered_map<string, vector<bar_data>> trading_bar_data;
 
-  // 바 세부 움직임을 추적하는 돋보기 기능을 위한 바 데이터:
-  // 심볼간 타임프레임을 통일
+  /// 바 세부 움직임을 추적하는 돋보기 기능을 위한 바 데이터.
+  /// 심볼간 타임프레임을 통일
   unordered_map<string, vector<bar_data>> magnifier_bar_data;
   // 돋보기 사용 안하는 설정이면 #include <functional>으로 봉
   // 계산 방법 다르게 해서 다른 함수로 초기화 때 지정해서 실행
 
-  // 지표 계산 혹은 상위 타임프레임 가격 참조를 위한 바 데이터:
-  // 심볼, <타임프레임, 바 데이터>
+  /// 지표 계산 혹은 상위 타임프레임 가격 참조를 위한 바 데이터.
+  /// 구조: 심볼, <타임프레임, 바 데이터>
   unordered_map<string, unordered_map<string, vector<bar_data>>> sub_bar_data;
 
-  // 실제 매매 성과 테스트를 위한 트레이딩 바 데이터: 심볼간 타임프레임을 통일
+  /// 실제 매매 성과 테스트를 위한 트레이딩 바 데이터. 심볼간 타임프레임을 통일
   unordered_map<string, vector<bar_data>> test_trading_bar_data;
 
-  // 현재 사용 중인 바 데이터 타입: TRADING, MAGNIFIER, SUB
-  BarDataType current_bar_data_type;
+  string trading_timeframe;    // 트레이딩 바 데이터 타임프레임
+  string magnifier_timeframe;  // 돋보기 바 데이터 타임프레임
+  set<string> sub_timeframe;   // 서브 바 데이터 타임프레임
 
-  // 현재 사용 중인 심볼
-  string current_symbol;
-
-  // 타임프레임
-  string trading_timeframe;
-  string magnifier_timeframe;
-  set<string> sub_timeframe;
-
-  // 각 심볼의 트레이딩 진행 인덱스
+  /// 각 심볼의 트레이딩 진행 인덱스
   unordered_map<string, size_t> trading_index;
 
-  // 각 심볼의 돋보기 진행 인덱스
+  /// 각 심볼의 돋보기 진행 인덱스
   unordered_map<string, size_t> magnifier_index;
 
-  // 각 심볼의 타임프레임 및 서브 진행 인덱스
+  /// 각 심볼의 타임프레임 및 서브 진행 인덱스
   unordered_map<string, unordered_map<string, size_t>> sub_index;
 
   BarDataManager();

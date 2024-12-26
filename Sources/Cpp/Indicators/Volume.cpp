@@ -7,6 +7,5 @@ Volume::Volume(const string& name, const string& timeframe)
 }
 
 double Volume::Calculate() {
-  return bar.GetPrice(this->GetTimeframe(), 0,
-                      BarDataManager::PriceType::VOLUME);
+  return bar.GetBar(this->GetTimeframe(), 0).volume;
 }

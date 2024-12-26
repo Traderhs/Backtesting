@@ -7,6 +7,5 @@ High::High(const string& name, const string& timeframe)
 }
 
 double High::Calculate() {
-  return bar.GetPrice(this->GetTimeframe(), 0,
-                      BarDataManager::PriceType::HIGH);
+  return bar.GetBar(this->GetTimeframe(), 0).high;
 }

@@ -37,8 +37,8 @@ void Engine::Backtesting(const bool use_bar_magnifier, const string& start,
                          const string& end, const string& format) {
   // 유효성 검증
   IsValidBarData(use_bar_magnifier);
+  IsValidData();
   IsValidDateRange(start, end, format);
-  IsValidSettings();
   // @@@@@@@ (지표랑 전략) 검증 추가 / sub bar 관련도 추가
 
   // 사전 엔진 초기화
@@ -63,14 +63,14 @@ void Engine::Backtesting(const bool use_bar_magnifier, const string& start,
     const auto& trading_activated = CheckTradingStatus();
 
     for (const auto& [symbol, bar_data] : trading_activated) {
-      current_symbol = symbol;
+      current_symbol = symbol; // 현재 심볼 업데이트
     }
     // Order();
     // Calculate();
     //
     // 인덱스 증가
 
-    // Current Open Time Update
+    // Current Open Time Update 등의 업데이트
 
     // 백테스팅 종료 체크
 
@@ -98,8 +98,25 @@ void Engine::IsValidBarData(const bool use_bar_magnifier) {
     }
   }
 
-  logger.Log(Logger::INFO_L, "데이터 유효성 검증이 완료되었습니다.", __FILE__,
+  logger.Log(Logger::INFO_L, "바 데이터 유효성 검증이 완료되었습니다.", __FILE__,
              __LINE__);
+}
+
+void Engine::IsValidData() {
+  if (data.GetInitialCapital() == -1)
+    Logger::LogAndThrowError("초기 자금이 설정되지 않았습니다.", __FILE__,
+                             __LINE__);
+
+  if (data.GetMarketCommission() == -1)
+    Logger::LogAndThrowError("수수료가 설정되지 않았습니다.", __FILE__,
+                             __LINE__);
+
+  if (data.GetMarketSlippage() == -1)
+    Logger::LogAndThrowError("슬리피지가 설정되지 않았습니다.", __FILE__,
+                             __LINE__);
+
+  logger.Log(Logger::INFO_L, "데이터 유효성 검증이 완료되었습니다.",
+             __FILE__, __LINE__);
 }
 
 void Engine::IsValidDateRange(const string& start, const string& end,
@@ -148,23 +165,6 @@ void Engine::IsValidDateRange(const string& start, const string& end,
              __LINE__);
 }
 
-void Engine::IsValidSettings() {
-  if (data.GetInitialCapital() == -1)
-    Logger::LogAndThrowError("초기 자금이 설정되지 않았습니다.", __FILE__,
-                             __LINE__);
-
-  if (data.GetCommission() == -1)
-    Logger::LogAndThrowError("수수료가 설정되지 않았습니다.", __FILE__,
-                             __LINE__);
-
-  if (data.GetSlippage() == -1)
-    Logger::LogAndThrowError("슬리피지가 설정되지 않았습니다.", __FILE__,
-                             __LINE__);
-
-  logger.Log(Logger::INFO_L, "트레이딩 변수 유효성 검증이 완료되었습니다.",
-             __FILE__, __LINE__);
-}
-
 void Engine::PreInitializeEngine() {
   // 지표 계산을 위해 sub_index를 미리 초기화
   InitializeSubIndex();
@@ -203,7 +203,8 @@ void Engine::InitializeEngine() {
   // @@@@@@@@@@@@@ 돋보기랑 서브 start 인덱스 찾기 ㄱㄱㄱ 시작 시간 넘어가면
   // 에러 발생요
 
-  // order들 symbol들로 초기화
+  // 주문 초기화
+  order.InitializeOrders();
 
   logger.Log(Logger::INFO_L, "엔진 초기화가 완료되었습니다.", __FILE__,
              __LINE__);
