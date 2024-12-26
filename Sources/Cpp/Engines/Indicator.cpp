@@ -16,17 +16,17 @@ double Indicator::operator[](const size_t index) {
     Logger::LogAndThrowError(
         format("{} {} 지표가 계산되지 않았습니다. CalculateAll 함수를 지표 "
                "생성자에서 호출해야 합니다.",
-               name, timeframe),
+               name, this->timeframe),
         __FILE__, __LINE__);
   }
 
-  const string& current_symbol = bar.GetCurrentSymbol();
-  const size_t current_index = bar.GetCurrentIndex(
-      BarDataManager::BarDataType::SUB, current_symbol, timeframe);
+  const string& current_symbol = bar.current_symbol;
+  const size_t current_index =
+      bar.GetCurrentIndex(current_symbol, this->timeframe);
 
   // 인덱스 범위 체크
   if (const auto out_index =
-          bar.GetSubBarData()[current_symbol][timeframe].size();
+          bar.GetSubBarData()[current_symbol][this->timeframe].size();
       current_index < index || (current_index - index) >= out_index) {
     return {nan("")};  // 범위 벗어난 경우 nan 반환
   }
@@ -38,7 +38,8 @@ BarDataManager& Indicator::bar = BarDataManager::GetBarDataManager();
 Logger& Indicator::logger = Logger::GetLogger();
 
 void Indicator::CalculateAll() {
-  bar.SetCurrentBarDataType(BarDataManager::BarDataType::SUB);
+  bar.current_bar_data_type = BarDataManager::BarDataType::SUB;
+
   const auto& sub_bar_data = bar.GetSubBarData();
 
   // 전체 트레이딩 심볼들을 순회하며 지표에 해당하는 타임프레임의 지표 계산
@@ -63,16 +64,16 @@ void Indicator::CalculateAll() {
           __FILE__, __LINE__);
     }
 
-    bar.SetCurrentSymbol(symbol);
-    size_t index = bar.GetCurrentIndex(BarDataManager::BarDataType::SUB, symbol,
-                                       timeframe);
+    bar.current_symbol = symbol;
 
     // 해당 심볼과 타임 프레임에 해당되는 서브 바 데이터의 전체 데이터를
     // 순회하며 계산
     for (int i = 0; i < timeframe_it->second.size(); i++) {
-      bar.SetCurrentIndex(BarDataManager::BarDataType::SUB, symbol, timeframe, index++);
       output[symbol].push_back(Calculate());
     }
+
+    // 다른 지표 계산을 위해 인덱스 초기화
+    bar.SetCurrentIndex(symbol, timeframe, 0);
   }
 
   // 계산 완료 로깅

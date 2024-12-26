@@ -69,6 +69,16 @@ class Binance : public FetchManager {
   static string GetTimeframeFilename(const string& timeframe);
 
   /**
+   * 주어진 JSON 형식의 kline 데이터를 빌더로 구성된 벡터에 추가한 뒤
+   * Arrow Array로 변환하여 반환
+   *
+   * @param klines 추가할 klines 데이터를 포함하는 JSON 객체의 deque
+   * @return 변환된 Arrow Array Vector
+   */
+  static vector<shared_ptr<Array>> GetArraysAddedKlines(
+      const deque<json>& klines);
+
+  /**
    * 주어진 klines 데이터를 변환하여 더 쉽게 다룰 수 있는 형식으로 변환하는
    * 함수. 현물 데이터와 선물 데이터의 데이터 조정 시 double 형식의 가격
    * 데이터가 필요하므로 조정
@@ -98,13 +108,4 @@ class Binance : public FetchManager {
    * @param file_path Parquet 파일을 저장할 경로
    */
   static void SaveKlines(const deque<json>& klines, const string& file_path);
-
-  /**
-   * 주어진 JSON 형식의 kline 데이터를 빌더로 구성된 벡터에 추가한 뒤
-   * Arrow Array로 변환하여 반환
-   *
-   * @param klines 추가할 klines 데이터를 포함하는 JSON 객체의 deque
-   * @return 변환된 Arrow Array Vector
-   */
-  static vector<shared_ptr<Array>> GetArraysAddedKlines(const deque<json>& klines);
 };

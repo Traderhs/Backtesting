@@ -55,6 +55,6 @@ int64_t UTCDatetimeToUTCTimestamp(const string& datetime, const string& format);
  */
 string FormatTimeframe(int64_t timeframe_ms);
 
-// 타임프레임 문자열을 타임스탬프로 변환하여 반환하는 함수
+/// 타임프레임 문자열을 타임스탬프로 변환하여 반환하는 함수
 int64_t ParseTimeframe(const string& timeframe_str);
 }

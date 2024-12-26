@@ -13,6 +13,9 @@
 using namespace std;
 using namespace nlohmann;
 
+/**
+ * 비동기와 HTTP를 사용하여 Fetch하는 함수를 제공하는 클래스
+ */
 class FetchManager {
  public:
   FetchManager();

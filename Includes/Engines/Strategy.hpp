@@ -4,15 +4,18 @@
 #include "Engine.hpp"
 #include "OrderManager.hpp"
 
+/**
+ * 백테스팅 전략을 생성하기 위한 가상 클래스
+ */
 class Strategy {
  public:
   explicit Strategy(string name);
   virtual ~Strategy();
 
-  // 전략 실행 전 초기화를 통해 값을 미리 계산하기 위한 함수
+  /// 전략 실행 전 초기화를 통해 값을 미리 계산하기 위한 함수
   virtual void Initialize() = 0;
 
-  // 매 봉마다 전략을 실행하는 함수
+  /// 매 봉마다 전략을 실행하는 함수
   virtual void Execute() = 0;
 
  protected:

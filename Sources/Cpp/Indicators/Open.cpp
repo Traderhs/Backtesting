@@ -7,6 +7,5 @@ Open::Open(const string& name, const string& timeframe)
 }
 
 double Open::Calculate() {
-  return bar.GetPrice(this->GetTimeframe(), 0,
-                      BarDataManager::PriceType::OPEN);
+  return bar.GetBar(this->GetTimeframe(), 0).open;
 }
