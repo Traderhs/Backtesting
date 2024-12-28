@@ -14,19 +14,19 @@
 #include "Engines/TimeUtils.hpp"
 
 // 파일 헤더
-#include "Engines/Binance.hpp"
+#include "Engines/BinanceFetcher.hpp"
 
 // 네임 스페이스
 using namespace DataUtils;
 using namespace filesystem;
 using namespace TimeUtils;
 
-Binance::Binance() : klines_path("../../Klines") {}
-Binance::Binance(string klines_path) : klines_path(move(klines_path)) {}
+BinanceFetcher::BinanceFetcher() : klines_path("../../Klines") {}
+BinanceFetcher::BinanceFetcher(string klines_path) : klines_path(move(klines_path)) {}
 
-void Binance::FetchAndSaveBarData(const string& symbol,
+void BinanceFetcher::FetchAndSaveBarData(const string& symbol,
                                   const string& timeframe) const {
-  const string& timeframe_filename = GetTimeframeFilename(timeframe);
+  const string& timeframe_filename = GetFilenameWithTimeframe(timeframe);
 
   if (exists(klines_path + "/" + symbol + "/" + timeframe_filename +
              ".parquet")) {
@@ -115,9 +115,9 @@ void Binance::FetchAndSaveBarData(const string& symbol,
   }
 }
 
-void Binance::UpdateBarData(const string& symbol,
+void BinanceFetcher::UpdateBarData(const string& symbol,
                             const string& timeframe) const {
-  const string& filename_timeframe = GetTimeframeFilename(timeframe);
+  const string& filename_timeframe = GetFilenameWithTimeframe(timeframe);
   const string& file_path =
       klines_path + "/" + symbol + "/" + filename_timeframe + ".parquet";
 
@@ -193,7 +193,7 @@ void Binance::UpdateBarData(const string& symbol,
   }
 }
 
-future<deque<json>> Binance::FetchKlines(
+future<deque<json>> BinanceFetcher::FetchKlines(
     const string& url, const unordered_map<string, string>& params,
     const bool forward) {
   return async(launch::async, [=] {
@@ -203,7 +203,7 @@ future<deque<json>> Binance::FetchKlines(
     while (true) {
       try {
         // fetched_future를 미리 받아둠
-        shared_future fetched_future = FetchData(url, param);
+        shared_future fetched_future = Fetch(url, param);
 
         // Fetch 대기
         const json& fetched = fetched_future.get();
@@ -242,9 +242,9 @@ future<deque<json>> Binance::FetchKlines(
   });
 }
 
-Logger& Binance::logger = Logger::GetLogger();
+Logger& BinanceFetcher::logger = Logger::GetLogger();
 
-string Binance::GetTimeframeFilename(const string& timeframe) {
+string BinanceFetcher::GetFilenameWithTimeframe(const string& timeframe) {
   // 윈도우는 1m과 1M이 같은 것으로 취급하므로 명시적 이름 변환이 필요함
   if (timeframe == "1M") {
     return "1month";
@@ -253,7 +253,7 @@ string Binance::GetTimeframeFilename(const string& timeframe) {
   return timeframe;
 }
 
-deque<json> Binance::TransformKlines(const deque<json>& klines,
+deque<json> BinanceFetcher::TransformKlines(const deque<json>& klines,
                                      const bool drop_latest) {
   deque<json> transformed_klines;
   for (const auto& kline : klines) {
@@ -289,7 +289,7 @@ deque<json> Binance::TransformKlines(const deque<json>& klines,
   return transformed_klines;
 }
 
-deque<json> Binance::ConcatKlines(const deque<json>& spot_klines,
+deque<json> BinanceFetcher::ConcatKlines(const deque<json>& spot_klines,
                                   const deque<json>& futures_klines) {
   // Futures 첫 데이터 시가 / Spot 마지막 데이터 종가
   const double ratio = static_cast<double>(futures_klines.front()[1]) /
@@ -332,7 +332,7 @@ deque<json> Binance::ConcatKlines(const deque<json>& spot_klines,
   return adjusted_spot_klines;
 }
 
-void Binance::SaveKlines(const deque<json>& klines, const string& file_path) {
+void BinanceFetcher::SaveKlines(const deque<json>& klines, const string& file_path) {
   // column 추가
   const vector<string>& column_names(
       {"Open Time", "Open", "High", "Low", "Close", "Volume", "Close Time"});
@@ -358,7 +358,7 @@ void Binance::SaveKlines(const deque<json>& klines, const string& file_path) {
   TableToParquet(table, file_path);
 }
 
-vector<shared_ptr<Array>> Binance::GetArraysAddedKlines(
+vector<shared_ptr<Array>> BinanceFetcher::GetArraysAddedKlines(
     const deque<json>& klines) {
   // 각 컬럼의 데이터를 저장할 빌더 벡터 초기화
   vector<shared_ptr<ArrayBuilder>> builders(7);
@@ -369,9 +369,7 @@ vector<shared_ptr<Array>> Binance::GetArraysAddedKlines(
     builders[i] = make_shared<DoubleBuilder>();  // OHLCV
   }
 
-  // Array 생성
-  vector<shared_ptr<Array>> arrays(7);
-
+  // Array Builder에 Klines 추가
   // 전체 행 순회
   for (const auto& json : klines) {
     // 전체 열 순회
@@ -392,7 +390,10 @@ vector<shared_ptr<Array>> Binance::GetArraysAddedKlines(
     }
   }
 
-  // Array 추가 완료
+  // Array 생성
+  vector<shared_ptr<Array>> arrays(7);
+
+  // Array에 Array Builder 추가
   for (int i = 0; i < 7; ++i) {
     if (i == 0 || i == 6) {
       if (auto* int64_builder = dynamic_cast<Int64Builder*>(builders[i].get());

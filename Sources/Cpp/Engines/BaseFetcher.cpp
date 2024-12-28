@@ -2,13 +2,13 @@
 #include <curl/curl.h>
 
 // 파일 헤더
-#include "Engines/FetchManager.hpp"
+#include "Engines/BaseFetcher.hpp"
 
-FetchManager::FetchManager() = default;
-FetchManager::~FetchManager() = default;
+BaseFetcher::BaseFetcher() = default;
+BaseFetcher::~BaseFetcher() = default;
 
-future<json> FetchManager::FetchData(
-    const string& url, const unordered_map<string, string>& params) {
+future<json> BaseFetcher::Fetch(const string& url,
+                                const unordered_map<string, string>& params) {
   return async(launch::async, [url, params]() {
     CURL* curl = curl_easy_init();
     if (!curl)
@@ -16,7 +16,7 @@ future<json> FetchManager::FetchData(
                                __LINE__);
 
     string response_string;
-    const string& full_url = BuildFullUrlWithParams(url, params);
+    const string& full_url = BuildFullUrl(url, params);
 
     curl_easy_setopt(curl, CURLOPT_URL, full_url.c_str());
     curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, WriteCallback);
@@ -45,10 +45,10 @@ future<json> FetchManager::FetchData(
   });
 }
 
-Logger& FetchManager::logger = Logger::GetLogger();
+Logger& BaseFetcher::logger = Logger::GetLogger();
 
-string FetchManager::BuildFullUrlWithParams(
-    const string& base_url, const unordered_map<string, string>& params) {
+string BaseFetcher::BuildFullUrl(const string& base_url,
+                                 const unordered_map<string, string>& params) {
   string full_url = base_url + "?";
   bool first = true;
 
@@ -64,8 +64,8 @@ string FetchManager::BuildFullUrlWithParams(
   return full_url;
 }
 
-size_t FetchManager::WriteCallback(void* contents, const size_t size,
-                                   const size_t nmemb, string* str) {
+size_t BaseFetcher::WriteCallback(void* contents, const size_t size,
+                                  const size_t nmemb, string* str) {
   const size_t new_length = size * nmemb;
   str->append(static_cast<char*>(contents), new_length);
   return new_length;
