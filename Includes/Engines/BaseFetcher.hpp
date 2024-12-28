@@ -16,10 +16,10 @@ using namespace nlohmann;
 /**
  * 비동기와 HTTP를 사용하여 Fetch하는 함수를 제공하는 클래스
  */
-class FetchManager {
+class BaseFetcher {
  public:
-  FetchManager();
-  ~FetchManager();
+  BaseFetcher();
+  ~BaseFetcher();
 
  protected:
   /**
@@ -29,8 +29,7 @@ class FetchManager {
    * @param params 요청에 포함될 파라미터의 unordered_map
    * @return 가져온 데이터의 JSON 표현을 포함하는 future 객체
    */
-  static future<json> FetchData(const string& url,
-                                const unordered_map<string, string>& params);
+  static future<json> Fetch(const string& url, const unordered_map<string, string>& params);
 
  private:
   static Logger& logger;
@@ -43,7 +42,7 @@ class FetchManager {
    * @param params 요청에 포함될 파라미터의 unordered_map
    * @return 주어진 파라미터가 포함된 완전한 URL 문자열
    */
-  static string BuildFullUrlWithParams(
+  static string BuildFullUrl(
       const string& base_url, const unordered_map<string, string>& params);
 
   /**

@@ -5,7 +5,7 @@
 #include <string>
 
 // 내부 헤더
-#include "FetchManager.hpp"
+#include "BaseFetcher.hpp"
 #include "Logger.hpp"
 
 // 네임 스페이스
@@ -14,10 +14,10 @@ using namespace std;
 /**
  * Binance 바 데이터의 Fetch와 Update를 담당하는 클래스
  */
-class Binance : public FetchManager {
+class BinanceFetcher : public BaseFetcher {
  public:
-  explicit Binance();
-  explicit Binance(string klines_path);
+  explicit BinanceFetcher();
+  explicit BinanceFetcher(string klines_path);
 
   /**
    * 지정된 심볼과 시간 프레임에 대해 Binance 현물 및 선물 klines 데이터를 Fetch
@@ -40,7 +40,7 @@ class Binance : public FetchManager {
  protected:
   /**
    * Binance API를 사용하여 지정된 URL과 파라미터에 대한
-   * klines 데이터를 Fetch하는 함수
+   * klines 데이터를 연속적으로 Fetch하는 함수
    *
    * @param url klines 데이터를 가져올 API의 URL
    * @param params 요청에 사용될 파라미터
@@ -66,7 +66,7 @@ class Binance : public FetchManager {
    * @param timeframe 원래의 타임프레임 문자열
    * @return 파일 이름용으로 형식화된 타임프레임을 나타내는 문자열
    */
-  static string GetTimeframeFilename(const string& timeframe);
+  static string GetFilenameWithTimeframe(const string& timeframe);
 
   /**
    * 주어진 JSON 형식의 kline 데이터를 빌더로 구성된 벡터에 추가한 뒤
