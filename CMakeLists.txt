@@ -29,9 +29,10 @@ file(GLOB HEADERS   # 해당 경로에서 hpp 파일들을 GLOB
         "Includes/Indicators/*.hpp"
         "Includes/Strategies/*.hpp")
 file(GLOB SOURCES  # 해당 경로에서 cpp 파일들을 GLOB
-        "Sources/Cpp/Engines/*.cpp"
-        "Sources/Cpp/Indicators/*.cpp"
-        "Sources/Cpp/Strategies/*.cpp")
+        "Sources/cpp/*.cpp"
+        "Sources/cpp/Engines/*.cpp"
+        "Sources/cpp/Indicators/*.cpp"
+        "Sources/cpp/Strategies/*.cpp")
 
 add_executable(Backtesting ${SOURCES}) # 실행 파일 Backtesting을 ${SOURCES} 소스 파일로 생성
 target_include_directories(Backtesting PRIVATE # Backtesting 타겟에 포함 디렉터리 경로 추가
@@ -59,9 +60,10 @@ file(GLOB TEST_HEADERS  # 해당 경로에서 hpp 파일들을 GLOB
         "Includes/Strategies/*.hpp")
 file(GLOB TEST_SOURCES  # 해당 경로에서 cpp 파일들을 GLOB
         "Tests/*.cpp"
-        "Sources/Cpp/Engines/*.cpp"
-        "Sources/Cpp/Indicators/*.cpp"
-        "Sources/Cpp/Strategies/*.cpp")
+        "Sources/cpp/*.cpp"
+        "Sources/cpp/Engines/*.cpp"
+        "Sources/cpp/Indicators/*.cpp"
+        "Sources/cpp/Strategies/*.cpp")
 
 add_executable(Tests ${TEST_SOURCES}) # 실행 파일 Tests를 ${TEST_SOURCES} 소스 파일로 생성
 target_include_directories(Tests PRIVATE # Tests 타겟에 포함 디렉터리 경로 추가

@@ -1,8 +1,5 @@
 ﻿#pragma once
 
-// 표준 라이브러리
-#include <deque>
-
 // 외부 라이브러리
 #include <arrow/api.h>
 
@@ -13,10 +10,8 @@ using namespace arrow;
 using namespace nlohmann;
 using namespace std;
 
-/**
- * 데이터 핸들링을 위한 유틸리티 네임스페이스
- */
-namespace DataUtils {
+///데이터 핸들링을 위한 유틸리티 네임스페이스
+namespace data_utils {
 /**
  * 주어진 값의 소수점 자릿수를 계산하는 함수
  *
@@ -97,4 +92,7 @@ void TableToParquet(const shared_ptr<Table>& table, const string& file_path);
  *         첫 번째는 `split_ratio` 비율, 두 번째는 나머지 비율
  */
 pair<shared_ptr<Table>, shared_ptr<Table>> SplitTable(const shared_ptr<Table>& table, double split_ratio);
+
+/// 최소 틱 크기로 가격을 반올림하여 반환하는 함수
+[[nodiscard]] static double RoundToTickSize(double price, double tick_size);
 }

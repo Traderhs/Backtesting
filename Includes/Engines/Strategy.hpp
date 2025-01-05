@@ -1,8 +1,7 @@
 #pragma once
 
 // 내부 헤더
-#include "Engine.hpp"
-#include "OrderManager.hpp"
+#include "Engines/OrderHandler.hpp"
 
 /**
  * 백테스팅 전략을 생성하기 위한 가상 클래스
@@ -18,9 +17,12 @@ class Strategy {
   /// 매 봉마다 전략을 실행하는 함수
   virtual void Execute() = 0;
 
+  /// 해당 전략의 주문 핸들러를 반환하는 함수
+  [[nodiscard]] OrderHandler& GetOrderHandler() const;
+
  protected:
-  static OrderManager& order;
+  static OrderHandler& order_;  // 주문 핸들러
 
  private:
-  string name;
+  string name_;  // 전략 이름
 };

@@ -12,14 +12,14 @@ using namespace chrono;
 /**
  * 시간 핸들링을 위한 유틸리티 네임스페이스
  */
-namespace TimeUtils {
+namespace time_utils {
 
-constexpr int64_t SECOND = 1000;
-constexpr int64_t MINUTE = 60 * SECOND;
-constexpr int64_t HOUR = 60 * MINUTE;
-constexpr int64_t DAY = 24 * HOUR;
-constexpr int64_t WEEK = 7 * DAY;
-constexpr int64_t MONTH = 30 * DAY;
+constexpr int64_t kSecond = 1000;
+constexpr int64_t kMinute = 60 * kSecond;
+constexpr int64_t kHour = 60 * kMinute;
+constexpr int64_t kDay = 24 * kHour;
+constexpr int64_t kWeek = 7 * kDay;
+constexpr int64_t kMonth = 30 * kDay;
 
 /**
  * 현재 시스템의 로컬 시간대를 기준으로 현재 날짜와 시간을 반환하는 함수
@@ -35,7 +35,7 @@ string GetCurrentLocalDatetime();
  * @param timestamp_ms 변환할 밀리초 단위의 타임스탬프
  * @return UTC 날짜와 시간의 문자열 표현
  */
-string UTCTimestampToUtcDatetime(int64_t timestamp_ms);
+string UtcTimestampToUtcDatetime(int64_t timestamp_ms);
 
 /**
  * 주어진 UTC 날짜 및 시간 문자열을 UTC 타임스탬프로 변환하여 반환하는 함수
@@ -44,7 +44,7 @@ string UTCTimestampToUtcDatetime(int64_t timestamp_ms);
  * @param format datetime 문자열의 포맷을 지정하는 형식 문자열
  * @return 밀리초 단위의 UTC 타임스탬프
  */
-int64_t UTCDatetimeToUTCTimestamp(const string& datetime, const string& format);
+int64_t UtcDatetimeToUtcTimestamp(const string& datetime, const string& format);
 
 /**
  * 주어진 타임프레임(밀리초 기준)을 사람이 읽을 수 있는

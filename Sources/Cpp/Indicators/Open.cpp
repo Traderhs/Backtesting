@@ -7,5 +7,5 @@ Open::Open(const string& name, const string& timeframe)
 }
 
 double Open::Calculate() {
-  return bar.GetBar(this->GetTimeframe(), 0).open;
+  return bar_.GetBar(this->GetTimeframe(), 0).open;
 }

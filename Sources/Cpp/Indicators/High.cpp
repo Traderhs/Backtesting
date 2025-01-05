@@ -7,5 +7,5 @@ High::High(const string& name, const string& timeframe)
 }
 
 double High::Calculate() {
-  return bar.GetBar(this->GetTimeframe(), 0).high;
+  return bar_.GetBar(this->GetTimeframe(), 0).high;
 }

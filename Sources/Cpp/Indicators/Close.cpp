@@ -7,5 +7,5 @@ Close::Close(const string& name, const string& timeframe)
 }
 
 double Close::Calculate() {
-  return bar.GetBar(this->GetTimeframe(), 0).close;
+  return bar_.GetBar(this->GetTimeframe(), 0).close;
 }

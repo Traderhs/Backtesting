@@ -15,9 +15,9 @@
 // 파일 헤더
 #include "Engines/DataUtils.hpp"
 
-using namespace TimeUtils;
+using namespace time_utils;
 
-size_t DataUtils::CountDecimalPlaces(const double value) {
+size_t data_utils::CountDecimalPlaces(const double value) {
   ostringstream oss;
   oss << value;
   const string& str = oss.str();
@@ -34,24 +34,13 @@ size_t DataUtils::CountDecimalPlaces(const double value) {
   return str.substr(pos + 1).length();
 }
 
-size_t DataUtils::GetMaxDecimalPlaces(const deque<json>& data,
-                                      const size_t index) {
-  size_t max_decimal_places = 0;
-  for (const auto& data_ : data) {
-    max_decimal_places =
-        max(max_decimal_places, CountDecimalPlaces(data_[index]));
-  }
-
-  return max_decimal_places;
-}
-
-double DataUtils::RoundToDecimalPlaces(const double value,
-                                       const size_t decimal_places) {
+double data_utils::RoundToDecimalPlaces(const double value,
+                                        const size_t decimal_places) {
   const auto scale = pow(10, decimal_places);
   return round(value * scale) / scale;
 }
 
-shared_ptr<Table> DataUtils::ReadParquet(const string& file_path) {
+shared_ptr<Table> data_utils::ReadParquet(const string& file_path) {
   try {
     // Arrow의 ReadableFile 생성
     shared_ptr<io::ReadableFile> infile;
@@ -77,9 +66,9 @@ shared_ptr<Table> DataUtils::ReadParquet(const string& file_path) {
   }
 }
 
-any DataUtils::GetCellValue(const shared_ptr<Table>& table,
-                            const string& column_name,
-                            const int64_t row_index) {
+any data_utils::GetCellValue(const shared_ptr<Table>& table,
+                             const string& column_name,
+                             const int64_t row_index) {
   // 열 인덱스 찾기
   const int column_index = table->schema()->GetFieldIndex(column_name);
   if (column_index == -1) {
@@ -91,8 +80,8 @@ any DataUtils::GetCellValue(const shared_ptr<Table>& table,
   return GetCellValue(table, column_index, row_index);
 }
 
-any DataUtils::GetCellValue(const shared_ptr<Table>& table,
-                            const int column_index, const int64_t row_index) {
+any data_utils::GetCellValue(const shared_ptr<Table>& table,
+                             const int column_index, const int64_t row_index) {
   if (column_index < 0 || column_index >= table->num_columns()) {
     Logger::LogAndThrowError(
         "잘못된 열 인덱스입니다: " + to_string(column_index), __FILE__,
@@ -105,11 +94,10 @@ any DataUtils::GetCellValue(const shared_ptr<Table>& table,
 
   // 해당 행의 값을 가져오기
   const auto& chunked_array = column->chunk(0);
-
   return GetScalarValue(chunked_array->GetScalar(row_index).ValueOrDie());
 }
 
-any DataUtils::GetScalarValue(const shared_ptr<Scalar>& scalar) {
+any data_utils::GetScalarValue(const shared_ptr<Scalar>& scalar) {
   switch (const auto type = scalar->type->id()) {
     case Type::INT16:
       return dynamic_pointer_cast<Int16Scalar>(scalar)->value;
@@ -128,8 +116,8 @@ any DataUtils::GetScalarValue(const shared_ptr<Scalar>& scalar) {
   }
 }
 
-void DataUtils::TableToParquet(const shared_ptr<Table>& table,
-                               const string& file_path) {
+void data_utils::TableToParquet(const shared_ptr<Table>& table,
+                                const string& file_path) {
   static shared_ptr<io::FileOutputStream> outfile;
   auto result = io::FileOutputStream::Open(file_path);
   if (!result.ok()) {
@@ -148,7 +136,7 @@ void DataUtils::TableToParquet(const shared_ptr<Table>& table,
         __FILE__, __LINE__);
 }
 
-pair<shared_ptr<Table>, shared_ptr<Table>> DataUtils::SplitTable(
+pair<shared_ptr<Table>, shared_ptr<Table>> data_utils::SplitTable(
     const shared_ptr<Table>& table, const double split_ratio) {
   const int64_t num_rows = table->num_rows();
   const auto split_index =
@@ -162,12 +150,20 @@ pair<shared_ptr<Table>, shared_ptr<Table>> DataUtils::SplitTable(
   for (int i = 0; i < table->num_columns(); ++i) {
     first_chunked_arrays.push_back(table->column(i)->Slice(0, split_index));
     second_chunked_arrays.push_back(
-        table->column(i)->Slice(split_index, num_rows - split_index)
-    );
+        table->column(i)->Slice(split_index, num_rows - split_index));
   }
 
-  return {
-    Table::Make(table->schema(), first_chunked_arrays),
-    Table::Make(table->schema(), second_chunked_arrays)
-  };
+  return {Table::Make(table->schema(), first_chunked_arrays),
+          Table::Make(table->schema(), second_chunked_arrays)};
+}
+
+double data_utils::RoundToTickSize(const double price, const double tick_size) {
+  if (tick_size <= 0) {
+    Logger::LogAndThrowError(
+        format("주어진 틱 사이즈 {}은(는) 0보다 커야합니다.",
+               to_string(tick_size)),
+        __FILE__, __LINE__);
+  }
+
+  return round(price / tick_size) * tick_size;
 }

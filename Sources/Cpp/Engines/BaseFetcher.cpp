@@ -45,7 +45,7 @@ future<json> BaseFetcher::Fetch(const string& url,
   });
 }
 
-Logger& BaseFetcher::logger = Logger::GetLogger();
+Logger& BaseFetcher::logger_ = Logger::GetLogger();
 
 string BaseFetcher::BuildFullUrl(const string& base_url,
                                  const unordered_map<string, string>& params) {

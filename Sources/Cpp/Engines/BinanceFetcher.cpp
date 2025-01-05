@@ -17,32 +17,39 @@
 #include "Engines/BinanceFetcher.hpp"
 
 // 네임 스페이스
-using namespace DataUtils;
+using namespace data_utils;
 using namespace filesystem;
-using namespace TimeUtils;
+using namespace time_utils;
 
-BinanceFetcher::BinanceFetcher() : klines_path("../../Klines") {}
-BinanceFetcher::BinanceFetcher(string klines_path) : klines_path(move(klines_path)) {}
+BinanceFetcher::BinanceFetcher() : market_data_path_("../../Market Data") {
+  klines_path_ = market_data_path_ + "/Klines";
+  funding_rate_path_ = market_data_path_ + "/Funding Rate";
+}
+BinanceFetcher::BinanceFetcher(string market_data_path)
+    : market_data_path_(move(market_data_path)) {
+  klines_path_ = market_data_path_ + "/Klines";
+  funding_rate_path_ = market_data_path_ + "/Funding Rate";
+}
 
 void BinanceFetcher::FetchAndSaveBarData(const string& symbol,
-                                  const string& timeframe) const {
+                                         const string& timeframe) const {
   const string& timeframe_filename = GetFilenameWithTimeframe(timeframe);
 
-  if (exists(klines_path + "/" + symbol + "/" + timeframe_filename +
+  if (exists(klines_path_ + "/" + symbol + "/" + timeframe_filename +
              ".parquet")) {
-    logger.Log(Logger::WARNING_L,
-               format("[Spot-Futures {} {}] 파일이 이미 존재합니다.\n{}",
-                      symbol, timeframe_filename, string(200, '-')),
-               __FILE__, __LINE__);
+    logger_.Log(Logger::WARNING_L,
+                format("[Spot-Futures {} {}] 파일이 이미 존재합니다.\n{}",
+                       symbol, timeframe_filename, string(200, '-')),
+                __FILE__, __LINE__);
     return;
   }
 
-  logger.Log(Logger::INFO_L,
-             format("[Spot-Futures {} {}] 파일 생성을 시작합니다.", symbol,
-                    timeframe_filename),
-             __FILE__, __LINE__);
+  logger_.Log(Logger::INFO_L,
+              format("[Spot-Futures {} {}] 파일 생성을 시작합니다.", symbol,
+                     timeframe_filename),
+              __FILE__, __LINE__);
 
-  const unordered_map<string, string>& f_params = {
+  const unordered_map<string, string>& futures_params = {
       {"pair", symbol},
       {"contractType", "PERPETUAL"},
       {"interval", timeframe},
@@ -50,15 +57,15 @@ void BinanceFetcher::FetchAndSaveBarData(const string& symbol,
       {"limit", "1500"}};
 
   // 선물 데이터 Fetch
-  if (const auto& f_klines =
-          FetchKlines(futures_klines_url, f_params, true).get();
-      !f_klines.empty()) {
+  if (const auto& futures_klines =
+          FetchKlines(futures_klines_url_, futures_params, true).get();
+      !futures_klines.empty()) {
     // 저장 경로 생성
-    const string& symbol_path = klines_path + "/" + symbol;
+    const string& symbol_path = klines_path_ + "/" + symbol;
     if (!exists(symbol_path)) create_directory(symbol_path);
 
     // json deque의 첫 값을 가져오고 첫 번째 요소인 Open Time을 가져옴
-    const auto& open_time = f_klines.front().at(0);
+    const auto& open_time = futures_klines.front().at(0);
 
     // Spot의 마지막 시간은 Future 첫 시간의 전 시간
     const string& end_time = to_string(static_cast<int64_t>(open_time) - 1);
@@ -69,44 +76,46 @@ void BinanceFetcher::FetchAndSaveBarData(const string& symbol,
                                                      {"limit", "1500"}};
 
     // 선물 데이터 변환
-    const auto& transformed_f_klines = TransformKlines(f_klines, true);
+    const auto& transformed_futures_klines =
+        TransformKlines(futures_klines, true);
 
     // 현물 데이터 Fetch
-    if (const auto& s_klines =
-            FetchKlines(spot_klines_url, s_params, false).get();
-        !s_klines.empty()) {
+    if (const auto& spot_klines =
+            FetchKlines(spot_klines_url_, s_params, false).get();
+        !spot_klines.empty()) {
       // 현물 데이터 변환
-      const auto& transformed_s_klines = TransformKlines(s_klines, false);
+      const auto& transformed_spot_klines = TransformKlines(spot_klines, false);
 
       // 현물과 선물 데이터 병합
       const auto& spot_futures_klines =
-          ConcatKlines(transformed_s_klines, transformed_f_klines);
+          ConcatKlines(transformed_spot_klines, transformed_futures_klines);
 
       // 저장
       SaveKlines(spot_futures_klines,
                  symbol_path + "/" + timeframe_filename + ".parquet");
 
-      logger.Log(
+      logger_.Log(
           Logger::INFO_L,
           format("[{} - {}] 기간의 [Spot-Futures {} {}] 파일이 "
                  "생성되었습니다.\n{}",
-                 UTCTimestampToUtcDatetime(spot_futures_klines.front().at(0)),
-                 UTCTimestampToUtcDatetime(spot_futures_klines.back().at(0)),
+                 UtcTimestampToUtcDatetime(spot_futures_klines.front().at(0)),
+                 UtcTimestampToUtcDatetime(spot_futures_klines.back().at(0)),
                  symbol, timeframe_filename, string(200, '-')),
           __FILE__, __LINE__);
     } else {
       // 현물 데이터가 없는 종목이면 선물만 저장
-      SaveKlines(transformed_f_klines,
+      SaveKlines(transformed_futures_klines,
                  symbol_path + "/" + timeframe + ".parquet");
 
-      logger.Log(
-          Logger::INFO_L,
-          format("[{} - {}] 기간의 [Futures {} {}] 파일이 "
-                 "생성되었습니다.\n{}",
-                 UTCTimestampToUtcDatetime(transformed_f_klines.front().at(0)),
-                 UTCTimestampToUtcDatetime(transformed_f_klines.back().at(0)),
-                 symbol, timeframe_filename, string(200, '-')),
-          __FILE__, __LINE__);
+      logger_.Log(Logger::INFO_L,
+                  format("[{} - {}] 기간의 [Futures {} {}] 파일이 "
+                         "생성되었습니다.\n{}",
+                         UtcTimestampToUtcDatetime(
+                             transformed_futures_klines.front().at(0)),
+                         UtcTimestampToUtcDatetime(
+                             transformed_futures_klines.back().at(0)),
+                         symbol, timeframe_filename, string(200, '-')),
+                  __FILE__, __LINE__);
     }
   } else {
     Logger::LogAndThrowError(
@@ -116,16 +125,16 @@ void BinanceFetcher::FetchAndSaveBarData(const string& symbol,
 }
 
 void BinanceFetcher::UpdateBarData(const string& symbol,
-                            const string& timeframe) const {
+                                   const string& timeframe) const {
   const string& filename_timeframe = GetFilenameWithTimeframe(timeframe);
-  const string& file_path =
-      klines_path + "/" + symbol + "/" + filename_timeframe + ".parquet";
+  const string& file_path = klines_path_ + "/" + symbol + "/" +
+                            filename_timeframe + ".parquet";
 
   if (!exists(file_path)) {
-    logger.Log(Logger::WARNING_L,
-               format("[Spot-Futures {} {}] 파일이 존재하지 않습니다.\n{}",
-                      symbol, filename_timeframe, string(200, '-')),
-               __FILE__, __LINE__);
+    logger_.Log(Logger::WARNING_L,
+                format("[Spot-Futures {} {}] 파일이 존재하지 않습니다.\n{}",
+                       symbol, filename_timeframe, string(200, '-')),
+                __FILE__, __LINE__);
     return;
   }
 
@@ -138,12 +147,12 @@ void BinanceFetcher::UpdateBarData(const string& symbol,
   const auto end_open_time = any_cast<int64_t>(
       GetCellValue(klines_file, "Open Time", klines_file->num_rows() - 1));
 
-  logger.Log(
+  logger_.Log(
       Logger::INFO_L,
       format("[{} - {}] 기간의 [Spot-Futures {} {}] 파일이 존재합니다. 최신 "
              "선물 데이터 업데이트를 시작합니다.",
-             UTCTimestampToUtcDatetime(begin_open_time),
-             UTCTimestampToUtcDatetime(end_open_time), symbol,
+             UtcTimestampToUtcDatetime(begin_open_time),
+             UtcTimestampToUtcDatetime(end_open_time), symbol,
              filename_timeframe),
       __FILE__, __LINE__);
 
@@ -157,9 +166,10 @@ void BinanceFetcher::UpdateBarData(const string& symbol,
       {"startTime", start_time},
       {"limit", "1500"}};
 
-  const auto& f_klines = FetchKlines(futures_klines_url, f_params, true).get();
+  const auto& futures_klines =
+      FetchKlines(futures_klines_url_, f_params, true).get();
 
-  if (const auto& transformed_f_klines = TransformKlines(f_klines, true);
+  if (const auto& transformed_f_klines = TransformKlines(futures_klines, true);
       !transformed_f_klines.empty()) {
     // 업데이트된 데이터가 있다면 Array에 저장
     const auto& arrays = GetArraysAddedKlines(transformed_f_klines);
@@ -171,29 +181,29 @@ void BinanceFetcher::UpdateBarData(const string& symbol,
     // 기존 Table과 새로운 Table을 수직으로 결합
     const vector<shared_ptr<Table>>& tables_to_concatenate = {klines_file,
                                                               new_table};
-    const auto& concatenated_table_result =
+    const auto& concatenated_tables_result =
         ConcatenateTables(tables_to_concatenate);
 
     // 저장
-    TableToParquet(concatenated_table_result.ValueOrDie(), file_path);
+    TableToParquet(concatenated_tables_result.ValueOrDie(), file_path);
 
-    logger.Log(
+    logger_.Log(
         Logger::INFO_L,
         format("[{} - {}] 기간의 [Spot-Futures {} {}] 파일이 "
                "업데이트되었습니다.\n{}",
-               UTCTimestampToUtcDatetime(transformed_f_klines.front().at(0)),
-               UTCTimestampToUtcDatetime(transformed_f_klines.back().at(0)),
+               UtcTimestampToUtcDatetime(transformed_f_klines.front().at(0)),
+               UtcTimestampToUtcDatetime(transformed_f_klines.back().at(0)),
                symbol, filename_timeframe, string(200, '-')),
         __FILE__, __LINE__);
   } else {
-    logger.Log(Logger::WARNING_L,
-               format("[Spot-Futures {} {}] 파일이 이미 최신 버전입니다.\n{}",
-                      symbol, filename_timeframe, string(200, '-')),
-               __FILE__, __LINE__);
+    logger_.Log(Logger::WARNING_L,
+                format("[Spot-Futures {} {}] 파일이 이미 최신 버전입니다.\n{}",
+                       symbol, filename_timeframe, string(200, '-')),
+                __FILE__, __LINE__);
   }
 }
 
-future<deque<json>> BinanceFetcher::FetchKlines(
+future<vector<json>> BinanceFetcher::FetchKlines(
     const string& url, const unordered_map<string, string>& params,
     const bool forward) {
   return async(launch::async, [=] {
@@ -231,18 +241,17 @@ future<deque<json>> BinanceFetcher::FetchKlines(
               to_string(static_cast<int64_t>(klines.front().at(0)) - 1);
         }
       } catch (const exception& e) {
-        logger.Log(Logger::ERROR_L,
-                   "Fetch하는 중 에러가 발생했습니다.: " + string(e.what()),
-                   __FILE__, __LINE__);
-        return klines;
+        Logger::LogAndThrowError(
+            "Fetch하는 중 에러가 발생했습니다.: " + string(e.what()), __FILE__,
+            __LINE__);
       }
     }
 
-    return klines;
+    return vector(klines.begin(), klines.end());
   });
 }
 
-Logger& BinanceFetcher::logger = Logger::GetLogger();
+Logger& BinanceFetcher::logger_ = Logger::GetLogger();
 
 string BinanceFetcher::GetFilenameWithTimeframe(const string& timeframe) {
   // 윈도우는 1m과 1M이 같은 것으로 취급하므로 명시적 이름 변환이 필요함
@@ -253,56 +262,63 @@ string BinanceFetcher::GetFilenameWithTimeframe(const string& timeframe) {
   return timeframe;
 }
 
-deque<json> BinanceFetcher::TransformKlines(const deque<json>& klines,
-                                     const bool drop_latest) {
-  deque<json> transformed_klines;
-  for (const auto& kline : klines) {
-    json data;
+vector<json> BinanceFetcher::TransformKlines(const vector<json>& klines,
+                                             const bool drop_latest) {
+  const size_t size = drop_latest ? klines.size() - 1 : klines.size();
+  vector<json> transformed_klines(size);
+  json bar;
+
+#pragma omp parallel for
+  for (int i = 0; i < size; i++) {
+    const auto& kline = klines[i];
 
     try {
       // Open Time 추가
-      data.push_back(static_cast<int64_t>(kline[0]));
+      bar.push_back(static_cast<int64_t>(kline[0]));
 
       // OHLCV 추가
       // 값이 "1.23" 형식으로 들어오기 때문에 string을 double로 변환
-      for (int i = 1; i <= 5; i++) {
-        data.push_back(stod(kline[i].get<string>()));
+      for (int j = 1; j <= 5; j++) {
+        bar.push_back(stod(kline[j].get<string>()));
       }
 
       // Close Time 추가
-      data.push_back(static_cast<int64_t>(kline[6]));
+      bar.push_back(static_cast<int64_t>(kline[6]));
 
+      // 미리 할당한 위치에 저장
+      transformed_klines[i] = bar;
     } catch (const exception& e) {
-      const string& err =
-          format("데이터 변환 중 에러가 발생했습니다: {}", e.what());
-      logger.Log(Logger::WARNING_L, err, __FILE__, __LINE__);
-      continue;
+#pragma omp critical
+      {
+        const string& err =
+            format("데이터 변환 중 에러가 발생했습니다: {}", e.what());
+        logger_.Log(Logger::WARNING_L, err, __FILE__, __LINE__);
+      }
+
+      // 에러 발생 시 빈 JSON 객체 저장
+      transformed_klines[i] = json();
     }
-
-    transformed_klines.push_back(data);
   }
-
-  // true일 시, 최신 데이터의 마지막 행은 데이터가 계속 바뀌므로
-  // 바가 완성되기 전까지 저장하지 않음
-  if (drop_latest) transformed_klines.pop_back();
 
   return transformed_klines;
 }
 
-deque<json> BinanceFetcher::ConcatKlines(const deque<json>& spot_klines,
-                                  const deque<json>& futures_klines) {
+vector<json> BinanceFetcher::ConcatKlines(const vector<json>& spot_klines,
+                                          const vector<json>& futures_klines) {
   // Futures 첫 데이터 시가 / Spot 마지막 데이터 종가
   const double ratio = static_cast<double>(futures_klines.front()[1]) /
                        static_cast<double>(spot_klines.back()[4]);
 
-  deque<json> adjusted_spot_klines;
-  double adjusted_price = 0.0;
+  vector<json> adjusted_spot_klines(spot_klines.size());
   size_t decimal_places = 0;
+  json bar;
 
-  for (auto& kline : spot_klines) {
-    json data;
+#pragma omp parallel for
+  for (int i = 0; i < spot_klines.size(); i++) {
+    const auto& kline = spot_klines[i];
 
-    data.push_back(kline[0]);  // Open Time 추가
+    // Open Time 추가
+    bar.push_back(kline[0]);
 
     // 해당 행 원본 OHLC의 최대 소숫점 자릿수 Count
     decimal_places =
@@ -310,29 +326,30 @@ deque<json> BinanceFetcher::ConcatKlines(const deque<json>& spot_klines,
              CountDecimalPlaces(kline[3]), CountDecimalPlaces(kline[4])});
 
     // OHLC 추가
-    for (int i = 1; i <= 4; i++) {
-      // ratio 곱으로 인해 생긴 소수점 반올림
-      // Futures의 최대 소수점 자릿수 사용
-      adjusted_price = RoundToDecimalPlaces(
-          kline[i].get<double>() * ratio,  // OHLC를 조정 비율로 계산
-          decimal_places);
-
-      data.push_back(adjusted_price);
+    for (int j = 1; j <= 4; j++) {
+      bar.push_back(
+          RoundToDecimalPlaces(kline[j].get<double>() * ratio, decimal_places));
     }
 
     // 거래량, Close Time 추가
-    for (int i = 5; i <= 6; i++) data.push_back(kline[i]);
+    bar.push_back(kline[5]);
+    bar.push_back(kline[6]);
 
-    adjusted_spot_klines.push_back(data);
+    adjusted_spot_klines[i] = bar;  // 미리 할당된 위치에 저장
   }
 
-  // 조정된 Spot 데이터에 futures 데이터 추가
-  for (auto& kline : futures_klines) adjusted_spot_klines.push_back(kline);
+  // futures 데이터를 순차적으로 추가
+  adjusted_spot_klines.reserve(adjusted_spot_klines.size() +
+                               futures_klines.size());
+  for (const auto& kline : futures_klines) {
+    adjusted_spot_klines.push_back(kline);
+  }
 
   return adjusted_spot_klines;
 }
 
-void BinanceFetcher::SaveKlines(const deque<json>& klines, const string& file_path) {
+void BinanceFetcher::SaveKlines(const vector<json>& klines,
+                                const string& file_path) {
   // column 추가
   const vector<string>& column_names(
       {"Open Time", "Open", "High", "Low", "Close", "Volume", "Close Time"});
@@ -359,51 +376,62 @@ void BinanceFetcher::SaveKlines(const deque<json>& klines, const string& file_pa
 }
 
 vector<shared_ptr<Array>> BinanceFetcher::GetArraysAddedKlines(
-    const deque<json>& klines) {
-  // 각 컬럼의 데이터를 저장할 빌더 벡터 초기화
+    const vector<json>& klines) {
+  const size_t num_rows = klines.size();
+
+  // 임시 데이터 저장소
+  vector<int64_t> open_time(num_rows);
+  vector<double> open(num_rows);
+  vector<double> high(num_rows);
+  vector<double> low(num_rows);
+  vector<double> close(num_rows);
+  vector<double> volume(num_rows);
+  vector<int64_t> close_time(num_rows);
+
+#pragma omp parallel for
+  for (int row = 0; row < num_rows; ++row) {
+    const auto& json = klines[row];
+    open_time[row] = json[0].get<int64_t>();
+    open[row] = json[1].get<double>();
+    high[row] = json[2].get<double>();
+    low[row] = json[3].get<double>();
+    close[row] = json[4].get<double>();
+    volume[row] = json[5].get<double>();
+    close_time[row] = json[6].get<int64_t>();
+  }
+
+  // 빌더 생성
   vector<shared_ptr<ArrayBuilder>> builders(7);
   builders[0] = make_shared<Int64Builder>();  // Open Time
-  builders[6] = make_shared<Int64Builder>();  // Close Time
-
   for (int i = 1; i <= 5; i++) {
     builders[i] = make_shared<DoubleBuilder>();  // OHLCV
   }
+  builders[6] = make_shared<Int64Builder>();  // Close Time
 
-  // Array Builder에 Klines 추가
-  // 전체 행 순회
-  for (const auto& json : klines) {
-    // 전체 열 순회
-    for (int i = 0; i < 7; ++i) {
-      if (i == 0 || i == 6) {  // 날짜, 시간: int64 타입 추가
-        if (auto* int64_builder = dynamic_cast<Int64Builder*>(builders[i].get());
-          !int64_builder->Append(json[i].get<int64_t>()).ok()) {
-          Logger::LogAndThrowError(format(
-              "{} 데이터를 추가하는 데 실패했습니다.", json[i].get<int64_t>()),__FILE__,__LINE__);
-        }
-      } else {  // OHLCV: double 타입 추가
-        if (auto* double_builder = dynamic_cast<DoubleBuilder*>(builders[i].get());
-          !double_builder->Append(json[i].get<double>()).ok()) {
-          Logger::LogAndThrowError(format(
-              "{} 데이터를 추가하는 데 실패했습니다.", json[i].get<double>()),__FILE__,__LINE__);
-        }
-      }
-    }
-  }
-
-  // Array 생성
+  // 데이터를 Builder에 추가 후 Array에 추가
   vector<shared_ptr<Array>> arrays(7);
+  const vector<vector<double>*>& price_data = {nullptr, &open, &high, &low, &close, &volume, nullptr};
+  const vector<vector<int64_t>*>& time_data = {&open_time, nullptr, nullptr, nullptr, nullptr, nullptr, &close_time};
 
-  // Array에 Array Builder 추가
   for (int i = 0; i < 7; ++i) {
-    if (i == 0 || i == 6) {
-      if (auto* int64_builder = dynamic_cast<Int64Builder*>(builders[i].get());
-        !int64_builder->Finish(&arrays[i]).ok()) {
-        Logger::LogAndThrowError("시간 데이터를 저장 완료하는 데 실패했습니다.",__FILE__,__LINE__);
+    if (i == 0 || i == 6) {  // 시간 데이터
+      auto builder = make_shared<Int64Builder>();
+      if (auto* int64_builder = builder.get();
+        !int64_builder->AppendValues(*time_data[i]).ok() ||
+          !int64_builder->Finish(&arrays[i]).ok()) {
+        Logger::LogAndThrowError(
+            format("{} time 데이터를 처리하는 데 실패했습니다.",
+                  (i == 0 ? "Open" : "Close")),
+            __FILE__, __LINE__);
       }
-    } else {
-      if (auto* double_builder = dynamic_cast<DoubleBuilder*>(builders[i].get());
-          !double_builder->Finish(&arrays[i]).ok())
-        Logger::LogAndThrowError("실수 데이터를 저장 완료하는 데 실패했습니다.",__FILE__,__LINE__);
+    } else {  // 가격 데이터
+      auto builder = make_shared<DoubleBuilder>();
+      if (auto* double_builder = builder.get();
+        !double_builder->AppendValues(*price_data[i]).ok() ||
+          !double_builder->Finish(&arrays[i]).ok()) {
+        Logger::LogAndThrowError("가격 데이터를 처리하는 데 실패했습니다.",
+                                __FILE__, __LINE__);
+      }
     }
   }
 

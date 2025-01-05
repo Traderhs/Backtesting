@@ -9,11 +9,13 @@
 // 네임 스페이스
 using namespace std;
 
-/**
- * 시스템 로깅을 담당하는 클래스
- */
-class Logger {
+/// 시스템 로깅을 담당하는 클래스
+class Logger final {
  public:
+  // 싱글톤 특성 유지
+  Logger(const Logger&) = delete;             // 복사 생성자 삭제
+  Logger& operator=(const Logger&) = delete;  // 대입 연산자 삭제
+
   enum LogLevel { DEBUG_L, INFO_L, WARNING_L, ERROR_L };
 
   /**
@@ -54,7 +56,7 @@ class Logger {
   static void LogAndThrowError(const string& message, const string& file, int line);
 
  private:
-  static Logger& logger;
+  static Logger& logger_;
 
   friend default_delete<Logger>;
 
@@ -64,14 +66,14 @@ class Logger {
   ~Logger();
 
   // 로그 파일
-  ofstream debug_file;
-  ofstream info_file;
-  ofstream warning_file;
-  ofstream error_file;
+  ofstream debug_file_;
+  ofstream info_file_;
+  ofstream warning_file_;
+  ofstream error_file_;
 
   // 싱글톤 인스턴스 관리
-  static mutex mutex;
-  static unique_ptr<Logger> instance;
+  static mutex mutex_;
+  static unique_ptr<Logger> instance_;
 
   /**
    * 콘솔에 로그 메시지를 출력하는 함수

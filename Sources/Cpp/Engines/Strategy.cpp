@@ -5,7 +5,11 @@
 // 파일 헤더
 #include "Engines/Strategy.hpp"
 
-Strategy::Strategy(string name) : name(move(name)) {}
+Strategy::Strategy(string name) : name_(move(name)) {}
 Strategy::~Strategy() = default;
 
-OrderManager& Strategy::order = OrderManager::GetOrderManager();
+OrderHandler& Strategy::GetOrderHandler() const {
+  return OrderHandler::GetOrderHandler(name_);
+}
+
+OrderHandler& Strategy::order_ = OrderHandler::GetOrderHandler(name_);

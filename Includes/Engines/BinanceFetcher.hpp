@@ -1,12 +1,11 @@
 ﻿#pragma once
 
 // 표준 라이브러리
-#include <deque>
 #include <string>
 
 // 내부 헤더
-#include "BaseFetcher.hpp"
-#include "Logger.hpp"
+#include "Engines/BaseFetcher.hpp"
+#include "Engines/Logger.hpp"
 
 // 네임 스페이스
 using namespace std;
@@ -14,10 +13,10 @@ using namespace std;
 /**
  * Binance 바 데이터의 Fetch와 Update를 담당하는 클래스
  */
-class BinanceFetcher : public BaseFetcher {
+class BinanceFetcher final : public BaseFetcher {
  public:
   explicit BinanceFetcher();
-  explicit BinanceFetcher(string klines_path);
+  explicit BinanceFetcher(string market_data_path);
 
   /**
    * 지정된 심볼과 시간 프레임에 대해 Binance 현물 및 선물 klines 데이터를 Fetch
@@ -37,7 +36,17 @@ class BinanceFetcher : public BaseFetcher {
    */
   void UpdateBarData(const string& symbol, const string& timeframe) const;
 
- protected:
+ private:
+  static Logger& logger_;  // 로그용 객체
+
+  string market_data_path_;   // Market Data 폴더 경로
+  string klines_path_;        // Klines 폴더 경로
+  string funding_rate_path_;  // Funding Rate 폴더 경로
+
+  string futures_klines_url_ =
+      "https://fapi.binance.com/fapi/v1/continuousKlines";
+  string spot_klines_url_ = "https://api.binance.com/api/v3/klines";
+
   /**
    * Binance API를 사용하여 지정된 URL과 파라미터에 대한
    * klines 데이터를 연속적으로 Fetch하는 함수
@@ -48,17 +57,9 @@ class BinanceFetcher : public BaseFetcher {
    *                가져오고, false이면 데이터를 뒤로 가져옴
    * @return 가져온 klines 데이터를 나타내는 deque의 비동기 future 객체
    */
-  static future<deque<json>> FetchKlines(
+  static future<vector<json>> FetchKlines(
       const string& url, const unordered_map<string, string>& params,
       bool forward);
-
- private:
-  static Logger& logger;  // 로그용 객체
-
-  string klines_path;
-  string futures_klines_url =
-      "https://fapi.binance.com/fapi/v1/continuousKlines";
-  string spot_klines_url = "https://api.binance.com/api/v3/klines";
 
   /**
    * 주어진 기간 문자열을 파일 이름에 적합한 형식으로 변환
@@ -76,7 +77,7 @@ class BinanceFetcher : public BaseFetcher {
    * @return 변환된 Arrow Array Vector
    */
   static vector<shared_ptr<Array>> GetArraysAddedKlines(
-      const deque<json>& klines);
+      const vector<json>& klines);
 
   /**
    * 주어진 klines 데이터를 변환하여 더 쉽게 다룰 수 있는 형식으로 변환하는
@@ -88,7 +89,7 @@ class BinanceFetcher : public BaseFetcher {
    *                    결정하는 플래그. true일 경우 최신 데이터 행을 제거
    * @return 변환된 klines 데이터를 포함하는 deque
    */
-  static deque<json> TransformKlines(const deque<json>& klines,
+  static vector<json> TransformKlines(const vector<json>& klines,
                                      bool drop_latest);
 
   /**
@@ -98,8 +99,8 @@ class BinanceFetcher : public BaseFetcher {
    * @param futures_klines 병합할 선물 klines 데이터의 deque
    * @return 조정된 현물 데이터와 선물 데이터가 병합된 새로운 klines deque
    */
-  static deque<json> ConcatKlines(const deque<json>& spot_klines,
-                                  const deque<json>& futures_klines);
+  static vector<json> ConcatKlines(const vector<json>& spot_klines,
+                                   const vector<json>& futures_klines);
 
   /**
    * 주어진 klines 데이터를 Parquet 파일로 변환하고 저장하는 함수
@@ -107,5 +108,5 @@ class BinanceFetcher : public BaseFetcher {
    * @param klines 저장할 klines 데이터를 포함하는 JSON 객체의 deque
    * @param file_path Parquet 파일을 저장할 경로
    */
-  static void SaveKlines(const deque<json>& klines, const string& file_path);
+  static void SaveKlines(const vector<json>& klines, const string& file_path);
 };
