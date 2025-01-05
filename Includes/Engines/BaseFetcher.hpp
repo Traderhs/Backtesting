@@ -7,7 +7,7 @@
 #include <nlohmann/json.hpp>
 
 // 내부 헤더
-#include "Logger.hpp"
+#include "Engines/Logger.hpp"
 
 // 네임 스페이스
 using namespace std;
@@ -17,11 +17,10 @@ using namespace nlohmann;
  * 비동기와 HTTP를 사용하여 Fetch하는 함수를 제공하는 클래스
  */
 class BaseFetcher {
- public:
+ protected:
   BaseFetcher();
   ~BaseFetcher();
 
- protected:
   /**
    * 제공된 URL에서 주어진 파라미터를 사용하여 데이터를 가져오는 함수
    *
@@ -32,7 +31,7 @@ class BaseFetcher {
   static future<json> Fetch(const string& url, const unordered_map<string, string>& params);
 
  private:
-  static Logger& logger;
+  static Logger& logger_;
 
   /**
    * 주어진 쿼리 매개변수를 사용하여 기본 URL에 전체 파라미터를 포함한 URL을

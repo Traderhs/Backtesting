@@ -7,5 +7,5 @@ Volume::Volume(const string& name, const string& timeframe)
 }
 
 double Volume::Calculate() {
-  return bar.GetBar(this->GetTimeframe(), 0).volume;
+  return bar_.GetBar(this->GetTimeframe(), 0).volume;
 }

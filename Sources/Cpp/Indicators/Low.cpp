@@ -7,5 +7,5 @@ Low::Low(const string& name, const string& timeframe)
 }
 
 double Low::Calculate() {
-  return bar.GetBar(this->GetTimeframe(), 0).low;
+  return bar_.GetBar(this->GetTimeframe(), 0).low;
 }

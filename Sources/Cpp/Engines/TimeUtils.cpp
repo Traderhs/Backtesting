@@ -10,7 +10,7 @@
 // 파일 헤더
 #include "Engines/TimeUtils.hpp"
 
-string TimeUtils::GetCurrentLocalDatetime() {
+string time_utils::GetCurrentLocalDatetime() {
   const auto& now = system_clock::now();
   const time_t now_time_t = system_clock::to_time_t(now);
 
@@ -24,7 +24,7 @@ string TimeUtils::GetCurrentLocalDatetime() {
   return ss.str();
 }
 
-string TimeUtils::UTCTimestampToUtcDatetime(const int64_t timestamp_ms) {
+string time_utils::UtcTimestampToUtcDatetime(const int64_t timestamp_ms) {
   // timestamp ms를 time_t로 변환
   const auto timestamp_s = seconds(timestamp_ms / 1000);
   const system_clock::time_point tp(timestamp_s);
@@ -40,7 +40,7 @@ string TimeUtils::UTCTimestampToUtcDatetime(const int64_t timestamp_ms) {
   return ss.str();
 }
 
-int64_t TimeUtils::UTCDatetimeToUTCTimestamp(const string& datetime,
+int64_t time_utils::UtcDatetimeToUtcTimestamp(const string& datetime,
                                              const string& format) {
   tm tm = {};
   istringstream ss(datetime);
@@ -59,41 +59,41 @@ int64_t TimeUtils::UTCDatetimeToUTCTimestamp(const string& datetime,
   return utc_timestamp * 1000;
 }
 
-string TimeUtils::FormatTimeframe(const int64_t timeframe_ms) {
-  const vector MONTHS = {
-      28 * DAY,  // 2월
-      29 * DAY,  // 2월
-      30 * DAY,  // 4,6,9,11월
-      31 * DAY   // 1,3,5,7,8,10,12월
+string time_utils::FormatTimeframe(const int64_t timeframe_ms) {
+  const vector months = {
+      28 * kDay,  // 2월
+      29 * kDay,  // 2월
+      30 * kDay,  // 4,6,9,11월
+      31 * kDay   // 1,3,5,7,8,10,12월
   };
 
   // 월 단위 체크
-  for (const int64_t month : MONTHS) {
+  for (const int64_t month : months) {
     if (timeframe_ms % month == 0) {
       return to_string(timeframe_ms / month) + "M";
     }
   }
 
-  if (timeframe_ms % WEEK == 0) {
-    return to_string(timeframe_ms / WEEK) + "w";
+  if (timeframe_ms % kWeek == 0) {
+    return to_string(timeframe_ms / kWeek) + "w";
   }
-  if (timeframe_ms % DAY == 0) {
-    return to_string(timeframe_ms / DAY) + "d";
+  if (timeframe_ms % kDay == 0) {
+    return to_string(timeframe_ms / kDay) + "d";
   }
-  if (timeframe_ms % HOUR == 0) {
-    return to_string(timeframe_ms / HOUR) + "h";
+  if (timeframe_ms % kHour == 0) {
+    return to_string(timeframe_ms / kHour) + "h";
   }
-  if (timeframe_ms % MINUTE == 0) {
-    return to_string(timeframe_ms / MINUTE) + "m";
+  if (timeframe_ms % kMinute == 0) {
+    return to_string(timeframe_ms / kMinute) + "m";
   }
-  if (timeframe_ms % SECOND == 0) {
-    return to_string(timeframe_ms / SECOND) + "s";
+  if (timeframe_ms % kSecond == 0) {
+    return to_string(timeframe_ms / kSecond) + "s";
   }
 
   return to_string(timeframe_ms) + "ms";
 }
 
-int64_t TimeUtils::ParseTimeframe(const string& timeframe_str) {
+int64_t time_utils::ParseTimeframe(const string& timeframe_str) {
   size_t pos = 0;
   while (pos < timeframe_str.size() && isdigit(timeframe_str[pos])) {
     ++pos;
@@ -112,22 +112,22 @@ int64_t TimeUtils::ParseTimeframe(const string& timeframe_str) {
     return value;
   } else {
     if (unit == "s") {
-      return value * SECOND;
+      return value * kSecond;
     }
     if (unit == "m") {
-      return value * MINUTE;
+      return value * kMinute;
     }
     if (unit == "h") {
-      return value * HOUR;
+      return value * kHour;
     }
     if (unit == "d") {
-      return value * DAY;
+      return value * kDay;
     }
     if (unit == "w") {
-      return value * WEEK;
+      return value * kWeek;
     }
     if (unit == "M") {
-      return value * MONTH;
+      return value * kMonth;
     }
 
     Logger::LogAndThrowError("잘못된 유닛이 지정되었습니다.: " + unit,__FILE__,__LINE__);

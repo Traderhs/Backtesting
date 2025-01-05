@@ -3,6 +3,7 @@
 #include <format>
 #include <fstream>
 #include <iostream>
+#include <memory>
 #include <mutex>
 
 // 내부 헤더
@@ -18,60 +19,60 @@ Logger::Logger(const string& log_directory, const string& debug_log_name,
   filesystem::create_directories(log_directory);
 
   // Log 파일 Open, 없으면 생성
-  debug_file.open(log_directory + "/" + debug_log_name, ios::app);
-  info_file.open(log_directory + "/" + info_log_name, ios::app);
-  warning_file.open(log_directory + "/" + warning_log_name, ios::app);
-  error_file.open(log_directory + "/" + error_log_name, ios::app);
+  debug_file_.open(log_directory + "/" + debug_log_name, ios::app);
+  info_file_.open(log_directory + "/" + info_log_name, ios::app);
+  warning_file_.open(log_directory + "/" + warning_log_name, ios::app);
+  error_file_.open(log_directory + "/" + error_log_name, ios::app);
 }
 
 Logger::~Logger() {
-  if (debug_file.is_open()) debug_file.close();
-  if (info_file.is_open()) info_file.close();
-  if (warning_file.is_open()) warning_file.close();
-  if (error_file.is_open()) error_file.close();
+  if (debug_file_.is_open()) debug_file_.close();
+  if (info_file_.is_open()) info_file_.close();
+  if (warning_file_.is_open()) warning_file_.close();
+  if (error_file_.is_open()) error_file_.close();
 }
 
-mutex Logger::mutex;
-unique_ptr<Logger> Logger::instance;
+mutex Logger::mutex_;
+unique_ptr<Logger> Logger::instance_;
 
 Logger& Logger::GetLogger(const string& log_directory,
                           const string& debug_log_name,
                           const string& info_log_name,
                           const string& warning_log_name,
                           const string& error_log_name) {
-  if (!instance) {
-    lock_guard lock(mutex);
-    instance.reset(new Logger(log_directory, debug_log_name, info_log_name,
-                              warning_log_name, error_log_name));
+  if (!instance_) {
+    lock_guard lock(mutex_);
+    instance_ = make_unique<Logger>(log_directory, debug_log_name, info_log_name,
+                                   warning_log_name, error_log_name);
   }
-  return *instance;
+  return *instance_;
 }
 
 void Logger::Log(const LogLevel& log_level, const string& message,
                  const string& file, const int line) {
   const string& log_message = format(
-      "[{}] [{}:{}] | {}", TimeUtils::GetCurrentLocalDatetime(),
+      "[{}] [{}:{}] | {}", time_utils::GetCurrentLocalDatetime(),
       filesystem::path(file).filename().string(), to_string(line), message);
 
   switch (log_level) {
     case DEBUG_L:
       ConsoleLog("DEBUG_L", log_message);
-      WriteToFile(debug_file, log_message);
+      WriteToFile(debug_file_, log_message);
       break;
 
     case INFO_L:
       ConsoleLog("INFO_L", log_message);
-      WriteToFile(info_file, log_message);
+      WriteToFile(info_file_, log_message);
       break;
 
     case WARNING_L:
       ConsoleLog("WARNING_L", log_message);
-      WriteToFile(warning_file, log_message);
+      WriteToFile(warning_file_, log_message);
       break;
 
     case ERROR_L:
       ConsoleLog("ERROR_L", log_message);
-      WriteToFile(error_file, log_message);
+      WriteToFile(error_file_, log_message);
       break;
   }
 }
@@ -96,8 +97,8 @@ void Logger::WriteToFile(ofstream& file, const string& message) {
 
 void Logger::LogAndThrowError(const string& message, const string& file,
                               const int line) {
-  logger.Log(ERROR_L, message, file, line);
+  logger_.Log(ERROR_L, message, file, line);
   throw runtime_error(message);
 }
 
-Logger& Logger::logger = GetLogger();
+Logger& Logger::logger_ = GetLogger();

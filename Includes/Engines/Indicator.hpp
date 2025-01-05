@@ -1,9 +1,9 @@
 #pragma once
 
 // 내부 헤더
-#include "BarDataManager.hpp"
-#include "Engine.hpp"
-#include "Logger.hpp"
+#include "Engines/BarHandler.hpp"
+#include "Engines/Engine.hpp"
+#include "Engines/Logger.hpp"
 
 // 네임 스페이스
 using namespace std;
@@ -24,8 +24,8 @@ class Indicator {
   [[nodiscard]] double operator[](size_t index);
 
  protected:
-  static BarDataManager& bar;
-  static Logger& logger;
+  static BarHandler& bar_;
+  static Logger& logger_;
 
   /// 모든 심볼의 모든 봉의 지표를 계산하는 함수.
   /// ※ 중요: 상속받은 지표의 생성자에서 호출해야 함
@@ -42,9 +42,9 @@ class Indicator {
   [[nodiscard]] string GetTimeframe() const;
 
  private:
-  string name;  // 지표의 이름
-  string timeframe;  // 지표의 타임프레임
-  vector<double> input;  // 지표의 파라미터
-  unordered_map<string, vector<double>> output;  // 지표의 계산된 값: <심볼, 값>
+  string name_;  // 지표의 이름
+  string timeframe_;  // 지표의 타임프레임
+  vector<double> input_;  // 지표의 파라미터
+  unordered_map<string, vector<double>> output_;  // 지표의 계산된 값: <심볼, 값>
 };
 

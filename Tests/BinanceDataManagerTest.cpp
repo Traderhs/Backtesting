@@ -10,7 +10,7 @@
 #include "BinanceDataManagerTest.hpp"
 
 using namespace chrono;
-using namespace TimeUtils;
+using namespace time_utils;
 
 void BinanceDataManagerTest::SetUp() {
   test = BinanceBarDataManager("../Tests/Klines");
@@ -71,8 +71,8 @@ TEST_F(BinanceDataManagerTest, FetchBinanceKlinesDataTest) {
         Logger::DEBUG_L,
         format("[Start Time: {}] [Now Time: {}] | "
                "[Fetched Months: {}] [Test Months: {}]",
-               UTCTimestampToUtcDatetime(stoll(forward_params["startTime"])),
-               UTCTimestampToUtcDatetime(now * 1000), to_string(fetched_months),
+               UtcTimestampToUtcDatetime(stoll(forward_params["startTime"])),
+               UtcTimestampToUtcDatetime(now * 1000), to_string(fetched_months),
                to_string(test_months)),
         __FILE__, __LINE__);
 

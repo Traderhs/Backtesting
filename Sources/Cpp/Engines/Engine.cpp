@@ -12,32 +12,50 @@
 #include "Engines/Engine.hpp"
 
 // 네임 스페이스
-using namespace DataUtils;
-using namespace TimeUtils;
+using namespace data_utils;
+using namespace time_utils;
 using namespace std;
 
-// 데이터 접근 연산자 오버로딩
-/*
-double operator[](size_t idx) const {
-    if (idx < high.size()) {
-        return high[idx];  // high 배열에 접근
-    }
-    return -1.0f;  // 인덱스가 유효하지 않을 경우
-}*/
-
-Engine::Engine()
-    : begin_open_time(INT64_MAX),
-      end_open_time(0),
-      current_open_time(-1),
-      current_close_time(-1) {}
-
+Engine::Engine(const Config& config)
+    : BaseEngine(config),
+      unrealized_pnl_updated_(false),
+      begin_open_time_(INT64_MAX),
+      end_open_time_(0),
+      current_open_time_(-1),
+      current_close_time_(-1) {}
 Engine::~Engine() = default;  // @@@@@@@@@@@ 저장할 거 저장하기
+
+mutex Engine::mutex_;
+unique_ptr<Engine> Engine::instance_;
+
+Engine& Engine::GetEngine(const Config& config) {
+  lock_guard lock(mutex_);  // 다중 스레드에서 안전하게 접근하기 위해 mutex 사용
+
+  // 인스턴스가 생성됐는지 확인
+  if (!instance_) {
+    // 인스턴스가 생성되지 않았으면 생성 후 저장
+    if (isnan(config.GetInitialBalance()) ||
+        config.GetCommissionType() == CommissionType::COMMISSION_NONE ||
+        isnan(config.GetCommission().first) ||
+        isnan(config.GetCommission().second) ||
+        config.GetSlippageType() == SlippageType::SLIPPAGE_NONE ||
+        isnan(config.GetSlippage().first) ||
+        isnan(config.GetSlippage().second)) {
+      Logger::LogAndThrowError(
+          "엔진 인스턴스 첫 생성 시 설정값을 모두 초기화해야 합니다.", __FILE__,
+          __LINE__);
+    }
+
+    instance_ = make_unique<Engine>(config);
+  }
+
+  return *instance_;
+}
 
 void Engine::Backtesting(const bool use_bar_magnifier, const string& start,
                          const string& end, const string& format) {
   // 유효성 검증
   IsValidBarData(use_bar_magnifier);
-  IsValidData();
   IsValidDateRange(start, end, format);
   // @@@@@@@ (지표랑 전략) 검증 추가 / sub bar 관련도 추가
 
@@ -56,21 +74,35 @@ void Engine::Backtesting(const bool use_bar_magnifier, const string& start,
   // 엔진 초기화
   InitializeEngine();
 
-  logger.Log(Logger::INFO_L, "백테스팅을 시작합니다.", __FILE__, __LINE__);
+  string is_debug = debug_mode_ ? "디버그 모드로 " : "";
+  logger_.Log(Logger::INFO_L, std::format("백테스팅을 {}시작합니다.", is_debug),
+              __FILE__, __LINE__);
 
   while (true) {
     // 심볼의 트레이딩 시작과 끝 검증
     const auto& trading_activated = CheckTradingStatus();
 
     for (const auto& [symbol, bar_data] : trading_activated) {
-      current_symbol = symbol; // 현재 심볼 업데이트
+      current_symbol = symbol;  // 현재 심볼 업데이트
     }
     // Order();
     // Calculate();
     //
     // 인덱스 증가
+    // @@@@@@@@@@@ 인덱스들은 바 하나 이동 시 처음에 일괄 업데이트할 것 => 미실현 손익 계산 시 필요
+
+    // 한 바 이동 시 unrealized_pnl_updated_ : false
 
     // Current Open Time Update 등의 업데이트
+
+    // 마진콜 검색, max_profit_/max_loss_ 방향에 따라 high low 때 업데이트
+    // 대기중인 진입/청산 체크 (지정가, 터치, 트레일링)
+    // 터치 체크법 -> 방금 전 확인한 가격이 터치보다 밑이고 지금 가격이 위이거나 (같아도 됨?)
+                   // 방금 전 확인한 가격이 터치보다 위고 지금 가격이 아래이거나 (같아도 됨?)
+    // 암튼 터치 체크 전 먼저 예전에 터치 됐나부터 체크해야함
+
+    // 트레일링 조건 체크 시: extreme 설정 됐나부터 확인 -> 안됐으면 touch 확인
+                          // touch 0으로 하면 바로 트레일링하게 만들기 위함
 
     // 백테스팅 종료 체크
 
@@ -78,86 +110,78 @@ void Engine::Backtesting(const bool use_bar_magnifier, const string& start,
   }
 }
 
-DataManager& Engine::data = DataManager::GetDataManager();
-BarDataManager& Engine::bar = BarDataManager::GetBarDataManager();
-Logger& Engine::logger = Logger::GetLogger();
-OrderManager& Engine::order = OrderManager::GetOrderManager();
+void Engine::UpdateUnrealizedPnl() {
+  double pnl = 0;
+
+  // 전략별 미실현 손익을 합산
+  for (const auto& strategy : strategies_) {
+    pnl += strategy.GetOrderHandler().GetUnrealizedPnl();
+  }
+
+  // 진입 가능 자금에 합산
+  IncreaseAvailableBalance(pnl);
+
+  unrealized_pnl_updated_ = true;
+}
 
 void Engine::IsValidBarData(const bool use_bar_magnifier) {
   // Trading Bar Data가 비었는지 체크
-  if (bar.GetTradingBarData().empty())
+  if (bar_.GetTradingBarData().empty())
     Logger::LogAndThrowError("트레이딩 바 데이터가 비어있습니다.", __FILE__,
                              __LINE__);
 
-  for (const auto& symbol : bar.GetTradingBarData() | views::keys) {
+  for (const auto& symbol : bar_.GetTradingBarData() | views::keys) {
     // Trading Bar Data가 Magnifier에 존재하는지 체크
-    if (use_bar_magnifier && !bar.GetMagnifierBarData().contains(symbol)) {
+    if (use_bar_magnifier && !bar_.GetMagnifierBarData().contains(symbol)) {
       Logger::LogAndThrowError(
           symbol + "이(가) 돋보기 바 데이터에 존재하지 않습니다.", __FILE__,
           __LINE__);
     }
   }
 
-  logger.Log(Logger::INFO_L, "바 데이터 유효성 검증이 완료되었습니다.", __FILE__,
-             __LINE__);
-}
-
-void Engine::IsValidData() {
-  if (data.GetInitialCapital() == -1)
-    Logger::LogAndThrowError("초기 자금이 설정되지 않았습니다.", __FILE__,
-                             __LINE__);
-
-  if (data.GetMarketCommission() == -1)
-    Logger::LogAndThrowError("수수료가 설정되지 않았습니다.", __FILE__,
-                             __LINE__);
-
-  if (data.GetMarketSlippage() == -1)
-    Logger::LogAndThrowError("슬리피지가 설정되지 않았습니다.", __FILE__,
-                             __LINE__);
-
-  logger.Log(Logger::INFO_L, "데이터 유효성 검증이 완료되었습니다.",
+  logger.Log(Logger::INFO_L, "바 데이터 유효성 검증이 완료되었습니다.",
              __FILE__, __LINE__);
 }
 
 void Engine::IsValidDateRange(const string& start, const string& end,
                               const string& format) {
-  for (const auto& bar_data : bar.GetTradingBarData() | views::values) {
+  for (const auto& bar_data : bar_.GetTradingBarData() | views::values) {
     // 백테스팅 시작 시 가장 처음의 Open Time 값 구하기
-    begin_open_time = min(begin_open_time, bar_data.begin()->open_time);
+    begin_open_time_ = min(begin_open_time_, bar_data.begin()->open_time);
 
     // 백테스팅 시작 시 가장 끝의 Open Time 값 구하기
-    end_open_time = max(end_open_time, prev(bar_data.end())->open_time);
+    end_open_time_ = max(end_open_time_, prev(bar_data.end())->open_time);
   }
 
   // Start가 지정된 경우 범위 체크
   if (!start.empty()) {
-    if (const int64_t start_time = UTCDatetimeToUTCTimestamp(start, format);
-        start_time < begin_open_time) {
+    if (const int64_t start_time = UtcDatetimeToUtcTimestamp(start, format);
+        start_time < begin_open_time_) {
       Logger::LogAndThrowError(
           std::format(
               "지정된 Start 시간이 데이터 범위 밖입니다. | 최소 시간: {} | "
               "지정된 Start 시간: {}",
-              UTCTimestampToUtcDatetime(begin_open_time),
-              UTCTimestampToUtcDatetime(start_time)),
+              UtcTimestampToUtcDatetime(begin_open_time_),
+              UtcTimestampToUtcDatetime(start_time)),
           __FILE__, __LINE__);
     } else {
-      begin_open_time = start_time;
+      begin_open_time_ = start_time;
     }
   }
 
   // End가 지정된 경우 범위 체크
   if (!end.empty()) {
-    if (const int64_t end_time = UTCDatetimeToUTCTimestamp(end, format);
-        end_time > end_open_time) {
+    if (const int64_t end_time = UtcDatetimeToUtcTimestamp(end, format);
+        end_time > end_open_time_) {
       Logger::LogAndThrowError(
           std::format(
               "지정된 End 시간이 데이터 범위 밖입니다. | 최대 시간: {} | "
               "지정된 End 시간: {}",
-              UTCTimestampToUtcDatetime(end_open_time),
-              UTCTimestampToUtcDatetime(end_time)),
+              UtcTimestampToUtcDatetime(end_open_time_),
+              UtcTimestampToUtcDatetime(end_time)),
           __FILE__, __LINE__);
     } else {
-      end_open_time = end_time;
+      end_open_time_ = end_time;
     }
   }
 
@@ -174,10 +198,13 @@ void Engine::PreInitializeEngine() {
 }
 
 void Engine::InitializeEngine() {
-  // 백테스팅 중 설정하는 트레이딩 변수 초기화
-  current_open_time = begin_open_time;
+  // @@@@@@@@@@@@ 순서 재배치 필요
 
-  for (const auto& [symbol, bar_data] : bar.GetTradingBarData()) {
+  // 백테스팅 중 설정하는 트레이딩 변수 초기화
+  current_open_time_ = begin_open_time_;
+
+  for (const auto& [symbol, bar_data] : bar_.GetTradingBarData()) {
+    // reserve 이후 emplace
     trading_index.emplace(symbol, 0);
     magnifier_index.emplace(symbol, 0);
 
@@ -185,23 +212,24 @@ void Engine::InitializeEngine() {
     InitializeSubIndex();
 
     // 첫 시작 시간이 begin_open_time과 같다면 바로 시작하는 Symbol
-    if (bar_data.begin()->open_time == begin_open_time) {
-      trading_began.emplace(symbol, true);
+    if (bar_data.begin()->open_time == begin_open_time_) {
+      trading_began_.emplace(symbol, true);
     } else {
-      trading_began.emplace(symbol, false);
+      trading_began_.emplace(symbol, false);
     }
 
-    trading_ended.emplace(symbol, false);
+    trading_ended_.emplace(symbol, false);
   }
 
-
-  current_capital = initial_capital;
-  max_capital = initial_capital;
-  drawdown = 0.0f;
+  wallet_balance_ = initial_capital;
+  max_wallet_balance_ = initial_capital;
+  drawdown_ = 0.0f;
   maximum_drawdown = 0.0f;
 
   // @@@@@@@@@@@@@ 돋보기랑 서브 start 인덱스 찾기 ㄱㄱㄱ 시작 시간 넘어가면
   // 에러 발생요
+
+  // 틱사이즈 계산 : BaseEngine에 함수 위치
 
   // 주문 초기화
   order.InitializeOrders();
@@ -227,21 +255,21 @@ unordered_map<string, vector<Engine::bar_data>> Engine::CheckTradingStatus() {
     const auto local_current_open_time =
         bar_data[trading_index[symbol]].open_time;
     // 이미 트레이딩을 시작한 심볼
-    if (trading_began[symbol]) {
+    if (trading_began_[symbol]) {
       // 활성화된 트레이딩 심볼로 추가
       trading_activated.emplace(symbol, move(bar_data));
 
       // 현재 인덱스의 Open Time이 마지막 Open Time이라면
-      if (local_current_open_time == end_open_time) {
-        trading_began[symbol] = false;
-        trading_ended[symbol] = true;
+      if (local_current_open_time == end_open_time_) {
+        trading_began_[symbol] = false;
+        trading_ended_[symbol] = true;
       }
     } else {  // 트레이딩이 끝나지 않았고, 시작되지 않은 심볼
-      if (!trading_ended[symbol] &&
-          local_current_open_time == current_open_time) {
+      if (!trading_ended_[symbol] &&
+          local_current_open_time == current_open_time_) {
         // 활성화된 트레이딩 심볼로 추가
         trading_activated.emplace(symbol, move(bar_data));
-        trading_began[symbol] = true;
+        trading_began_[symbol] = true;
       }
     }
   }

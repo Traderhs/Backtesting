@@ -12,18 +12,18 @@ TestStrategy::TestStrategy(const string& name)
 void TestStrategy::Initialize() {}
 
 void TestStrategy::Execute(){
-  if (order.current_position_size == 0 && close[0] > sma1[0]) {
+  if (order_.current_position_size_ == 0 && close[0] > sma1[0]) {
     //entry()
-  } else if (order.current_position_size == 0 && close[0] < sma1[0]) {
+  } else if (order_.current_position_size_ == 0 && close[0] < sma1[0]) {
     //entry()
   }
 
   // position_size는 엔진에서 심볼 바뀔 때 자동으로 업데이트 하게 하자 protected로 하고
-  if (order.current_position_size > 0 && close[0] < sma2[0]) {
+  if (order_.current_position_size_ > 0 && close[0] < sma2[0]) {
 
   }
 
-  if (order.current_position_size < 0 && close[0] > sma2[0]) {
+  if (order_.current_position_size_ < 0 && close[0] > sma2[0]) {
 
   }
 }
