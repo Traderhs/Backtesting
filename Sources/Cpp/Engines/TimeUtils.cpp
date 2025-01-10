@@ -4,13 +4,14 @@
 #include <iomanip>
 #include <sstream>
 
-// 내부 헤더
-#include "Engines/Engine.hpp"
-
 // 파일 헤더
-#include "Engines/TimeUtils.hpp"
+#include "Engines\TimeUtils.hpp"
 
-string time_utils::GetCurrentLocalDatetime() {
+// 내부 헤더
+#include "Engines\Logger.hpp"
+
+namespace time_utils {
+string GetCurrentLocalDatetime() {
   const auto& now = system_clock::now();
   const time_t now_time_t = system_clock::to_time_t(now);
 
@@ -24,7 +25,7 @@ string time_utils::GetCurrentLocalDatetime() {
   return ss.str();
 }
 
-string time_utils::UtcTimestampToUtcDatetime(const int64_t timestamp_ms) {
+string UtcTimestampToUtcDatetime(const int64_t timestamp_ms) {
   // timestamp ms를 time_t로 변환
   const auto timestamp_s = seconds(timestamp_ms / 1000);
   const system_clock::time_point tp(timestamp_s);
@@ -40,8 +41,8 @@ string time_utils::UtcTimestampToUtcDatetime(const int64_t timestamp_ms) {
   return ss.str();
 }
 
-int64_t time_utils::UtcDatetimeToUtcTimestamp(const string& datetime,
-                                             const string& format) {
+int64_t UtcDatetimeToUtcTimestamp(const string& datetime,
+                                              const string& format) {
   tm tm = {};
   istringstream ss(datetime);
 
@@ -59,7 +60,7 @@ int64_t time_utils::UtcDatetimeToUtcTimestamp(const string& datetime,
   return utc_timestamp * 1000;
 }
 
-string time_utils::FormatTimeframe(const int64_t timeframe_ms) {
+string FormatTimeframe(const int64_t timeframe_ms) {
   const vector months = {
       28 * kDay,  // 2월
       29 * kDay,  // 2월
@@ -93,7 +94,8 @@ string time_utils::FormatTimeframe(const int64_t timeframe_ms) {
   return to_string(timeframe_ms) + "ms";
 }
 
-int64_t time_utils::ParseTimeframe(const string& timeframe_str) {
+int64_t ParseTimeframe(const string& timeframe_str) {
+  // 타임프레임의 숫자 부분의 끝 좌표 찾기
   size_t pos = 0;
   while (pos < timeframe_str.size() && isdigit(timeframe_str[pos])) {
     ++pos;
@@ -101,8 +103,9 @@ int64_t time_utils::ParseTimeframe(const string& timeframe_str) {
 
   if (pos == 0) {
     Logger::LogAndThrowError(
-        "타임프레임 포맷이 잘못되었습니다.: " + timeframe_str, __FILE__,
-        __LINE__);
+        format("잘못된 타임프레임 포맷 {}이(가) 지정되었습니다.",
+               timeframe_str),
+        __FILE__, __LINE__);
   }
 
   // str의 숫자 부분 찾기
@@ -130,7 +133,10 @@ int64_t time_utils::ParseTimeframe(const string& timeframe_str) {
       return value * kMonth;
     }
 
-    Logger::LogAndThrowError("잘못된 유닛이 지정되었습니다.: " + unit,__FILE__,__LINE__);
+    Logger::LogAndThrowError(
+      format("잘못된 타임프레임 유닛 {}이(가) 지정되었습니다.", unit),
+      __FILE__,__LINE__);
     return -1;
   }
+}
 }

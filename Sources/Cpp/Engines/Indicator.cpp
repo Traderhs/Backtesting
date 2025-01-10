@@ -1,92 +1,92 @@
 // 표준 라이브러리
 #include <format>
-#include <ranges>
-#include <unordered_map>
 #include <utility>
 
 // 파일 헤더
-#include <Engines/Indicator.hpp>
+#include "Engines\Indicator.hpp"
+
+// 내부 헤더
+#include "Engines\BarData.hpp"
+#include "Engines\BarHandler.hpp"
+#include "Engines\BaseBarHandler.hpp"
+#include "Engines\Engine.hpp"
 
 Indicator::Indicator(string name, string timeframe)
-    : name_(move(name)), timeframe_(move(timeframe)) {}
-Indicator::~Indicator() = default;
+    : name_(move(name)), timeframe_(move(timeframe)), is_calculated_(false) {
+  const int num_symbols = bar_->GetBarData(BarType::TRADING).GetNumSymbols();
 
-double Indicator::operator[](const size_t index) {
-  if (output_.empty()) {
+  if (num_symbols == 0) {
+    // 전략 추가 -> 지표 추가 순서이므로 로그 메세지는 '전략'으로 사용
     Logger::LogAndThrowError(
-        format("{} {} 지표가 계산되지 않았습니다. CalculateAll 함수를 지표 "
-               "생성자에서 호출해야 합니다.",
-               name_, this->timeframe_),
+        "트레이딩 바에 데이터가 추가되지 않았습니다. 바 데이터 추가 후 전략을 "
+        "추가해야 합니다.",
         __FILE__, __LINE__);
   }
 
-  const string& current_symbol = bar_.current_symbol_idx_;
-  const size_t current_index =
-      bar_.GetCurrentSymbolIdx(current_symbol, this->timeframe_);
+  // output_의 심볼 개수를 트레이딩 바 심볼의 개수로 초기화
+  output_.resize(num_symbols);
+}
+Indicator::~Indicator() = default;
 
-  // 인덱스 범위 체크
-  if (const auto out_index =
-          bar_.GetSubBarData()[current_symbol][this->timeframe_].size();
-      current_index < index || (current_index - index) >= out_index) {
-    return {nan("")};  // 범위 벗어난 경우 nan 반환
+shared_ptr<BarHandler>& Indicator::bar_ = BarHandler::GetBarHandler();
+shared_ptr<Engine>& Indicator::engine_ = Engine::GetEngine();
+shared_ptr<Logger>& Indicator::logger_ = Logger::GetLogger();
+
+double Indicator::operator[](const size_t index) {
+  if (!is_calculated_) {
+    Logger::LogAndThrowError(
+        format("{} {} 지표가 계산되지 않았습니다. CalculateAll 함수를 지표 "
+               "생성자에서 호출해야 합니다.",
+               name_, timeframe_),
+        __FILE__, __LINE__);
   }
 
-  return output_[current_symbol][current_index - index];
+  bar_->SetCurrentBarType(BarType::REFERENCE, timeframe_);
+  const size_t bar_index = bar_->GetCurrentBarIndex();
+
+  if (bar_index < index) {
+    return {nan("")};  // 진행한 인덱스보다 과거 인덱스 참조 시 nan 반환
+  }
+
+  return output_[bar_->GetCurrentSymbolIndex()][bar_index - index];
 }
 
-BarDataManager& Indicator::bar = BarDataManager::GetBarDataManager();
-Logger& Indicator::logger_ = Logger::GetLogger();
-
 void Indicator::CalculateAll() {
-  bar_.current_bar_data_type = BarDataManager::BarDataType::SUB;
+  bar_->SetCurrentBarType(BarType::REFERENCE, timeframe_);
 
-  const auto& sub_bar_data = bar_.GetSubBarData();
+  const auto& reference_bar =
+      bar_->GetBarData(BarType::REFERENCE, timeframe_);
 
-  // 전체 트레이딩 심볼들을 순회하며 지표에 해당하는 타임프레임의 지표 계산
-  for (const auto& symbol : bar_.GetTradingBarData() | views::keys) {
-    // 서브 바 데이터에 심볼이 존재하는지 체크
-    const auto& symbol_it = sub_bar_data.find(symbol);
-    if (symbol_it == sub_bar_data.end()) {
-      Logger::LogAndThrowError(
-          format("트레이딩 바 데이터로 추가된 심볼 {}이(가) 서브 바 데이터로 "
-                 "추가되지 않았습니다.",
-                 symbol),
-          __FILE__, __LINE__);
-    }
+  // 전체 트레이딩 심볼들을 순회하며 지표 계산
+  for (int i = 0; i < output_.size(); i++) {
+    bar_->SetCurrentSymbolIndex(i);
 
-    // 서브 바 데이터 심볼에 해당 타임프레임이 존재하는지 체크
-    const auto& timeframe_it = symbol_it->second.find(timeframe_);
-    if (timeframe_it == symbol_it->second.end()) {
-      Logger::LogAndThrowError(
-          format("심볼 {}에 지표 타임프레임에 해당되는 "
-                 "{}이(가) 서브 바 데이터로 추가되지 않았습니다.",
-                 symbol, timeframe_),
-          __FILE__, __LINE__);
-    }
-
-    bar_.current_symbol = symbol;
-
-    // 해당 심볼과 타임 프레임에 해당되는 서브 바 데이터의 전체 데이터를
-    // 순회하며 계산
-    for (int i = 0; i < timeframe_it->second.size(); i++) {
-      output_[symbol].push_back(Calculate());
+    for (int j = 0; j < reference_bar.GetNumBars(i); j++) {
+      bar_->SetCurrentBarIndex(j);
+      output_[i].push_back(Calculate());
     }
 
     // 다른 지표 계산을 위해 인덱스 초기화
-    bar_.SetCurrentIndex(symbol, timeframe_, 0);
+    bar_->SetCurrentBarIndex(0);
   }
 
-  // 계산 완료 로깅
-  logger_.Log(Logger::INFO_L, format(
-    "{} {} 지표의 계산이 완료되었습니다.", name_, timeframe_), __FILE__, __LINE__);
+  is_calculated_ = true;
+
+  // 계산 완료 디버그 로그
+  if (engine_->debug_mode_) {
+    logger_->Log(
+        LogLevel::DEBUG_L,
+        format("{} {} 지표의 계산이 완료되었습니다.", name_, timeframe_),
+        __FILE__, __LINE__);
+  }
 }
 
 void Indicator::SetInput(const vector<double>& input) {
-  this->input_ = input;
+  input_ = input;
 }
 
 vector<double> Indicator::GetInput() {
-  return this->input_;
+  return input_;
 }
 
 string Indicator::GetTimeframe() const {

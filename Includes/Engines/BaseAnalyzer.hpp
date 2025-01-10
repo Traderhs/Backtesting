@@ -1,7 +1,8 @@
 #pragma once
 
-// 내부 헤더
-#include "Engines/BaseOrderHandler.hpp"
+// 표준 라이브러리
+#include <string>
+#include <vector>
 
 // 네임 스페이스
 using namespace std;

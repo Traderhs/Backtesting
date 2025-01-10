@@ -1,11 +1,13 @@
 // 외부 라이브러리
-#include <curl/curl.h>
+#include <curl\curl.h>
 
 // 파일 헤더
-#include "Engines/BaseFetcher.hpp"
+#include "Engines\BaseFetcher.hpp"
 
 BaseFetcher::BaseFetcher() = default;
 BaseFetcher::~BaseFetcher() = default;
+
+shared_ptr<Logger>& BaseFetcher::logger_ = Logger::GetLogger();
 
 future<json> BaseFetcher::Fetch(const string& url,
                                 const unordered_map<string, string>& params) {
@@ -44,8 +46,6 @@ future<json> BaseFetcher::Fetch(const string& url,
     return json::parse(response_string);
   });
 }
-
-Logger& BaseFetcher::logger_ = Logger::GetLogger();
 
 string BaseFetcher::BuildFullUrl(const string& base_url,
                                  const unordered_map<string, string>& params) {

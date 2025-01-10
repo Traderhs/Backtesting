@@ -2,15 +2,15 @@
 #include <cmath>
 
 // 파일 헤더
-#include "Engines/Order.hpp"
+#include "Engines\Order.hpp"
 
 Order::Order()
     : leverage_(-1),
       margin_call_price_(nan("")),
       max_profit_(nan("")),
       max_loss_(nan("")),
-      entry_order_type_(BaseOrderHandler::OrderType::NONE),
-      entry_direction_(BaseOrderHandler::Direction::NONE),
+      entry_order_type_(OrderType::NONE),
+      entry_direction_(Direction::NONE),
       entry_commission_(nan("")),
       entry_touch_price_(nan("")),
       entry_extreme_price_(nan("")),
@@ -21,8 +21,8 @@ Order::Order()
       entry_filled_time_(-1),
       entry_filled_size_(0),
       entry_filled_price_(nan("")),
-      exit_order_type_(BaseOrderHandler::OrderType::NONE),
-      exit_direction_(BaseOrderHandler::Direction::NONE),
+      exit_order_type_(OrderType::NONE),
+      exit_direction_(Direction::NONE),
       exit_commission_(nan("")),
       exit_touch_price_(nan("")),
       exit_extreme_price_(nan("")),
@@ -60,12 +60,12 @@ Order& Order::SetEntryName(const string& entry_name) {
   return *this;
 }
 
-Order& Order::SetEntryOrderType(const BaseOrderHandler::OrderType order_type) {
+Order& Order::SetEntryOrderType(const OrderType order_type) {
   entry_order_type_ = order_type;
   return *this;
 }
 
-Order& Order::SetEntryDirection(const BaseOrderHandler::Direction direction) {
+Order& Order::SetEntryDirection(const Direction direction) {
   entry_direction_ = direction;
   return *this;
 }
@@ -125,12 +125,12 @@ Order& Order::SetExitName(const string& exit_name) {
   return *this;
 }
 
-Order& Order::SetExitOrderType(const BaseOrderHandler::OrderType order_type) {
+Order& Order::SetExitOrderType(const OrderType order_type) {
   exit_order_type_ = order_type;
   return *this;
 }
 
-Order& Order::SetExitDirection(const BaseOrderHandler::Direction direction) {
+Order& Order::SetExitDirection(const Direction direction) {
   exit_direction_ = direction;
   return *this;
 }
@@ -190,12 +190,8 @@ double Order::GetMarginCallPrice() const { return margin_call_price_; }
 double Order::GetMaxProfit() const { return max_profit_; }
 double Order::GetMaxLoss() const { return max_loss_; }
 string Order::GetEntryName() const { return entry_name_; }
-BaseOrderHandler::OrderType Order::GetEntryOrderType() const {
-  return entry_order_type_;
-}
-BaseOrderHandler::Direction Order::GetEntryDirection() const {
-  return entry_direction_;
-}
+OrderType Order::GetEntryOrderType() const { return entry_order_type_; }
+Direction Order::GetEntryDirection() const { return entry_direction_; }
 double Order::GetEntryCommission() const { return entry_commission_; }
 double Order::GetEntryTouchPrice() const { return entry_touch_price_; }
 double Order::GetEntryExtremePrice() const { return entry_extreme_price_; }
@@ -207,12 +203,8 @@ int64_t Order::GetEntryFilledTime() const { return entry_filled_time_; }
 double Order::GetEntryFilledSize() const { return entry_filled_size_; }
 double Order::GetEntryFilledPrice() const { return entry_filled_price_; }
 string Order::GetExitName() const { return exit_name_; }
-BaseOrderHandler::OrderType Order::GetExitOrderType() const {
-  return exit_order_type_;
-}
-BaseOrderHandler::Direction Order::GetExitDirection() const {
-  return exit_direction_;
-}
+OrderType Order::GetExitOrderType() const { return exit_order_type_; }
+Direction Order::GetExitDirection() const { return exit_direction_; }
 double Order::GetExitCommission() const { return exit_commission_; }
 double Order::GetExitTouchPrice() const { return exit_touch_price_; }
 double Order::GetExitExtremePrice() const { return exit_extreme_price_; }

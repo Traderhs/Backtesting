@@ -4,7 +4,7 @@
 #include <unordered_map>
 
 // 내부 헤더
-#include "Engines/BaseOrderHandler.hpp"
+#include "Engines\BaseOrderHandler.hpp"
 
 /// 주문, 포지션 등과 관련된 세부적인 작업을 처리하는 클래스
 class OrderHandler final : public BaseOrderHandler {
@@ -14,7 +14,7 @@ class OrderHandler final : public BaseOrderHandler {
   OrderHandler& operator=(const OrderHandler&) = delete;  // 대입 연산자 삭제
 
   /// OrderHandler의 멀티톤 인스턴스를 반환하는 함수
-  static OrderHandler& GetOrderHandler(const string& name);
+  static shared_ptr<OrderHandler>& GetOrderHandler(const string& name);
 
   // ===========================================================================
   /*
@@ -22,11 +22,13 @@ class OrderHandler final : public BaseOrderHandler {
    *
    * ! 주의 사항 !
    * 1. 하나의 진입 이름으로는 하나의 진입만 체결할 수 있음.
-   * 2. 같은 이름의 진입 주문을 호출 시, 대기 진입 주문은 수정, 체결은 거부됨.
+   * 2. 같은 이름의 진입 주문을 호출 시 대기 진입 주문은 취소 후 재주문, 체결은
+   * 거부됨.
    * 3. 체결된 하나의 진입 이름에 대해서 여러 청산 대기 주문을 가질 수 있음.
-   * 4. 하나의 청산 주문이 부분 혹은 전체 체결 시 같은 진입 이름을 목표로 한
-   *    청산 주문들은 모두 취소됨.
-   * 5. 이는 포지션 크기의 초과 청산을 방지하기 위함.
+   * 4. 하나의 청산 주문이 진입 수량 부분 청산 시, 같은 진입 이름을 목표로 하는
+   *    대기 청산 주문들은 먼저 체결되는 순서대로 진입 잔량만 청산됨
+   * 5. 청산 체결 수량이 진입 체결 수량과 같아지면 같은 진입 이름을 목표로 하는
+   *    대기 청산 주문들은 모두 취소됨.
    */
   // ===========================================================================
 
@@ -144,35 +146,36 @@ class OrderHandler final : public BaseOrderHandler {
                     double exit_size, double touch_price, double trail_point);
 
   // ===========================================================================
-  /// 주문 취소를 위해 사용하는 함수
-  void Cancel(int symbol_idx, const string& order_name);
-  // Pending 진입, 청산 두 개 돌리면 될 듯
-  // 주문 타입에 따라 Limit은 돈 복구하고 이런거 있어야 함
-  // 그리고 진입은 모르겠고 청산은 정보 초기화하고 filled_entries로 돌려놔야함
+  /// 주문 취소를 위해 사용하는 함수.
+  /// order_name이 진입 대기과 청산 대기에 동시에 있으면 둘 다 취소
+  void Cancel(const string& order_name);
 
  private:
   // 멀티톤 인스턴스 관리
-  explicit OrderHandler();
-  ~OrderHandler();
+  OrderHandler();
+  class Deleter {
+   public:
+    void operator()(const OrderHandler* p) const;
+  };
 
   static mutex mutex_;
-  static unordered_map<string, unique_ptr<OrderHandler>> instances_;
+  static unordered_map<string, shared_ptr<OrderHandler>> instances_;
 
   // ===========================================================================
   /// 시장가 진입 주문을 실행하는 함수
-  void ExecuteMarketEntry(const shared_ptr<Order>& order, int symbol_idx);
+  void ExecuteMarketEntry(const shared_ptr<Order>& order);
 
   /// 지정가 진입 주문을 실행하는 함수
-  void ExecuteLimitEntry(const shared_ptr<Order>& order, int symbol_idx);
+  void ExecuteLimitEntry(const shared_ptr<Order>& order);
 
   /// MIT 진입 주문을 실행하는 함수
-  void ExecuteMitEntry(const shared_ptr<Order>& order, int symbol_idx);
+  void ExecuteMitEntry(const shared_ptr<Order>& order);
 
   /// LIT 진입 주문을 실행하는 함수
-  void ExecuteLitEntry(const shared_ptr<Order>& order, int symbol_idx);
+  void ExecuteLitEntry(const shared_ptr<Order>& order);
 
   /// 트레일링 진입 주문을 실행하는 함수
-  void ExecuteTrailingEntry(const shared_ptr<Order>& order, int symbol_idx);
+  void ExecuteTrailingEntry(const shared_ptr<Order>& order);
 
   // ===========================================================================
   /// 시장가 청산 주문을 실행하는 함수
@@ -195,33 +198,20 @@ class OrderHandler final : public BaseOrderHandler {
   void ExecuteTrailingExit(const string& exit_name, const string& target_entry,
                            double exit_size, double touch_price, double trail_point);
 
+  /// 청산 시 자금, 통계 관련 처리를 하는 함수
+  void ExecuteExit(const shared_ptr<Order>& exit_order);
+
   // ===========================================================================
   // ExecutePendingEntries, ExecutePendingExits 함수 필요
 
   // ===========================================================================
-  /// 청산 시 자금, 통계 관련 처리를 하는 함수
-  void ExecuteExit(const shared_ptr<Order>& exit);
+  /// 진입 주문 취소 시 자금 관련 처리를 하는 함수
+  static void ExecuteCancelEntry(const shared_ptr<Order>& cancel_order);
+
+  // ===========================================================================
+  /// 청산 체결 크기가 진입 체결 크기를 넘지 않도록 조정하여 반환하는 함수
+  static double GetAdjustedExitFilledSize(double exit_size, const shared_ptr<Order>& exit_order);
 
   /// 진입 가능 자금이 필요 자금보다 많은지 확인하는 함수
-  static bool HasEnoughBalance(double available_balance, double needed_balance, int symbol_idx, int64_t order_time);
-
-  /// 청산 주문 포지션 사이즈가 진입 포지션 사이즈를 넘지 않도록 조정하여 반환하는 함수
-  static double CalculateAdjustedExitSize(double exit_size, const shared_ptr<Order>& exit_order);
-
-  /// 진입 체결 시 진입 이름이 유효한지 확인하는 함수
-  void IsValidEntryName(const string& entry_name, int symbol_idx) const;
-
-  /// 지정가 주문 가격이 유효한 가격인지 확인하는 함수
-  static void IsValidLimitOrderPrice(double limit_price, double base_price, Direction direction,
-                                     int symbol_idx, int64_t order_time);
-
-  /// 트레일링 진입/청산의 터치 가격이 유효한지 확인하는 함수.
-  /// 트레일링 진입/청산의 터치 가격은 0으로 지정될 수 있기 때문에 별개 함수로 처리
-  static void IsValidTrailingTouchPrice(double touch_price, int symbol_idx);
-
-  /// 트레일링 포인트가 유효한지 확인하는 함수
-  static void IsValidTrailPoint(double trail_point, int symbol_idx);
-
-  /// 진입명이 존재하지 않음을 알리는 경고 로그
-  static void NotExistEntryName(const string& entry_name);
+  static bool HasEnoughBalance(double available_balance, double needed_balance);
 };

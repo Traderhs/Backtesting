@@ -1,16 +1,16 @@
 ﻿#pragma once
 
 // 외부 라이브러리
-#include <arrow/api.h>
+#include <arrow\api.h>
 
-#include <nlohmann/json.hpp>
+#include <nlohmann\json.hpp>
 
 // 네임스페이스
 using namespace arrow;
 using namespace nlohmann;
 using namespace std;
 
-///데이터 핸들링을 위한 유틸리티 네임스페이스
+/// 데이터 핸들링을 위한 유틸리티 네임스페이스
 namespace data_utils {
 /**
  * 주어진 값의 소수점 자릿수를 계산하는 함수
@@ -94,5 +94,5 @@ void TableToParquet(const shared_ptr<Table>& table, const string& file_path);
 pair<shared_ptr<Table>, shared_ptr<Table>> SplitTable(const shared_ptr<Table>& table, double split_ratio);
 
 /// 최소 틱 크기로 가격을 반올림하여 반환하는 함수
-[[nodiscard]] static double RoundToTickSize(double price, double tick_size);
+double RoundToTickSize(double price, double tick_size);
 }

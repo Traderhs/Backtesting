@@ -6,12 +6,14 @@
 #include <memory>
 #include <mutex>
 
-// 내부 헤더
-#include "Engines/Engine.hpp"
-#include "Engines/TimeUtils.hpp"
-
 // 파일 헤더
-#include "Engines/Logger.hpp"
+#include "Engines\Logger.hpp"
+
+// 내부 헤더
+#include "Engines\TimeUtils.hpp"
+
+// 네임 스페이스
+using namespace time_utils;
 
 Logger::Logger(const string& log_directory, const string& debug_log_name,
                const string& info_log_name, const string& warning_log_name,
@@ -25,52 +27,56 @@ Logger::Logger(const string& log_directory, const string& debug_log_name,
   error_file_.open(log_directory + "/" + error_log_name, ios::app);
 }
 
-Logger::~Logger() {
-  if (debug_file_.is_open()) debug_file_.close();
-  if (info_file_.is_open()) info_file_.close();
-  if (warning_file_.is_open()) warning_file_.close();
-  if (error_file_.is_open()) error_file_.close();
+void Logger::Deleter::operator()(Logger* p) const {
+  if (p->debug_file_.is_open()) p->debug_file_.close();
+  if (p->info_file_.is_open()) p->info_file_.close();
+  if (p->warning_file_.is_open()) p->warning_file_.close();
+  if (p->error_file_.is_open()) p->error_file_.close();
+
+  delete p;
 }
 
 mutex Logger::mutex_;
-unique_ptr<Logger> Logger::instance_;
+shared_ptr<Logger> Logger::instance_;
 
-Logger& Logger::GetLogger(const string& log_directory,
-                          const string& debug_log_name,
-                          const string& info_log_name,
-                          const string& warning_log_name,
-                          const string& error_log_name) {
+shared_ptr<Logger>& Logger::GetLogger(const string& log_directory,
+                                      const string& debug_log_name,
+                                      const string& info_log_name,
+                                      const string& warning_log_name,
+                                      const string& error_log_name) {
   if (!instance_) {
     lock_guard lock(mutex_);
-    instance_ = make_unique<Logger>(log_directory, debug_log_name, info_log_name,
-                                   warning_log_name, error_log_name);
+    instance_ = shared_ptr<Logger>(
+        new Logger(log_directory, debug_log_name, info_log_name,
+                   warning_log_name, error_log_name),
+        Deleter());
   }
-  return *instance_;
+  return instance_;
 }
 
 void Logger::Log(const LogLevel& log_level, const string& message,
                  const string& file, const int line) {
   const string& log_message = format(
-      "[{}] [{}:{}] | {}", time_utils::GetCurrentLocalDatetime(),
+      "[{}] [{}:{}] | {}", GetCurrentLocalDatetime(),
       filesystem::path(file).filename().string(), to_string(line), message);
 
   switch (log_level) {
-    case DEBUG_L:
+    case LogLevel::DEBUG_L:
       ConsoleLog("DEBUG_L", log_message);
       WriteToFile(debug_file_, log_message);
       break;
 
-    case INFO_L:
+    case LogLevel::INFO_L:
       ConsoleLog("INFO_L", log_message);
       WriteToFile(info_file_, log_message);
       break;
 
-    case WARNING_L:
+    case LogLevel::WARNING_L:
       ConsoleLog("WARNING_L", log_message);
       WriteToFile(warning_file_, log_message);
       break;
 
-    case ERROR_L:
+    case LogLevel::ERROR_L:
       ConsoleLog("ERROR_L", log_message);
       WriteToFile(error_file_, log_message);
       break;
@@ -97,8 +103,6 @@ void Logger::WriteToFile(ofstream& file, const string& message) {
 
 void Logger::LogAndThrowError(const string& message, const string& file,
                               const int line) {
-  logger_.Log(ERROR_L, message, file, line);
+  instance_->Log(LogLevel::ERROR_L, message, file, line);
   throw runtime_error(message);
 }
-
-Logger& Logger::logger_ = GetLogger();

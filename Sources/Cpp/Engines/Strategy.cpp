@@ -3,13 +3,25 @@
 #include <utility>
 
 // 파일 헤더
-#include "Engines/Strategy.hpp"
+#include "Engines\Strategy.hpp"
 
-Strategy::Strategy(string name) : name_(move(name)) {}
+// 내부 헤더
+#include <Engines/BarData.hpp>
+#include <Engines/BarHandler.hpp>
+#include <Engines/BaseBarHandler.hpp>
+#include <Engines/OrderHandler.hpp>
+
+Strategy::Strategy(string name)
+    : order(OrderHandler::GetOrderHandler(name)),
+      open("Open", bar->GetBarData(BarType::TRADING).GetTimeframe()),
+      high("High", bar->GetBarData(BarType::TRADING).GetTimeframe()),
+      low("Low", bar->GetBarData(BarType::TRADING).GetTimeframe()),
+      close("Close", bar->GetBarData(BarType::TRADING).GetTimeframe()),
+      volume("Volume", bar->GetBarData(BarType::TRADING).GetTimeframe()),
+      name_(move(name)) {}
 Strategy::~Strategy() = default;
 
-OrderHandler& Strategy::GetOrderHandler() const {
-  return OrderHandler::GetOrderHandler(name_);
-}
+shared_ptr<OrderHandler> Strategy::GetOrderHandler() const { return order; }
 
-OrderHandler& Strategy::order_ = OrderHandler::GetOrderHandler(name_);
+// ReSharper disable once CppInconsistentNaming
+shared_ptr<BarHandler>& Strategy::bar = BarHandler::GetBarHandler();
