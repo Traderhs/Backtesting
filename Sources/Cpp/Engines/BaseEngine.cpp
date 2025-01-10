@@ -2,7 +2,11 @@
 #include <format>
 
 // 파일 헤더
-#include "Engines/BaseEngine.hpp"
+#include "Engines\BaseEngine.hpp"
+
+// 내부 헤더
+#include "Engines\BarHandler.hpp"
+#include "Engines\Strategy.hpp"
 
 BaseEngine::BaseEngine(const Config& config)
     : config_(config),
@@ -15,10 +19,23 @@ BaseEngine::BaseEngine(const Config& config)
       liquidations_(0) {}
 BaseEngine::~BaseEngine() = default;
 
+shared_ptr<BarHandler>& BaseEngine::bar_ = BarHandler::GetBarHandler();
+shared_ptr<Logger>& BaseEngine::logger_ = Logger::GetLogger();
+
+void BaseEngine::AddBarData(const string& symbol_name, const string& file_path,
+                            const BarType bar_type,
+                            const vector<int>& columns) {
+  bar_->AddBarData(symbol_name, file_path, bar_type, columns);
+}
+
+void BaseEngine::AddStrategy(const shared_ptr<Strategy>& strategy) {
+  strategies_.push_back(strategy);
+}
+
 void BaseEngine::IncreaseWalletBalance(const double increase_balance) {
   if (increase_balance <= 0) {
-    logger_.Log(
-        Logger::LogLevel::WARNING_L,
+    logger_->Log(
+        LogLevel::WARNING_L,
         format("현재 자금 증가를 위해 주어진 값 {}은(는) 0보다 커야합니다.",
                increase_balance),
         __FILE__, __LINE__);
@@ -32,8 +49,8 @@ void BaseEngine::IncreaseWalletBalance(const double increase_balance) {
 
 void BaseEngine::DecreaseWalletBalance(const double decrease_balance) {
   if (decrease_balance <= 0 || decrease_balance > wallet_balance_) {
-    logger_.Log(
-        Logger::LogLevel::WARNING_L,
+    logger_->Log(
+        LogLevel::WARNING_L,
         format("현재 자금 감소를 위해 주어진 값 {}은(는) 양수로 지정되어야 "
                "하며, 현재 자금 {}을(를) 초과할 수 없습니다.",
                decrease_balance, wallet_balance_),
@@ -47,8 +64,8 @@ void BaseEngine::DecreaseWalletBalance(const double decrease_balance) {
 
 void BaseEngine::IncreaseAvailableBalance(const double increase_balance) {
   if (increase_balance <= 0) {
-    logger_.Log(
-        Logger::LogLevel::WARNING_L,
+    logger_->Log(
+        LogLevel::WARNING_L,
         format(
             "주문 가능 자금 증가를 위해 주어진 값 {}은(는) 0보다 커야합니다.",
             increase_balance),
@@ -62,8 +79,8 @@ void BaseEngine::IncreaseAvailableBalance(const double increase_balance) {
 /// 주문 가능 자금을 감소시키는 함수
 void BaseEngine::DecreaseAvailableBalance(double decrease_balance) {
   if (decrease_balance <= 0 || decrease_balance > available_balance_) {
-    logger_.Log(
-        Logger::LogLevel::WARNING_L,
+    logger_->Log(
+        LogLevel::WARNING_L,
         format(
             "주문 가능 자금 감소를 위해 주어진 값 {}은(는) 양수로 지정되어야 "
             "하며, 주문 가능 자금 {}을(를) 초과할 수 없습니다.",
@@ -91,6 +108,3 @@ double BaseEngine::GetTickSize(const int symbol_idx) const {
 
   return tick_size_[symbol_idx];
 }
-
-BarHandler& BaseEngine::bar_ = BarHandler::GetBarHandler();
-Logger& BaseEngine::logger_ = Logger::GetLogger();

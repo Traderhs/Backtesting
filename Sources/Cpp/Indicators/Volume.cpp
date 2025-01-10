@@ -1,5 +1,10 @@
 // 파일 헤더
-#include "Indicators/Volume.hpp"
+#include "Indicators\Volume.hpp"
+
+// 내부 헤더
+#include <Engines/BarData.hpp>
+#include <Engines/BarHandler.hpp>
+#include <Engines/BaseBarHandler.hpp>
 
 Volume::Volume(const string& name, const string& timeframe)
     : Indicator(name, timeframe) {
@@ -7,5 +12,6 @@ Volume::Volume(const string& name, const string& timeframe)
 }
 
 double Volume::Calculate() {
-  return bar_.GetBar(this->GetTimeframe(), 0).volume;
+  return bar_->GetBarData(BarType::REFERENCE, GetTimeframe())
+      .GetVolume(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex());
 }

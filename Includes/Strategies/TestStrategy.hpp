@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Engines/Strategy.hpp"
+#include "Engines\Strategy.hpp"
 
 class TestStrategy final : public Strategy {
  public:
@@ -11,7 +11,6 @@ class TestStrategy final : public Strategy {
   void Initialize() override;
 
  private:
-  Close close;
-  SimpleMovingAverage sma1;
-  SimpleMovingAverage sma2;
+  SimpleMovingAverage sma1_;
+  SimpleMovingAverage sma2_;
 };

@@ -1,19 +1,23 @@
 // 표준 라이브러리
 #include <format>
 
-// 내부 헤더
-#include "Engines/Logger.hpp"
+// 외부 헤더
+#include <arrow\api.h>
+#include <arrow\table.h>
 
 // 파일 헤더
-#include "Engines/BarData.hpp"
+#include "Engines\BarData.hpp"
+
+// 내부 헤더
+#include "Engines\Logger.hpp"
 
 BarData::BarData() : num_symbols_(0) {}
 BarData::~BarData() = default;
 
-void BarData::SetBarData(const string& name, const string& timeframe,
+void BarData::SetBarData(const string& symbol_name, const string& timeframe,
                          const shared_ptr<Table>& bar_data,
                          const vector<int>& columns) {
-  IsValidSettings(name, timeframe, bar_data, columns);
+  IsValidSettings(symbol_name, timeframe, bar_data, columns);
 
   const size_t total_rows = bar_data->num_rows();
   const size_t symbol_idx = symbol_names_.size();  // 기존 마지막 인덱스 + 1
@@ -28,8 +32,9 @@ void BarData::SetBarData(const string& name, const string& timeframe,
   close_time_.emplace_back();
 
   // 바 정보 설정
-  symbol_names_.push_back(name);
+  symbol_names_.push_back(symbol_name);
   num_symbols_++;
+  num_bars_.push_back(total_rows);
   if (timeframe_.empty()) timeframe_ = timeframe;
 
   // 벡터들 미리 리사이즈
@@ -170,7 +175,28 @@ int64_t BarData::GetCloseTime(const int symbol_idx,
   return close_time_[symbol_idx][bar_idx];
 }
 
-void BarData::IsValidSettings(const string& name, const string& timeframe,
+string BarData::GetSymbolName(const int symbol_idx) const {
+  IsValidSymbolIndex(symbol_idx);
+
+  return symbol_names_[symbol_idx];
+}
+
+int BarData::GetNumSymbols() const {
+  return num_symbols_;
+}
+
+size_t BarData::GetNumBars(const int symbol_idx) const {
+  IsValidSymbolIndex(symbol_idx);
+
+  return num_bars_[symbol_idx];
+}
+
+string BarData::GetTimeframe() const {
+  return timeframe_;
+}
+
+void BarData::IsValidSettings(const string& symbol_name,
+                              const string& timeframe,
                               const shared_ptr<Table>& bar_data,
                               const vector<int>& columns) const {
   // Column 인덱스 오류 체크
@@ -182,8 +208,8 @@ void BarData::IsValidSettings(const string& name, const string& timeframe,
   }
 
   for (const auto& symbol : symbol_names_) {
-    if (symbol == name) {
-      Logger::LogAndThrowError(name + "은(는) 이미 추가된 심볼입니다.",
+    if (symbol == symbol_name) {
+      Logger::LogAndThrowError(symbol_name + "은(는) 이미 추가된 심볼입니다.",
                                __FILE__, __LINE__);
       return;
     }
@@ -198,13 +224,7 @@ void BarData::IsValidSettings(const string& name, const string& timeframe,
 }
 
 void BarData::IsValidIndex(const int symbol_idx, const size_t bar_idx) const {
-  if (symbol_idx < 0 || symbol_idx >= num_symbols_) {
-    Logger::LogAndThrowError(format("지정된 심볼 인덱스 {}은(는) 0 미만이거나 "
-                                    "최대값 {}을(를) 초과했습니다.",
-                                    symbol_idx, num_symbols_ - 1),
-                             __FILE__, __LINE__);
-    return;
-  }
+  IsValidSymbolIndex(symbol_idx);
 
   if (const auto num_bar = open_time_[symbol_idx].size(); bar_idx >= num_bar) {
     Logger::LogAndThrowError(format("지정된 바 인덱스 {}은(는) 0 미만이거나 "
@@ -214,13 +234,11 @@ void BarData::IsValidIndex(const int symbol_idx, const size_t bar_idx) const {
   }
 }
 
-string BarData::GetSymbolName(const int symbol_idx) const {
+void BarData::IsValidSymbolIndex(int symbol_idx) const {
   if (symbol_idx < 0 || symbol_idx >= num_symbols_) {
     Logger::LogAndThrowError(format("지정된 심볼 인덱스 {}은(는) 0 미만이거나 "
                                     "최대값 {}을(를) 초과했습니다.",
                                     symbol_idx, num_symbols_ - 1),
                              __FILE__, __LINE__);
   }
-
-  return symbol_names_[symbol_idx];
 }

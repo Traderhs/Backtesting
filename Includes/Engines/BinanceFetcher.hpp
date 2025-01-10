@@ -4,15 +4,14 @@
 #include <string>
 
 // 내부 헤더
-#include "Engines/BaseFetcher.hpp"
-#include "Engines/Logger.hpp"
+#include "Engines\BaseFetcher.hpp"
+#include "Engines\Logger.hpp"
 
 // 네임 스페이스
 using namespace std;
+using namespace arrow;
 
-/**
- * Binance 바 데이터의 Fetch와 Update를 담당하는 클래스
- */
+/// Binance 바 데이터의 Fetch와 Update를 담당하는 클래스
 class BinanceFetcher final : public BaseFetcher {
  public:
   explicit BinanceFetcher();
@@ -37,7 +36,7 @@ class BinanceFetcher final : public BaseFetcher {
   void UpdateBarData(const string& symbol, const string& timeframe) const;
 
  private:
-  static Logger& logger_;  // 로그용 객체
+  static shared_ptr<Logger>& logger_;  // 로그용 객체
 
   string market_data_path_;   // Market Data 폴더 경로
   string klines_path_;        // Klines 폴더 경로

@@ -4,10 +4,10 @@
 #include <future>
 
 // 외부 라이브러리
-#include <nlohmann/json.hpp>
+#include <nlohmann\json.hpp>
 
 // 내부 헤더
-#include "Engines/Logger.hpp"
+#include "Engines\Logger.hpp"
 
 // 네임 스페이스
 using namespace std;
@@ -31,7 +31,7 @@ class BaseFetcher {
   static future<json> Fetch(const string& url, const unordered_map<string, string>& params);
 
  private:
-  static Logger& logger_;
+  static shared_ptr<Logger>& logger_;
 
   /**
    * 주어진 쿼리 매개변수를 사용하여 기본 URL에 전체 파라미터를 포함한 URL을

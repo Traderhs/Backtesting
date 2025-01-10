@@ -5,9 +5,7 @@
 #include <vector>
 
 // 내부 헤더
-#include "Engines/BaseEngine.hpp"
-#include "Engines/Config.hpp"
-#include "Engines/Logger.hpp"
+#include "Engines\BaseEngine.hpp"
 
 // 네임 스페이스
 using namespace std;
@@ -21,16 +19,15 @@ class Engine final : public BaseEngine {
   Engine(const Engine&) = delete;             // 복사 생성자 삭제
   Engine& operator=(const Engine&) = delete;  // 대입 연산자 삭제
 
-  bool debug_mode_ = true;      // 디버그 로그가 기록되는 모드
+  /// Engine의 싱글톤 인스턴스를 반환하는 함수
+  static shared_ptr<Engine>& GetEngine(const Config& config = Config());
 
-  // @@@@@@@@@@@ 펀딩피 fetch하고 추가/감소되는 매커니즘 필요 (사용/미사용 플래그 넣자)
+  // @@@@@@@@@@@ 펀딩피 fetch하고 추가/감소되는 매커니즘 필요 (사용/미사용
+  // 플래그 넣자)
 
   /// 현재 바에서 진입 손익에 따라 자금이 업데이트 됐는지 결정하는 플래그
   bool unrealized_pnl_updated_;
   // @@@@@@@@@ 봉 바뀔 때 false 로직 추가 필요
-
-  /// Engine의 싱글톤 인스턴스를 반환하는 함수
-  static Engine& GetEngine(const Config& config = Config());
 
   // @@@@@@@@@ 매개변수 등의 전체 설정 저장은 백테스팅별로 나눠서 txt 파일에
   // 설정값 적도록 하자
@@ -44,7 +41,8 @@ class Engine final : public BaseEngine {
   void Backtesting(bool use_bar_magnifier = true, const string& start = "",
                    const string& end = "",
                    const string& format = "%Y-%m-%d %H:%M:%S");
-  // @@@@@@@@@@@ 트레이딩바 종가에서는 전략 돌리고 돋보기는 매 바에서 대기 주문 체크만 하면 될 듯
+  // @@@@@@@@@@@ 트레이딩바 종가에서는 전략 돌리고 돋보기는 매 바에서 대기 주문
+  // 체크만 하면 될 듯
 
   /// 전략별 미실현 손익에 따라 주문 가능 자금을 업데이트하는 함수
   void UpdateUnrealizedPnl();
@@ -52,10 +50,13 @@ class Engine final : public BaseEngine {
  private:
   // 싱글톤 인스턴스 관리
   explicit Engine(const Config& config);
-  ~Engine();
+  class Deleter {
+  public:
+    void operator()(Engine* p) const;
+  };
 
   static mutex mutex_;
-  static unique_ptr<Engine> instance_;
+  static shared_ptr<Engine> instance_;
 
   // 트레이딩 정보
   int64_t begin_open_time_;  // 전체 바 데이터의 가장 처음 Open Time

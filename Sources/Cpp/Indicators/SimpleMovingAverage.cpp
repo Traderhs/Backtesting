@@ -1,31 +1,41 @@
 // 파일 헤더
-#include "Indicators/SimpleMovingAverage.hpp"
+#include "Indicators\SimpleMovingAverage.hpp"
+
+// 내부 헤더
+#include <Engines/BarHandler.hpp>
 
 SimpleMovingAverage::SimpleMovingAverage(const string& name,
                                          const string& timeframe,
                                          Indicator& source, const double period)
-    : Indicator(name, timeframe), source(source) {
+    : Indicator(name, timeframe), source_(source) {
   SetInput({period});
 
-  this->process = 0;
-  this->sum = 0;
+  // 타입 안정성과 속도를 위해 미리 변환
+  double_period_ = period;
+  size_t_period_ = static_cast<size_t>(period);
+
+  sum_ = 0;
+  can_calculate_ = false;
 
   CalculateAll();
 }
 
 double SimpleMovingAverage::Calculate() {
-  const auto period = GetInput()[0];
-
   // 가장 최근 데이터를 추가
-  sum += source[0];
+  sum_ += source_[0];
 
-  if (process < period - 1) {
-    // 아직 계산할 수 있는 데이터 부족
-    process++;
-    return nan("");
+  if (!can_calculate_) {
+    if (bar_->GetCurrentBarIndex() < size_t_period_ - 1) {
+      // 아직 계산할 수 있는 데이터 부족
+      return nan("");
+    }
+
+    // 처음으로 계산 가능해졌을 때 단순히 합을 나눠서 계산
+    can_calculate_ = true;
+    return sum_ / double_period_;
   }
 
   // 가장 오래된 데이터를 제거
-  sum -= source[static_cast<size_t>(period)];
-  return sum / period;
+  sum_ -= source_[size_t_period_];
+  return sum_ / double_period_;
 }

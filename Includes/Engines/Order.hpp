@@ -3,8 +3,14 @@
 // 표준 라이브러리
 #include <string>
 
-// 내부 헤더
-#include "Engines/BaseOrderHandler.hpp"
+// 네임 스페이스
+using namespace std;
+
+/// 포지션 방향을 지정하는 열거형 클래스
+enum class Direction { NONE, LONG, SHORT };
+
+/// 주문 타입을 지정하는 열거형 클래스
+enum class OrderType { NONE, MARKET, LIMIT, MIT, LIT, TRAILING };
 
 /// 하나의 주문 정보를 담고 있는 빌더 클래스
 class Order {
@@ -18,8 +24,8 @@ class Order {
   Order& SetMaxLoss(double max_loss);
 
   Order& SetEntryName(const string& entry_name);
-  Order& SetEntryOrderType(BaseOrderHandler::OrderType order_type);
-  Order& SetEntryDirection(BaseOrderHandler::Direction direction);
+  Order& SetEntryOrderType(OrderType order_type);
+  Order& SetEntryDirection(Direction direction);
   Order& SetEntryCommission(double commission);
 
   Order& SetEntryTouchPrice(double touch_price);
@@ -35,8 +41,8 @@ class Order {
   Order& SetEntryFilledPrice(double entry_filled_price);
 
   Order& SetExitName(const string& exit_name);
-  Order& SetExitOrderType(BaseOrderHandler::OrderType order_type);
-  Order& SetExitDirection(BaseOrderHandler::Direction direction);
+  Order& SetExitOrderType(OrderType order_type);
+  Order& SetExitDirection(Direction direction);
   Order& SetExitCommission(double commission);
 
   Order& SetExitTouchPrice(double touch_price);
@@ -57,8 +63,8 @@ class Order {
   [[nodiscard]] double GetMaxLoss() const;
 
   [[nodiscard]] string GetEntryName() const;
-  [[nodiscard]] BaseOrderHandler::OrderType GetEntryOrderType() const;
-  [[nodiscard]] BaseOrderHandler::Direction GetEntryDirection() const;
+  [[nodiscard]] OrderType GetEntryOrderType() const;
+  [[nodiscard]] Direction GetEntryDirection() const;
   [[nodiscard]] double GetEntryCommission() const;
 
   [[nodiscard]] double GetEntryTouchPrice() const;
@@ -74,8 +80,8 @@ class Order {
   [[nodiscard]] double GetEntryFilledPrice() const;
 
   [[nodiscard]] string GetExitName() const;
-  [[nodiscard]] BaseOrderHandler::OrderType GetExitOrderType() const;
-  [[nodiscard]] BaseOrderHandler::Direction GetExitDirection() const;
+  [[nodiscard]] OrderType GetExitOrderType() const;
+  [[nodiscard]] Direction GetExitDirection() const;
   [[nodiscard]] double GetExitCommission() const;
 
   [[nodiscard]] double GetExitTouchPrice() const;
@@ -98,10 +104,10 @@ class Order {
   double max_loss_;           // 최대 손실
 
   // 진입 변수
-  string entry_name_;                             // 진입 주문 이름
-  BaseOrderHandler::OrderType entry_order_type_;  // 진입 주문 타입
-  BaseOrderHandler::Direction entry_direction_;   // 진입 방향
-  double entry_commission_;                       // 진입 수수료 금액
+  string entry_name_;           // 진입 주문 이름
+  OrderType entry_order_type_;  // 진입 주문 타입
+  Direction entry_direction_;   // 진입 방향
+  double entry_commission_;     // 진입 수수료 금액
 
   // MIT, LIT, Trailing 진입 대기 변수
   double entry_touch_price_;    // 진입 주문을 실행할 터치 가격
@@ -120,10 +126,10 @@ class Order {
   double entry_filled_price_;  // 진입 체결 가격
 
   // 청산 변수
-  string exit_name_;                             // 청산 주문 이름
-  BaseOrderHandler::OrderType exit_order_type_;  // 청산 주문 타입
-  BaseOrderHandler::Direction exit_direction_;   // 청산 방향
-  double exit_commission_;                       // 청산 수수료 금액
+  string exit_name_;           // 청산 주문 이름
+  OrderType exit_order_type_;  // 청산 주문 타입
+  Direction exit_direction_;   // 청산 방향
+  double exit_commission_;     // 청산 수수료 금액
 
   // MIT, LIT, Trailing 청산 대기 변수
   double exit_touch_price_;    // 청산 주문을 실행할 터치 가격
