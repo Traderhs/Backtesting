@@ -2,39 +2,48 @@
 #include <cmath>
 
 // 파일 헤더
-#include "Engines\Order.hpp"
+#include "Engines/Order.hpp"
 
 Order::Order()
     : leverage_(-1),
       margin_call_price_(nan("")),
-      max_profit_(nan("")),
-      max_loss_(nan("")),
+
       entry_order_type_(OrderType::NONE),
       entry_direction_(Direction::NONE),
       entry_commission_(nan("")),
+
       entry_touch_price_(nan("")),
+      entry_touch_direction_(Direction::NONE),
       entry_extreme_price_(nan("")),
       entry_trail_point_(nan("")),
+
       entry_order_time_(-1),
       entry_order_size_(0),
       entry_order_price_(nan("")),
+
       entry_filled_time_(-1),
       entry_filled_size_(0),
       entry_filled_price_(nan("")),
+
       exit_order_type_(OrderType::NONE),
       exit_direction_(Direction::NONE),
       exit_commission_(nan("")),
+
       exit_touch_price_(nan("")),
+      exit_touch_direction_(Direction::NONE),
       exit_extreme_price_(nan("")),
       exit_trail_point_(nan("")),
+
       exit_order_time_(-1),
       exit_order_size_(0),
       exit_order_price_(nan("")),
+
       exit_filled_time_(-1),
       exit_filled_size_(0),
       exit_filled_price_(nan("")) {}
 Order::~Order() = default;
 
+// ===========================================================================
 Order& Order::SetLeverage(const unsigned char leverage) {
   leverage_ = leverage;
   return *this;
@@ -45,16 +54,7 @@ Order& Order::SetMarginCallPrice(const double margin_call_price) {
   return *this;
 }
 
-Order& Order::SetMaxProfit(const double max_profit) {
-  max_profit_ = max_profit;
-  return *this;
-}
-
-Order& Order::SetMaxLoss(const double max_loss) {
-  max_loss_ = max_loss;
-  return *this;
-}
-
+// ===========================================================================
 Order& Order::SetEntryName(const string& entry_name) {
   entry_name_ = entry_name;
   return *this;
@@ -65,8 +65,8 @@ Order& Order::SetEntryOrderType(const OrderType order_type) {
   return *this;
 }
 
-Order& Order::SetEntryDirection(const Direction direction) {
-  entry_direction_ = direction;
+Order& Order::SetEntryDirection(const Direction entry_direction) {
+  entry_direction_ = entry_direction;
   return *this;
 }
 
@@ -77,6 +77,11 @@ Order& Order::SetEntryCommission(const double commission) {
 
 Order& Order::SetEntryTouchPrice(const double touch_price) {
   entry_touch_price_ = touch_price;
+  return *this;
+}
+
+Order& Order::SetEntryTouchDirection(const Direction touch_direction) {
+  exit_touch_direction_ = touch_direction;
   return *this;
 }
 
@@ -120,6 +125,7 @@ Order& Order::SetEntryFilledPrice(const double entry_filled_price) {
   return *this;
 }
 
+// ===========================================================================
 Order& Order::SetExitName(const string& exit_name) {
   exit_name_ = exit_name;
   return *this;
@@ -130,8 +136,8 @@ Order& Order::SetExitOrderType(const OrderType order_type) {
   return *this;
 }
 
-Order& Order::SetExitDirection(const Direction direction) {
-  exit_direction_ = direction;
+Order& Order::SetExitDirection(const Direction exit_direction) {
+  exit_direction_ = exit_direction;
   return *this;
 }
 
@@ -142,6 +148,11 @@ Order& Order::SetExitCommission(const double commission) {
 
 Order& Order::SetExitTouchPrice(const double touch_price) {
   exit_touch_price_ = touch_price;
+  return *this;
+}
+
+Order& Order::SetExitTouchDirection(const Direction touch_direction) {
+  exit_touch_direction_ = touch_direction;
   return *this;
 }
 
@@ -185,33 +196,46 @@ Order& Order::SetExitFilledPrice(const double exit_filled_price) {
   return *this;
 }
 
+// ===========================================================================
 unsigned char Order::GetLeverage() const { return leverage_; }
 double Order::GetMarginCallPrice() const { return margin_call_price_; }
-double Order::GetMaxProfit() const { return max_profit_; }
-double Order::GetMaxLoss() const { return max_loss_; }
+
+// ===========================================================================
 string Order::GetEntryName() const { return entry_name_; }
 OrderType Order::GetEntryOrderType() const { return entry_order_type_; }
 Direction Order::GetEntryDirection() const { return entry_direction_; }
 double Order::GetEntryCommission() const { return entry_commission_; }
+
 double Order::GetEntryTouchPrice() const { return entry_touch_price_; }
+Direction Order::GetEntryTouchDirection() const {
+  return entry_touch_direction_;
+}
 double Order::GetEntryExtremePrice() const { return entry_extreme_price_; }
 double Order::GetEntryTrailPoint() const { return entry_trail_point_; }
+
 int64_t Order::GetEntryOrderTime() const { return entry_order_time_; }
 double Order::GetEntryOrderSize() const { return entry_order_size_; }
 double Order::GetEntryOrderPrice() const { return entry_order_price_; }
+
 int64_t Order::GetEntryFilledTime() const { return entry_filled_time_; }
 double Order::GetEntryFilledSize() const { return entry_filled_size_; }
 double Order::GetEntryFilledPrice() const { return entry_filled_price_; }
+
+// ===========================================================================
 string Order::GetExitName() const { return exit_name_; }
 OrderType Order::GetExitOrderType() const { return exit_order_type_; }
 Direction Order::GetExitDirection() const { return exit_direction_; }
 double Order::GetExitCommission() const { return exit_commission_; }
+
 double Order::GetExitTouchPrice() const { return exit_touch_price_; }
+Direction Order::GetExitTouchDirection() const { return exit_touch_direction_; }
 double Order::GetExitExtremePrice() const { return exit_extreme_price_; }
 double Order::GetExitTrailPoint() const { return exit_trail_point_; }
+
 int64_t Order::GetExitOrderTime() const { return exit_order_time_; }
 double Order::GetExitOrderSize() const { return exit_order_size_; }
 double Order::GetExitOrderPrice() const { return exit_order_price_; }
+
 int64_t Order::GetExitFilledTime() const { return exit_filled_time_; }
 double Order::GetExitFilledSize() const { return exit_filled_size_; }
 double Order::GetExitFilledPrice() const { return exit_filled_price_; }

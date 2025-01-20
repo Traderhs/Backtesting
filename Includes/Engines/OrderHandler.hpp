@@ -4,9 +4,10 @@
 #include <unordered_map>
 
 // 내부 헤더
-#include "Engines\BaseOrderHandler.hpp"
+#include "Engines/BaseOrderHandler.hpp"
 
-/// 주문, 포지션 등과 관련된 세부적인 작업을 처리하는 클래스
+/// 주문, 포지션 등과 관련된 세부적인 작업을 처리하는 클래스.
+/// 전략 이름에 따라 멀티톤으로 작동.
 class OrderHandler final : public BaseOrderHandler {
  public:
   // 멀티톤 특성 유지
@@ -16,18 +17,46 @@ class OrderHandler final : public BaseOrderHandler {
   /// OrderHandler의 멀티톤 인스턴스를 반환하는 함수
   static shared_ptr<OrderHandler>& GetOrderHandler(const string& name);
 
+  /**
+   * 현재 사용 중인 심볼에서 지정된 가격을 기준으로 진입 대기 주문들이
+   * 체결됐는지 확인하고 실행하는 함수.
+   *
+   * @param price 체결이 됐는지 확인하는 기준가
+   * @param open_time MIT, LIT 터치 시 주문 시간을 설정해야하므로 필요
+   * @param is_open_price 시가의 경우 갭이 발생하면 체결가가 변동되기 때문에
+   *                      필요
+   */
+  void CheckPendingEntryOrders(double price, int64_t open_time,
+                               bool is_open_price);
+
+  /**
+   * 현재 사용 중인 심볼에서 지정된 가격을 기준으로 청산 대기 주문들이
+   * 체결됐는지 확인하고 실행하는 함수.
+   *
+   * @param price 체결이 됐는지 확인하는 기준가
+   * @param open_time MIT, LIT 터치 시 주문 시간을 설정해야하므로 필요
+   * @param is_open_price 시가의 경우 갭이 발생하면 체결가가 변동되기 때문에
+   *                      필요
+   */
+  void CheckPendingExitOrders(double price, int64_t open_time,
+                              bool is_open_price);
+
   // ===========================================================================
   /*
    * Strategy 구현부에서 사용하는 함수들
    *
    * ! 주의 사항 !
    * 1. 하나의 진입 이름으로는 하나의 진입만 체결할 수 있음.
-   * 2. 같은 이름의 진입 주문을 호출 시 대기 진입 주문은 취소 후 재주문, 체결은
-   * 거부됨.
+   * 2. 동일한 진입 이름으로 주문 시 대기 진입 주문은 취소 후 재주문,
+   *    체결된 진입이 있을 경우 시장가 체결은 거부됨.
    * 3. 체결된 하나의 진입 이름에 대해서 여러 청산 대기 주문을 가질 수 있음.
-   * 4. 하나의 청산 주문이 진입 수량 부분 청산 시, 같은 진입 이름을 목표로 하는
-   *    대기 청산 주문들은 먼저 체결되는 순서대로 진입 잔량만 청산됨
-   * 5. 청산 체결 수량이 진입 체결 수량과 같아지면 같은 진입 이름을 목표로 하는
+   * 4. 동일한 청산 이름으로 주문 시 대기 청산 주문은 취소 후 재주문.
+   * 5. 하나의 청산 주문이 진입 수량을 부분 청산 시, 같은 진입 이름을 목표로
+   *    하는 대기 청산 주문들은 별도 처리 없이 먼저 체결되는 순서대로 진입 체결
+   *    잔량만 청산됨.
+   * 6. 총 청산 체결 수량이 진입 체결 수량보다 크다면 내부적으로 청산 주문
+   *    타입과 관계 없이 진입 체결 수량보다 크지 않게 조정됨.
+   * 7. 청산 체결 수량이 진입 체결 수량과 같아지면 같은 진입 이름을 목표로 하는
    *    대기 청산 주문들은 모두 취소됨.
    */
   // ===========================================================================
@@ -147,7 +176,7 @@ class OrderHandler final : public BaseOrderHandler {
 
   // ===========================================================================
   /// 주문 취소를 위해 사용하는 함수.
-  /// order_name이 진입 대기과 청산 대기에 동시에 있으면 둘 다 취소
+  /// order_name이 진입 대기 주문과 청산 대기 주문에 동시에 존재하면 모두 취소.
   void Cancel(const string& order_name);
 
  private:
@@ -162,51 +191,26 @@ class OrderHandler final : public BaseOrderHandler {
   static unordered_map<string, shared_ptr<OrderHandler>> instances_;
 
   // ===========================================================================
-  /// 시장가 진입 주문을 실행하는 함수
-  void ExecuteMarketEntry(const shared_ptr<Order>& order);
-
-  /// 지정가 진입 주문을 실행하는 함수
-  void ExecuteLimitEntry(const shared_ptr<Order>& order);
-
-  /// MIT 진입 주문을 실행하는 함수
-  void ExecuteMitEntry(const shared_ptr<Order>& order);
-
-  /// LIT 진입 주문을 실행하는 함수
-  void ExecuteLitEntry(const shared_ptr<Order>& order);
-
-  /// 트레일링 진입 주문을 실행하는 함수
-  void ExecuteTrailingEntry(const shared_ptr<Order>& order);
-
-  // ===========================================================================
-  /// 시장가 청산 주문을 실행하는 함수
-  void ExecuteMarketExit(const string& exit_name, const string& target_entry,
-                         double exit_size);
-
-  /// 지정가 청산 주문을 실행하는 함수
-  void ExecuteLimitExit(const string& exit_name, const string& target_entry,
-                        double exit_size, double order_price);
-
-  /// MIT 청산 주문을 실행하는 함수
-  void ExecuteMitExit(const string& exit_name, const string& target_entry,
-                      double exit_size, double touch_price);
-
-  /// LIT 청산 주문을 실행하는 함수
-  void ExecuteLitExit(const string& exit_name, const string& target_entry,
-                      double exit_size, double touch_price, double order_price);
-
-  /// 트레일링 청산 주문을 실행하는 함수
-  void ExecuteTrailingExit(const string& exit_name, const string& target_entry,
-                           double exit_size, double touch_price, double trail_point);
+  /// 지정된 방향과 반대 방향의 진입 체결 주문이 있으면 모두 청산하는 함수
+  void ExitOppositeFilledEntries(Direction direction);
 
   /// 청산 시 자금, 통계 관련 처리를 하는 함수
   void ExecuteExit(const shared_ptr<Order>& exit_order);
 
-  // ===========================================================================
-  // ExecutePendingEntries, ExecutePendingExits 함수 필요
-
-  // ===========================================================================
   /// 진입 주문 취소 시 자금 관련 처리를 하는 함수
   static void ExecuteCancelEntry(const shared_ptr<Order>& cancel_order);
+
+  // ===========================================================================
+  /// 현재 사용 중인 심볼에서 지정가/LIT 진입 대기 주문을 체결하는 함수.
+  /// 자금 관련 처리를 하고 체결 주문으로 이동시킴.
+  void ExecutePendingLimitEntry(int order_idx, int64_t open_time, double entry_filled_price);
+
+  /// 현재 사용 중인 심볼에서 MIT 진입 대기 주문이 터치되었을 때 체결하는 함수.
+  /// 자금 관련 처리를 하고 체결 주문으로 이동시킴.
+  void ExecutePendingMitEntry(int order_idx, int64_t open_time, double entry_order_price);
+
+  /// 현재 사용 중인 심볼에서 LIT 진입 대기 주문이 터치되었을 때 지정가로 주문하는 함수.
+  bool OrderPendingLitEntry(int order_idx, int64_t open_time);
 
   // ===========================================================================
   /// 청산 체결 크기가 진입 체결 크기를 넘지 않도록 조정하여 반환하는 함수

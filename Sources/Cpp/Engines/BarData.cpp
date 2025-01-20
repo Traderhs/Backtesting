@@ -2,14 +2,14 @@
 #include <format>
 
 // 외부 헤더
-#include <arrow\api.h>
-#include <arrow\table.h>
+#include <arrow/api.h>
+#include <arrow/table.h>
 
 // 파일 헤더
-#include "Engines\BarData.hpp"
+#include "Engines/BarData.hpp"
 
 // 내부 헤더
-#include "Engines\Logger.hpp"
+#include "Engines/Logger.hpp"
 
 BarData::BarData() : num_symbols_(0) {}
 BarData::~BarData() = default;
@@ -176,24 +176,30 @@ int64_t BarData::GetCloseTime(const int symbol_idx,
 }
 
 string BarData::GetSymbolName(const int symbol_idx) const {
-  IsValidSymbolIndex(symbol_idx);
+  try {
+    IsValidSymbolIndex(symbol_idx);
+
+  } catch (runtime_error& e) {
+    Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
+  }
 
   return symbol_names_[symbol_idx];
 }
 
-int BarData::GetNumSymbols() const {
-  return num_symbols_;
-}
+int BarData::GetNumSymbols() const { return num_symbols_; }
 
 size_t BarData::GetNumBars(const int symbol_idx) const {
-  IsValidSymbolIndex(symbol_idx);
+  try {
+    IsValidSymbolIndex(symbol_idx);
+
+  } catch (runtime_error& e) {
+    Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
+  }
 
   return num_bars_[symbol_idx];
 }
 
-string BarData::GetTimeframe() const {
-  return timeframe_;
-}
+string BarData::GetTimeframe() const { return timeframe_; }
 
 void BarData::IsValidSettings(const string& symbol_name,
                               const string& timeframe,
@@ -226,19 +232,18 @@ void BarData::IsValidSettings(const string& symbol_name,
 void BarData::IsValidIndex(const int symbol_idx, const size_t bar_idx) const {
   IsValidSymbolIndex(symbol_idx);
 
-  if (const auto num_bar = open_time_[symbol_idx].size(); bar_idx >= num_bar) {
-    Logger::LogAndThrowError(format("지정된 바 인덱스 {}은(는) 0 미만이거나 "
-                                    "최대값 {}을(를) 초과했습니다.",
-                                    symbol_idx, num_bar - 1),
-                             __FILE__, __LINE__);
+  if (bar_idx >= num_bars_[symbol_idx]) {
+    throw runtime_error(
+        format("지정된 바 인덱스 {}은(는) 0 미만이거나 "
+               "최대값 {}을(를) 초과했습니다.",
+               symbol_idx, num_bars_[symbol_idx] - 1));
   }
 }
 
 void BarData::IsValidSymbolIndex(int symbol_idx) const {
-  if (symbol_idx < 0 || symbol_idx >= num_symbols_) {
-    Logger::LogAndThrowError(format("지정된 심볼 인덱스 {}은(는) 0 미만이거나 "
+  if (symbol_idx < 0 || symbol_idx > num_symbols_ - 1) {
+    throw runtime_error(format("지정된 심볼 인덱스 {}은(는) 0 미만이거나 "
                                     "최대값 {}을(를) 초과했습니다.",
-                                    symbol_idx, num_symbols_ - 1),
-                             __FILE__, __LINE__);
+                                    symbol_idx, num_symbols_ - 1));
   }
 }

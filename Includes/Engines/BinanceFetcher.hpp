@@ -3,9 +3,12 @@
 // 표준 라이브러리
 #include <string>
 
+// 외부 라이브러리
+#include <arrow/api.h>
+
 // 내부 헤더
-#include "Engines\BaseFetcher.hpp"
-#include "Engines\Logger.hpp"
+#include "Engines/BaseFetcher.hpp"
+#include "Engines/Logger.hpp"
 
 // 네임 스페이스
 using namespace std;
@@ -24,7 +27,7 @@ class BinanceFetcher final : public BaseFetcher {
    * @param symbol klines 데이터를 가져올 거래 쌍 심볼(예: "BTCUSDT")
    * @param timeframe klines 데이터의 타임프레임(예: "1m", "1h")
    */
-  void FetchAndSaveBarData(const string& symbol, const string& timeframe) const;
+  void FetchBarData(const string& symbol, const string& timeframe) const;
 
   /**
    * 주어진 심볼과 시간 프레임에 대한 Spot-Futures klines 데이터를

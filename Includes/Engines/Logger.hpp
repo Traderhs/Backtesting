@@ -93,4 +93,7 @@ class Logger final {
    * @param message 파일에 기록할 로그 메시지
    */
   static void WriteToFile(ofstream& file, const string& message);
+
+  // 에러 종료 핸들러
+  static void CustomTerminate();
 };

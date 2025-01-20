@@ -5,7 +5,7 @@ class OrderHandler;
 class BarHandler;
 
 // 내부 헤더
-#include "Indicators\Indicators.hpp"
+#include "Indicators/Indicators.hpp"
 
 // 네임 스페이스
 using namespace std;
@@ -18,6 +18,9 @@ class Strategy {
 
   /// 모든 바의 종가에서 전략을 실행하는 함수. 메인 로직을 작성.
   virtual void Execute() = 0;
+
+  /// 해당 전략의 이름을 반환하는 함수
+  [[nodiscard]] string GetName() const;
 
   /// 해당 전략의 주문 핸들러를 반환하는 함수
   [[nodiscard]] shared_ptr<OrderHandler> GetOrderHandler() const;
@@ -46,5 +49,5 @@ class Strategy {
   Volume volume;  // 거래량 데이터
 
  private:
-  string name_;  // 전략 이름
+  string name_;  // 전략의 이름
 };

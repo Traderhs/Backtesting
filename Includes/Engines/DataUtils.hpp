@@ -1,9 +1,9 @@
 ﻿#pragma once
 
 // 외부 라이브러리
-#include <arrow\api.h>
+#include <arrow/api.h>
 
-#include <nlohmann\json.hpp>
+#include <nlohmann/json.hpp>
 
 // 네임스페이스
 using namespace arrow;
@@ -82,6 +82,9 @@ any GetScalarValue(const shared_ptr<Scalar>& scalar);
  * @param file_path 데이터를 저장할 Parquet 파일의 경로
  */
 void TableToParquet(const shared_ptr<Table>& table, const string& file_path);
+
+/// 1차원 벡터를 csv로 저장하는 함수
+void VectorToCsv(const vector<double>& data, const string& file_name);
 
 /**
  * 주어진 테이블을 주어진 비율로 분할하여 두 개의 서브 테이블을 생성하여 반환하는 함수

@@ -1,7 +1,7 @@
 #pragma once
 
 // 내부 헤더
-#include "Engines\Indicator.hpp"
+#include "Engines/Indicator.hpp"
 
 /// 전략 작성 편의성용 트레이딩 바의 저가 데이터 지표화
 class Low final : public Indicator {
@@ -9,5 +9,7 @@ class Low final : public Indicator {
   explicit Low(const string& name, const string& timeframe);
 
  private:
+  void Initialize() override;
+
   double Calculate() override;
 };

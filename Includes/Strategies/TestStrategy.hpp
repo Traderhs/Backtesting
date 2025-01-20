@@ -1,16 +1,19 @@
 #pragma once
 
-#include "Engines\Strategy.hpp"
+#include "Engines/Strategy.hpp"
 
 class TestStrategy final : public Strategy {
  public:
   explicit TestStrategy(const string& name);
-
-  void Execute() override;
+  ~TestStrategy() override;
 
   void Initialize() override;
 
+  void Execute() override;
+
  private:
-  SimpleMovingAverage sma1_;
-  SimpleMovingAverage sma2_;
+  // ReSharper disable once CppInconsistentNaming
+  SimpleMovingAverage sma1;
+  // ReSharper disable once CppInconsistentNaming
+  SimpleMovingAverage sma2;
 };
