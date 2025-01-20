@@ -1,8 +1,8 @@
 // 파일 헤더
-#include "Indicators\SimpleMovingAverage.hpp"
+#include "Indicators/SimpleMovingAverage.hpp"
 
 // 내부 헤더
-#include <Engines/BarHandler.hpp>
+#include "Engines/BarHandler.hpp"
 
 SimpleMovingAverage::SimpleMovingAverage(const string& name,
                                          const string& timeframe,
@@ -14,10 +14,17 @@ SimpleMovingAverage::SimpleMovingAverage(const string& name,
   double_period_ = period;
   size_t_period_ = static_cast<size_t>(period);
 
+  count_ = 0;
   sum_ = 0;
   can_calculate_ = false;
 
   CalculateAll();
+}
+
+void SimpleMovingAverage::Initialize() {
+  count_ = 0;
+  sum_ = 0;
+  can_calculate_ = false;
 }
 
 double SimpleMovingAverage::Calculate() {
@@ -25,7 +32,7 @@ double SimpleMovingAverage::Calculate() {
   sum_ += source_[0];
 
   if (!can_calculate_) {
-    if (bar_->GetCurrentBarIndex() < size_t_period_ - 1) {
+    if (count_++ < size_t_period_ - 1) {
       // 아직 계산할 수 있는 데이터 부족
       return nan("");
     }

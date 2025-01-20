@@ -25,6 +25,7 @@ find_package(Parquet)
 # ======================================================================================================================
 # Backtesting 설정
 file(GLOB HEADERS   # 해당 경로에서 hpp 파일들을 GLOB
+        "Includes/*.hpp"
         "Includes/Engines/*.hpp"
         "Includes/Indicators/*.hpp"
         "Includes/Strategies/*.hpp")
@@ -55,6 +56,7 @@ target_link_options(Backtesting PRIVATE $<$<CONFIG:Release>:/PROFILE>)
 # Google Test 설정
 file(GLOB TEST_HEADERS  # 해당 경로에서 hpp 파일들을 GLOB
         "Tests/*.hpp"
+        "Includes/*.hpp"
         "Includes/Engines/*.hpp"
         "Includes/Indicators/*.hpp"
         "Includes/Strategies/*.hpp")

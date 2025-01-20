@@ -1,8 +1,8 @@
 // 외부 라이브러리
-#include <curl\curl.h>
+#include <curl/curl.h>
 
 // 파일 헤더
-#include "Engines\BaseFetcher.hpp"
+#include "Engines/BaseFetcher.hpp"
 
 BaseFetcher::BaseFetcher() = default;
 BaseFetcher::~BaseFetcher() = default;

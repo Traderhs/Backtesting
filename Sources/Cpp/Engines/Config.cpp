@@ -2,7 +2,7 @@
 #include <cmath>
 
 // 파일 헤더
-#include "Engines\Config.hpp"
+#include "Engines/Config.hpp"
 
 Config::Config()
     : initial_balance_(nan("")),
@@ -36,8 +36,6 @@ Config& Config::SetSlippage(const pair<double, double>& slippage) {
   slippage_ = slippage;
   return *this;
 }
-
-Config& Config::Build() { return *this; }
 
 double Config::GetInitialBalance() const { return initial_balance_; }
 CommissionType Config::GetCommissionType() const { return commission_type_; }

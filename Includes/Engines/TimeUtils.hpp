@@ -1,25 +1,27 @@
 ﻿#pragma once
 
 // 표준 라이브러리
-#include <chrono>
 #include <cstdint>
 #include <string>
 
+// 내부 헤더
+#include "Engines/Logger.hpp"
+
 // 네임 스페이스
 using namespace std;
-using namespace chrono;
 
 /**
  * 시간 핸들링을 위한 유틸리티 네임스페이스
  */
 namespace time_utils {
+static shared_ptr<Logger>& logger = Logger::GetLogger();
 
 constexpr int64_t kSecond = 1000;
 constexpr int64_t kMinute = 60 * kSecond;
 constexpr int64_t kHour = 60 * kMinute;
 constexpr int64_t kDay = 24 * kHour;
 constexpr int64_t kWeek = 7 * kDay;
-constexpr int64_t kMonth = 30 * kDay;
+constexpr int64_t kMonth = 30 * kDay;  // 한 달을 30일로 가정
 
 /**
  * 현재 시스템의 로컬 시간대를 기준으로 현재 날짜와 시간을 반환하는 함수

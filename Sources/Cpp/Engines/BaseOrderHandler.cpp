@@ -2,14 +2,14 @@
 #include <format>
 
 // 파일 헤더
-#include "Engines\BaseOrderHandler.hpp"
+#include "Engines/BaseOrderHandler.hpp"
 
 // 내부 헤더
-#include "Engines\BarData.hpp"
-#include "Engines\BarHandler.hpp"
-#include "Engines\DataUtils.hpp"
-#include "Engines\Engine.hpp"
-#include "Engines\TimeUtils.hpp"
+#include "Engines/BarData.hpp"
+#include "Engines/BarHandler.hpp"
+#include "Engines/DataUtils.hpp"
+#include "Engines/Engine.hpp"
+#include "Engines/TimeUtils.hpp"
 
 // 네임 스페이스
 using namespace data_utils;
@@ -24,58 +24,55 @@ shared_ptr<Engine>& BaseOrderHandler::engine_ = Engine::GetEngine();
 shared_ptr<Logger>& BaseOrderHandler::logger_ = Logger::GetLogger();
 
 void BaseOrderHandler::InitializeOrders(const int num_symbols) {
-  pending_entries_.reserve(num_symbols);
-  filled_entries_.reserve(num_symbols);
-  pending_exits_.reserve(num_symbols);
+  pending_entries_.resize(num_symbols);
+  filled_entries_.resize(num_symbols);
+  pending_exits_.resize(num_symbols);
 }
 
 double BaseOrderHandler::GetUnrealizedPnl() const {
+  // 사용 중인 정보 저장
+  const auto original_symbol_idx = bar_->GetCurrentSymbolIndex();
+
+  const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType(),
+                                     bar_->GetCurrentReferenceTimeframe());
   double pnl = 0;
 
-  // 심볼 순회
+  // 심볼별 체결된 진입 순회
   for (int symbol_idx = 0; symbol_idx < filled_entries_.size(); ++symbol_idx) {
-    // 시가 시점의 평가 손익 구해야 함
-    const auto current_open =
-        bar_->GetBarData(bar_->GetCurrentBarType())
-            .GetOpen(symbol_idx, bar_->GetCurrentBarIndex());
+    bar_->SetCurrentSymbolIndex(symbol_idx);
 
-    // 진입 주문 순회
+    // 해당 심볼 시가 시점의 평가 손익을 구해야 함
+    const auto current_open =
+        bar.GetOpen(symbol_idx, bar_->GetCurrentBarIndex());
+
+    // 해당 심볼의 체결된 진입 주문 순회
     for (const auto& filled_entry : filled_entries_[symbol_idx]) {
       // 진입 방향에 따라 손익 합산
+      // 부분 청산 시 남은 진입 물량만 미실현 손익에 포함됨
       if (filled_entry->GetEntryDirection() == Direction::LONG) {
         pnl += (current_open - filled_entry->GetEntryFilledPrice()) *
-               filled_entry->GetEntryFilledSize() * filled_entry->GetLeverage();
+               (filled_entry->GetEntryFilledSize() -
+                filled_entry->GetExitFilledSize()) *
+               filled_entry->GetLeverage();
       } else {
         pnl += (filled_entry->GetEntryFilledPrice() - current_open) *
-               filled_entry->GetEntryFilledSize() * filled_entry->GetLeverage();
+               (filled_entry->GetEntryFilledSize() -
+                filled_entry->GetExitFilledSize()) *
+               filled_entry->GetLeverage();
       }
     }
   }
 
+  // 사용 중이던 정보 복원
+  bar_->SetCurrentSymbolIndex(original_symbol_idx);
+
   return pnl;
-}
-
-double BaseOrderHandler::GetInitialExtremePrice(const Direction direction) {
-  const int symbol_idx = bar_->GetCurrentSymbolIndex();
-  const auto bar_idx = bar_->GetCurrentBarIndex();
-
-  if (direction == Direction::LONG) {  // 트레일링 매수 진입 시 최저가를 추적
-    return bar_->GetBarData(bar_->GetCurrentBarType())
-        .GetLow(symbol_idx, bar_idx);
-  }
-
-  if (direction == Direction::SHORT) {  // 트레일링 매도 진입 시 최고가를 추적
-    return bar_->GetBarData(bar_->GetCurrentBarType())
-        .GetHigh(symbol_idx, bar_idx);
-  }
-
-  return nan("");
 }
 
 double BaseOrderHandler::CalculateSlippagePrice(
     const double order_price, const OrderType order_type,
-    const Direction direction, const shared_ptr<Order>& order) const {
-  const double tick_size = engine_->GetTickSize(bar_->GetCurrentSymbolIndex());
+    const Direction direction, const unsigned char leverage) const {
+  double slippage_points = 0;
 
   // 시장가, 지정가에 따라 슬리피지가 달라짐
   switch (order_type) {
@@ -84,43 +81,49 @@ double BaseOrderHandler::CalculateSlippagePrice(
     case OrderType::MIT:
       [[fallthrough]];
     case OrderType::TRAILING: {
-      // 슬리피지 포인트 계산
-      const double slippage = order_price * config_.GetSlippage().first / 100 *
-                              order->GetLeverage();
-
-      // 방향에 따라 덧셈과 뺄셈이 달라짐
-      if (direction == Direction::LONG) {
-        return RoundToTickSize(order_price + slippage, tick_size);
-      }
-
-      if (direction == Direction::SHORT)
-        return RoundToTickSize(order_price - slippage, tick_size);
+      // 시장가 슬리피지 포인트 계산
+      slippage_points =
+          order_price * config_.GetSlippage().first / 100 * leverage;
+      break;
     }
 
     case OrderType::LIMIT:
       [[fallthrough]];
     case OrderType::LIT: {
-      // 슬리피지 포인트 계산
-      const double slippage = order_price * config_.GetSlippage().second / 100 *
-                              order->GetLeverage();
-
-      // 방향에 따라 덧셈과 뺄셈이 달라짐
-      if (direction == Direction::LONG)
-        return RoundToTickSize(order_price + slippage, tick_size);
-
-      if (direction == Direction::SHORT)
-        return RoundToTickSize(order_price - slippage, tick_size);
+      // 지정가 슬리피지 포인트 계산
+      slippage_points =
+          order_price * config_.GetSlippage().second / 100 * leverage;
+      break;
     }
 
-    default: {
-      return nan("");
+    case OrderType::NONE: {
+      break;
     }
   }
+
+  // 방향에 따라 덧셈과 뺄셈이 달라짐
+  if (slippage_points != 0) {
+    if (direction == Direction::LONG) {
+      return RoundToDecimalPlaces(order_price + slippage_points,
+                                  CountDecimalPlaces(order_price));
+    }
+
+    if (direction == Direction::SHORT) {
+      return RoundToDecimalPlaces(order_price - slippage_points,
+                                  CountDecimalPlaces(order_price));
+    }
+  }
+
+  LogFormattedInfo(
+      LogLevel::WARNING_L,
+      "주문 타입이 NONE으로 지정되어 슬리피지 가격을 계산할 수 없습니다.",
+      __FILE__, __LINE__);
+  return -1;
 }
 
 double BaseOrderHandler::CalculateCommission(
     const double filled_price, const OrderType order_type,
-    const double filled_position_size, const shared_ptr<Order>& order) const {
+    const double filled_position_size, const unsigned char leverage) const {
   // 시장가, 지정가에 따라 수수료가 달라짐
   switch (order_type) {
     case OrderType::MARKET:
@@ -128,14 +131,14 @@ double BaseOrderHandler::CalculateCommission(
     case OrderType::MIT:
       [[fallthrough]];
     case OrderType::TRAILING: {
-      return filled_price * filled_position_size * order->GetLeverage() *
+      return filled_price * filled_position_size * leverage *
              (config_.GetCommission().first / 100);
     }
 
     case OrderType::LIMIT:
       [[fallthrough]];
     case OrderType::LIT: {
-      return filled_price * filled_position_size * order->GetLeverage() *
+      return filled_price * filled_position_size * leverage *
              (config_.GetCommission().second / 100);
     }
 
@@ -146,65 +149,39 @@ double BaseOrderHandler::CalculateCommission(
 }
 
 double BaseOrderHandler::CalculateMarginCallPrice(
-    const shared_ptr<Order>& order) {
-  const double margin_call_percentage =
-      100 / static_cast<double>(order->GetLeverage());
-  double margin_call_price = 0;
+    const double entry_filled_price, const Direction entry_direction,
+    const unsigned char leverage) {
+  const double margin_call_percentage = 100 / static_cast<double>(leverage);
 
-  if (order->GetEntryDirection() == Direction::LONG) {
-    margin_call_price =
-        (1 - margin_call_percentage / 100) * order->GetEntryFilledPrice();
-  } else if (order->GetEntryDirection() == Direction::SHORT) {
-    margin_call_price =
-        (1 + margin_call_percentage / 100) * order->GetEntryFilledPrice();
+  double margin_call_price = 0;
+  if (entry_direction == Direction::LONG) {
+    margin_call_price = (1 - margin_call_percentage / 100) * entry_filled_price;
+  } else if (entry_direction == Direction::SHORT) {
+    margin_call_price = (1 + margin_call_percentage / 100) * entry_filled_price;
   }
 
-  return RoundToTickSize(margin_call_price,
-                         engine_->GetTickSize(bar_->GetCurrentSymbolIndex()));
+  return RoundToDecimalPlaces(margin_call_price,
+                              CountDecimalPlaces(entry_filled_price));
 }
 
 void BaseOrderHandler::IsValidPrice(const double price) {
   if (price <= 0) {
-    const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
-    const int symbol_idx = bar_->GetCurrentSymbolIndex();
-
-    Logger::LogAndThrowError(
-        format(" {} | {} | 주어진 가격 {}은(는) 0보다 커야합니다.",
-               bar.GetSymbolName(symbol_idx),
-               UtcTimestampToUtcDatetime(
-                   bar.GetOpenTime(symbol_idx, bar_->GetCurrentBarIndex() + 1)),
-               price),
-        __FILE__, __LINE__);
+    throw runtime_error(
+        format("주어진 가격 {}은(는) 0보다 커야합니다.", price));
   }
 }
 
 void BaseOrderHandler::IsValidPositionSize(const double position_size) {
   if (position_size <= 0) {
-    const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
-    const int symbol_idx = bar_->GetCurrentSymbolIndex();
-
-    Logger::LogAndThrowError(
-        format(" {} | {} | 주어진 포지션 크기 {}은(는) 0보다 커야합니다.",
-               bar.GetSymbolName(symbol_idx),
-               UtcTimestampToUtcDatetime(
-                   bar.GetOpenTime(symbol_idx, bar_->GetCurrentBarIndex() + 1)),
-               position_size),
-        __FILE__, __LINE__);
+    throw runtime_error(
+        format("주어진 포지션 크기 {}은(는) 0보다 커야합니다.", position_size));
   }
 }
 
 void BaseOrderHandler::IsValidLeverage(const unsigned char leverage) {
   if (leverage < 1) {
-    const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
-    const int symbol_idx = bar_->GetCurrentSymbolIndex();
-
-    Logger::LogAndThrowError(
-        format(" {} | {} | 주어진 레버리지 {}은(는) 1보다 커야합니다.",
-               bar.GetSymbolName(symbol_idx),
-               UtcTimestampToUtcDatetime(
-                   bar.GetOpenTime(symbol_idx, bar_->GetCurrentBarIndex() + 1)),
-               leverage),
-        __FILE__, __LINE__);
+    throw runtime_error(
+        format("주어진 레버리지 {}은(는) 1과 같거나 커야합니다.", leverage));
   }
 }
 
@@ -214,17 +191,11 @@ void BaseOrderHandler::IsValidEntryName(const string& entry_name) const {
      제한 */
   for (const int symbol_idx = bar_->GetCurrentSymbolIndex();
        const auto& filled_entry : filled_entries_[symbol_idx]) {
+    /* 체결된 진입 주문 중 같은 이름이 하나라도 존재하면
+       해당 entry_name으로 진입 불가 */
     if (entry_name == filled_entry->GetEntryName()) {
-      const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
-
-      Logger::LogAndThrowError(
-          format(
-              " {} | {} | 중복된 진입 이름 {}은(는) 동시에 체결될 수 없습니다.",
-              bar.GetSymbolName(symbol_idx),
-              UtcTimestampToUtcDatetime(
-                  bar.GetOpenTime(symbol_idx, bar_->GetCurrentBarIndex() + 1)),
-              entry_name),
-          __FILE__, __LINE__);
+      throw runtime_error(format(
+          "중복된 진입 이름 {}은(는) 동시에 체결될 수 없습니다.", entry_name));
     }
   }
 }
@@ -232,139 +203,49 @@ void BaseOrderHandler::IsValidEntryName(const string& entry_name) const {
 void BaseOrderHandler::IsValidLimitOrderPrice(const double limit_price,
                                               const double base_price,
                                               const Direction direction) {
-  if (direction == Direction::LONG) {
-    if (limit_price >= base_price) {
-      const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
-      const int symbol_idx = bar_->GetCurrentSymbolIndex();
+  if (direction == Direction::LONG && limit_price > base_price) {
+    throw runtime_error(
+        format("지정가 {} 매수 주문은 기준가 {}과 같거나 작아야합니다.",
+               limit_price, base_price));
+  }
 
-      Logger::LogAndThrowError(
-          format(" {} | {} | 지정가 {} 매수 주문은 기준가 {}보다 작아야합니다.",
-                 bar.GetSymbolName(symbol_idx),
-                 UtcTimestampToUtcDatetime(bar.GetOpenTime(
-                     symbol_idx, bar_->GetCurrentBarIndex() + 1)),
-                 limit_price, base_price),
-          __FILE__, __LINE__);
-    }
-  } else {
-    if (limit_price <= base_price) {
-      const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
-      const int symbol_idx = bar_->GetCurrentSymbolIndex();
-
-      Logger::LogAndThrowError(
-          format(" {} | {} | 지정가 {} 매도 주문은 기준가 {}보다 커야합니다.",
-                 bar.GetSymbolName(symbol_idx),
-                 UtcTimestampToUtcDatetime(bar.GetOpenTime(
-                     symbol_idx, bar_->GetCurrentBarIndex() + 1)),
-                 limit_price, base_price),
-          __FILE__, __LINE__);
-    }
+  if (direction == Direction::SHORT && limit_price < base_price) {
+    throw runtime_error(
+        format("지정가 {} 매도 주문은 기준가 {}과 같거나 커야합니다.",
+               limit_price, base_price));
   }
 }
 
 void BaseOrderHandler::IsValidTrailingTouchPrice(const double touch_price) {
   if (touch_price < 0) {
-    const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
-    const int symbol_idx = bar_->GetCurrentSymbolIndex();
-
-    Logger::LogAndThrowError(
-        format(" {} | {} | 주어진 트레일링 터치 가격 "
-               "{}은(는) 0과 같거나 커야합니다.",
-               bar.GetSymbolName(symbol_idx),
-               UtcTimestampToUtcDatetime(
-                   bar.GetOpenTime(symbol_idx, bar_->GetCurrentBarIndex() + 1)),
-               touch_price),
-        __FILE__, __LINE__);
+    throw runtime_error(
+        format("주어진 트레일링 터치 가격 {}은(는) 0과 같거나 커야합니다.",
+               touch_price));
   }
 }
 
 void BaseOrderHandler::IsValidTrailPoint(double trail_point) {
   if (trail_point <= 0) {
+    throw runtime_error(
+        format("주어진 트레일링 포인트 {}은(는) 0보다 커야합니다.",
+               trail_point));
+  }
+}
+
+void BaseOrderHandler::LogFormattedInfo(const LogLevel log_level,
+                                        const string& formatted_message,
+                                        const char* file, const int line) {
+  if (engine_->debug_mode_) {
     const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
     const int symbol_idx = bar_->GetCurrentSymbolIndex();
 
-    Logger::LogAndThrowError(
-        format(" {} | {} | 주어진 트레일링 포인트 {}은(는) 0보다 커야합니다.",
-               bar.GetSymbolName(symbol_idx),
-               UtcTimestampToUtcDatetime(
-                   bar.GetOpenTime(symbol_idx, bar_->GetCurrentBarIndex() + 1)),
-               trail_point),
-        __FILE__, __LINE__);
-  }
-}
-
-void BaseOrderHandler::InvalidEntryName(const string& entry_name) {
-  try {
-    if (engine_->debug_mode_) {
-      const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
-      const int symbol_idx = bar_->GetCurrentSymbolIndex();
-
-      logger_->Log(
-          LogLevel::WARNING_L,
-          format(" {} | {} | 지정된 진입명 {}이(가) 존재하지 않아 청산할 "
-                 "수 없습니다.",
-                 bar.GetSymbolName(symbol_idx),
-                 UtcTimestampToUtcDatetime(bar.GetOpenTime(
-                     symbol_idx, bar_->GetCurrentBarIndex() + 1)),
-                 entry_name),
-          __FILE__, __LINE__);
-    }
-  } catch (...) {
-    // return
-  }
-}
-
-void BaseOrderHandler::LogCancelAndReorder(const string& order_name) {
-  try {
-    if (engine_->debug_mode_) {
-      const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
-      const int symbol_idx = bar_->GetCurrentSymbolIndex();
-
-      logger_->Log(LogLevel::DEBUG_L,
-                   format(" {} | {} | {} 주문을 취소 후 재주문합니다.",
-                          bar.GetSymbolName(symbol_idx),
-                          UtcTimestampToUtcDatetime(bar.GetOpenTime(
-                              symbol_idx, bar_->GetCurrentBarIndex() + 1)),
-                          order_name),
-                   __FILE__, __LINE__);
-    }
-  } catch (...) {
-    // return
-  }
-}
-
-void BaseOrderHandler::FormattedDebugLog(const string& formatted_msg) {
-  try {
-    if (engine_->debug_mode_) {
-      const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
-      const int symbol_idx = bar_->GetCurrentSymbolIndex();
-
-      logger_->Log(
-          LogLevel::DEBUG_L,
-          format(" {} | {} | {}", bar.GetSymbolName(symbol_idx),
-                 bar.GetOpenTime(symbol_idx, bar_->GetCurrentBarIndex() + 1),
-                 formatted_msg),
-          __FILE__, __LINE__);
-    }
-  } catch (...) {
-    // return
-  }
-}
-
-void BaseOrderHandler::FormattedWarningLog(const string& formatted_msg) {
-  try {
-    if (engine_->debug_mode_) {
-      const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
-      const int symbol_idx = bar_->GetCurrentSymbolIndex();
-
-      logger_->Log(
-          LogLevel::WARNING_L,
-          format(" {} | {} | {}",
-                 bar.GetSymbolName(symbol_idx),
-                 bar.GetOpenTime(symbol_idx, bar_->GetCurrentBarIndex() + 1),
-                 formatted_msg),
-          __FILE__, __LINE__);
-    }
-  } catch (...) {
-    // return
+    logger_->Log(
+      log_level,
+      format("{} | {} | {}",
+             bar.GetSymbolName(symbol_idx),
+             UtcTimestampToUtcDatetime(
+               bar.GetOpenTime(symbol_idx, bar_->GetCurrentBarIndex())),
+             formatted_message),
+          file, line);
   }
 }

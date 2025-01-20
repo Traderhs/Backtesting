@@ -13,7 +13,7 @@ class Table;
 using namespace arrow;
 using namespace std;
 
-/// 바 데이터를 심볼 별 시계열 순서대로 벡터화하여 저장하는 클래스
+/// 바 데이터를 심볼별 시계열 순서대로 벡터화하여 저장하는 클래스
 class BarData final {
  public:
   BarData();
@@ -44,14 +44,20 @@ class BarData final {
   /// 심볼 인덱스에 해당하는 심볼의 이름을 반환하는 함수
   [[nodiscard]] string GetSymbolName(int symbol_idx) const;
 
-  /// 심볼의 개수를 반환하는 함수
+  /// 추가된 심볼의 개수를 반환하는 함수
   [[nodiscard]] int GetNumSymbols() const;
 
-  /// 해당 심볼의 바 개수를 반환하는 함수
+  /// 해당되는 심볼의 바 개수를 반환하는 함수
   [[nodiscard]] size_t GetNumBars(int symbol_idx) const;
 
   /// 바 데이터의 타임프레임을 반환하는 함수
   [[nodiscard]] string GetTimeframe() const;
+
+  /// 인덱스 유효성을 검증하는 함수
+  void IsValidIndex(int symbol_idx, size_t bar_idx) const;
+
+  /// 심볼 인덱스 유효성을 검증하는 함수
+  void IsValidSymbolIndex(int symbol_idx) const;
 
  private:
   vector<vector<int64_t>> open_time_;   // symbols<open_time>
@@ -71,10 +77,4 @@ class BarData final {
   void IsValidSettings(const string& symbol_name, const string& timeframe,
                        const shared_ptr<Table>& bar_data,
                        const vector<int>& columns) const;
-
-  // 인덱스 유효성 검사
-  void IsValidIndex(int symbol_idx, size_t bar_idx) const;
-
-  // 심볼 인덱스 유효성 검사
-  void IsValidSymbolIndex(int symbol_idx) const;
 };

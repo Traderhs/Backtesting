@@ -6,7 +6,7 @@ pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 
 # 읽을 Parquet 파일 경로 설정
-path = "D:\\Programming\\C++\\Backtesting\\Klines\\BTCUSDT\\1h.parquet"
+path = "D:\\Programming\\Backtesting\\Data\\Klines\\ETHUSDT\\1d.parquet"
 
 df = pd.read_parquet(path)
 head = df.head(10).copy()

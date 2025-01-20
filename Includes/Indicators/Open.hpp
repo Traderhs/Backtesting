@@ -1,7 +1,7 @@
 #pragma once
 
 // 내부 헤더
-#include "Engines\Indicator.hpp"
+#include "Engines/Indicator.hpp"
 
 /// 전략 작성 편의성용 트레이딩 바의 시가 데이터 지표화
 class Open final : public Indicator {
@@ -9,5 +9,7 @@ class Open final : public Indicator {
   explicit Open(const string& name, const string& timeframe);
 
  private:
+  void Initialize() override;
+
   double Calculate() override;
 };

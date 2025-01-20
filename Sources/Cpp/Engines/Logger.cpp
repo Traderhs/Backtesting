@@ -1,4 +1,5 @@
 ﻿// 표준 라이브러리
+#include <exception>
 #include <filesystem>
 #include <format>
 #include <fstream>
@@ -7,10 +8,10 @@
 #include <mutex>
 
 // 파일 헤더
-#include "Engines\Logger.hpp"
+#include "Engines/Logger.hpp"
 
 // 내부 헤더
-#include "Engines\TimeUtils.hpp"
+#include "Engines/TimeUtils.hpp"
 
 // 네임 스페이스
 using namespace time_utils;
