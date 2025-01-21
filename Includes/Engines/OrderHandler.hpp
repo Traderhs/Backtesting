@@ -125,39 +125,39 @@ class OrderHandler final : public BaseOrderHandler {
   /// 시장가 청산 주문을 위해 사용하는 함수
   ///
   /// @param exit_name 청산 이름
-  /// @param target_entry 청산할 진입 이름
+  /// @param target_entry_name 청산할 진입 이름
   /// @param exit_size 청산 수량
-  void MarketExit(const string& exit_name, const string& target_entry,
+  void MarketExit(const string& exit_name, const string& target_entry_name,
                   double exit_size);
 
   /// 지정가 청산 주문을 위해 사용하는 함수
   ///
   /// @param exit_name 청산 이름
-  /// @param target_entry 청산할 진입 이름
+  /// @param target_entry_name 청산할 진입 이름
   /// @param exit_size 청산 수량
   /// @param order_price 지정가 청산 주문 가격
-  void LimitExit(const string& exit_name, const string& target_entry,
+  void LimitExit(const string& exit_name, const string& target_entry_name,
                  double exit_size, double order_price);
 
   /// Market if Touched 청산 주문을 위해 사용하는 함수.
   /// touch_price에 닿으면 시장가 청산 주문 접수.
   ///
   /// @param exit_name 청산 이름
-  /// @param target_entry 청산할 진입 이름
+  /// @param target_entry_name 청산할 진입 이름
   /// @param exit_size 청산 수량
   /// @param touch_price 시장가 주문을 접수할 시점의 가격
-  void MitExit(const string& exit_name, const string& target_entry,
+  void MitExit(const string& exit_name, const string& target_entry_name,
                double exit_size, double touch_price);
 
   /// Limit if Touched 청산 주문을 위해 사용하는 함수.
   /// touch_price에 닿으면 order_price에 지정가 청산 주문 접수.
   ///
   /// @param exit_name 청산 이름
-  /// @param target_entry 청산할 진입 이름
+  /// @param target_entry_name 청산할 진입 이름
   /// @param exit_size 청산 수량
   /// @param touch_price 지정가 주문을 접수할 시점의 가격
   /// @param order_price 지정가 청산 주문 가격
-  void LitExit(const string& exit_name, const string& target_entry,
+  void LitExit(const string& exit_name, const string& target_entry_name,
                double exit_size, double touch_price, double order_price);
 
   /// 트레일링 청산 주문을 위해 사용하는 함수.
@@ -165,13 +165,13 @@ class OrderHandler final : public BaseOrderHandler {
   /// trail_point가 움직이면 시장가 청산 주문 접수.
   ///
   /// @param exit_name 청산 이름
-  /// @param target_entry 청산할 진입 이름
+  /// @param target_entry_name 청산할 진입 이름
   /// @param exit_size 청산 수량
   /// @param touch_price 최고저가 추적을 시작할 시점의 가격.
   ///                    0으로 지정할 시 바로 추적을 시작
   /// @param trail_point 최고저가로부터 어느정도 움직였을 때 청산할지 결정하는
   /// 포인트
-  void TrailingExit(const string& exit_name, const string& target_entry,
+  void TrailingExit(const string& exit_name, const string& target_entry_name,
                     double exit_size, double touch_price, double trail_point);
 
   // ===========================================================================
@@ -201,18 +201,25 @@ class OrderHandler final : public BaseOrderHandler {
   static void ExecuteCancelEntry(const shared_ptr<Order>& cancel_order);
 
   // ===========================================================================
+  /// 현재 사용 중인 심볼에서 MIT/트레일링 진입 대기 주문을 체결하는 함수.
+  /// 자금 관련 처리를 하고 체결 주문으로 이동시킴.
+  void ExecutePendingMarketEntry(int order_idx, int64_t open_time, double entry_order_price);
+
   /// 현재 사용 중인 심볼에서 지정가/LIT 진입 대기 주문을 체결하는 함수.
   /// 자금 관련 처리를 하고 체결 주문으로 이동시킴.
   void ExecutePendingLimitEntry(int order_idx, int64_t open_time, double entry_filled_price);
 
-  /// 현재 사용 중인 심볼에서 MIT 진입 대기 주문이 터치되었을 때 체결하는 함수.
-  /// 자금 관련 처리를 하고 체결 주문으로 이동시킴.
-  void ExecutePendingMitEntry(int order_idx, int64_t open_time, double entry_order_price);
-
   /// 현재 사용 중인 심볼에서 LIT 진입 대기 주문이 터치되었을 때 지정가로 주문하는 함수.
   bool OrderPendingLitEntry(int order_idx, int64_t open_time);
 
+  /// 현재 사용 중인 심볼에서 지정가/LIT 청산 대기 주문을 체결하는 함수.
+  /// 자금 관련 처리를 하고 체결 주문으로 이동시킴.
+  int ExecutePendingLimitExit(int order_idx, int64_t open_time, double entry_order_price);
+
   // ===========================================================================
+  /// 체결된 진입 주문에서 Target Entry Name과 같은 주문을 찾아 주문 인덱스와 함께 반환하는 함수
+  [[nodiscard]] pair<shared_ptr<Order>, int> FindMatchingEntryOrder(const string& target_entry_name) const;
+
   /// 청산 체결 크기가 진입 체결 크기를 넘지 않도록 조정하여 반환하는 함수
   static double GetAdjustedExitFilledSize(double exit_size, const shared_ptr<Order>& exit_order);
 
