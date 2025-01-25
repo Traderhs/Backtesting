@@ -9,6 +9,7 @@
 #include "Engines/BarData.hpp"
 
 // 내부 헤더
+#include "Engines/Exception.hpp"
 #include "Engines/Logger.hpp"
 
 BarData::BarData() : num_symbols_(0) {}
@@ -178,8 +179,7 @@ int64_t BarData::GetCloseTime(const int symbol_idx,
 string BarData::GetSymbolName(const int symbol_idx) const {
   try {
     IsValidSymbolIndex(symbol_idx);
-
-  } catch (runtime_error& e) {
+  } catch (const IndexOutOfRange& e) {
     Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
   }
 
@@ -191,8 +191,7 @@ int BarData::GetNumSymbols() const { return num_symbols_; }
 size_t BarData::GetNumBars(const int symbol_idx) const {
   try {
     IsValidSymbolIndex(symbol_idx);
-
-  } catch (runtime_error& e) {
+  } catch (const IndexOutOfRange& e) {
     Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
   }
 
@@ -232,18 +231,18 @@ void BarData::IsValidSettings(const string& symbol_name,
 void BarData::IsValidIndex(const int symbol_idx, const size_t bar_idx) const {
   IsValidSymbolIndex(symbol_idx);
 
-  if (bar_idx >= num_bars_[symbol_idx]) {
-    throw runtime_error(
-        format("지정된 바 인덱스 {}은(는) 0 미만이거나 "
-               "최대값 {}을(를) 초과했습니다.",
-               symbol_idx, num_bars_[symbol_idx] - 1));
+  // 0보다 작은 조건은 size_t이므로 제외
+  if (bar_idx > num_bars_[symbol_idx] - 1) {
+    throw IndexOutOfRange(
+        format("지정된 바 인덱스 {}은(는) 최대값 {}을(를) 초과했습니다.",
+                       symbol_idx, num_bars_[symbol_idx] - 1));
   }
 }
 
 void BarData::IsValidSymbolIndex(int symbol_idx) const {
-  if (symbol_idx < 0 || symbol_idx > num_symbols_ - 1) {
-    throw runtime_error(format("지정된 심볼 인덱스 {}은(는) 0 미만이거나 "
-                                    "최대값 {}을(를) 초과했습니다.",
-                                    symbol_idx, num_symbols_ - 1));
+  if (symbol_idx > num_symbols_ - 1 || symbol_idx < 0) {
+    throw IndexOutOfRange(format("지정된 심볼 인덱스 {}은(는) 최대값 {}을(를)"
+                                         " 초과했거나 0 미만입니다.",
+                                         symbol_idx, num_symbols_ - 1));
   }
 }

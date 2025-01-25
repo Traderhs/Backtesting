@@ -8,6 +8,7 @@
 // 내부 헤더
 #include "Engines/BarData.hpp"
 #include "Engines/DataUtils.hpp"
+#include "Engines/Exception.hpp"
 #include "Engines/Logger.hpp"
 #include "Engines/TimeUtils.hpp"
 
@@ -124,25 +125,25 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
 void BarHandler::ProcessBarIndex(const int symbol_idx, const BarType bar_type,
                                  const string& timeframe,
                                  const int64_t base_close_time) {
-  const auto& target_bar_data = GetBarData(bar_type, timeframe);
-  auto& target_index = GetIndexVector(bar_type, timeframe);
+  const auto& bar_data = GetBarData(bar_type, timeframe);
+  auto& bar_index = GetBarIndex(bar_type, timeframe);
 
   try {
     // 현재 Close Time이 Base Close Time보다 작을 때만 인덱스 증가 가능
-    while (target_bar_data.GetCloseTime(symbol_idx, target_index[symbol_idx]) <
+    while (bar_data.GetCloseTime(symbol_idx, bar_index[symbol_idx]) <
            base_close_time) {
       /* 다음 바의 Close Time이 Base Close Time보다 작거나 같을 때만
          인덱스 증가 */
-      if (const auto next_close_time = target_bar_data.GetCloseTime(
-              symbol_idx, target_index[symbol_idx] + 1);
+      if (const auto next_close_time =
+              bar_data.GetCloseTime(symbol_idx, bar_index[symbol_idx] + 1);
           next_close_time <= base_close_time) {
-        target_index[symbol_idx]++;
+        bar_index[symbol_idx]++;
       } else {
         // 다음 바 Close Time이 Base Close Time보다 크면 증가하지 않고 종료
         break;
       }
     }
-  } catch (...) {
+  } catch (IndexOutOfRange) {
     /* next_close_time이 바 데이터의 범위를 넘으면
        최대 인덱스로 이동한 것이므로 return */
     return;
@@ -191,9 +192,9 @@ void BarHandler::SetCurrentBarIndex(const size_t bar_index) {
   }
 }
 
-void BarHandler::IncrementBarIndex(const BarType bar_type,
-                                   const string& timeframe,
-                                   const int symbol_index) {
+void BarHandler::IncreaseBarIndex(const BarType bar_type,
+                                  const string& timeframe,
+                                  const int symbol_index) {
   switch (bar_type) {
     case BarType::TRADING: {
       trading_bar_.IsValidSymbolIndex(symbol_index);

@@ -43,8 +43,8 @@ BarData& BaseBarHandler::GetBarData(const BarType bar_type,
   }
 }
 
-vector<size_t>& BaseBarHandler::GetIndexVector(const BarType bar_type,
-                                               const string& timeframe) {
+vector<size_t>& BaseBarHandler::GetBarIndex(const BarType bar_type,
+                                            const string& timeframe) {
   switch (bar_type) {
     case BarType::TRADING: {
       return trading_index_;

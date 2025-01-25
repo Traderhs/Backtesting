@@ -24,7 +24,7 @@ class BaseOrderHandler {
   /// @@@@@@@@@@@@@@@ TA 파일 만들고 이러한 도구들 몰아넣기
   int current_position_size;
 
-  /// 주문 정보를 가지고 있는 변수를 심볼의 개수 크기로 초기화하는 함수
+  /// 주문들을 심볼의 개수 크기로 초기화하는 함수
   void InitializeOrders(int num_symbols);
 
   /// 현재 미실현 손익의 합계를 반환하는 함수.
@@ -41,11 +41,11 @@ class BaseOrderHandler {
   static shared_ptr<Logger>& logger_;
   Config config_;
 
-  // 주문 정보를 가지고 있는 변수: 심볼 인덱스<주문>
+  // 진입 및 청산 주문: 심볼 인덱스<주문>
   vector<deque<shared_ptr<Order>>> pending_entries_;  // 대기 중인 진입 주문
   vector<deque<shared_ptr<Order>>> filled_entries_;   // 체결된 진입 주문
   vector<deque<shared_ptr<Order>>> pending_exits_;    // 대기 중인 청산 주문
-  vector<shared_ptr<Order>> filled_exits_;            // 체결된 청산 주문 (통합)
+  vector<shared_ptr<Order>> filled_exits_;  // 체결된 청산 주문 (심볼 통합)
 
   /// 주문 정보에 따라 슬리피지를 반영한 체결 가격을 반환하는 함수.
   [[nodiscard]] double CalculateSlippagePrice(double order_price,
@@ -61,7 +61,16 @@ class BaseOrderHandler {
 
   /// 주문 정보에 따라 마진콜 가격을 계산하여 반환하는 함수
   [[nodiscard]] static double CalculateMarginCallPrice(
-      double entry_filled_price, Direction entry_direction, unsigned char leverage);
+      double entry_filled_price, Direction entry_direction,
+      unsigned char leverage);
+
+  /// 진입 정보에 따라 PNL을 계산하는 함수
+  static double CalculatePnl(Direction entry_direction, double base_price,
+                             double entry_price, double position_size,
+                             unsigned char leverage);
+
+  // 방향이 유효한 값인지 확인하는 함수
+  static void IsValidDirection(Direction direction);
 
   // 가격이 유효한 값인지 확인하는 함수
   static void IsValidPrice(double price);

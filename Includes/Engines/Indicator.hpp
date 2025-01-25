@@ -47,13 +47,13 @@ class Indicator {
   void SetInput(const vector<double>& input);
 
   /// 지표의 이름을 반환하는 함수
-  [[nodiscard]] string GetName() const;
+  [[nodiscard]] inline string GetName() const;
 
   /// 지표의 타임프레임을 반환하는 함수
-  [[nodiscard]] string GetTimeframe() const;
+  [[nodiscard]] inline string GetTimeframe() const;
 
   /// 지표의 파라미터를 반환하는 함수
-  [[nodiscard]] vector<double> GetInput() const;
+  [[nodiscard]] inline vector<double> GetInput() const;
 
  private:
   string name_;  // 지표의 이름
