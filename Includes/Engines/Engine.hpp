@@ -47,6 +47,9 @@ class Engine final : public BaseEngine {
   /// 전략별 미실현 손익에 따라 주문 가능 자금을 업데이트하는 함수
   void UpdateUnrealizedPnl();
 
+  /// 현재 사용 중인 바 데이터 현재 인덱스의 Open Time을 반환하는 함수
+  [[nodiscard]] inline int64_t GetCurrentOpenTime() const;
+
  private:
   // 싱글톤 인스턴스 관리
   explicit Engine();
@@ -59,8 +62,9 @@ class Engine final : public BaseEngine {
   static shared_ptr<Engine> instance_;
 
   // 트레이딩 시간 정보
-  int64_t begin_open_time_;  // 전체 바 데이터의 가장 처음 Open Time
-  int64_t end_open_time_;    // 전체 바 데이터의 가장 마지막 Open Time
+  int64_t begin_open_time_;    // 전체 바 데이터의 가장 처음 Open Time
+  int64_t end_open_time_;      // 전체 바 데이터의 가장 마지막 Open Time
+  int64_t current_open_time_;  // 현재 사용 중인 바 데이터 인덱스의 Open Time
 
   // 트레이딩 진행 여부
   vector<bool> trading_began_;  // 심볼별로 트레이딩이 진행 중인지 결정
@@ -85,11 +89,13 @@ class Engine final : public BaseEngine {
   /// 백테스팅 전 엔진의 변수들을 초기화하는 함수
   void InitializeEngine();
 
-  /// 모든 심볼에서 현재 트레이딩 바 인덱스에서 트레이딩을 진행하는지 확인하고 상태를 업데이트하는 함수
-  void UpdateTradingStatus();
+  /// 모든 심볼에서 현재 트레이딩 바 인덱스에서 트레이딩을 진행하는지 확인하고
+  /// 상태를 업데이트하며 트레이딩을 진행하는 심볼들의 벡터를 반환하는 함수
+  vector<int> UpdateTradingStatus();
 
-  /// 지정된 바 데이터에서 사용 중인 심볼의 현재 바 인덱스를 기준으로 OHLC 처리를 수행하며,
-  /// 대기 중인 주문의 체결 상태를 확인하는 함수
-  void ProcessOhlc(const BarData& bar_data);
+  /// 트레이딩 중인 심볼의 현재 바 인덱스에서 OHLC 가격을 기준으로
+  /// 마진콜과 대기 중인 주문의 체결을 확인하는 함수
+  void ProcessOhlc(const vector<int>& activated_symbols,
+                   const vector<size_t>& activated_bar_indices);
 
 };

@@ -70,7 +70,7 @@ class BarHandler final : public BaseBarHandler {
 
   /// 지정된 바 데이터 타입 및 심볼에 해당되는 바 데이터의
   /// 인덱스를 하나 증가시키는 함수
-  void IncrementBarIndex(BarType bar_type, const string& timeframe,
+  void IncreaseBarIndex(BarType bar_type, const string& timeframe,
                          int symbol_index);
 
   // ===========================================================================

@@ -5,6 +5,8 @@
 #include "Engines/BaseOrderHandler.hpp"
 
 // 내부 헤더
+#include <Engines/Exception.hpp>
+
 #include "Engines/BarData.hpp"
 #include "Engines/BarHandler.hpp"
 #include "Engines/DataUtils.hpp"
@@ -33,12 +35,13 @@ double BaseOrderHandler::GetUnrealizedPnl() const {
   // 사용 중인 정보 저장
   const auto original_symbol_idx = bar_->GetCurrentSymbolIndex();
 
+  // 바 데이터 로딩
   const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType(),
                                      bar_->GetCurrentReferenceTimeframe());
   double pnl = 0;
 
   // 심볼별 체결된 진입 순회
-  for (int symbol_idx = 0; symbol_idx < filled_entries_.size(); ++symbol_idx) {
+  for (int symbol_idx = 0; symbol_idx < filled_entries_.size(); symbol_idx++) {
     bar_->SetCurrentSymbolIndex(symbol_idx);
 
     // 해당 심볼 시가 시점의 평가 손익을 구해야 함
@@ -49,17 +52,11 @@ double BaseOrderHandler::GetUnrealizedPnl() const {
     for (const auto& filled_entry : filled_entries_[symbol_idx]) {
       // 진입 방향에 따라 손익 합산
       // 부분 청산 시 남은 진입 물량만 미실현 손익에 포함됨
-      if (filled_entry->GetEntryDirection() == Direction::LONG) {
-        pnl += (current_open - filled_entry->GetEntryFilledPrice()) *
-               (filled_entry->GetEntryFilledSize() -
-                filled_entry->GetExitFilledSize()) *
-               filled_entry->GetLeverage();
-      } else {
-        pnl += (filled_entry->GetEntryFilledPrice() - current_open) *
-               (filled_entry->GetEntryFilledSize() -
-                filled_entry->GetExitFilledSize()) *
-               filled_entry->GetLeverage();
-      }
+      pnl += CalculatePnl(filled_entry->GetEntryDirection(), current_open,
+                          filled_entry->GetEntryFilledPrice(),
+                          filled_entry->GetEntryFilledSize() -
+                              filled_entry->GetExitFilledSize(),
+                          filled_entry->GetLeverage());
     }
   }
 
@@ -101,23 +98,24 @@ double BaseOrderHandler::CalculateSlippagePrice(
     }
   }
 
-  // 방향에 따라 덧셈과 뺄셈이 달라짐
-  if (slippage_points != 0) {
-    if (direction == Direction::LONG) {
-      return RoundToDecimalPlaces(order_price + slippage_points,
-                                  CountDecimalPlaces(order_price));
-    }
-
-    if (direction == Direction::SHORT) {
-      return RoundToDecimalPlaces(order_price - slippage_points,
-                                  CountDecimalPlaces(order_price));
-    }
+  // 계산된 슬리피지 포인트가 0이면 슬리피지는 없음
+  if (slippage_points == 0) {
+    return order_price;
   }
 
-  LogFormattedInfo(
-      LogLevel::WARNING_L,
-      "주문 타입이 NONE으로 지정되어 슬리피지 가격을 계산할 수 없습니다.",
-      __FILE__, __LINE__);
+  // 방향에 따라 덧셈과 뺄셈이 달라짐
+  if (direction == Direction::LONG) {
+    return RoundToDecimalPlaces(order_price + slippage_points,
+                                CountDecimalPlaces(order_price));
+  }
+
+  if (direction == Direction::SHORT) {
+    return RoundToDecimalPlaces(order_price - slippage_points,
+                                CountDecimalPlaces(order_price));
+  }
+
+  LogFormattedInfo(LogLevel::WARNING_L, "슬리피지 계산 중 에러가 발생했습니다.",
+                   __FILE__, __LINE__);
   return -1;
 }
 
@@ -164,23 +162,46 @@ double BaseOrderHandler::CalculateMarginCallPrice(
                               CountDecimalPlaces(entry_filled_price));
 }
 
+double BaseOrderHandler::CalculatePnl(const Direction entry_direction,
+                                      const double base_price,
+                                      const double entry_price,
+                                      const double position_size,
+                                      const unsigned char leverage) {
+  if (entry_direction == Direction::LONG) {
+    return (base_price - entry_price) * position_size * leverage;
+  }
+
+  if (entry_direction == Direction::SHORT) {
+    return (entry_price - base_price) * position_size * leverage;
+  }
+
+  Logger::LogAndThrowError("방향이 잘못 지정되었습니다.", __FILE__, __LINE__);
+  return nan("");
+}
+
+void BaseOrderHandler::IsValidDirection(const Direction direction) {
+  if (direction == Direction::NONE) {
+    throw InvalidValue(
+        "주어진 방향 NONE은 LONG 혹은 SHORT으로 지정해야 합니다.");
+  }
+}
+
 void BaseOrderHandler::IsValidPrice(const double price) {
   if (price <= 0) {
-    throw runtime_error(
-        format("주어진 가격 {}은(는) 0보다 커야합니다.", price));
+    throw InvalidValue(format("주어진 가격 {}은(는) 0보다 커야합니다.", price));
   }
 }
 
 void BaseOrderHandler::IsValidPositionSize(const double position_size) {
   if (position_size <= 0) {
-    throw runtime_error(
+    throw InvalidValue(
         format("주어진 포지션 크기 {}은(는) 0보다 커야합니다.", position_size));
   }
 }
 
 void BaseOrderHandler::IsValidLeverage(const unsigned char leverage) {
   if (leverage < 1) {
-    throw runtime_error(
+    throw InvalidValue(
         format("주어진 레버리지 {}은(는) 1과 같거나 커야합니다.", leverage));
   }
 }
@@ -194,7 +215,7 @@ void BaseOrderHandler::IsValidEntryName(const string& entry_name) const {
     /* 체결된 진입 주문 중 같은 이름이 하나라도 존재하면
        해당 entry_name으로 진입 불가 */
     if (entry_name == filled_entry->GetEntryName()) {
-      throw runtime_error(format(
+      throw InvalidValue(format(
           "중복된 진입 이름 {}은(는) 동시에 체결될 수 없습니다.", entry_name));
     }
   }
@@ -204,13 +225,13 @@ void BaseOrderHandler::IsValidLimitOrderPrice(const double limit_price,
                                               const double base_price,
                                               const Direction direction) {
   if (direction == Direction::LONG && limit_price > base_price) {
-    throw runtime_error(
+    throw InvalidValue(
         format("지정가 {} 매수 주문은 기준가 {}과 같거나 작아야합니다.",
                limit_price, base_price));
   }
 
   if (direction == Direction::SHORT && limit_price < base_price) {
-    throw runtime_error(
+    throw InvalidValue(
         format("지정가 {} 매도 주문은 기준가 {}과 같거나 커야합니다.",
                limit_price, base_price));
   }
@@ -218,7 +239,7 @@ void BaseOrderHandler::IsValidLimitOrderPrice(const double limit_price,
 
 void BaseOrderHandler::IsValidTrailingTouchPrice(const double touch_price) {
   if (touch_price < 0) {
-    throw runtime_error(
+    throw InvalidValue(
         format("주어진 트레일링 터치 가격 {}은(는) 0과 같거나 커야합니다.",
                touch_price));
   }
@@ -226,7 +247,7 @@ void BaseOrderHandler::IsValidTrailingTouchPrice(const double touch_price) {
 
 void BaseOrderHandler::IsValidTrailPoint(double trail_point) {
   if (trail_point <= 0) {
-    throw runtime_error(
+    throw InvalidValue(
         format("주어진 트레일링 포인트 {}은(는) 0보다 커야합니다.",
                trail_point));
   }

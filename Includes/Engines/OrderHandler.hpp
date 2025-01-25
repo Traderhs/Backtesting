@@ -18,28 +18,19 @@ class OrderHandler final : public BaseOrderHandler {
   static shared_ptr<OrderHandler>& GetOrderHandler(const string& name);
 
   /**
-   * 현재 사용 중인 심볼에서 지정된 가격을 기준으로 진입 대기 주문들이
+   * 트레이딩 중인 심볼에서 지정된 가격을 기준으로 진입 대기 주문들이
    * 체결됐는지 확인하고 실행하는 함수.
-   *
-   * @param price 체결이 됐는지 확인하는 기준가
-   * @param open_time MIT, LIT 터치 시 주문 시간을 설정해야하므로 필요
-   * @param is_open_price 시가의 경우 갭이 발생하면 체결가가 변동되기 때문에
-   *                      필요
    */
-  void CheckPendingEntryOrders(double price, int64_t open_time,
-                               bool is_open_price);
+  void CheckPendingEntries(const vector<double>& prices, bool is_open);
 
   /**
-   * 현재 사용 중인 심볼에서 지정된 가격을 기준으로 청산 대기 주문들이
+   * 현재 사용 중인 심볼에서 지정된 가격들을 기준으로 청산 대기 주문들이
    * 체결됐는지 확인하고 실행하는 함수.
    *
-   * @param price 체결이 됐는지 확인하는 기준가
+   * @param prices [Open, High/Low, Close] 순으로 지정
    * @param open_time MIT, LIT 터치 시 주문 시간을 설정해야하므로 필요
-   * @param is_open_price 시가의 경우 갭이 발생하면 체결가가 변동되기 때문에
-   *                      필요
    */
-  void CheckPendingExitOrders(double price, int64_t open_time,
-                              bool is_open_price);
+  void CheckPendingExits(const double* prices, int64_t open_time);
 
   // ===========================================================================
   /*
@@ -191,6 +182,9 @@ class OrderHandler final : public BaseOrderHandler {
   static unordered_map<string, shared_ptr<OrderHandler>> instances_;
 
   // ===========================================================================
+  /// 시장가 진입 시 자금 관련 처리 후 체결 주문에 추가하는 함수
+  void ExecuteMarketEntry(const shared_ptr<Order>& market_entry);
+
   /// 지정된 방향과 반대 방향의 진입 체결 주문이 있으면 모두 청산하는 함수
   void ExitOppositeFilledEntries(Direction direction);
 
@@ -201,22 +195,38 @@ class OrderHandler final : public BaseOrderHandler {
   static void ExecuteCancelEntry(const shared_ptr<Order>& cancel_order);
 
   // ===========================================================================
+  /// LIMIT 진입 대기 주문의 체결을 확인하고 체결시키는 함수
+  void CheckPendingLimitEntries(int order_idx, int64_t open_time, double current_price);
+
+  /// MIT 진입 대기 주문의 체결을 확인하고 체결시키는 함수
+  void CheckPendingMitEntries(int order_idx, int64_t open_time, double current_price);
+
+  void CheckPendingMitEntries(int order_idx, int64_t open_time, double current_price, bool is_open);
+
   /// 현재 사용 중인 심볼에서 MIT/트레일링 진입 대기 주문을 체결하는 함수.
   /// 자금 관련 처리를 하고 체결 주문으로 이동시킴.
-  void ExecutePendingMarketEntry(int order_idx, int64_t open_time, double entry_order_price);
+  void FillPendingMarketEntry(int order_idx, int64_t open_time, double entry_order_price);
 
   /// 현재 사용 중인 심볼에서 지정가/LIT 진입 대기 주문을 체결하는 함수.
   /// 자금 관련 처리를 하고 체결 주문으로 이동시킴.
-  void ExecutePendingLimitEntry(int order_idx, int64_t open_time, double entry_filled_price);
+  void FillPendingLimitEntry(int order_idx, int64_t open_time, double entry_filled_price);
 
   /// 현재 사용 중인 심볼에서 LIT 진입 대기 주문이 터치되었을 때 지정가로 주문하는 함수.
-  bool OrderPendingLitEntry(int order_idx, int64_t open_time);
-
-  /// 현재 사용 중인 심볼에서 지정가/LIT 청산 대기 주문을 체결하는 함수.
-  /// 자금 관련 처리를 하고 체결 주문으로 이동시킴.
-  int ExecutePendingLimitExit(int order_idx, int64_t open_time, double entry_order_price);
+  void OrderPendingLitEntry(int order_idx, int64_t open_time);
 
   // ===========================================================================
+  /// 현재 사용 중인 심볼에서 지정가/LIT 청산 대기 주문을 체결하는 함수.
+  /// 자금 관련 처리를 하고 체결 주문으로 이동시킴.
+  int ExecutePendingLimitExit(int order_idx, int64_t open_time, double exit_order_price);
+
+  // ===========================================================================
+  /// 지정가 주문에서 현재 가격이 진입 방향에 따라
+  /// 주문 가격보다 낮아졌거나 커졌는지 확인하는 함수
+  static inline bool IsLimitPriceSatisfied(Direction direction, double price, double order_price);
+
+  /// 현재 가격이 터치 방향에 따라 터치 가격보다 커졌거나 작아졌는지 확인하는 함수
+  static inline bool IsPriceTouched(Direction direction, double price, double touch_price);
+
   /// 체결된 진입 주문에서 Target Entry Name과 같은 주문을 찾아 주문 인덱스와 함께 반환하는 함수
   [[nodiscard]] pair<shared_ptr<Order>, int> FindMatchingEntryOrder(const string& target_entry_name) const;
 
@@ -224,5 +234,5 @@ class OrderHandler final : public BaseOrderHandler {
   static double GetAdjustedExitFilledSize(double exit_size, const shared_ptr<Order>& exit_order);
 
   /// 진입 가능 자금이 필요 자금보다 많은지 확인하는 함수
-  static bool HasEnoughBalance(double available_balance, double needed_balance);
+  static void HasEnoughBalance(double available_balance, double needed_balance);
 };
