@@ -4,12 +4,24 @@
 #include <string>
 #include <vector>
 
+// 전방 선언
+class BarData;
+
 // 내부 헤더
-#include "Engines/BarData.hpp"
 #include "Engines/BaseEngine.hpp"
 
 // 네임 스페이스
 using namespace std;
+
+// 가격 타입을 지정하는 열거형 클래스
+enum class PriceType { OPEN = 0, HIGH, LOW, CLOSE };
+
+// 각 가격의 정보를 담고 있는 구조체
+struct PriceData {
+  double price;
+  PriceType price_type;
+  int symbol_index;
+};
 
 /**
  * 백테스팅 프로세스를 진행하는 클래스
@@ -81,7 +93,8 @@ class Engine final : public BaseEngine {
   void IsValidConfig() const;
 
   /// Start, End의 시간 범위가 바 데이터 시간 범위 내인지 유효성을 검증하는 함수
-  void IsValidDateRange(const string& start, const string& end, const string& format);
+  void IsValidDateRange(const string& start, const string& end,
+                        const string& format);
 
   /// 엔진에 추가된 전략의 유효성을 검증하는 함수
   void IsValidStrategies() const;
@@ -98,4 +111,9 @@ class Engine final : public BaseEngine {
   void ProcessOhlc(const vector<int>& activated_symbols,
                    const vector<size_t>& activated_bar_indices);
 
+  /// 주어진 바 데이터에서 각 심볼의 현재 인덱스에 해당하는 시가, 고가/저가, 종가를 순서대로 확인하여
+  /// 마진콜 및 대기 주문 체결 여부를 검사할 수 있도록 정보를 구조체 형태로 저장한 벡터를 반환하는 함수.
+  [[nodiscard]] static vector<PriceData> GetPriceQueue(const BarData& bar_data,
+                                                       const vector<int>& activated_symbols,
+                                                       const vector<size_t>& activated_bar_indices);
 };

@@ -3,6 +3,10 @@
 // 표준 라이브러리
 #include <unordered_map>
 
+// 전방 선언
+enum class PriceType;
+struct PriceData;
+
 // 내부 헤더
 #include "Engines/BaseOrderHandler.hpp"
 
@@ -21,16 +25,13 @@ class OrderHandler final : public BaseOrderHandler {
    * 트레이딩 중인 심볼에서 지정된 가격을 기준으로 진입 대기 주문들이
    * 체결됐는지 확인하고 실행하는 함수.
    */
-  void CheckPendingEntries(const vector<double>& prices, bool is_open);
+  void CheckPendingEntries(const vector<PriceData>& price_queue);
 
   /**
    * 현재 사용 중인 심볼에서 지정된 가격들을 기준으로 청산 대기 주문들이
    * 체결됐는지 확인하고 실행하는 함수.
-   *
-   * @param prices [Open, High/Low, Close] 순으로 지정
-   * @param open_time MIT, LIT 터치 시 주문 시간을 설정해야하므로 필요
    */
-  void CheckPendingExits(const double* prices, int64_t open_time);
+  void CheckPendingExits(const double* prices);
 
   // ===========================================================================
   /*
@@ -185,7 +186,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// 시장가 진입 시 자금 관련 처리 후 체결 주문에 추가하는 함수
   void ExecuteMarketEntry(const shared_ptr<Order>& market_entry);
 
-  /// 지정된 방향과 반대 방향의 진입 체결 주문이 있으면 모두 청산하는 함수
+  /// 현재 사용 중인 심볼에서 지정된 방향과 반대 방향의 진입 체결 주문이 있으면
+  /// 모두 청산하는 함수
   void ExitOppositeFilledEntries(Direction direction);
 
   /// 청산 시 자금, 통계 관련 처리를 하는 함수
@@ -196,35 +198,55 @@ class OrderHandler final : public BaseOrderHandler {
 
   // ===========================================================================
   /// LIMIT 진입 대기 주문의 체결을 확인하고 체결시키는 함수
-  void CheckPendingLimitEntries(int order_idx, int64_t open_time, double current_price);
+  void CheckPendingLimitEntries(int order_idx, double current_price,
+                                PriceType price_type);
 
   /// MIT 진입 대기 주문의 체결을 확인하고 체결시키는 함수
-  void CheckPendingMitEntries(int order_idx, int64_t open_time, double current_price);
+  void CheckPendingMitEntries(int order_idx, double current_price,
+                              PriceType price_type);
 
-  void CheckPendingMitEntries(int order_idx, int64_t open_time, double current_price, bool is_open);
+  /// LIT 진입 대기 주문의 체결을 확인하고 체결시키는 함수
+  void CheckPendingLitEntries(int order_idx, double current_price,
+                              PriceType price_type);
 
-  /// 현재 사용 중인 심볼에서 MIT/트레일링 진입 대기 주문을 체결하는 함수.
-  /// 자금 관련 처리를 하고 체결 주문으로 이동시킴.
-  void FillPendingMarketEntry(int order_idx, int64_t open_time, double entry_order_price);
+  /// 트레일링 진입 대기 주문의 체결을 확인하고 체결시키는 함수
+  void CheckPendingTrailingEntries(int order_idx, double current_price,
+                                   PriceType price_type);
 
-  /// 현재 사용 중인 심볼에서 지정가/LIT 진입 대기 주문을 체결하는 함수.
-  /// 자금 관련 처리를 하고 체결 주문으로 이동시킴.
-  void FillPendingLimitEntry(int order_idx, int64_t open_time, double entry_filled_price);
+  /// 현재 사용 중인 심볼에서 MIT/트레일링 진입 대기 주문을
+  /// 시장가로 체결하는 함수. 자금 관련 처리를 하고 체결 주문으로 이동시킴.
+  void FillPendingMarketEntry(int order_idx, double order_price);
+
+  /// 현재 사용 중인 심볼에서 지정가/LIT 진입 대기 주문을 지정가로 체결하는
+  /// 함수. 자금 관련 처리를 하고 체결 주문으로 이동시킴.
+  void FillPendingLimitEntry(int order_idx, double filled_price);
 
   /// 현재 사용 중인 심볼에서 LIT 진입 대기 주문이 터치되었을 때 지정가로 주문하는 함수.
-  void OrderPendingLitEntry(int order_idx, int64_t open_time);
+  void OrderPendingLitEntry(int order_idx);
 
   // ===========================================================================
   /// 현재 사용 중인 심볼에서 지정가/LIT 청산 대기 주문을 체결하는 함수.
-  /// 자금 관련 처리를 하고 체결 주문으로 이동시킴.
+  /// 자금 관련 처리를 하고 체결 주문으로 이동시킴.  // @@@@@@@@@@ 수정필
   int ExecutePendingLimitExit(int order_idx, int64_t open_time, double exit_order_price);
 
   // ===========================================================================
-  /// 지정가 주문에서 현재 가격이 진입 방향에 따라
-  /// 주문 가격보다 낮아졌거나 커졌는지 확인하는 함수
+  /**
+   * 지정가 주문에서 현재 가격이 진입 방향에 따라 주문 가격보다 낮아졌거나 커졌는지
+   * 확인하는 함수.
+   *
+   * 매수 진입의 경우, 가격이 주문 가격과 같거나 낮아지면 조건 만족.
+   *
+   * 매도 진입의 경우, 가격이 주문 가격과 같거나 높아지면 조건 만족.
+   */
   static inline bool IsLimitPriceSatisfied(Direction direction, double price, double order_price);
 
-  /// 현재 가격이 터치 방향에 따라 터치 가격보다 커졌거나 작아졌는지 확인하는 함수
+  /**
+   * 현재 가격이 터치 방향에 따라 터치 가격보다 커졌거나 작아졌는지 확인하는 함수.
+   *
+   * 터치 방향이 매수인 경우, 터치 가격과 같거나 커지면 조건 만족.
+   *
+   * 터치 방향이 매도인 경우, 터치 가격과 같거나 작아지면 조건 만족.
+   */
   static inline bool IsPriceTouched(Direction direction, double price, double touch_price);
 
   /// 체결된 진입 주문에서 Target Entry Name과 같은 주문을 찾아 주문 인덱스와 함께 반환하는 함수

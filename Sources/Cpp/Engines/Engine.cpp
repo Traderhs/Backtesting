@@ -21,6 +21,7 @@
 using namespace data_utils;
 using namespace time_utils;
 using namespace std;
+using enum PriceType;
 
 Engine::Engine()
     : begin_open_time_(INT64_MAX),
@@ -431,14 +432,16 @@ vector<int> Engine::UpdateTradingStatus() {
       }
 
       // 트레이딩을 시작했지만 끝나지 않은 심볼은 이번 바에서 끝났는지 검사
-      if (trading_bar.GetOpenTime(i, bar_->GetCurrentBarIndex()) > end_open_time_) {
+      if (trading_bar.GetOpenTime(i, bar_->GetCurrentBarIndex()) >
+          end_open_time_) {
         trading_ended_[i] = true;
       } else {
         activated_symbols.push_back(i);
       }
     } else {
       // 트레이딩을 시작하지 않은 심볼은 이번 바에서 시작했는지 검사
-      if (trading_bar.GetOpenTime(i, bar_->GetCurrentBarIndex()) == begin_open_time_) {
+      if (trading_bar.GetOpenTime(i, bar_->GetCurrentBarIndex()) ==
+          begin_open_time_) {
         trading_began_[i] = true;
         activated_symbols.push_back(i);
       }
@@ -452,44 +455,110 @@ vector<int> Engine::UpdateTradingStatus() {
   return activated_symbols;
 }
 
-void Engine::ProcessOhlc(const vector<int>& activated_symbols, const vector<size_t>& activated_bar_indices) {
+void Engine::ProcessOhlc(const vector<int>& activated_symbols,
+                         const vector<size_t>& activated_bar_indices) {
   // 바 정보 로딩
   const auto current_bar_type = bar_->GetCurrentBarType();
   const auto& bar = bar_->GetBarData(current_bar_type, "NONE");
 
   // 현재 Open Time 업데이트
-  current_open_time_ = bar.GetOpenTime(activated_symbols[0], activated_bar_indices[0]);
+  current_open_time_ =
+      bar.GetOpenTime(activated_symbols[0], activated_bar_indices[0]);
 
-  // @@@@@@@@@ 마진콜 체크 : 체결 진입 주문 체크,
-    // 마진콜 당하면 부분 청산 잔여 수량만 삭제하기
-    // + 해당 진입 이름을 목표로 하는 청산 대기 주문도 삭제
-    // Check Filled Entry MarginCall 이거 이름 잘 배열 ㄱㄱ
+  // 체결할 순서대로 가격 데이터를 저장한 벡터 로딩
+  const auto& price_queue =
+      GetPriceQueue(bar, activated_symbols, activated_bar_indices);
 
   for (const auto& strategy : strategies_) {
     // 각 전략의 OrderHandler를 순회하며 대기 주문 체크
     const auto& order_handler = strategy->GetOrderHandler();
 
-    // 시가의 마진콜 및 체결 확인
-    vector<double> open_prices;
-    for (int i = 0; i < activated_symbols.size(); i++) {
-      open_prices.push_back(bar.GetOpen(activated_symbols[i], activated_bar_indices[i]));
-    }
-
-    // @@@@@@마진콜
-
-    order_handler->CheckPendingEntries(open_prices, true);
-    order_handler->CheckPendingExits(open_prices, true);
-  }
-
-  // 가격 배열 생성
-  // 시가 대비 고가의 폭이 저가의 폭보다 크다면 시가 -> 저가 -> 고가 -> 종가로 움직임 가정
-  // 시가 대비 저가의 폭이 고가의 폭보다 크다면 시가 -> 고가 -> 저가 -> 종가로 움직임 가정
-  const double prices[4] = { open, high - open >= open - low ? low : high,
-                             high - open >= open - low ? high : low, close };
-
-
-
-    /
+    // @@@@@@@@@ 마진콜 체크 : 체결 진입 주문 체크,
+    // 마진콜 당하면 부분 청산 잔여 수량만 삭제하기
+    // + 해당 진입 이름을 목표로 하는 청산 대기 주문도 삭제
+    // Check Filled Entry MarginCall 이거 이름 잘 배열 ㄱㄱ
+    order_handler->CheckPendingEntries(price_queue);
+    order_handler->CheckPendingExits(price_queue);
   }
 }
 
+vector<PriceData> Engine::GetPriceQueue(
+    const BarData& bar_data, const vector<int>& activated_symbols,
+    const vector<size_t>& activated_bar_indices) {
+  // 최종 크기를 미리 계산하여 한 번의 할당으로 처리
+  vector<PriceData> price_queue;
+  price_queue.reserve(activated_symbols.size() * 4);
+
+  vector<PriceData> open_queue;
+  vector<PriceData> high_low_queue1;
+  vector<PriceData> high_low_queue2;
+  vector<PriceData> close_queue;
+
+  double open = 0;
+  double high = 0;
+  double low = 0;
+
+  PriceData price_data{};
+
+  for (int i = 0; i < activated_symbols.size(); i++) {
+    // 해당 심볼의 가격 데이터 로딩
+    const int symbol_idx = activated_symbols[i];
+
+    open = bar_data.GetOpen(symbol_idx, activated_bar_indices[i]);
+    high = bar_data.GetHigh(symbol_idx, activated_bar_indices[i]);
+    low = bar_data.GetLow(symbol_idx, activated_bar_indices[i]);
+
+    // 구조체 공통 필드 설정
+    price_data.symbol_index = symbol_idx;
+
+    // 시가 데이터 추가
+    price_data.price = open;
+    price_data.price_type = OPEN;
+    open_queue.push_back(price_data);
+
+    // 고저가 데이터 추가
+    // 시가 대비 고가의 폭이 저가의 폭보다 크다면 시가 -> 저가 -> 고가 -> 종가로 움직임 가정
+    // 시가 대비 저가의 폭이 고가의 폭보다 크다면 시가 -> 고가 -> 저가 -> 종가로 움직임 가정
+    if (high - open >= open - low) {
+      price_data.price = low;
+      price_data.price_type = LOW;
+      high_low_queue1.push_back(price_data);
+
+      price_data.price = high;
+      price_data.price_type = HIGH;
+      high_low_queue2.push_back(price_data);
+    } else {
+      price_data.price = high;
+      price_data.price_type = HIGH;
+      high_low_queue1.push_back(price_data);
+
+      price_data.price = low;
+      price_data.price_type = LOW;
+      high_low_queue2.push_back(price_data);
+    }
+
+    // 종가 데이터 추가
+    price_data.price = bar_data.GetClose(symbol_idx, activated_bar_indices[i]);
+    price_data.price_type = CLOSE;
+    close_queue.push_back(price_data);
+  }
+
+  // 벡터 결합
+  for (const auto& data : open_queue) {
+    price_queue.push_back(data);
+  }
+
+  for (const auto& data : high_low_queue1) {
+    price_queue.push_back(data);
+  }
+
+  for (const auto& data : high_low_queue2) {
+    price_queue.push_back(data);
+  }
+
+  for (const auto& data : close_queue) {
+    price_queue.push_back(data);
+  }
+
+  return price_queue;
+}
