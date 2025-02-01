@@ -38,25 +38,23 @@ double BaseOrderHandler::GetUnrealizedPnl() const {
   // 바 데이터 로딩
   const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType(),
                                      bar_->GetCurrentReferenceTimeframe());
-  double pnl = 0;
 
   // 심볼별 체결된 진입 순회
-  for (int symbol_idx = 0; symbol_idx < filled_entries_.size(); symbol_idx++) {
+  double pnl = 0;
+  for (int symbol_idx = 0; symbol_idx < bar.GetNumSymbols(); symbol_idx++) {
     bar_->SetCurrentSymbolIndex(symbol_idx);
-
-    // 해당 심볼 시가 시점의 평가 손익을 구해야 함
-    const auto current_open =
-        bar.GetOpen(symbol_idx, bar_->GetCurrentBarIndex());
 
     // 해당 심볼의 체결된 진입 주문 순회
     for (const auto& filled_entry : filled_entries_[symbol_idx]) {
       // 진입 방향에 따라 손익 합산
       // 부분 청산 시 남은 진입 물량만 미실현 손익에 포함됨
-      pnl += CalculatePnl(filled_entry->GetEntryDirection(), current_open,
-                          filled_entry->GetEntryFilledPrice(),
-                          filled_entry->GetEntryFilledSize() -
-                              filled_entry->GetExitFilledSize(),
-                          filled_entry->GetLeverage());
+      pnl +=
+          CalculatePnl(filled_entry->GetEntryDirection(),
+                       bar.GetBar(symbol_idx, bar_->GetCurrentBarIndex()).open,
+                       filled_entry->GetEntryFilledPrice(),
+                       filled_entry->GetEntryFilledSize() -
+                           filled_entry->GetExitFilledSize(),
+                       filled_entry->GetLeverage());
     }
   }
 
@@ -187,7 +185,7 @@ void BaseOrderHandler::IsValidDirection(const Direction direction) {
 }
 
 void BaseOrderHandler::IsValidPrice(const double price) {
-  if (price <= 0) {
+  if (price <= 0 || isnan(price)) {
     throw InvalidValue(format("주어진 가격 {}은(는) 0보다 커야합니다.", price));
   }
 }
@@ -247,9 +245,8 @@ void BaseOrderHandler::IsValidTrailingTouchPrice(const double touch_price) {
 
 void BaseOrderHandler::IsValidTrailPoint(double trail_point) {
   if (trail_point <= 0) {
-    throw InvalidValue(
-        format("주어진 트레일링 포인트 {}은(는) 0보다 커야합니다.",
-               trail_point));
+    throw InvalidValue(format(
+        "주어진 트레일링 포인트 {}은(는) 0보다 커야합니다.", trail_point));
   }
 }
 
@@ -265,7 +262,7 @@ void BaseOrderHandler::LogFormattedInfo(const LogLevel log_level,
       format("{} | {} | {}",
              bar.GetSymbolName(symbol_idx),
              UtcTimestampToUtcDatetime(
-               bar.GetOpenTime(symbol_idx, bar_->GetCurrentBarIndex())),
+               bar.GetBar(symbol_idx, bar_->GetCurrentBarIndex()).open_time),
              formatted_message),
           file, line);
   }

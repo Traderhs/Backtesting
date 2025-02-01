@@ -45,32 +45,30 @@ class BaseEngine {
   void SetConfig(const Config& config);
 
   // ==========================================================================
-  /// 현재 자금을 증가시키는 함수.
-  /// 현재 자금 증가 시 진입 가능 자금도 영향을 받으므로 같이 증가시킴.
+  /// 지갑 자금을 증가시키는 함수.
   bool IncreaseWalletBalance(double increase_balance);
 
-  /// 현재 자금을 감소시키는 함수 (양수로 지정).
-  /// 현재 자금 감소 시 진입 가능 자금도 영향을 받으므로 같이 감소시킴.
+  /// 지갑 자금을 감소시키는 함수 (양수로 지정).
   bool DecreaseWalletBalance(double decrease_balance);
 
-  /// 주문 가능 자금을 증가시키는 함수
-  bool IncreaseAvailableBalance(double increase_balance);
-
-  /// 주문 가능 자금을 감소시키는 함수 (양수로 지정)
+  /// 사용 가능 자금을 감소시키는 함수 (양수로 지정)
   bool DecreaseAvailableBalance(double decrease_balance);
 
-  /// 파산 당했을 때 설정하는 함수
+  /// 사용한 마진을 증가시키는 함수
+  void IncreaseUsedMargin(double increase_margin);
+
+  /// 사용한 마진을 감소시키는 함수 (양수로 지정)
+  void DecreaseUsedMargin(double decrease_margin);
+
+  /// 파산을 당했을 때 설정하는 함수
   inline void SetBankruptcy();
 
   // ==========================================================================
   /// 엔진 설정을 반환하는 함수
   [[nodiscard]] inline Config GetConfig() const;
 
-  /// 현재 자금을 반환하는 함수
-  [[nodiscard]] inline double GetCurrentBalance() const;
-
-  /// 주문 가능 자금을 반환하는 함수
-  [[nodiscard]] inline double GetAvailableBalance() const;
+  /// 지갑 자금을 반환하는 함수
+  [[nodiscard]] inline double GetWalletBalance() const;
 
  protected:
   BaseEngine();
@@ -86,11 +84,17 @@ class BaseEngine {
   Config config_;
 
   // 자금 관련 중도 설정 항목
-  /// 현재 자금 = 초기 자금 ± 실현 손익 ± 펀딩피 - 수수료
+  /// 지갑 자금 = 초기 자금 ± 실현 손익 ± 펀딩피 - 수수료
   double wallet_balance_;
 
-  /// 주문 가능 자금 = 현재 자금 ± 미실현 손익 - 마진 자금(진입 증거금 + 예약 증거금)
+  /// 사용 가능 자금 = 지갑 자금 ± 미실현 손익 - 사용한 마진
   double available_balance_;
+
+  /// 미실현 손익 = 진입한 포지션의 손익의 합
+  double unrealized_pnl_;
+
+  /// 사용한 마진: 진입 증거금 + 예약 증거금
+  double used_margin_;
 
   /// 파산 여부를 나타내는 플래그
   bool is_bankruptcy_;

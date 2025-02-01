@@ -83,7 +83,8 @@ any GetScalarValue(const shared_ptr<Scalar>& scalar);
  */
 void TableToParquet(const shared_ptr<Table>& table, const string& file_path);
 
-/// 1차원 벡터를 csv로 저장하는 함수
+/// 1차원 벡터를 csv로 저장하는 함수.
+/// 파일이 존재하는 경우 기존 내용은 초기화 됨.
 void VectorToCsv(const vector<double>& data, const string& file_name);
 
 /**
@@ -98,4 +99,10 @@ pair<shared_ptr<Table>, shared_ptr<Table>> SplitTable(const shared_ptr<Table>& t
 
 /// 최소 틱 크기로 가격을 반올림하여 반환하는 함수
 double RoundToTickSize(double price, double tick_size);
+
+// FormatDollar에서 사용하는 공통 Locale 설정
+static locale global_locale("en_US.UTF-8");
+
+/// 금액을 천 단위 쉼표와 달러 표기로 포맷하여 반환하는 함수
+string FormatDollar(double price);
 }

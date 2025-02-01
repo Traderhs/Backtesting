@@ -14,6 +14,7 @@ Open::Open(const string& name, const string& timeframe)
 void Open::Initialize() {}
 
 double Open::Calculate() {
-  return bar_->GetBarData(BarType::REFERENCE, GetTimeframe())
-      .GetOpen(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex());
+  return bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe())
+      .GetBar(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex())
+      .open;
 }

@@ -130,20 +130,23 @@ void BarHandler::ProcessBarIndex(const int symbol_idx, const BarType bar_type,
 
   try {
     // 현재 Close Time이 Base Close Time보다 작을 때만 인덱스 증가 가능
-    while (bar_data.GetCloseTime(symbol_idx, bar_index[symbol_idx]) <
+    while (bar_data.SafeGetBar(symbol_idx, bar_index[symbol_idx]).close_time <
            base_close_time) {
       /* 다음 바의 Close Time이 Base Close Time보다 작거나 같을 때만
          인덱스 증가 */
       if (const auto next_close_time =
-              bar_data.GetCloseTime(symbol_idx, bar_index[symbol_idx] + 1);
+              bar_data.SafeGetBar(symbol_idx, bar_index[symbol_idx] + 1)
+                  .close_time;
           next_close_time <= base_close_time) {
         bar_index[symbol_idx]++;
       } else {
-        // 다음 바 Close Time이 Base Close Time보다 크면 증가하지 않고 종료
+        /* 다음 바 Close Time이 Base Close Time보다 크면 증가하지 않고 종료.
+           이 함수의 목적은 Base Close Time까지 지정된 심볼의 Close Time을
+           이동시키는 것이기 때문 */
         break;
       }
     }
-  } catch (IndexOutOfRange) {
+  } catch ([[maybe_unused]] const IndexOutOfRange& e) {
     /* next_close_time이 바 데이터의 범위를 넘으면
        최대 인덱스로 이동한 것이므로 return */
     return;
@@ -365,8 +368,8 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
           Logger::LogAndThrowError(
               format("주어진 참조 타임프레임 {}은(는) "
                      "트레이딩 타임프레임 {}과 같거나 높아야합니다.",
-                       timeframe, trading_tf),
-                __FILE__, __LINE__);
+                     timeframe, trading_tf),
+              __FILE__, __LINE__);
           return;
         }
 

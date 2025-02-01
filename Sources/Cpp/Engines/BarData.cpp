@@ -23,14 +23,9 @@ void BarData::SetBarData(const string& symbol_name, const string& timeframe,
   const size_t total_rows = bar_data->num_rows();
   const size_t symbol_idx = symbol_names_.size();  // 기존 마지막 인덱스 + 1
 
-  // 한번에 메모리 할당 및 초기화
-  open_time_.emplace_back();
-  open_.emplace_back();
-  high_.emplace_back();
-  low_.emplace_back();
-  close_.emplace_back();
-  volume_.emplace_back();
-  close_time_.emplace_back();
+  // 한번에 메모리 할당
+  bar_data_.emplace_back();
+  bar_data_[symbol_idx].resize(total_rows);
 
   // 바 정보 설정
   symbol_names_.push_back(symbol_name);
@@ -38,142 +33,49 @@ void BarData::SetBarData(const string& symbol_name, const string& timeframe,
   num_bars_.push_back(total_rows);
   if (timeframe_.empty()) timeframe_ = timeframe;
 
-  // 벡터들 미리 리사이즈
-  open_time_[symbol_idx].reserve(total_rows);
-  open_[symbol_idx].reserve(total_rows);
-  high_[symbol_idx].reserve(total_rows);
-  low_[symbol_idx].reserve(total_rows);
-  close_[symbol_idx].reserve(total_rows);
-  volume_[symbol_idx].reserve(total_rows);
-  close_time_[symbol_idx].reserve(total_rows);
+  // 컬럼 데이터를 미리 캐스팅하여 저장
+  const auto& open_time_array =
+      static_pointer_cast<Int64Array>(bar_data->column(columns[0])->chunk(0));
+  const auto& open_array =
+      static_pointer_cast<DoubleArray>(bar_data->column(columns[1])->chunk(0));
+  const auto& high_array =
+      static_pointer_cast<DoubleArray>(bar_data->column(columns[2])->chunk(0));
+  const auto& low_array =
+      static_pointer_cast<DoubleArray>(bar_data->column(columns[3])->chunk(0));
+  const auto& close_array =
+      static_pointer_cast<DoubleArray>(bar_data->column(columns[4])->chunk(0));
+  const auto& volume_array =
+      static_pointer_cast<DoubleArray>(bar_data->column(columns[5])->chunk(0));
+  const auto& close_time_array =
+      static_pointer_cast<Int64Array>(bar_data->column(columns[6])->chunk(0));
 
-  // 컬럼 배열 미리 리사이즈
-  vector<shared_ptr<ChunkedArray>> column_arrays;
-  column_arrays.reserve(columns.size());
-  for (const int column : columns) {
-    column_arrays.push_back(bar_data->column(column));
-  }
+  // raw 포인터로 직접 접근
+  const int64_t* open_time_data = open_time_array->raw_values();
+  const double* open_data = open_array->raw_values();
+  const double* high_data = high_array->raw_values();
+  const double* low_data = low_array->raw_values();
+  const double* close_data = close_array->raw_values();
+  const double* volume_data = volume_array->raw_values();
+  const int64_t* close_time_data = close_time_array->raw_values();
 
-  // 청크별 처리
-#pragma omp parallel
-  {
-    // 스레드별 임시 버퍼
-    vector<int64_t> local_open_time;
-    vector<double> local_open, local_high, local_low, local_close, local_volume;
-    vector<int64_t> local_close_time;
-
-#pragma omp for ordered nowait
-    // 청크 순회
-    for (int chunk_idx = 0; chunk_idx < column_arrays[0]->num_chunks();
-         ++chunk_idx) {
-      const int64_t chunk_length = column_arrays[0]->chunk(chunk_idx)->length();
-
-      // 로컬 버퍼 리사이즈
-      local_open_time.resize(chunk_length);
-      local_open.resize(chunk_length);
-      local_high.resize(chunk_length);
-      local_low.resize(chunk_length);
-      local_close.resize(chunk_length);
-      local_volume.resize(chunk_length);
-      local_close_time.resize(chunk_length);
-
-      // 포인터로 직접 접근
-      const auto open_time_arr =
-          static_pointer_cast<Int64Array>(column_arrays[0]->chunk(chunk_idx));
-      const auto open_arr =
-          static_pointer_cast<DoubleArray>(column_arrays[1]->chunk(chunk_idx));
-      const auto high_arr =
-          static_pointer_cast<DoubleArray>(column_arrays[2]->chunk(chunk_idx));
-      const auto low_arr =
-          static_pointer_cast<DoubleArray>(column_arrays[3]->chunk(chunk_idx));
-      const auto close_arr =
-          static_pointer_cast<DoubleArray>(column_arrays[4]->chunk(chunk_idx));
-      const auto volume_arr =
-          static_pointer_cast<DoubleArray>(column_arrays[5]->chunk(chunk_idx));
-      const auto close_time_arr =
-          static_pointer_cast<Int64Array>(column_arrays[6]->chunk(chunk_idx));
-
-      // memcpy로 한번에 복사
-      memcpy(local_open_time.data(), open_time_arr->raw_values(),
-             chunk_length * sizeof(int64_t));
-      memcpy(local_open.data(), open_arr->raw_values(),
-             chunk_length * sizeof(double));
-      memcpy(local_high.data(), high_arr->raw_values(),
-             chunk_length * sizeof(double));
-      memcpy(local_low.data(), low_arr->raw_values(),
-             chunk_length * sizeof(double));
-      memcpy(local_close.data(), close_arr->raw_values(),
-             chunk_length * sizeof(double));
-      memcpy(local_volume.data(), volume_arr->raw_values(),
-             chunk_length * sizeof(double));
-      memcpy(local_close_time.data(), close_time_arr->raw_values(),
-             chunk_length * sizeof(int64_t));
-
-      // 순서대로 결과 합치기
-#pragma omp ordered
-      {
-        open_time_[symbol_idx].insert(open_time_[symbol_idx].end(),
-                                      local_open_time.begin(),
-                                      local_open_time.end());
-        open_[symbol_idx].insert(open_[symbol_idx].end(), local_open.begin(),
-                                 local_open.end());
-        high_[symbol_idx].insert(high_[symbol_idx].end(), local_high.begin(),
-                                 local_high.end());
-        low_[symbol_idx].insert(low_[symbol_idx].end(), local_low.begin(),
-                                local_low.end());
-        close_[symbol_idx].insert(close_[symbol_idx].end(), local_close.begin(),
-                                  local_close.end());
-        volume_[symbol_idx].insert(volume_[symbol_idx].end(),
-                                   local_volume.begin(), local_volume.end());
-        close_time_[symbol_idx].insert(close_time_[symbol_idx].end(),
-                                       local_close_time.begin(),
-                                       local_close_time.end());
-      }
-    }
+  // 데이터 복사
+#pragma omp parallel for
+  for (int64_t row = 0; row < total_rows; row++) {
+    bar_data_[symbol_idx][row] = {open_time_data[row], open_data[row],
+                                  high_data[row],      low_data[row],
+                                  close_data[row],     volume_data[row],
+                                  close_time_data[row]};
   }
 }
 
-int64_t BarData::GetOpenTime(const int symbol_idx, const size_t bar_idx) const {
+Bar BarData::SafeGetBar(const int symbol_idx, const size_t bar_idx) const {
   IsValidIndex(symbol_idx, bar_idx);
 
-  return open_time_[symbol_idx][bar_idx];
+  return bar_data_[symbol_idx][bar_idx];
 }
 
-double BarData::GetOpen(const int symbol_idx, const size_t bar_idx) const {
-  IsValidIndex(symbol_idx, bar_idx);
-
-  return open_[symbol_idx][bar_idx];
-}
-
-double BarData::GetHigh(const int symbol_idx, const size_t bar_idx) const {
-  IsValidIndex(symbol_idx, bar_idx);
-
-  return high_[symbol_idx][bar_idx];
-}
-
-double BarData::GetLow(const int symbol_idx, const size_t bar_idx) const {
-  IsValidIndex(symbol_idx, bar_idx);
-
-  return low_[symbol_idx][bar_idx];
-}
-
-double BarData::GetClose(const int symbol_idx, const size_t bar_idx) const {
-  IsValidIndex(symbol_idx, bar_idx);
-
-  return close_[symbol_idx][bar_idx];
-}
-
-double BarData::GetVolume(const int symbol_idx, const size_t bar_idx) const {
-  IsValidIndex(symbol_idx, bar_idx);
-
-  return volume_[symbol_idx][bar_idx];
-}
-
-int64_t BarData::GetCloseTime(const int symbol_idx,
-                              const size_t bar_idx) const {
-  IsValidIndex(symbol_idx, bar_idx);
-
-  return close_time_[symbol_idx][bar_idx];
+Bar BarData::GetBar(const int symbol_idx, const size_t bar_idx) const {
+  return bar_data_[symbol_idx][bar_idx];
 }
 
 string BarData::GetSymbolName(const int symbol_idx) const {
@@ -200,6 +102,26 @@ size_t BarData::GetNumBars(const int symbol_idx) const {
 
 string BarData::GetTimeframe() const { return timeframe_; }
 
+void BarData::IsValidIndex(const int symbol_idx, const size_t bar_idx) const {
+  IsValidSymbolIndex(symbol_idx);
+
+  // 0보다 작은 조건은 size_t이므로 제외
+  if (bar_idx > num_bars_[symbol_idx] - 1) {
+    throw IndexOutOfRange(
+        format("지정된 바 인덱스 {}은(는) 최대값 {}을(를) 초과했습니다.",
+               symbol_idx, num_bars_[symbol_idx] - 1));
+  }
+}
+
+void BarData::IsValidSymbolIndex(int symbol_idx) const {
+  if (symbol_idx > num_symbols_ - 1 || symbol_idx < 0) {
+    throw IndexOutOfRange(
+        format("지정된 심볼 인덱스 {}은(는) 최대값 {}을(를)"
+               " 초과했거나 0 미만입니다.",
+               symbol_idx, num_symbols_ - 1));
+  }
+}
+
 void BarData::IsValidSettings(const string& symbol_name,
                               const string& timeframe,
                               const shared_ptr<Table>& bar_data,
@@ -225,24 +147,5 @@ void BarData::IsValidSettings(const string& symbol_name,
                                     "추가된 타임프레임 {}와 일치하지 않습니다.",
                                     timeframe, timeframe_),
                              __FILE__, __LINE__);
-  }
-}
-
-void BarData::IsValidIndex(const int symbol_idx, const size_t bar_idx) const {
-  IsValidSymbolIndex(symbol_idx);
-
-  // 0보다 작은 조건은 size_t이므로 제외
-  if (bar_idx > num_bars_[symbol_idx] - 1) {
-    throw IndexOutOfRange(
-        format("지정된 바 인덱스 {}은(는) 최대값 {}을(를) 초과했습니다.",
-                       symbol_idx, num_bars_[symbol_idx] - 1));
-  }
-}
-
-void BarData::IsValidSymbolIndex(int symbol_idx) const {
-  if (symbol_idx > num_symbols_ - 1 || symbol_idx < 0) {
-    throw IndexOutOfRange(format("지정된 심볼 인덱스 {}은(는) 최대값 {}을(를)"
-                                         " 초과했거나 0 미만입니다.",
-                                         symbol_idx, num_symbols_ - 1));
   }
 }

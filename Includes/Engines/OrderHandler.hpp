@@ -22,16 +22,16 @@ class OrderHandler final : public BaseOrderHandler {
   static shared_ptr<OrderHandler>& GetOrderHandler(const string& name);
 
   /**
-   * 트레이딩 중인 심볼에서 지정된 가격을 기준으로 진입 대기 주문들이
+   * 트레이딩 중인 심볼에서 지정된 가격들을 기준으로 진입 대기 주문들이
    * 체결됐는지 확인하고 실행하는 함수.
    */
   void CheckPendingEntries(const vector<PriceData>& price_queue);
 
   /**
-   * 현재 사용 중인 심볼에서 지정된 가격들을 기준으로 청산 대기 주문들이
+   * 트레이딩 중인 심볼에서 지정된 가격들을 기준으로 청산 대기 주문들이
    * 체결됐는지 확인하고 실행하는 함수.
    */
-  void CheckPendingExits(const double* prices);
+  void CheckPendingExits(const vector<PriceData>& price_queue);
 
   // ===========================================================================
   /*
@@ -39,7 +39,7 @@ class OrderHandler final : public BaseOrderHandler {
    *
    * ! 주의 사항 !
    * 1. 하나의 진입 이름으로는 하나의 진입만 체결할 수 있음.
-   * 2. 동일한 진입 이름으로 주문 시 대기 진입 주문은 취소 후 재주문,
+   * 2. 동일한 진입 이름으로 주문 시 진입 대기 주문은 취소 후 재주문,
    *    체결된 진입이 있을 경우 시장가 체결은 거부됨.
    * 3. 체결된 하나의 진입 이름에 대해서 여러 청산 대기 주문을 가질 수 있음.
    * 4. 동일한 청산 이름으로 주문 시 대기 청산 주문은 취소 후 재주문.
@@ -255,6 +255,6 @@ class OrderHandler final : public BaseOrderHandler {
   /// 청산 체결 크기가 진입 체결 크기를 넘지 않도록 조정하여 반환하는 함수
   static double GetAdjustedExitFilledSize(double exit_size, const shared_ptr<Order>& exit_order);
 
-  /// 진입 가능 자금이 필요 자금보다 많은지 확인하는 함수
-  static void HasEnoughBalance(double available_balance, double needed_balance);
+  /// 자금이 필요 자금보다 많은지 확인하는 함수
+  static void HasEnoughBalance(double balance, double needed_balance);
 };

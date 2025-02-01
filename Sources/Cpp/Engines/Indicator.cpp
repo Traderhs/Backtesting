@@ -70,7 +70,7 @@ double Indicator::operator[](const size_t index) {
   const auto bar_index = bar_->GetCurrentBarIndex();
 
   // 진행한 인덱스보다 과거 인덱스 참조 시 throw
-  IsValidReferenceIndex(bar_index, index);
+  IsValidReferenceIndex(index, bar_index);
 
   // 원래 사용 중이던 데이터 환경으로 복구
   bar_->SetCurrentBarType(original_bar_type, original_reference_tf);
@@ -144,10 +144,10 @@ void Indicator::CalculateAll() {
     is_calculated_ = true;
 
     // 계산 완료 로그
-    logger_->Log(
-        LogLevel::INFO_L,
-        format("모든 심볼 {} {} 지표의 계산이 완료되었습니다.", name_, timeframe_),
-        __FILE__, __LINE__);
+    logger_->Log(LogLevel::INFO_L,
+                 format("모든 심볼 {} {} 지표의 계산이 완료되었습니다.", name_,
+                        timeframe_),
+                 __FILE__, __LINE__);
 
   } catch (exception& e) {
     Logger::LogAndThrowError(
@@ -170,9 +170,10 @@ string Indicator::GetTimeframe() const { return timeframe_; }
 
 vector<double> Indicator::GetInput() const { return input_; }
 
-void Indicator::IsValidReferenceIndex(const size_t current_bar_index, const size_t target_index) const {
+void Indicator::IsValidReferenceIndex(const size_t reference_index,
+                                      const size_t current_bar_index) const {
   // 진행한 인덱스보다 과거 인덱스 참조 시 throw
-  if (current_bar_index < target_index) {
+  if (current_bar_index < reference_index) {
     const auto& bar = bar_->GetBarData(BarType::REFERENCE, timeframe_);
     const int symbol_idx = bar_->GetCurrentSymbolIndex();
     const size_t bar_idx = bar_->GetCurrentBarIndex();
@@ -181,6 +182,6 @@ void Indicator::IsValidReferenceIndex(const size_t current_bar_index, const size
         "{} | {} | 진행한 인덱스보다 과거 인덱스를 사용하여 지표값을 참조할 "
         "수 없습니다.",
         bar.GetSymbolName(symbol_idx),
-        UtcTimestampToUtcDatetime(bar.GetOpenTime(symbol_idx, bar_idx))));
+        UtcTimestampToUtcDatetime(bar.GetBar(symbol_idx, bar_idx).open_time)));
   }
 }

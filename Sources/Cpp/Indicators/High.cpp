@@ -14,7 +14,7 @@ High::High(const string& name, const string& timeframe)
 void High::Initialize() {}
 
 double High::Calculate() {
-  return bar_
-      ->GetBarData(BarType::REFERENCE, GetTimeframe())
-      .GetHigh(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex());
+  return bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe())
+      .GetBar(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex())
+      .high;
 }

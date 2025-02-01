@@ -6,12 +6,19 @@
 
 // 내부 헤더
 #include "Engines/BarHandler.hpp"
+#include "Engines/DataUtils.hpp"
 #include "Engines/Strategy.hpp"
+
+// 네임 스페이스
+using namespace data_utils;
 
 BaseEngine::BaseEngine()
     : debug_mode_(false),
       wallet_balance_(-1),
       available_balance_(-1),
+      unrealized_pnl_(0),
+      used_margin_(0),
+      is_bankruptcy_(false),
       max_wallet_balance_(-1),
       min_wallet_balance_(-1),
       drawdown_(0),
@@ -50,17 +57,14 @@ void BaseEngine::SetConfig(const Config& config) {
 
 bool BaseEngine::IncreaseWalletBalance(const double increase_balance) {
   if (increase_balance <= 0) {
-    logger_->Log(
-        LogLevel::ERROR_L,
-        format("현재 자금 증가를 위해 주어진 값 {}은(는) 0보다 커야합니다.",
-               increase_balance),
-        __FILE__, __LINE__);
+    logger_->Log(LogLevel::ERROR_L,
+                 format("현재 자금 증가를 위해 주어진 {}는 0보다 커야합니다.",
+                        FormatDollar(increase_balance)),
+                 __FILE__, __LINE__);
     return false;
   }
 
-  // Wallet이 증가하면 주문 가능 자금도 영향을 받기 때문에 동시 처리
   wallet_balance_ += increase_balance;
-  available_balance_ += increase_balance;
   return true;
 }
 
@@ -68,56 +72,62 @@ bool BaseEngine::DecreaseWalletBalance(const double decrease_balance) {
   if (decrease_balance <= 0 || decrease_balance > wallet_balance_) {
     logger_->Log(
         LogLevel::ERROR_L,
-        format("현재 자금 감소를 위해 주어진 값 {}은(는) 양수로 지정되어야 "
-               "하며, 현재 자금 {}을(를) 초과할 수 없습니다.",
-               decrease_balance, wallet_balance_),
+        format("현재 자금 감소를 위해 주어진 {}는 0보다 커야 하며, "
+               "지갑 자금 {}를 초과할 수 없습니다.",
+               FormatDollar(decrease_balance), FormatDollar(wallet_balance_)),
         __FILE__, __LINE__);
     return false;
   }
 
-  // Wallet이 감소하면 주문 가능 자금도 영향을 받기 때문에 동시 처리
   wallet_balance_ -= decrease_balance;
-  available_balance_ -= decrease_balance;
   return true;
 }
 
-bool BaseEngine::IncreaseAvailableBalance(const double increase_balance) {
-  if (increase_balance <= 0) {
+void BaseEngine::IncreaseUsedMargin(const double increase_margin) {
+  if (increase_margin <= 0) {
     logger_->Log(
         LogLevel::ERROR_L,
-        format(
-            "주문 가능 자금 증가를 위해 주어진 값 {}은(는) 0보다 커야합니다.",
-            increase_balance),
+        format("사용한 마진 증가를 위해 주어진 {}는 0보다 커야 합니다.",
+               FormatDollar(increase_margin)),
         __FILE__, __LINE__);
-    return false;
+    return;
   }
 
-  available_balance_ += increase_balance;
-  return true;
-}
-
-bool BaseEngine::DecreaseAvailableBalance(double decrease_balance) {
-  if (decrease_balance <= 0 || decrease_balance > available_balance_) {
+  // 사용 가능한 마진의 최대값은 현재 실제 보유한 자금인 지갑 자금과
+  // 미실현 손익의 합계
+  const double total_balance = wallet_balance_ + unrealized_pnl_;
+  if (const double sum_used_margin = used_margin_ + increase_margin;
+      sum_used_margin > total_balance) {
     logger_->Log(
         LogLevel::ERROR_L,
-        format(
-            "주문 가능 자금 감소를 위해 주어진 값 {}은(는) 양수로 지정되어야 "
-            "하며, 주문 가능 자금 {}을(를) 초과할 수 없습니다.",
-            decrease_balance, available_balance_),
+        format("사용한 마진 {}와 증가할 마진 {}의 합 {}는 "
+               "지갑 자금 {}와 미실현 손익 {}의 합계 {}를 초과할 수 없습니다.",
+               FormatDollar(used_margin_), FormatDollar(increase_margin),
+               FormatDollar(sum_used_margin), FormatDollar(wallet_balance_),
+               FormatDollar(unrealized_pnl_), FormatDollar(total_balance)),
         __FILE__, __LINE__);
-    return false;
+    return;
   }
 
-  available_balance_ -= decrease_balance;
-  return true;
+  used_margin_ += increase_margin;
 }
 
-void BaseEngine::SetBankruptcy() {
-  is_bankruptcy_ = true;
+void BaseEngine::DecreaseUsedMargin(const double decrease_margin) {
+  if (decrease_margin <= 0 || decrease_margin > used_margin_) {
+    logger_->Log(
+        LogLevel::ERROR_L,
+        format("사용한 마진 감소를 위해 주어진 {}는 양수로 지정되어야 하며, "
+               "사용한 마진 {}를 초과할 수 없습니다.",
+               FormatDollar(decrease_margin), FormatDollar(used_margin_)),
+        __FILE__, __LINE__);
+    return;
+  }
+
+  used_margin_ -= decrease_margin;
 }
+
+void BaseEngine::SetBankruptcy() { is_bankruptcy_ = true; }
 
 Config BaseEngine::GetConfig() const { return config_; }
 
-double BaseEngine::GetCurrentBalance() const { return wallet_balance_; }
-
-double BaseEngine::GetAvailableBalance() const { return available_balance_; }
+double BaseEngine::GetWalletBalance() const { return wallet_balance_; }

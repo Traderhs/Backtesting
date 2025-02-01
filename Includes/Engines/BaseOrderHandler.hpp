@@ -64,7 +64,7 @@ class BaseOrderHandler {
       double entry_filled_price, Direction entry_direction,
       unsigned char leverage);
 
-  /// 진입 정보에 따라 PNL을 계산하는 함수
+  /// 진입 정보에 따라 PnL을 계산하는 함수
   static double CalculatePnl(Direction entry_direction, double base_price,
                              double entry_price, double position_size,
                              unsigned char leverage);

@@ -32,7 +32,8 @@ class Indicator {
   static shared_ptr<Logger>& logger_;
 
   /// 커스텀 지표들의 멤버 변수들을 초기화하는 함수.
-  /// 심볼별 계산 시 각 심볼에서 멤버 변수들을 초기화해야 하기 때문에 필요.
+  /// 심볼별 지표 계산 시 각 심볼에서 멤버 변수들을 초기 상태로 복구하여
+  /// 초기부터 계산할 수 있게 해야 함.
   virtual void Initialize() = 0;
 
   /// 각 바에서 지표를 계산하는 함수. 메인 로직을 작성.
@@ -56,16 +57,16 @@ class Indicator {
   [[nodiscard]] inline vector<double> GetInput() const;
 
  private:
-  string name_;  // 지표의 이름
-  string timeframe_;  // 지표의 타임프레임
-  vector<double> input_;  // 지표의 파라미터
+  string name_;                    // 지표의 이름
+  string timeframe_;               // 지표의 타임프레임
+  vector<double> input_;           // 지표의 파라미터
   vector<vector<double>> output_;  // 지표의 계산된 값: 심볼<값>
-  bool is_calculated_;  // 지표가 계산되었는지 확인하는 플래그
+  bool is_calculated_;             // 지표가 계산되었는지 확인하는 플래그
 
   // 지표가 현재 계산 중인지 확인하는 플래그 -> 지표 내 다른 지표가 다른 타임프레임을 가질 수 없게 검사할 때 사용
   static bool is_calculating_;
 
   /// 현재 진행한 바 인덱스보다 과거의 바 인덱스를 참조하는지 검증하는 함수
-  void IsValidReferenceIndex(size_t current_bar_index, size_t target_index) const;
+  void IsValidReferenceIndex(size_t reference_index, size_t current_bar_index) const;
 };
 

@@ -27,7 +27,7 @@ Engine::Engine()
     : begin_open_time_(INT64_MAX),
       end_open_time_(0),
       current_open_time_(0),
-      unrealized_pnl_updated_(false) {}
+      available_balance_updated_(false) {}
 
 void Engine::Deleter::operator()(const Engine* p) const {
   // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 저장할 거 저장하기
@@ -88,11 +88,11 @@ void Engine::Backtesting(const bool use_bar_magnifier, const string& start,
     for (const int symbol_idx : activated_symbols) {
       bar_->IncreaseBarIndex(BarType::TRADING, "NONE", symbol_idx);
     }
-    unrealized_pnl_updated_ = false;
+    available_balance_updated_ = false;
 
     // 현재 바 인덱스의 트레이딩을 진행
 
-    // 한 바 이동 시 unrealized_pnl_updated_ : false
+    // 한 바 이동 시 available_balance_updated_ : false
 
     // current_position_size(baseorder), current symbol 등의 업데이트
 
@@ -122,8 +122,8 @@ void Engine::Backtesting(const bool use_bar_magnifier, const string& start,
   // @@@@@@@@ 완성 후 모듈화 ㄱㄱ
 }
 
-void Engine::UpdateUnrealizedPnl() {
-  if (!unrealized_pnl_updated_) {
+double Engine::GetAvailableBalance() {
+  if (!available_balance_updated_) {
     double unrealized_pnl = 0;
 
     // 전략별 미실현 손익을 합산
@@ -131,15 +131,15 @@ void Engine::UpdateUnrealizedPnl() {
       unrealized_pnl += strategy->GetOrderHandler()->GetUnrealizedPnl();
     }
 
-    // 진입 가능 자금 추가/감소
-    if (unrealized_pnl > 0) {
-      IncreaseAvailableBalance(unrealized_pnl);
-    } else if (unrealized_pnl < 0) {
-      DecreaseAvailableBalance(abs(unrealized_pnl));
-    }
+    // 미실현 손익 업데이트
+    unrealized_pnl_ = unrealized_pnl;
 
-    unrealized_pnl_updated_ = true;
+    // 사용 가능 자금 업데이트
+    available_balance_ = wallet_balance_ + unrealized_pnl - used_margin_;
+    available_balance_updated_ = true;
   }
+
+  return available_balance_;
 }
 
 int64_t Engine::GetCurrentOpenTime() const { return current_open_time_; }
@@ -156,7 +156,7 @@ void Engine::IsValidBarData(const bool use_bar_magnifier) {
   // 1.2. 트레이딩 바 데이터의 중복 가능성 검증
   set<double> trading_bar_open;
   for (int i = 0; i < trading_num_symbols; i++) {
-    trading_bar_open.insert(trading_bar.GetOpen(i, 0));
+    trading_bar_open.insert(trading_bar.GetBar(i, 0).open);
   }
 
   if (trading_bar_open.size() != trading_num_symbols) {
@@ -196,7 +196,7 @@ void Engine::IsValidBarData(const bool use_bar_magnifier) {
     // 2.3. 돋보기 바 데이터의 중복 가능성 검증
     set<double> magnifier_open;
     for (int i = 0; i < magnifier_num_symbols; i++) {
-      magnifier_open.insert(magnifier_bar.GetOpen(i, 0));
+      magnifier_open.insert(magnifier_bar.GetBar(i, 0).open);
     }
 
     if (magnifier_open.size() != magnifier_num_symbols) {
@@ -241,7 +241,7 @@ void Engine::IsValidBarData(const bool use_bar_magnifier) {
     // 3.3. 참조 바 데이터의 중복 가능성 검증
     set<double> reference_open;
     for (int i = 0; i < reference_num_symbols; i++) {
-      reference_open.insert(reference_bar.GetOpen(i, 0));
+      reference_open.insert(reference_bar.GetBar(i, 0).open);
     }
 
     if (reference_open.size() != reference_num_symbols) {
@@ -316,11 +316,13 @@ void Engine::IsValidDateRange(const string& start, const string& end,
   const auto& trading_bar = bar_->GetBarData(BarType::TRADING);
   for (int i = 0; i < trading_bar.GetNumSymbols(); i++) {
     // 백테스팅 시작 시 가장 처음의 Open Time 값 구하기
-    begin_open_time_ = min(begin_open_time_, trading_bar.GetOpenTime(i, 0));
+    begin_open_time_ =
+        min(begin_open_time_, trading_bar.GetBar(i, 0).open_time);
 
     // 백테스팅 시작 시 가장 끝의 Open Time 값 구하기
-    end_open_time_ = max(end_open_time_, trading_bar.GetOpenTime(
-                                             i, trading_bar.GetNumBars(i) - 1));
+    end_open_time_ =
+        max(end_open_time_,
+            trading_bar.GetBar(i, trading_bar.GetNumBars(i) - 1).open_time);
   }
 
   // Start가 지정된 경우 범위 체크
@@ -387,7 +389,7 @@ void Engine::InitializeEngine() {
 
   for (int i = 0; i < num_symbols; i++) {
     // 첫 시작 시간이 begin_open_time과 같다면 바로 시작하는 Symbol
-    if (trading_bar.GetOpenTime(i, 0) == begin_open_time_) {
+    if (trading_bar.GetBar(i, 0).open_time == begin_open_time_) {
       trading_began_[i] = true;
     } else {
       trading_began_[i] = false;
@@ -432,7 +434,7 @@ vector<int> Engine::UpdateTradingStatus() {
       }
 
       // 트레이딩을 시작했지만 끝나지 않은 심볼은 이번 바에서 끝났는지 검사
-      if (trading_bar.GetOpenTime(i, bar_->GetCurrentBarIndex()) >
+      if (trading_bar.GetBar(i, bar_->GetCurrentBarIndex()).open_time >
           end_open_time_) {
         trading_ended_[i] = true;
       } else {
@@ -440,7 +442,7 @@ vector<int> Engine::UpdateTradingStatus() {
       }
     } else {
       // 트레이딩을 시작하지 않은 심볼은 이번 바에서 시작했는지 검사
-      if (trading_bar.GetOpenTime(i, bar_->GetCurrentBarIndex()) ==
+      if (trading_bar.GetBar(i, bar_->GetCurrentBarIndex()).open_time ==
           begin_open_time_) {
         trading_began_[i] = true;
         activated_symbols.push_back(i);
@@ -463,9 +465,9 @@ void Engine::ProcessOhlc(const vector<int>& activated_symbols,
 
   // 현재 Open Time 업데이트
   current_open_time_ =
-      bar.GetOpenTime(activated_symbols[0], activated_bar_indices[0]);
+      bar.GetBar(activated_symbols[0], activated_bar_indices[0]).open_time;
 
-  // 체결할 순서대로 가격 데이터를 저장한 벡터 로딩
+  // 체크할 순서대로 가격 데이터를 저장한 벡터 로딩
   const auto& price_queue =
       GetPriceQueue(bar, activated_symbols, activated_bar_indices);
 
@@ -494,19 +496,16 @@ vector<PriceData> Engine::GetPriceQueue(
   vector<PriceData> high_low_queue2;
   vector<PriceData> close_queue;
 
-  double open = 0;
-  double high = 0;
-  double low = 0;
-
   PriceData price_data{};
 
+  // 활성화된 심볼 순회
   for (int i = 0; i < activated_symbols.size(); i++) {
     // 해당 심볼의 가격 데이터 로딩
     const int symbol_idx = activated_symbols[i];
-
-    open = bar_data.GetOpen(symbol_idx, activated_bar_indices[i]);
-    high = bar_data.GetHigh(symbol_idx, activated_bar_indices[i]);
-    low = bar_data.GetLow(symbol_idx, activated_bar_indices[i]);
+    const auto& bar = bar_data.GetBar(symbol_idx, activated_bar_indices[i]);
+    const double open = bar.open;
+    const double high = bar.high;
+    const double low = bar.low;
 
     // 구조체 공통 필드 설정
     price_data.symbol_index = symbol_idx;
@@ -538,7 +537,7 @@ vector<PriceData> Engine::GetPriceQueue(
     }
 
     // 종가 데이터 추가
-    price_data.price = bar_data.GetClose(symbol_idx, activated_bar_indices[i]);
+    price_data.price = bar.close;
     price_data.price_type = CLOSE;
     close_queue.push_back(price_data);
   }
