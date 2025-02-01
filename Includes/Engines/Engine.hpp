@@ -55,9 +55,9 @@ class Engine final : public BaseEngine {
   // @@@@@@@@@@@ 트레이딩바 종가에서는 전략 돌리고 돋보기는 매 바에서 대기 주문
   // 체크만 하면 될 듯
 
-  /// 현재 바에 미실현 손익을 업데이트 하지 않았다면
-  /// 전략별 미실현 손익에 따라 주문 가능 자금을 업데이트하는 함수
-  void UpdateUnrealizedPnl();
+  /// 현재 바에 사용 가능 자금을 업데이트 하지 않았다면 전략별 미실현 손익과
+  /// 사용한 마진에 따라 사용 가능 자금을 업데이트하고 반환하는 함수
+  double GetAvailableBalance();
 
   /// 현재 사용 중인 바 데이터 현재 인덱스의 Open Time을 반환하는 함수
   [[nodiscard]] inline int64_t GetCurrentOpenTime() const;
@@ -82,8 +82,9 @@ class Engine final : public BaseEngine {
   vector<bool> trading_began_;  // 심볼별로 트레이딩이 진행 중인지 결정
   vector<bool> trading_ended_;  // 심볼별로 트레이딩이 끝났는지 결정
 
-  // 현재 바에서 진입 손익에 따라 자금이 업데이트 됐는지 결정하는 플래그
-  bool unrealized_pnl_updated_;
+  /// 현재 바에서 미실현 손익과 사용한 마진에 따라 사용 가능 자금이
+  /// 업데이트 됐는지를 결정하는 플래그
+  bool available_balance_updated_;
 
   // ===========================================================================
   /// 바 데이터의 유효성을 검증하는 함수

@@ -13,8 +13,9 @@
 
 // 네임 스페이스
 using namespace time_utils;
+using enum PriceType;
 
-OrderHandler::OrderHandler() : is_open_price_(false) {}
+OrderHandler::OrderHandler() = default;
 void OrderHandler::Deleter::operator()(const OrderHandler* p) const {
   delete p;
 }
@@ -34,33 +35,28 @@ shared_ptr<OrderHandler>& OrderHandler::GetOrderHandler(const string& name) {
   return instances_[name];
 }
 
-void OrderHandler::CheckPendingEntries(const double* prices,
-                                       const int64_t open_time) {
-  // 현재 심볼의 대기 주문 로딩
-  const auto& pending_entries = pending_entries_[bar_->GetCurrentSymbolIndex()];
-
-  // Open, High/Low, Close 순회
-  for (int i = 0; i < 4; i++) {
-    const double price = prices[i];
-    is_open_price_ = i == 0;
-    const bool is_close = i == 3;
+void OrderHandler::CheckPendingEntries(const vector<PriceData>& price_queue) {
+  for (const auto& [price, price_type, symbol_index] : price_queue) {
+    bar_->SetCurrentSymbolIndex(symbol_index);
 
     // 가격 유효성 검사
     try {
       IsValidPrice(price);
-    } catch (const exception& e) {
+    } catch (const InvalidValue& e) {
       LogFormattedInfo(
           LogLevel::WARNING_L,
           string(e.what()) +
-              ": 현재가가 유효하지 않으므로 대기 진입 주문의 체결을 "
+              ": 현재가가 유효하지 않으므로 진입 대기 주문의 체결을 "
               "확인할 수 없습니다.",
           __FILE__, __LINE__);
       continue;
     }
 
-    // 진입 대기 주문의 체결 확인 ->
-    // 체결 혹은 주문/체결 거부 시 해당 주문이 대기 주문에서 삭제되므로 역순으로
-    // 순회
+    // 현재 심볼의 대기 주문 로딩
+    const auto& pending_entries = pending_entries_[symbol_index];
+
+    // 체결 혹은 주문, 체결 거부 시 해당 주문이 대기 주문에서 삭제되므로
+    // 역순으로 순회
     for (int order_idx = static_cast<int>(pending_entries.size() - 1);
          order_idx >= 0; order_idx--) {
       switch (pending_entries[order_idx]->GetEntryOrderType()) {
@@ -74,134 +70,31 @@ void OrderHandler::CheckPendingEntries(const double* prices,
 
         case OrderType::LIMIT: {
           // 지정가 체결은 시고저가에서 확인 시 종가에서 확인할 필요 없음
-          if (is_close) {
+          if (price_type == CLOSE) {
             break;
           }
 
-          CheckPendingLimitEntries(order_idx, open_time, price);
+          CheckPendingLimitEntries(order_idx, price, price_type);
           continue;
         }
 
         case OrderType::MIT: {
           // MIT 체결은 시고저가에서 확인 시 종가에서 확인할 필요 없음
-          if (is_close) {
+          if (price_type == CLOSE) {
             break;
           }
 
-          CheckPendingMitEntries(order_idx, open_time,
-                                 pending_entry->GetEntryTouchDirection(), price,
-                                 pending_entry->GetEntryTouchPrice());
+          CheckPendingMitEntries(order_idx, price, price_type);
           continue;
         }
 
         case OrderType::LIT: {
-          // Order Time이 설정되지 않았으면 지정가 미주문 -> 터치 확인
-          // LIT 터치 확인은 시고저가에서 확인 시 종가에서 확인할 필요 없음
-          if (!is_close && pending_entry->GetEntryOrderTime() == -1) {
-            // 터치 방향이 매수인 경우, 터치 가격과 같거나 커지면 지정가 주문
-            // 터치 방향이 매도인 경우, 터치 가격과 같거나 작아지면 지정가 주문
-            if (IsPriceTouched(pending_entry->GetEntryTouchDirection(), price,
-                               pending_entry->GetEntryTouchPrice())) {
-              try {
-                OrderPendingLitEntry(order_idx, open_time);
-              } catch (const OrderFailed& e) {
-                // 주문 실패 시 다음 주문 확인으로 넘어감
-                LogFormattedInfo(LogLevel::WARNING_L, e.what(), __FILE__,
-                                 __LINE__);
-                continue;
-              }
-            }
-          }
-
-          // Order Time이 설정됐으면 지정가 주문 완료 -> 체결 확인
-          // 터치 후 바로 진입될 수도 있으므로 Order Time을 다시 확인
-          if (pending_entry->GetEntryOrderTime() != -1) {
-            // 매수 진입의 경우, 가격이 주문 가격과 같거나 낮아지면 체결
-            // 매도 진입의 경우, 가격이 주문 가격과 같거나 높아지면 체결
-            if (const auto entry_order_price =
-                    pending_entry->GetEntryOrderPrice();
-                IsLimitPriceSatisfied(pending_entry->GetEntryDirection(), price,
-                                      entry_order_price)) {
-              try {
-                // 시가에서 터치 조건 달성 시 체결 가격은 시가가 됨 (갭 고려)
-                FillPendingLimitEntry(order_idx, open_time,
-                                      is_open ? price : entry_order_price);
-              } catch ([[maybe_unused]] const OrderFailed& e) {
-                LogFormattedInfo(LogLevel::WARNING_L,
-                                 "LIT 대기 주문 체결이 실패했습니다.", __FILE__,
-                                 __LINE__);
-              }
-            }
-          }
-
+          CheckPendingLitEntries(order_idx, price, price_type);
           continue;
         }
 
         case OrderType::TRAILING: {
-          // Extreme Price가 지정되지 않았으면 추적 미시작 -> 터치 확인
-          // 트레일링 터치 확인은 시고저가에서 확인 시 종가에서 확인할 필요 없음
-          if (!is_close && isnan(pending_entry->GetEntryExtremePrice())) {
-            // 터치 방향이 매수인 경우, 터치 가격과 같거나 커지면 추적 시작
-            // 터치 방향이 매도인 경우, 터치 가격과 같거나 작아지면 추적 시작
-            if (IsPriceTouched(pending_entry->GetEntryTouchDirection(), price,
-                               pending_entry->GetEntryTouchPrice())) {
-              pending_entry->SetEntryExtremePrice(price);
-            }
-          }
-
-          try {
-            // Extreme Price가 지정되었으면 추적 시작
-            // -> 고저가 업데이트 및 체결 터치 확인
-            if (double entry_extreme_price =
-                    pending_entry->GetEntryExtremePrice();
-                !isnan(entry_extreme_price)) {
-              // 주문 정보 로딩
-              const auto entry_direction = pending_entry->GetEntryDirection();
-              const auto entry_trail_point =
-                  pending_entry->GetEntryTrailPoint();
-
-              if (entry_direction == Direction::LONG) {
-                // 진입 방향이 매수인 경우, 최저가를 추적
-                // 최저가 추적은 시고저가에서 확인 시 종가에서 확인할 필요 없음
-                if (!is_close && price < entry_extreme_price) {
-                  pending_entry->SetEntryExtremePrice(price);
-                  entry_extreme_price = price;
-                }
-
-                // 진입 방향이 매수인 경우, 최저가로부터 Trail Point 증가 시
-                // 진입
-                if (const double entry_trail_price =
-                        entry_extreme_price + entry_trail_point;
-                    price >= entry_trail_price) {
-                  // 시가에서 조건 달성 시 주문 가격은 시가가 됨 (갭 고려)
-                  FillPendingMarketEntry(order_idx, open_time,
-                                         is_open ? price : entry_trail_price);
-                }
-              } else if (entry_direction == Direction::SHORT) {
-                // 진입 방향이 매도인 경우, 최고가를 추적
-                // 최고가 추적은 시고저가에서 확인 시 종가에서 확인할 필요 없음
-                if (!is_close && price > entry_extreme_price) {
-                  pending_entry->SetEntryExtremePrice(price);
-                  entry_extreme_price = price;
-                }
-
-                // 진입 방향이 매도인 경우, 최고가로부터 Trail Point 감소 시
-                // 진입
-                if (const double entry_trail_price =
-                        entry_extreme_price - entry_trail_point;
-                    price <= entry_trail_price) {
-                  // 시가에서 조건 달성 시 주문 가격은 시가가 됨 (갭 고려)
-                  FillPendingMarketEntry(order_idx, open_time,
-                                         is_open ? price : entry_trail_price);
-                }
-              }
-            }
-          } catch ([[maybe_unused]] const OrderFailed& e) {
-            LogFormattedInfo(LogLevel::WARNING_L,
-                             "트레일링 대기 주문 체결이 실패했습니다.",
-                             __FILE__, __LINE__);
-          }
-
+          CheckPendingTrailingEntries(order_idx, price, price_type);
           continue;
         }
 
@@ -224,10 +117,10 @@ void OrderHandler::CheckPendingExits(const double* prices,
   // 가격 유효성 검사
   try {
     IsValidPrice(price);
-  } catch (const exception& e) {
+  } catch (const InvalidValue& e) {
     LogFormattedInfo(LogLevel::WARNING_L,
                      string(e.what()) +
-                         ": 현재가가 유효하지 않으므로 대기 청산 주문의 체결을 "
+                         ": 현재가가 유효하지 않으므로 청산 대기 주문의 체결을 "
                          "확인할 수 없습니다.",
                      __FILE__, __LINE__);
   }
@@ -264,11 +157,13 @@ void OrderHandler::CheckPendingExits(const double* prices,
         // 매수 청산의 경우, 가격이 주문 가격과 같거나 낮아지면 체결
         // 매도 청산의 경우, 가격이 주문 가격과 같거나 높아지면 체결
         if (const auto exit_order_price = pending_exit->GetExitOrderPrice();
-            (exit_direction == Direction::LONG && price <= exit_order_price) ||
-            (exit_direction == Direction::SHORT && price >= exit_order_price)) {
+            (exit_direction == Direction::LONG &&
+             PriceType <= exit_order_price) ||
+            (exit_direction == Direction::SHORT &&
+             PriceType >= exit_order_price)) {
           // 시가에서 진입 조건 달성 시 체결 가격은 시가가 됨 (갭 고려)
           deleted_count = ExecutePendingLimitExit(
-              i, open_time, is_open_price_ ? price : exit_order_price);
+              i, open_time, is_open_price_ ? PriceType : exit_order_price);
         }
 
         break;
@@ -325,8 +220,8 @@ void OrderHandler::MarketEntry(const string& entry_name,
   int64_t next_open_time;  // 진입 시간: 다음 바의 시작 시간
   double next_open;        // 주문 가격: 다음 바의 시가
   try {
-    next_open_time = bar.GetOpenTime(symbol_idx, bar_idx + 1);
-    next_open = bar.GetOpen(symbol_idx, bar_idx + 1);
+    next_open_time = bar.SafeGetBar(symbol_idx, bar_idx + 1).open_time;
+    next_open = bar.SafeGetBar(symbol_idx, bar_idx + 1).open;
   } catch (const IndexOutOfRange& e) {
     LogFormattedInfo(
         LogLevel::WARNING_L,
@@ -391,8 +286,8 @@ void OrderHandler::LimitEntry(const string& entry_name,
   int64_t next_open_time;
   double next_open;
   try {
-    next_open_time = bar.GetOpenTime(symbol_idx, bar_idx + 1);
-    next_open = bar.GetOpen(symbol_idx, bar_idx + 1);
+    next_open_time = bar.SafeGetBar(symbol_idx, bar_idx + 1).open_time;
+    next_open = bar.SafeGetBar(symbol_idx, bar_idx + 1).open;
   } catch (const IndexOutOfRange& e) {
     LogFormattedInfo(
         LogLevel::WARNING_L,
@@ -429,9 +324,6 @@ void OrderHandler::LimitEntry(const string& entry_name,
   // 예약 증거금 계산: 1포인트 == 1달러 가정 계산
   const double entry_margin = entry_size * order_price;
 
-  // 미실현 손익 업데이트
-  engine_->UpdateUnrealizedPnl();
-
   // 주문 가능 여부 체크
   try {
     HasEnoughBalance(engine_->GetAvailableBalance(), entry_margin);
@@ -440,8 +332,8 @@ void OrderHandler::LimitEntry(const string& entry_name,
     throw OrderFailed("지정가 진입 주문이 실패했습니다.");
   }
 
-  // 주문 가능 자금에서 예약 증거금 감소
-  engine_->DecreaseAvailableBalance(entry_margin);
+  // 사용한 마진에 예약 증거금 증가
+  engine_->IncreaseUsedMargin(entry_margin);
 
   // 지정가 진입 대기
   pending_entries_[symbol_idx].push_back(limit_entry);
@@ -473,7 +365,8 @@ void OrderHandler::MitEntry(const string& entry_name,
   try {
     next_open = bar_->GetBarData(bar_->GetCurrentBarType(),
                                  bar_->GetCurrentReferenceTimeframe())
-                    .GetOpen(symbol_idx, bar_->GetCurrentBarIndex() + 1);
+                    .SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1)
+                    .open;
   } catch (const IndexOutOfRange& e) {
     LogFormattedInfo(
         LogLevel::WARNING_L,
@@ -529,7 +422,8 @@ void OrderHandler::LitEntry(const string& entry_name,
   try {
     next_open = bar_->GetBarData(bar_->GetCurrentBarType(),
                                  bar_->GetCurrentReferenceTimeframe())
-                    .GetOpen(symbol_idx, bar_->GetCurrentBarIndex() + 1);
+                    .SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1)
+                    .open;
   } catch (const IndexOutOfRange& e) {
     LogFormattedInfo(
         LogLevel::WARNING_L,
@@ -585,7 +479,8 @@ void OrderHandler::TrailingEntry(const string& entry_name,
   try {
     next_open = bar_->GetBarData(bar_->GetCurrentBarType(),
                                  bar_->GetCurrentReferenceTimeframe())
-                    .GetOpen(symbol_idx, bar_->GetCurrentBarIndex() + 1);
+                    .SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1)
+                    .open;
   } catch (const IndexOutOfRange& e) {
     LogFormattedInfo(
         LogLevel::WARNING_L,
@@ -651,8 +546,8 @@ void OrderHandler::MarketExit(const string& exit_name,
   int64_t next_open_time;
   double next_open;
   try {
-    next_open_time = bar.GetOpenTime(symbol_idx, bar_idx + 1);
-    next_open = bar.GetOpen(symbol_idx, bar_idx + 1);
+    next_open_time = bar.SafeGetBar(symbol_idx, bar_idx + 1).open_time;
+    next_open = bar.SafeGetBar(symbol_idx, bar_idx + 1).open;
   } catch (const IndexOutOfRange& e) {
     LogFormattedInfo(
         LogLevel::WARNING_L,
@@ -667,8 +562,8 @@ void OrderHandler::MarketExit(const string& exit_name,
   // 목표 진입 찾기
   const auto& [filled_entry, order_idx] =
       FindMatchingEntryOrder(target_entry_name);
-  if (filled_entry->GetEntryName().empty()) {
-    // 목표한 진입 이름을 찾지 못하면 경고 로그
+  if (order_idx == -1) {
+    // 목표한 진입 이름을 찾지 못하면 청산 실패
     LogFormattedInfo(
         LogLevel::WARNING_L,
         format("지정된 진입명 {}이(가) 존재하지 않아 청산할 수 없습니다.",
@@ -747,8 +642,8 @@ void OrderHandler::LimitExit(const string& exit_name,
   int64_t next_open_time;
   double next_open;
   try {
-    next_open_time = bar.GetOpenTime(symbol_idx, bar_idx + 1);
-    next_open = bar.GetOpen(symbol_idx, bar_idx + 1);
+    next_open_time = bar.SafeGetBar(symbol_idx, bar_idx + 1).open_time;
+    next_open = bar.SafeGetBar(symbol_idx, bar_idx + 1).open;
   } catch (const IndexOutOfRange& e) {
     LogFormattedInfo(
         LogLevel::WARNING_L,
@@ -763,7 +658,7 @@ void OrderHandler::LimitExit(const string& exit_name,
   // 목표 진입 찾기
   const auto& [filled_entry, order_idx] =
       FindMatchingEntryOrder(target_entry_name);
-  if (filled_entry->GetEntryName().empty()) {
+  if (order_idx == -1) {
     // 목표한 진입 이름을 찾지 못하면 경고 로그
     LogFormattedInfo(
         LogLevel::WARNING_L,
@@ -824,7 +719,8 @@ void OrderHandler::MitExit(const string& exit_name,
   try {
     next_open = bar_->GetBarData(bar_->GetCurrentBarType(),
                                  bar_->GetCurrentReferenceTimeframe())
-                    .GetOpen(symbol_idx, bar_->GetCurrentBarIndex() + 1);
+                    .SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1)
+                    .open;
   } catch (const IndexOutOfRange& e) {
     LogFormattedInfo(
         LogLevel::WARNING_L,
@@ -839,7 +735,7 @@ void OrderHandler::MitExit(const string& exit_name,
   // 목표 진입 찾기
   const auto& [filled_entry, order_idx] =
       FindMatchingEntryOrder(target_entry_name);
-  if (filled_entry->GetEntryName().empty()) {
+  if (order_idx == -1) {
     // 목표한 진입 이름을 찾지 못하면 경고 로그
     LogFormattedInfo(
         LogLevel::WARNING_L,
@@ -882,7 +778,8 @@ void OrderHandler::LitExit(const string& exit_name,
   try {
     next_open = bar_->GetBarData(bar_->GetCurrentBarType(),
                                  bar_->GetCurrentReferenceTimeframe())
-                    .GetOpen(symbol_idx, bar_->GetCurrentBarIndex() + 1);
+                    .SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1)
+                    .open;
   } catch (const IndexOutOfRange& e) {
     LogFormattedInfo(
         LogLevel::WARNING_L,
@@ -897,7 +794,7 @@ void OrderHandler::LitExit(const string& exit_name,
   // 목표 진입 찾기
   const auto& [filled_entry, order_idx] =
       FindMatchingEntryOrder(target_entry_name);
-  if (filled_entry->GetEntryName().empty()) {
+  if (order_idx == -1) {
     // 목표한 진입 이름을 찾지 못하면 경고 로그
     LogFormattedInfo(
         LogLevel::WARNING_L,
@@ -964,7 +861,8 @@ void OrderHandler::TrailingExit(const string& exit_name,
   try {
     next_open = bar_->GetBarData(bar_->GetCurrentBarType(),
                                  bar_->GetCurrentReferenceTimeframe())
-                    .GetOpen(symbol_idx, bar_->GetCurrentBarIndex() + 1);
+                    .SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1)
+                    .open;
   } catch (const IndexOutOfRange& e) {
     LogFormattedInfo(
         LogLevel::WARNING_L,
@@ -979,7 +877,7 @@ void OrderHandler::TrailingExit(const string& exit_name,
   // 목표 진입 찾기
   const auto& [filled_entry, order_idx] =
       FindMatchingEntryOrder(target_entry_name);
-  if (filled_entry->GetEntryName().empty()) {
+  if (order_idx == -1) {
     // 목표한 진입 이름을 찾지 못하면 경고 로그
     LogFormattedInfo(
         LogLevel::WARNING_L,
@@ -1029,6 +927,7 @@ void OrderHandler::TrailingExit(const string& exit_name,
 void OrderHandler::Cancel(const string& order_name) {
   const int symbol_idx = bar_->GetCurrentSymbolIndex();
 
+  // 진입 대기 주문에서 같은 이름이 존재할 시 삭제
   auto& pending_entries = pending_entries_[symbol_idx];
   for (int order_idx = 0; order_idx < pending_entries.size(); order_idx++) {
     if (const auto& pending_entry = pending_entries[order_idx];
@@ -1044,6 +943,7 @@ void OrderHandler::Cancel(const string& order_name) {
     }
   }
 
+  // 청산 대기 주문에서 같은 이름이 존재할 시 삭제
   auto& pending_exits = pending_exits_[symbol_idx];
   for (int order_idx = 0; order_idx < pending_exits.size(); order_idx++) {
     if (order_name == pending_exits[order_idx]->GetExitName()) {
@@ -1066,26 +966,23 @@ void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry) {
   const double entry_margin =
       market_entry->GetEntryFilledSize() * market_entry->GetEntryFilledPrice();
 
-  // 미실현 손익 업데이트
-  engine_->UpdateUnrealizedPnl();
-
   // 진입 수수료 로딩
   const auto entry_commission = market_entry->GetEntryCommission();
 
-  // 진입 가능 여부 체크 (진입 가능 자금 > 진입 증거금 + 수수료)
+  // 진입 가능 여부 체크 (사용 가능 자금 >= 진입 증거금 + 수수료)
   try {
     HasEnoughBalance(engine_->GetAvailableBalance(),
                      entry_margin + entry_commission);
   } catch (const InsufficientBalance& e) {
     LogFormattedInfo(LogLevel::WARNING_L, e.what(), __FILE__, __LINE__);
-    throw OrderFailed("시장가 진입 주문이 실패했습니다.");
+    throw OrderFailed("시장가 진입 체결이 실패했습니다.");
   }
 
-  // 현재 자금(주문 가능 자금)에서 수수료 감소
+  // 지갑 자금에서 수수료 감소
   engine_->DecreaseWalletBalance(entry_commission);
 
-  // 주문 가능 자금에서 진입 증거금 감소
-  engine_->DecreaseAvailableBalance(entry_margin);
+  // 사용한 마진에 진입 증거금 증가
+  engine_->IncreaseUsedMargin(entry_margin);
 
   // 시장가 진입
   filled_entries_[bar_->GetCurrentSymbolIndex()].push_back(market_entry);
@@ -1112,25 +1009,25 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
   const double exit_filled_size = exit_order->GetExitFilledSize();
   const double entry_filled_price = exit_order->GetEntryFilledPrice();
 
-  // 현재 자금(주문 가능 자금)에서 수수료 감소
+  // 지갑 자금에서 수수료 감소
   if (!engine_->DecreaseWalletBalance(exit_order->GetExitCommission())) {
     engine_->SetBankruptcy();
     throw Bankruptcy("파산");
   }
 
-  // 주문 가능 자금에서 진입 증거금 회복
-  engine_->IncreaseAvailableBalance(exit_filled_size * entry_filled_price);
+  // 사용한 마진에서 진입 증거금 감소
+  engine_->DecreaseUsedMargin(exit_filled_size * entry_filled_price);
 
-  // 손익 계산
-  const double pnl = CalculatePnl(
+  // 실현 손익 계산
+  const double realized_pnl = CalculatePnl(
       exit_order->GetEntryDirection(), exit_order->GetExitFilledPrice(),
       entry_filled_price, exit_filled_size, exit_order->GetLeverage());
 
-  // 현재 자금(주문 가능 자금)에 손익 합산
-  if (pnl > 0) {
-    engine_->IncreaseWalletBalance(pnl);
-  } else if (pnl < 0) {
-    if (!engine_->DecreaseWalletBalance(abs(pnl))) {
+  // 지갑 자금에 실현 손익 합산
+  if (realized_pnl > 0) {
+    engine_->IncreaseWalletBalance(realized_pnl);
+  } else if (realized_pnl < 0) {
+    if (!engine_->DecreaseWalletBalance(abs(realized_pnl))) {
       engine_->SetBankruptcy();
       throw Bankruptcy("파산");
     }
@@ -1153,9 +1050,9 @@ void OrderHandler::ExecuteCancelEntry(const shared_ptr<Order>& cancel_order) {
     }
 
     case OrderType::LIMIT: {
-      // 주문 가능 자금에서 예약 증거금 회복
-      engine_->IncreaseAvailableBalance(cancel_order->GetEntryOrderSize() *
-                                        cancel_order->GetEntryOrderPrice());
+      // 사용한 자금에서 예약 증거금 감소
+      engine_->DecreaseUsedMargin(cancel_order->GetEntryOrderSize() *
+                                  cancel_order->GetEntryOrderPrice());
       return;
     }
 
@@ -1168,9 +1065,10 @@ void OrderHandler::ExecuteCancelEntry(const shared_ptr<Order>& cancel_order) {
     case OrderType::LIT: {
       if (cancel_order->GetEntryOrderTime() != -1) {
         /* Entry Order Time이 설정되었다는 것은 Touch 했다는 의미이며,
-           Touch 이후에는 지정가로 예약 증거금을 사용하므로 회복해야 함 */
-        engine_->IncreaseAvailableBalance(cancel_order->GetEntryOrderSize() *
-                                          cancel_order->GetEntryOrderPrice());
+           Touch 이후에는 지정가로 예약 증거금을 사용하므로 사용한 자금에서 예약
+           증거금을 감소시켜야 함 */
+        engine_->DecreaseUsedMargin(cancel_order->GetEntryOrderSize() *
+                                    cancel_order->GetEntryOrderPrice());
       }
       return;
     }
@@ -1187,20 +1085,18 @@ void OrderHandler::ExecuteCancelEntry(const shared_ptr<Order>& cancel_order) {
 }
 
 void OrderHandler::CheckPendingLimitEntries(const int order_idx,
-                                            const int64_t open_time,
-                                            const double current_price) {
+                                            const double current_price,
+                                            const PriceType price_type) {
   const auto& pending_entry =
       pending_entries_[bar_->GetCurrentSymbolIndex()][order_idx];
 
-  // 매수 진입의 경우, 가격이 주문 가격과 같거나 낮아지면 체결
-  // 매도 진입의 경우, 가격이 주문 가격과 같거나 높아지면 체결
   if (const auto order_price = pending_entry->GetEntryOrderPrice();
       IsLimitPriceSatisfied(pending_entry->GetEntryDirection(), current_price,
                             order_price)) {
     try {
       // 시가에서 진입 조건 달성 시 체결 가격은 시가가 됨 (갭 고려)
-      FillPendingLimitEntry(order_idx, open_time,
-                            is_open_price_ ? current_price : order_price);
+      FillPendingLimitEntry(order_idx,
+                            price_type == OPEN ? current_price : order_price);
     } catch ([[maybe_unused]] const OrderFailed& e) {
       LogFormattedInfo(LogLevel::WARNING_L,
                        "지정가 대기 주문 체결이 실패했습니다.", __FILE__,
@@ -1210,17 +1106,18 @@ void OrderHandler::CheckPendingLimitEntries(const int order_idx,
 }
 
 void OrderHandler::CheckPendingMitEntries(const int order_idx,
-                                          const int64_t open_time,
-                                          const double current_price) {
-  const auto& pending_entry = pending_entries_[order_idx];
+                                          const double current_price,
+                                          const PriceType price_type) {
+  const auto& pending_entry =
+      pending_entries_[bar_->GetCurrentSymbolIndex()][order_idx];
 
-  // 터치 방향이 매수인 경우, 터치 가격과 같거나 커지면 시장가 주문
-  // 터치 방향이 매도인 경우, 터치 가격과 같거나 작아지면 시장가 주문
-  if (IsPriceTouched(touch_direction, current_price, touch_price)) {
+  if (const auto touch_price = pending_entry->GetEntryTouchPrice();
+      IsPriceTouched(pending_entry->GetEntryTouchDirection(), current_price,
+                     touch_price)) {
     try {
       // 시가에서 터치 조건 달성 시 주문 가격은 시가가 됨 (갭 고려)
-      FillPendingMarketEntry(order_idx, open_time,
-                             is_open ? current_price : touch_price);
+      FillPendingMarketEntry(order_idx,
+                             price_type == OPEN ? current_price : touch_price);
     } catch ([[maybe_unused]] const OrderFailed& e) {
       LogFormattedInfo(LogLevel::WARNING_L,
                        "MIT 대기 주문 체결이 실패했습니다.", __FILE__,
@@ -1229,11 +1126,116 @@ void OrderHandler::CheckPendingMitEntries(const int order_idx,
   }
 }
 
+void OrderHandler::CheckPendingLitEntries(const int order_idx,
+                                          const double current_price,
+                                          const PriceType price_type) {
+  const auto& pending_entry =
+      pending_entries_[bar_->GetCurrentSymbolIndex()][order_idx];
+
+  // Order Time이 설정되지 않았으면 지정가 미주문 -> 터치 확인
+  // LIT 터치 확인은 시고저가에서 확인 시 종가에서 확인할 필요 없음
+  if (price_type != CLOSE && pending_entry->GetEntryOrderTime() == -1) {
+    if (IsPriceTouched(pending_entry->GetEntryTouchDirection(), current_price,
+                       pending_entry->GetEntryTouchPrice())) {
+      try {
+        OrderPendingLitEntry(order_idx);
+      } catch (const OrderFailed& e) {
+        // 주문 실패 시 해당 주문 삭제 후 다음 주문 확인으로 넘어감
+        LogFormattedInfo(LogLevel::WARNING_L, e.what(), __FILE__, __LINE__);
+        return;
+      }
+    }
+  }
+
+  // Order Time이 설정됐으면 지정가 주문 완료 -> 체결 확인
+  // 터치 후 바로 진입될 수도 있으므로 Order Time을 다시 불러와서 확인
+  if (pending_entry->GetEntryOrderTime() != -1) {
+    if (const auto order_price = pending_entry->GetEntryOrderPrice();
+        IsLimitPriceSatisfied(pending_entry->GetEntryDirection(), current_price,
+                              order_price)) {
+      try {
+        // 시가에서 터치 조건 달성 시 체결 가격은 시가가 됨 (갭 고려)
+        FillPendingLimitEntry(order_idx,
+                              price_type == OPEN ? current_price : order_price);
+      } catch ([[maybe_unused]] const OrderFailed& e) {
+        LogFormattedInfo(LogLevel::WARNING_L,
+                         "LIT 대기 주문 체결이 실패했습니다.", __FILE__,
+                         __LINE__);
+      }
+    }
+  }
+}
+
+void OrderHandler::CheckPendingTrailingEntries(const int order_idx,
+                                               const double current_price,
+                                               const PriceType price_type) {
+  const auto& pending_entry =
+      pending_entries_[bar_->GetCurrentSymbolIndex()][order_idx];
+
+  // Extreme Price가 지정되지 않았으면 추적 미시작 -> 터치 확인
+  // 트레일링 터치 확인은 시고저가에서 확인 시 종가에서 확인할 필요 없음
+  if (price_type != CLOSE && isnan(pending_entry->GetEntryExtremePrice())) {
+    if (IsPriceTouched(pending_entry->GetEntryTouchDirection(), current_price,
+                       pending_entry->GetEntryTouchPrice())) {
+      pending_entry->SetEntryExtremePrice(current_price);
+    }
+  }
+
+  try {
+    // Extreme Price가 지정되었으면 추적 시작
+    // -> 고저가 업데이트 및 체결 터치 확인
+    if (double extreme_price = pending_entry->GetEntryExtremePrice();
+        !isnan(extreme_price)) {
+      // 주문 정보 로딩
+      const auto entry_direction = pending_entry->GetEntryDirection();
+      const auto trail_point = pending_entry->GetEntryTrailPoint();
+
+      if (entry_direction == Direction::LONG) {
+        // 진입 방향이 매수인 경우, 최저가를 추적
+        // 최저가 추적은 시저가에서만 확인하면 됨
+        if ((price_type == OPEN || price_type == LOW) &&
+            current_price < extreme_price) {
+          pending_entry->SetEntryExtremePrice(current_price);
+          extreme_price = current_price;
+        }
+
+        // 진입 방향이 매수인 경우, 최저가로부터 Trail Point 증가 시 진입
+        if (const double trail_price = extreme_price + trail_point;
+            current_price >= trail_price) {
+          // 시가에서 조건 달성 시 주문 가격은 시가가 됨 (갭 고려)
+          FillPendingMarketEntry(
+              order_idx, price_type == OPEN ? current_price : trail_price);
+        }
+      } else if (entry_direction == Direction::SHORT) {
+        // 진입 방향이 매도인 경우, 최고가를 추적
+        // 최고가 추적은 시고에서만 확인하면 됨
+        if ((price_type == OPEN || price_type == HIGH) &&
+            current_price > extreme_price) {
+          pending_entry->SetEntryExtremePrice(current_price);
+          extreme_price = current_price;
+        }
+
+        // 진입 방향이 매도인 경우, 최고가로부터 Trail Point 감소 시 진입
+        if (const double trail_price = extreme_price - trail_point;
+            current_price <= trail_price) {
+          // 시가에서 조건 달성 시 주문 가격은 시가가 됨 (갭 고려)
+          FillPendingMarketEntry(
+              order_idx, price_type == OPEN ? current_price : trail_price);
+        }
+      }
+    }
+  } catch ([[maybe_unused]] const OrderFailed& e) {
+    LogFormattedInfo(LogLevel::WARNING_L,
+                     "트레일링 대기 주문 체결이 실패했습니다.", __FILE__,
+                     __LINE__);
+  }
+}
+
 void OrderHandler::FillPendingMarketEntry(const int order_idx,
-                                          const int64_t open_time,
-                                          const double entry_order_price) {
+                                          const double order_price) {
   // 바 정보 로딩
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+  const auto current_open_time = engine_->GetCurrentOpenTime();
 
   // 대기 주문을 받아오고 대기 주문에서 삭제
   const auto& market_entry = pending_entries_[symbol_idx][order_idx];
@@ -1249,24 +1251,24 @@ void OrderHandler::FillPendingMarketEntry(const int order_idx,
   }
 
   // 주문 정보 로딩
-  const auto entry_filled_size = market_entry->GetEntryOrderSize();
+  const auto filled_size = market_entry->GetEntryOrderSize();
   const auto entry_direction = market_entry->GetEntryDirection();
   const auto leverage = market_entry->GetLeverage();
 
   // 주문 업데이트
-  market_entry->SetEntryOrderTime(open_time)
-      .SetEntryOrderPrice(entry_order_price)
-      .SetEntryFilledTime(open_time)
-      .SetEntryFilledSize(entry_filled_size);
+  market_entry->SetEntryOrderTime(current_open_time)
+      .SetEntryOrderPrice(order_price)
+      .SetEntryFilledTime(current_open_time)
+      .SetEntryFilledSize(filled_size);
 
   // 슬리피지가 포함된 체결가
   const double slippage_filled_price = CalculateSlippagePrice(
-      entry_order_price, OrderType::MARKET, entry_direction, leverage);
+      order_price, OrderType::MARKET, entry_direction, leverage);
   market_entry->SetEntryFilledPrice(slippage_filled_price);
 
   // 수수료
   const double entry_commission = CalculateCommission(
-      slippage_filled_price, OrderType::MARKET, entry_filled_size, leverage);
+      slippage_filled_price, OrderType::MARKET, filled_size, leverage);
   market_entry->SetEntryCommission(entry_commission);
 
   // 마진콜 가격
@@ -1291,8 +1293,7 @@ void OrderHandler::FillPendingMarketEntry(const int order_idx,
 }
 
 void OrderHandler::FillPendingLimitEntry(const int order_idx,
-                                         const int64_t open_time,
-                                         const double entry_filled_price) {
+                                         const double filled_price) {
   // 바 정보 로딩
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
 
@@ -1315,12 +1316,12 @@ void OrderHandler::FillPendingLimitEntry(const int order_idx,
   const auto leverage = limit_entry->GetLeverage();
 
   // 주문 업데이트
-  limit_entry->SetEntryFilledTime(open_time).SetEntryFilledSize(
-      entry_filled_size);
+  limit_entry->SetEntryFilledTime(engine_->GetCurrentOpenTime())
+      .SetEntryFilledSize(entry_filled_size);
 
   // 슬리피지가 포함된 체결가
   const double slippage_filled_price = CalculateSlippagePrice(
-      entry_filled_price, OrderType::LIMIT, entry_direction, leverage);
+      filled_price, OrderType::LIMIT, entry_direction, leverage);
   limit_entry->SetEntryFilledPrice(slippage_filled_price);
 
   // 수수료
@@ -1335,7 +1336,19 @@ void OrderHandler::FillPendingLimitEntry(const int order_idx,
   // 해당 주문과 반대 방향의 체결 주문이 있으면 모두 청산
   ExitOppositeFilledEntries(entry_direction);
 
-  // 현재 자금(주문 가능 자금)에서 수수료 감소
+  // 진입 가능 여부 체크 (지갑 자금 >= 수수료)
+  try {
+    HasEnoughBalance(engine_->GetWalletBalance(), entry_commission);
+  } catch (const InsufficientBalance& e) {
+    LogFormattedInfo(LogLevel::WARNING_L, e.what(), __FILE__, __LINE__);
+
+    // 주문 실패 시 사용한 마진에서 예약 증거금 감소
+    engine_->DecreaseUsedMargin(limit_entry->GetEntryOrderSize() *
+                                limit_entry->GetEntryOrderPrice());
+    throw OrderFailed("대기 주문 체결 실패");
+  }
+
+  // 지갑 자금에서 수수료 감소
   if (!engine_->DecreaseWalletBalance(entry_commission)) {
     engine_->SetBankruptcy();
     throw Bankruptcy("파산");
@@ -1348,42 +1361,46 @@ void OrderHandler::FillPendingLimitEntry(const int order_idx,
   LogFormattedInfo(
       LogLevel::DEBUG_L,
       format("{} | {} {} 체결", slippage_filled_price,
-        limit_entry->GetEntryOrderType() == OrderType::LIMIT ? "지정가" : "LIT",
-        limit_entry->GetEntryName()),
+             limit_entry->GetEntryOrderType() == OrderType::LIMIT ? "지정가"
+                                                                  : "LIT",
+             limit_entry->GetEntryName()),
       __FILE__, __LINE__);
 }
 
-void OrderHandler::OrderPendingLitEntry(const int order_idx, const int64_t open_time) {
+void OrderHandler::OrderPendingLitEntry(const int order_idx) {
+  // 바 정보 로딩
+  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+
   // 대기 주문 로딩
-  const auto& lit_entry = pending_entries_[bar_->GetCurrentSymbolIndex()][order_idx];
+  const auto& lit_entry = pending_entries_[symbol_idx][order_idx];
 
   // 주문 업데이트
-  lit_entry->SetEntryOrderTime(open_time);
+  lit_entry->SetEntryOrderTime(engine_->GetCurrentOpenTime());
 
   // 예약 증거금 계산: 1포인트 == 1달러 가정 계산
-  const double entry_margin = lit_entry->GetEntryOrderSize() *
-                                lit_entry->GetEntryOrderPrice();
-
-  // 미실현 손익 업데이트
-  engine_->UpdateUnrealizedPnl();
+  const double entry_margin =
+      lit_entry->GetEntryOrderSize() * lit_entry->GetEntryOrderPrice();
 
   // 주문 가능 여부 체크
   try {
     HasEnoughBalance(engine_->GetAvailableBalance(), entry_margin);
   } catch (const InsufficientBalance& e) {
-    // 주문 실패 시 대기 주문에서 삭제
-    pending_entries_[order_idx].erase(pending_entries_[order_idx].begin() + order_idx);
+    LogFormattedInfo(LogLevel::WARNING_L, e.what(), __FILE__, __LINE__);
 
+    // 주문 실패 시 대기 주문에서 삭제
+    pending_entries_[symbol_idx].erase(pending_entries_[symbol_idx].begin() +
+                                       order_idx);
     throw OrderFailed("LIT 진입 주문이 실패했습니다.");
   }
 
-  // 주문 가능 자금에서 예약 증거금 감소
-  engine_->DecreaseAvailableBalance(entry_margin);
+  // 사용한 마진에 예약 증거금 증가
+  engine_->IncreaseUsedMargin(entry_margin);
 
   // 디버그 로그 기록
   LogFormattedInfo(
       LogLevel::DEBUG_L,
-      format("{} | LIT {} 체결 대기", lit_entry->GetEntryOrderPrice(), lit_entry->GetEntryName()),
+      format("{} | LIT {} 체결 대기", lit_entry->GetEntryOrderPrice(),
+             lit_entry->GetEntryName()),
       __FILE__, __LINE__);
 }
 
@@ -1394,12 +1411,13 @@ int OrderHandler::ExecutePendingLimitExit(const int order_idx,
 
   int deleted_count = 0;
 
-  // 변수 로딩
+  // 바 정보 로딩
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
 
   // 대기 주문을 받아오고 대기 주문에서 삭제
   const auto& limit_exit = pending_exits_[symbol_idx][order_idx];
-  pending_exits_[symbol_idx].erase(pending_exits_[symbol_idx].begin() + order_idx);
+  pending_exits_[symbol_idx].erase(pending_exits_[symbol_idx].begin() +
+                                   order_idx);
   deleted_count++;
 
   // 주문 정보 로딩
@@ -1409,13 +1427,11 @@ int OrderHandler::ExecutePendingLimitExit(const int order_idx,
   const auto leverage = limit_exit->GetLeverage();
 
   // 주문 업데이트
-  limit_exit->SetExitFilledTime(open_time)
-      .SetExitFilledSize(exit_filled_size);
+  limit_exit->SetExitFilledTime(open_time).SetExitFilledSize(exit_filled_size);
 
   // 슬리피지가 포함된 체결가
-  const double slippage_filled_price =
-      CalculateSlippagePrice(exit_order_price, OrderType::LIMIT,
-                             exit_direction, leverage);
+  const double slippage_filled_price = CalculateSlippagePrice(
+      exit_order_price, OrderType::LIMIT, exit_direction, leverage);
   limit_exit->SetExitFilledPrice(slippage_filled_price);
 
   // 수수료
@@ -1509,11 +1525,11 @@ double OrderHandler::GetAdjustedExitFilledSize(
   return exit_size;
 }
 
-void OrderHandler::HasEnoughBalance(const double available_balance,
+void OrderHandler::HasEnoughBalance(const double balance,
                                     const double needed_balance) {
-  if (available_balance < needed_balance) {
+  if (balance < needed_balance) {
     throw InsufficientBalance(
-      format("주문 가능 자금 ${}는 필요 자금 ${}보다 많아야합니다.",
-             available_balance, needed_balance));
+      format("자금 ${}는 필요 자금 ${}보다 많아야합니다.",
+             balance, needed_balance));
   }
 }

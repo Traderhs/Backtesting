@@ -14,6 +14,7 @@ Low::Low(const string& name, const string& timeframe)
 void Low::Initialize() {}
 
 double Low::Calculate() {
-  return bar_->GetBarData(BarType::REFERENCE, GetTimeframe())
-      .GetLow(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex());
+  return bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe())
+      .GetBar(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex())
+      .low;
 }

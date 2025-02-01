@@ -31,8 +31,6 @@ class Strategy {
 
   /// 전략 작성 시 사용하는 핸들러
   // ReSharper disable once CppInconsistentNaming
-  static shared_ptr<BarHandler>& bar;  // 바 핸들러
-  // ReSharper disable once CppInconsistentNaming
   shared_ptr<OrderHandler>&
       order;  // 주문 핸들러: 다형성에 의한 동적 작동하므로 static 제외
 
@@ -42,9 +40,9 @@ class Strategy {
   // ReSharper disable once CppInconsistentNaming
   High high;  // 고가 데이터
   // ReSharper disable once CppInconsistentNaming
-  Low low;        // 저가 데이터
+  Low low;  // 저가 데이터
   // ReSharper disable once CppInconsistentNaming
-  Close close;    // 종가 데이터
+  Close close;  // 종가 데이터
   // ReSharper disable once CppInconsistentNaming
   Volume volume;  // 거래량 데이터
 

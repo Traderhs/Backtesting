@@ -13,6 +13,17 @@ class Table;
 using namespace arrow;
 using namespace std;
 
+/// 하나의 바 구조를 지정하는 구조체
+struct Bar {
+  int64_t open_time;
+  double open;
+  double high;
+  double low;
+  double close;
+  double volume;
+  int64_t close_time;
+};
+
 /// 바 데이터를 심볼별 시계열 순서대로 벡터화하여 저장하는 클래스
 class BarData final {
  public:
@@ -29,29 +40,23 @@ class BarData final {
                   const shared_ptr<Table>& bar_data,
                   const vector<int>& columns);
 
-  /// 심볼의 바 인덱스와 값 타입에 따라 적절한 값을 반환하는 함수.
-  /// 오버헤드 감소를 통해 속도를 최적화하므로 값 별로 함수를 분할
-  /// @param symbol_idx 심볼의 인덱스
-  /// @param bar_idx 바의 인덱스
-  [[nodiscard]] int64_t GetOpenTime(int symbol_idx, size_t bar_idx) const;
-  [[nodiscard]] double GetOpen(int symbol_idx, size_t bar_idx) const;
-  [[nodiscard]] double GetHigh(int symbol_idx, size_t bar_idx) const;
-  [[nodiscard]] double GetLow(int symbol_idx, size_t bar_idx) const;
-  [[nodiscard]] double GetClose(int symbol_idx, size_t bar_idx) const;
-  [[nodiscard]] double GetVolume(int symbol_idx, size_t bar_idx) const;
-  [[nodiscard]] int64_t GetCloseTime(int symbol_idx, size_t bar_idx) const;
+  /// 심볼과 바 인덱스의 범위 검사 후 해당되는 바를 반환하는 함수.
+  [[nodiscard]] Bar SafeGetBar(int symbol_idx, size_t bar_idx) const;
+
+  /// 심볼과 바 인덱스에 해당되는 바를 반환하는 함수
+  [[nodiscard]] inline Bar GetBar(int symbol_idx, size_t bar_idx) const;
 
   /// 심볼 인덱스에 해당하는 심볼의 이름을 반환하는 함수
   [[nodiscard]] string GetSymbolName(int symbol_idx) const;
 
   /// 추가된 심볼의 개수를 반환하는 함수
-  [[nodiscard]] int GetNumSymbols() const;
+  [[nodiscard]] inline int GetNumSymbols() const;
 
   /// 해당되는 심볼의 바 개수를 반환하는 함수
   [[nodiscard]] size_t GetNumBars(int symbol_idx) const;
 
   /// 바 데이터의 타임프레임을 반환하는 함수
-  [[nodiscard]] string GetTimeframe() const;
+  [[nodiscard]] inline string GetTimeframe() const;
 
   /// 인덱스 유효성을 검증하는 함수
   void IsValidIndex(int symbol_idx, size_t bar_idx) const;
@@ -60,13 +65,8 @@ class BarData final {
   void IsValidSymbolIndex(int symbol_idx) const;
 
  private:
-  vector<vector<int64_t>> open_time_;   // symbols<open_time>
-  vector<vector<double>> open_;         // symbols<open>
-  vector<vector<double>> high_;         // symbols<high>
-  vector<vector<double>> low_;          // symbols<low>
-  vector<vector<double>> close_;        // symbols<close>
-  vector<vector<double>> volume_;       // symbols<volume>
-  vector<vector<int64_t>> close_time_;  // symbols<close_time>
+  // 첫 번째 벡터: 심볼 인덱스, 두 번째 벡터: 해당 벡터의 바 인덱스
+  vector<vector<Bar>> bar_data_;
 
   vector<string> symbol_names_;  // 심볼 인덱스에 해당하는 심볼의 이름
   int num_symbols_;              // 심볼의 개수
