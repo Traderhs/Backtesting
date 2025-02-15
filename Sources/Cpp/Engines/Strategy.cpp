@@ -19,14 +19,17 @@ Strategy::Strategy(string name)
       close("Close", bar->GetBarData(BarType::TRADING).GetTimeframe()),
       volume("Volume", bar->GetBarData(BarType::TRADING).GetTimeframe()),
       name_(move(name)) {
-  /* 전략 생성 시 OHLCV 지표 계산으로 인해, 지표들의 output_을
-   resize해야 하기 때문에 전략 추가 전 모든 트레이딩 바 데이터를 추가해야 함 */
+  trading_timeframe = bar->GetBarData(BarType::TRADING).GetTimeframe();
+
+  /* 전략 생성 시 OHLCV 지표 계산으로 인해, 지표들의 output_을 트레이딩 바
+   데이터의 심볼 개수로 resize해야 하기 때문에 전략 추가 전 모든 트레이딩 바
+   데이터를 추가해야 함 */
   bar->is_strategy_created_ = true;
 }
 Strategy::~Strategy() = default;
 
-string Strategy::GetName() const { return name_; }
-shared_ptr<OrderHandler> Strategy::GetOrderHandler() const { return order; }
-
 // ReSharper disable once CppInconsistentNaming
 shared_ptr<BarHandler>& Strategy::bar = BarHandler::GetBarHandler();
+
+string Strategy::GetName() const { return name_; }
+shared_ptr<OrderHandler> Strategy::GetOrderHandler() const { return order; }

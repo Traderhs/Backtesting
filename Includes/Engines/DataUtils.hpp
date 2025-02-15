@@ -1,13 +1,12 @@
 ﻿#pragma once
 
+// 표준 라이브러리
+#include <any>
+
 // 외부 라이브러리
 #include <arrow/api.h>
 
-#include <nlohmann/json.hpp>
-
 // 네임스페이스
-using namespace arrow;
-using namespace nlohmann;
 using namespace std;
 
 /// 데이터 핸들링을 위한 유틸리티 네임스페이스
@@ -35,7 +34,7 @@ double RoundToDecimalPlaces(double value, size_t decimal_places);
  * @param file_path 읽을 Parquet 파일의 경로
  * @return 변환된 테이블을 포함하는 shared_ptr 객체
  */
-shared_ptr<Table> ReadParquet(const string& file_path);
+shared_ptr<arrow::Table> ReadParquet(const string& file_path);
 
 /**
  * 지정된 테이블에서 주어진 열 이름과 행 인덱스에 해당하는
@@ -48,8 +47,8 @@ shared_ptr<Table> ReadParquet(const string& file_path);
  * @param row_index 값을 검색할 행의 인덱스
  * @return 지정된 열과 행의 인덱스에 해당하는 셀의 값
  */
-any GetCellValue(const shared_ptr<Table>& table, const string& column_name,
-                 int64_t row_index);
+any GetCellValue(const shared_ptr<arrow::Table>& table,
+                 const string& column_name, int64_t row_index);
 
 /**
  * 지정된 테이블에서 주어진 열 인덱스와 행 인덱스에 해당하는
@@ -62,7 +61,7 @@ any GetCellValue(const shared_ptr<Table>& table, const string& column_name,
  * @param row_index 값을 검색할 행의 인덱스
  * @return 지정된 열과 행의 인덱스에 해당하는 셀의 값
  */
-any GetCellValue(const shared_ptr<Table>& table, int column_index,
+any GetCellValue(const shared_ptr<arrow::Table>& table, int column_index,
                  int64_t row_index);
 
 /**
@@ -73,7 +72,7 @@ any GetCellValue(const shared_ptr<Table>& table, int column_index,
  * @param scalar 값을 추출할 Scalar 객체의 shared_ptr
  * @return 주어진 Scalar의 실제 값
  */
-any GetScalarValue(const shared_ptr<Scalar>& scalar);
+any GetScalarValue(const shared_ptr<arrow::Scalar>& scalar);
 
 /**
  * 주어진 테이블을 Parquet 파일 형식으로 지정된 파일 경로에 저장하는 함수
@@ -81,7 +80,7 @@ any GetScalarValue(const shared_ptr<Scalar>& scalar);
  * @param table 저장할 데이터를 포함하는 Table 객체에 대한 shared_ptr
  * @param file_path 데이터를 저장할 Parquet 파일의 경로
  */
-void TableToParquet(const shared_ptr<Table>& table, const string& file_path);
+void TableToParquet(const shared_ptr<arrow::Table>& table, const string& file_path);
 
 /// 1차원 벡터를 csv로 저장하는 함수.
 /// 파일이 존재하는 경우 기존 내용은 초기화 됨.
@@ -95,7 +94,8 @@ void VectorToCsv(const vector<double>& data, const string& file_name);
  * @return 주어진 테이블을 `split_ratio`에 따라 나눈 두 개의 서브 테이블을 포함하는 pair 객체.
  *         첫 번째는 `split_ratio` 비율, 두 번째는 나머지 비율
  */
-pair<shared_ptr<Table>, shared_ptr<Table>> SplitTable(const shared_ptr<Table>& table, double split_ratio);
+pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>>
+  SplitTable(const shared_ptr<arrow::Table>& table, double split_ratio);
 
 /// 최소 틱 크기로 가격을 반올림하여 반환하는 함수
 double RoundToTickSize(double price, double tick_size);

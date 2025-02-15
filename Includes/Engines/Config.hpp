@@ -30,11 +30,11 @@ class Config final {
   Config& SetSlippageType(SlippageType slippage_type);
   Config& SetSlippage(const pair<double, double>& slippage);
 
-  [[nodiscard]] inline double GetInitialBalance() const;
-  [[nodiscard]] inline CommissionType GetCommissionType() const;
-  [[nodiscard]] inline pair<double, double> GetCommission() const;
-  [[nodiscard]] inline SlippageType GetSlippageType() const;
-  [[nodiscard]] inline pair<double, double> GetSlippage() const;
+  [[nodiscard]] double GetInitialBalance() const;
+  [[nodiscard]] CommissionType GetCommissionType() const;
+  [[nodiscard]] pair<double, double> GetCommission() const;
+  [[nodiscard]] SlippageType GetSlippageType() const;
+  [[nodiscard]] pair<double, double> GetSlippage() const;
 
  private:
   /// 초기 자금

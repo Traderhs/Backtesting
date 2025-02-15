@@ -1,6 +1,8 @@
 #pragma once
 
 // 표준 라이브러리
+#include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -44,19 +46,19 @@ class BarData final {
   [[nodiscard]] Bar SafeGetBar(int symbol_idx, size_t bar_idx) const;
 
   /// 심볼과 바 인덱스에 해당되는 바를 반환하는 함수
-  [[nodiscard]] inline Bar GetBar(int symbol_idx, size_t bar_idx) const;
+  [[nodiscard]] Bar GetBar(int symbol_idx, size_t bar_idx) const;
 
   /// 심볼 인덱스에 해당하는 심볼의 이름을 반환하는 함수
   [[nodiscard]] string GetSymbolName(int symbol_idx) const;
 
-  /// 추가된 심볼의 개수를 반환하는 함수
-  [[nodiscard]] inline int GetNumSymbols() const;
+  /// 바 데이터에 추가된 심볼의 개수를 반환하는 함수
+  [[nodiscard]] int GetNumSymbols() const;
 
   /// 해당되는 심볼의 바 개수를 반환하는 함수
   [[nodiscard]] size_t GetNumBars(int symbol_idx) const;
 
   /// 바 데이터의 타임프레임을 반환하는 함수
-  [[nodiscard]] inline string GetTimeframe() const;
+  [[nodiscard]] string GetTimeframe() const;
 
   /// 인덱스 유효성을 검증하는 함수
   void IsValidIndex(int symbol_idx, size_t bar_idx) const;

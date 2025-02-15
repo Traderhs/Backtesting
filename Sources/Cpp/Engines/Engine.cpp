@@ -1,18 +1,22 @@
-﻿// 표준 라이브러리
+// 표준 라이브러리
+#include <array>
 #include <cmath>
 #include <format>
+#include <iostream>
+#include <ranges>
 #include <set>
 #include <utility>
-#include <variant>
 
 // 파일 헤더
 #include "Engines/Engine.hpp"
 
 // 내부 헤더
+#include "Engines/Analyzer.hpp"
 #include "Engines/BarData.hpp"
 #include "Engines/BarHandler.hpp"
 #include "Engines/BaseBarHandler.hpp"
 #include "Engines/DataUtils.hpp"
+#include "Engines/Exception.hpp"
 #include "Engines/OrderHandler.hpp"
 #include "Engines/Strategy.hpp"
 #include "Engines/TimeUtils.hpp"
@@ -24,13 +28,18 @@ using namespace std;
 using enum PriceType;
 
 Engine::Engine()
-    : begin_open_time_(INT64_MAX),
+    : trading_bar_num_symbols_(0),
+      trading_bar_add_time_(0),
+      begin_open_time_(INT64_MAX),
       end_open_time_(0),
       current_open_time_(0),
+      current_close_time_(0),
+      use_bar_magnifier_(false),
       available_balance_updated_(false) {}
 
 void Engine::Deleter::operator()(const Engine* p) const {
-  // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ 저장할 거 저장하기
+  logger_->Log(LogLevel::INFO_L, "백테스팅이 완료되었습니다.", __FILE__,
+               __LINE__);
   delete p;
 }
 
@@ -50,6 +59,31 @@ shared_ptr<Engine>& Engine::GetEngine() {
 
 void Engine::Backtesting(const bool use_bar_magnifier, const string& start,
                          const string& end, const string& format) {
+  Initialize(use_bar_magnifier, start, end, format);
+
+  logger_->Log(LogLevel::INFO_L, std::format("백테스팅을 시작합니다."),
+               __FILE__, __LINE__);
+
+  cout << string(217, '=') << endl;
+  BacktestingMain();
+  cout << string(217, '=') << endl;
+
+  const string& file_path = R"(C:\Users\0908r\Desktop\test.csv)";
+  try {
+    // 각 트레이딩별 다른 폴더에 저장
+    analyzer_->TradingListToCsv(file_path);
+  } catch ([[maybe_unused]] const exception& e) {
+    logger_->Log(LogLevel::ERROR_L,
+                 std::format("거래 목록을 {} 경로에 저장하는 데 실패했습니다.",
+                             file_path),
+                 __FILE__, __LINE__);
+  }
+
+  // 설정, 지표값 등 저장 필요
+}
+
+void Engine::Initialize(const bool use_bar_magnifier, const string& start,
+                        const string& end, const string& format) {
   // 유효성 검증
   IsValidBarData(use_bar_magnifier);
   IsValidConfig();
@@ -57,85 +91,127 @@ void Engine::Backtesting(const bool use_bar_magnifier, const string& start,
   IsValidStrategies();
 
   // 엔진 초기화
-  InitializeEngine();
+  InitializeEngine(use_bar_magnifier);
+}
 
-  const string& is_debug = debug_mode_ ? "디버그 모드로 " : "";
-  logger_->Log(LogLevel::INFO_L,
-               std::format("백테스팅을 {}시작합니다.", is_debug), __FILE__,
-               __LINE__);
-
-  // 변수 로딩
-  const auto& trading_bar = bar_->GetBarData(BarType::TRADING);
-  const auto& magnifier_bar = bar_->GetBarData(BarType::MAGNIFIER);
-  const auto& reference_bar = bar_->GetAllReferenceBarData();
-
+void Engine::BacktestingMain() {
   while (true) {
-    // ======================================
-    // 트레이딩 바 데이터의 인덱스를 하나씩 진행
-    // ======================================
-
     // 현재 바 인덱스에서 트레이딩을 진행하는지 상태를 업데이트
-    const auto& activated_symbols = UpdateTradingStatus();
+    UpdateTradingStatus();
 
-    // 트레이딩을 진행하는 심볼이 없다면 백테스팅 끝
-    if (activated_symbols.empty()) {
-      break;
+    // 트레이딩이 모두 끝났으면 백테스팅 끝
+    if (IsBacktestingEnd()) {
+      return;
     }
 
-    /* ! 트레이딩을 진행하는 심볼은 트레이딩 바 인덱스 일괄 업데이트 !
-       진입 시 미실현 손익을 업데이트하는데, 이때 모든 심볼의
-       현재 바의 시가를 참조하기 때문에 일괄 업데이트가 필요 */
-    for (const int symbol_idx : activated_symbols) {
-      bar_->IncreaseBarIndex(BarType::TRADING, "NONE", symbol_idx);
+    logger_->Log(
+        LogLevel::INFO_L,
+        format("진행 시간: {}", UtcTimestampToUtcDatetime(current_open_time_)),
+        __FILE__, __LINE__);
+
+    // 현재 바 인덱스의 트레이딩을 진행
+    // 돋보기 바를 사용하고 활성화된 심볼이 있으면 돋보기 바를 이용하여 백테스팅
+    if (use_bar_magnifier_ && !activated_magnifier_symbol_indices_.empty()) {
+      bar_->SetCurrentBarType(BarType::MAGNIFIER, "NONE");
+
+      do {
+        // 활성화된 돋보기 바 인덱스 증가
+        for (const auto& symbol_idx : activated_magnifier_symbol_indices_) {
+          activated_magnifier_bar_indices_.push_back(
+              bar_->IncreaseBarIndex(BarType::MAGNIFIER, "NONE", symbol_idx));
+        }
+        available_balance_updated_ = false;
+
+        // 해당 바를 진행
+        try {
+          ProcessOhlc(activated_magnifier_symbol_indices_,
+                      activated_magnifier_bar_indices_);
+        } catch ([[maybe_unused]] const Bankruptcy& e) {
+          // 파산 시 백테스팅 종료
+          return;
+        }
+
+        // 바 돋보기의 Close Time이 트레이딩 바의 Close Time과
+        // 같아질 때까지 진행
+      } while (magnifier_bar_
+                   ->GetBar(activated_magnifier_symbol_indices_[0],
+                            activated_magnifier_bar_indices_[0])
+                   .close_time < current_close_time_);
+    }
+
+    // 트레이딩 바에 활성화된 심볼이 있으면 트레이딩 바를 이용하여 백테스팅
+    // 1. 돋보기 바 자체를 미사용 2. 아직 돋보기 바 사용 불가능
+    if (!activated_trading_symbol_indices_.empty()) {
+      bar_->SetCurrentBarType(BarType::TRADING, "NONE");
+
+      const auto& bar_indices = bar_->GetBarIndex(BarType::TRADING, "NONE");
+      for (const auto& symbol_idx : activated_trading_symbol_indices_) {
+        activated_trading_bar_indices_.push_back(bar_indices[symbol_idx]);
+      }
+
+      try {
+        ProcessOhlc(activated_trading_symbol_indices_,
+                    activated_trading_bar_indices_);
+      } catch ([[maybe_unused]] const Bankruptcy& e) {
+        // 파산 시 백테스팅 종료
+        return;
+      }
+    }
+
+    // 활성화된 심볼에서 전략 실행 후 인덱스 증가
+    for (const auto& strategy : strategies_) {
+      for (const auto& symbol_idx : activated_trading_symbol_indices_) {
+        bar_->SetCurrentSymbolIndex(symbol_idx);
+
+        // 현재 심볼의 포지션 사이즈 업데이트
+        strategy->GetOrderHandler()->UpdateCurrentPositionSize();
+
+        if (!ExecuteStrategy(strategy)) {
+          // 파산 시 백테스팅 종료
+          return;
+        }
+
+        bar_->IncreaseBarIndex(BarType::TRADING, "NONE", symbol_idx);
+      }
+
+      for (const auto& symbol_idx : activated_magnifier_symbol_indices_) {
+        bar_->SetCurrentSymbolIndex(symbol_idx);
+
+        // 현재 심볼의 포지션 사이즈 업데이트
+        strategy->GetOrderHandler()->UpdateCurrentPositionSize();
+
+        if (!ExecuteStrategy(strategy)) {
+          // 파산 시 백테스팅 종료
+          return;
+        }
+
+        bar_->IncreaseBarIndex(BarType::TRADING, "NONE", symbol_idx);
+      }
     }
     available_balance_updated_ = false;
 
-    // 현재 바 인덱스의 트레이딩을 진행
+    /* current_open_time_ 업데이트:
+       UpdateTradingStatus에서 트레이딩 시작 검증 시 사용
 
-    // 한 바 이동 시 available_balance_updated_ : false
-
-    // current_position_size(baseorder), current symbol 등의 업데이트
-
-    // 돋보기 바 아직 없거나 끝났으면 기본 트레이딩바로 작동
-
-    // 전략 실행이랑 참조 바 전체 인덱스 증가 중 뭐가 먼저??
-
-    // 전략 실행 시 지표 nan이면 어떻게 진행? -> 지표 값 참조 시
-    // IndicatorInvalidValue throw 후 전략 실행에서 catch 하고 다음 봉으로 진행
-    // IndicatorOutOfRange도 받기 (전략에서는 catch 해야됨, 전략 시작 시점에서
-    // [20] 참조 이런거 있을 수도 있으므로
-    // Bankruptcy도 받기 market 주문에서 파산 가능
-    // OrderFailed도 받기 -> e.what() ㄱㄱ
-
-    // 마진콜 검색, max_profit_/max_loss_ 방향에 따라 high low 때 업데이트
-    // 대기중인 진입/청산 체크 (지정가, 터치, 트레일링)
-
-    // 트레이딩 인덱스 증가 @@@@@@@@@@@@@@@@@@
+       current_close_time_ 업데이트:
+       UpdateTradingStatus에서 현재 트레이딩 바 Close Time까지 바 돋보기를
+       사용할 수 있는지 검증하기 위하여 사용                               */
+    current_open_time_ += trading_bar_add_time_;
+    current_close_time_ += trading_bar_add_time_;
   }
-
-  // 백테스팅 종료 체크
-
-  // 체결, 대기 주문 처리
-
-  // 저장할 거 저장 지표 값, 성과 등
-
-  // @@@@@@@@ 완성 후 모듈화 ㄱㄱ
 }
 
-double Engine::GetAvailableBalance() {
+double Engine::UpdateAvailableBalance() {
   if (!available_balance_updated_) {
-    double unrealized_pnl = 0;
+    unrealized_pnl_ = 0;
 
     // 전략별 미실현 손익을 합산
     for (const auto& strategy : strategies_) {
-      unrealized_pnl += strategy->GetOrderHandler()->GetUnrealizedPnl();
+      unrealized_pnl_ += strategy->GetOrderHandler()->GetUnrealizedPnl();
     }
 
-    // 미실현 손익 업데이트
-    unrealized_pnl_ = unrealized_pnl;
-
     // 사용 가능 자금 업데이트
-    available_balance_ = wallet_balance_ + unrealized_pnl - used_margin_;
+    available_balance_ = wallet_balance_ + unrealized_pnl_ - used_margin_;
     available_balance_updated_ = true;
   }
 
@@ -154,6 +230,8 @@ void Engine::IsValidBarData(const bool use_bar_magnifier) {
                              __LINE__);
 
   // 1.2. 트레이딩 바 데이터의 중복 가능성 검증
+  // set은 중복 불가능하므로 set에 추가한 open 개수가 심볼 개수와 다르다면
+  // 중복 추가 가능성 높음
   set<double> trading_bar_open;
   for (int i = 0; i < trading_num_symbols; i++) {
     trading_bar_open.insert(trading_bar.GetBar(i, 0).open);
@@ -174,8 +252,9 @@ void Engine::IsValidBarData(const bool use_bar_magnifier) {
             심볼 개수가 같은지 검증 */
     if (magnifier_num_symbols != trading_num_symbols) {
       Logger::LogAndThrowError(
-          format("트레이딩 바 데이터에 추가된 심볼 개수({}개)와 돋보기 바 "
-                 "데이터에 추가된 심볼 개수({}개)는 동일해야 합니다.",
+          format("돋보기 기능 사용 시 트레이딩 바 데이터에 추가된 "
+                 "심볼 개수({}개)와 돋보기 바 데이터에 추가된 심볼 "
+                 "개수({}개)는 동일해야 합니다.",
                  trading_num_symbols, magnifier_num_symbols),
           __FILE__, __LINE__);
     }
@@ -194,6 +273,8 @@ void Engine::IsValidBarData(const bool use_bar_magnifier) {
     }
 
     // 2.3. 돋보기 바 데이터의 중복 가능성 검증
+    // set은 중복 불가능하므로 set에 추가한 open 개수가 심볼 개수와 다르다면
+    // 중복 추가 가능성 높음
     set<double> magnifier_open;
     for (int i = 0; i < magnifier_num_symbols; i++) {
       magnifier_open.insert(magnifier_bar.GetBar(i, 0).open);
@@ -212,7 +293,7 @@ void Engine::IsValidBarData(const bool use_bar_magnifier) {
     const auto reference_num_symbols = reference_bar.GetNumSymbols();
 
     /* ※ 참조 바 데이터의 심볼 개수와 순서 검증은 추후 트레이딩 바 심볼 외
-          다른 데이터의 참조가 필요할 때 삭제 */
+          다른 데이터(경제 지표 등)의 참조가 필요할 때 삭제 */
 
     /* 3.1. 트레이딩 바 데이터의 심볼 개수와 참조 바 데이터의
             심볼 개수가 같은지 검증 */
@@ -239,6 +320,8 @@ void Engine::IsValidBarData(const bool use_bar_magnifier) {
     }
 
     // 3.3. 참조 바 데이터의 중복 가능성 검증
+    // set은 중복 불가능하므로 set에 추가한 open 개수가 심볼 개수와 다르다면
+    // 중복 추가 가능성 높음
     set<double> reference_open;
     for (int i = 0; i < reference_num_symbols; i++) {
       reference_open.insert(reference_bar.GetBar(i, 0).open);
@@ -379,17 +462,28 @@ void Engine::IsValidStrategies() const {
                __LINE__);
 }
 
-void Engine::InitializeEngine() {
-  const auto& trading_bar = bar_->GetBarData(BarType::TRADING);
-  const auto num_symbols = trading_bar.GetNumSymbols();
+void Engine::InitializeEngine(const bool use_bar_magnifier) {
+  // 바 데이터 초기화
+  trading_bar_ = make_shared<BarData>(bar_->GetBarData(BarType::TRADING));
+  magnifier_bar_ = make_shared<BarData>(bar_->GetBarData(BarType::MAGNIFIER));
+  reference_bar_ = make_shared<unordered_map<string, BarData>>(
+      bar_->GetAllReferenceBarData());
+
+  // 바 데이터 정보 초기화
+  trading_bar_num_symbols_ = trading_bar_->GetNumSymbols();
+  trading_bar_add_time_ = ParseTimeframe(trading_bar_->GetTimeframe());
+
+  // 트레이딩 시간 정보 초기화
+  current_open_time_ = begin_open_time_;
+  current_close_time_ = begin_open_time_ + trading_bar_add_time_ - 1;
 
   // trading_began_, trading_ended 초기화
-  trading_began_.resize(num_symbols);
-  trading_ended_.resize(num_symbols);
+  trading_began_.resize(trading_bar_num_symbols_);
+  trading_ended_.resize(trading_bar_num_symbols_);
 
-  for (int i = 0; i < num_symbols; i++) {
+  for (int i = 0; i < trading_bar_num_symbols_; i++) {
     // 첫 시작 시간이 begin_open_time과 같다면 바로 시작하는 Symbol
-    if (trading_bar.GetBar(i, 0).open_time == begin_open_time_) {
+    if (trading_bar_->GetBar(i, 0).open_time == begin_open_time_) {
       trading_began_[i] = true;
     } else {
       trading_began_[i] = false;
@@ -398,108 +492,249 @@ void Engine::InitializeEngine() {
     trading_ended_[i] = false;
   }
 
-  // 전략별 주문 초기화
-  for (const auto& strategy : strategies_) {
-    strategy->GetOrderHandler()->InitializeOrders(num_symbols);
+  // 돋보기 기능 사용 여부 결정
+  if (use_bar_magnifier) {
+    use_bar_magnifier_ = true;
   }
+
+  // 전략별 주문 핸들러 및 전략 초기화
+  for (const auto& strategy : strategies_) {
+    strategy->GetOrderHandler()->InitializeOrderHandler(
+        trading_bar_num_symbols_);
+    strategy->Initialize();
+  }
+
+  // 분석기 초기화
+  analyzer_->Initialize(config_.GetInitialBalance());
 
   logger->Log(LogLevel::INFO_L, "엔진 초기화가 완료되었습니다.", __FILE__,
               __LINE__);
 }
 
-vector<int> Engine::UpdateTradingStatus() {
-  // 원본 설정을 저장
-  const auto original_bar_type = bar_->GetCurrentBarType();
-  const auto original_reference_tf = bar_->GetCurrentReferenceTimeframe();
-  const auto original_symbol_idx = bar_->GetCurrentSymbolIndex();
-
-  // 트레이딩 바 로딩
-  const auto& trading_bar = bar_->GetBarData(BarType::TRADING);
-
-  // 사용 중인 바 타입 업데이트
-  bar_->SetCurrentBarType(BarType::TRADING, "NONE");
-
-  // 이번 바에서 트레이딩을 진행하는 심볼들
-  vector<int> activated_symbols;
+void Engine::UpdateTradingStatus() {
+  // 활성화된 벡터 초기화
+  ClearActivatedVectors();
 
   // 트레이딩 바 전체 심볼 순회
-  for (int i = 0; i < trading_bar.GetNumSymbols(); i++) {
-    // 사용 중인 심볼 업데이트
-    bar_->SetCurrentSymbolIndex(i);
+  for (int symbol_idx = 0; symbol_idx < trading_bar_num_symbols_;
+       symbol_idx++) {
+    // 사용 중인 바 정보 업데이트
+    bar_->SetCurrentBarType(BarType::TRADING, "NONE");
+    bar_->SetCurrentSymbolIndex(symbol_idx);
 
-    if (trading_began_[i]) {
+    const auto bar_idx = bar_->GetCurrentBarIndex();
+
+    if (trading_began_[symbol_idx]) {
       // 트레이딩을 시작했지만 끝난 심볼은 업데이트할 것이 없음
-      if (trading_ended_[i]) {
+      if (trading_ended_[symbol_idx]) {
         continue;
       }
 
       // 트레이딩을 시작했지만 끝나지 않은 심볼은 이번 바에서 끝났는지 검사
-      if (trading_bar.GetBar(i, bar_->GetCurrentBarIndex()).open_time >
-          end_open_time_) {
-        trading_ended_[i] = true;
+      int64_t current_open_time;
+      try {
+        current_open_time =
+            trading_bar_->SafeGetBar(symbol_idx, bar_idx).open_time;
+      } catch ([[maybe_unused]] const IndexOutOfRange& e) {
+        // 전체 바 데이터의 끝 Open Time 도달 전 해당 심볼의 데이터의 끝까지
+        // 진행했다면 해당 심볼은 트레이딩 종료
+        trading_ended_[symbol_idx] = true;
+        continue;
+      }
+
+      // 현재 바의 Open Time이 전체 바 데이터의 끝 Open Time을 벗어났으면
+      // 해당 심볼은 트레이딩 종료
+      if (current_open_time > end_open_time_) {
+        trading_ended_[symbol_idx] = true;
       } else {
-        activated_symbols.push_back(i);
+        DetermineActivation(symbol_idx, bar_idx);
       }
     } else {
-      // 트레이딩을 시작하지 않은 심볼은 이번 바에서 시작했는지 검사
-      if (trading_bar.GetBar(i, bar_->GetCurrentBarIndex()).open_time ==
-          begin_open_time_) {
-        trading_began_[i] = true;
-        activated_symbols.push_back(i);
+      // 트레이딩을 시작하지 않은 심볼은 이번 바에서 시작했는지 검사.
+      // current_open_time_은 외부 함수 루프 전 현재 트레이딩 바의 Open Time으로
+      // 업데이트 하므로 현재 심볼의 Open Time이 같아지면 트레이딩 시작.
+      if (const auto current_open_time =
+              trading_bar_->GetBar(symbol_idx, bar_idx).open_time;
+          current_open_time == current_open_time_) {
+        trading_began_[symbol_idx] = true;
+
+        DetermineActivation(symbol_idx, bar_idx);
+      }
+    }
+  }
+}
+
+void Engine::ClearActivatedVectors() {
+  activated_trading_symbol_indices_.clear();
+  activated_trading_bar_indices_.clear();
+  activated_magnifier_symbol_indices_.clear();
+  activated_magnifier_bar_indices_.clear();
+}
+
+bool Engine::IsBacktestingEnd() const {
+  for (const auto is_end : trading_ended_) {
+    // 한 심볼이라도 끝나지 않았으면 끝나지 않음
+    if (!is_end) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+void Engine::DetermineActivation(const int symbol_idx, const size_t bar_idx) {
+  // 트레이딩 전 바의 Close Time
+  // 타임스탬프이므로 current_open_time - 1 == previous_close_time
+  const auto prev_close_time = current_open_time_ - 1;
+
+  /* 참조 바를 사용 가능한지 검증
+     1. 트레이딩 전 바 Close Time보다 참조 바의 Close Time이 작으면
+        트레이딩 전 바 Close Time까지 최대한 증가 후 사용 가능
+     2. 트레이딩 전 바 Close Time과 참조 바의 Close Time이 같으면
+        사용 가능
+     3. 트레이딩 전 바 Close Time보다 참조 바의 Close Time이 크면
+        아직 사용 불가능하므로 트레이딩 불가                         */
+  for (const auto& [timeframe, bar_data] : *reference_bar_) {
+    bar_->SetCurrentBarType(BarType::REFERENCE, timeframe);
+
+    try {
+      if (bar_data.GetBar(symbol_idx, bar_->GetCurrentBarIndex()).close_time <=
+          prev_close_time) {
+        bar_->ProcessBarIndex(symbol_idx, BarType::REFERENCE, timeframe,
+                              prev_close_time);
+      } else {
+        // 트레이딩 전 바 Close Time보다 참조 바의 Close Time이 크면
+        // 아직 사용 불가능하므로 트레이딩 불가
+        return;
+      }
+    } catch ([[maybe_unused]] const IndexOutOfRange& e) {
+      // 참조 바의 최대 인덱스에 도달하면 트레이딩 불가
+      return;
+    }
+  }
+
+  if (use_bar_magnifier_) {
+    bar_->SetCurrentBarType(BarType::MAGNIFIER, "NONE");
+
+    int64_t magnifier_close_time =
+        magnifier_bar_->GetBar(symbol_idx, bar_->GetCurrentBarIndex())
+            .close_time;
+
+    /* 돋보기 바를 사용 가능한지 검증
+       1. 트레이딩 전 바 Close Time보다 돋보기 바의 Close Time이 작으면
+          트레이딩 전 바 Close Time으로 일치시킨 후 사용 가능
+       2. 트레이딩 전 바 Close Time과 돋보기 바의 Close Time이 같으면
+          사용 가능
+       3. 트레이딩 전 바 Close Time보다 돋보기 바의 Close Time이 크면
+          아직 사용 불가능하므로 트레이딩 바를 사용하여 진행             */
+    if (magnifier_close_time <= prev_close_time) {
+      bool can_use_magnifier = true;
+
+      if (magnifier_close_time < prev_close_time) {
+        try {
+          bar_->ProcessBarIndex(symbol_idx, BarType::MAGNIFIER, "NONE",
+                                prev_close_time);
+        } catch ([[maybe_unused]] const IndexOutOfRange& e) {
+          // 돋보기 바의 최대 인덱스에 도달하여 트레이딩 전 바 Close Time까지
+          // 이동시키지 못하면 돋보기 사용 불가
+          can_use_magnifier = false;
+        }
+      }
+
+      if (can_use_magnifier) {
+        // 트레이딩 전 바 Close Time과 같은 Close Time을 갖는 돋보기 바 인덱스
+        const auto updated_bar_idx = bar_->GetCurrentBarIndex();
+
+        // 현재 트레이딩 바의 Close Time까지 돋보기 바의 인덱스가 유효한지 확인
+        try {
+          size_t added_index = 1;
+
+          do {
+            magnifier_close_time =
+                magnifier_bar_
+                    ->SafeGetBar(symbol_idx, updated_bar_idx + added_index++)
+                    .close_time;
+          } while (magnifier_close_time < current_close_time_);
+        } catch ([[maybe_unused]] const IndexOutOfRange& e) {
+          // 돋보기 바 데이터가 현재 트레이딩 바의 Close Time까지 유효하지
+          // 않으면 돋보기 사용 불가
+          can_use_magnifier = false;
+        }
+      }
+
+      if (can_use_magnifier) {
+        activated_magnifier_symbol_indices_.push_back(symbol_idx);
+        return;
       }
     }
   }
 
-  // 원본 설정을 복원
-  bar_->SetCurrentBarType(original_bar_type, original_reference_tf);
-  bar_->SetCurrentSymbolIndex(original_symbol_idx);
-
-  return activated_symbols;
+  // 돋보기 바를 사용하지 않거나 사용할 수 없으면 트레이딩 바를 사용하여 진행
+  activated_trading_symbol_indices_.push_back(symbol_idx);
 }
 
 void Engine::ProcessOhlc(const vector<int>& activated_symbols,
                          const vector<size_t>& activated_bar_indices) {
-  // 바 정보 로딩
-  const auto current_bar_type = bar_->GetCurrentBarType();
-  const auto& bar = bar_->GetBarData(current_bar_type, "NONE");
+  // 바 데이터 로딩
+  // 참조 바는 OHLC를 진행하지 않으므로 Timeframe은 지정하지 않음
+  const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarType(), "NONE");
 
   // 현재 Open Time 업데이트
   current_open_time_ =
-      bar.GetBar(activated_symbols[0], activated_bar_indices[0]).open_time;
+      bar_data.GetBar(activated_symbols[0], activated_bar_indices[0]).open_time;
 
   // 체크할 순서대로 가격 데이터를 저장한 벡터 로딩
   const auto& price_queue =
-      GetPriceQueue(bar, activated_symbols, activated_bar_indices);
+      GetPriceQueue(bar_data, activated_symbols, activated_bar_indices);
 
   for (const auto& strategy : strategies_) {
     // 각 전략의 OrderHandler를 순회하며 대기 주문 체크
     const auto& order_handler = strategy->GetOrderHandler();
 
-    // @@@@@@@@@ 마진콜 체크 : 체결 진입 주문 체크,
-    // 마진콜 당하면 부분 청산 잔여 수량만 삭제하기
-    // + 해당 진입 이름을 목표로 하는 청산 대기 주문도 삭제
-    // Check Filled Entry MarginCall 이거 이름 잘 배열 ㄱㄱ
-    order_handler->CheckPendingEntries(price_queue);
-    order_handler->CheckPendingExits(price_queue);
+    // 정해진 순서대로 마진콜과 대기 주문을 확인
+    for (const auto& price_data : price_queue) {
+      const auto& [price, price_type, symbol_idx] = price_data;
+
+      // 가격 유효성 검사
+      if (price <= 0 || isnan(price)) {
+        logger_->Log(LogLevel::WARNING_L,
+                     format("현재가 {}이(가) 유효하지 않으므로 마진콜과 대기 "
+                            "주문의 체결을 확인할 수 없습니다.",
+                            price),
+                     __FILE__, __LINE__);
+        continue;
+      }
+
+      bar_->SetCurrentSymbolIndex(symbol_idx);
+
+      // @@@@@@@@@ 마진콜 체크 : 체결 진입 주문 체크,
+      // 마진콜 당하면 부분 청산 잔여 수량만 삭제하기
+      // + 해당 진입 이름을 목표로 하는 청산 대기 주문도 삭제
+      // Check Filled Entry MarginCall 이거 이름 잘 배열 ㄱㄱ
+      order_handler->CheckPendingEntries(price, price_type, symbol_idx);
+      order_handler->CheckPendingExits(price, price_type, symbol_idx);
+    }
   }
 }
 
 vector<PriceData> Engine::GetPriceQueue(
     const BarData& bar_data, const vector<int>& activated_symbols,
     const vector<size_t>& activated_bar_indices) {
-  // 최종 크기를 미리 계산하여 한 번의 할당으로 처리
-  vector<PriceData> price_queue;
-  price_queue.reserve(activated_symbols.size() * 4);
-
   vector<PriceData> open_queue;
   vector<PriceData> high_low_queue1;
   vector<PriceData> high_low_queue2;
   vector<PriceData> close_queue;
 
-  PriceData price_data{};
+  // 미리 메모리 할당
+  const auto num_activated_symbols = activated_symbols.size();
+  open_queue.reserve(num_activated_symbols);
+  high_low_queue1.reserve(num_activated_symbols);
+  high_low_queue2.reserve(num_activated_symbols);
+  close_queue.reserve(num_activated_symbols);
 
   // 활성화된 심볼 순회
-  for (int i = 0; i < activated_symbols.size(); i++) {
+  PriceData price_data{};
+  for (int i = 0; i < num_activated_symbols; i++) {
     // 해당 심볼의 가격 데이터 로딩
     const int symbol_idx = activated_symbols[i];
     const auto& bar = bar_data.GetBar(symbol_idx, activated_bar_indices[i]);
@@ -516,8 +751,9 @@ vector<PriceData> Engine::GetPriceQueue(
     open_queue.push_back(price_data);
 
     // 고저가 데이터 추가
-    // 시가 대비 고가의 폭이 저가의 폭보다 크다면 시가 -> 저가 -> 고가 -> 종가로 움직임 가정
-    // 시가 대비 저가의 폭이 고가의 폭보다 크다면 시가 -> 고가 -> 저가 -> 종가로 움직임 가정
+    // 시가 대비 고가의 폭이 저가의 폭보다 크다면 시가 -> 저가 -> 고가 -> 종가로
+    // 움직임 가정 시가 대비 저가의 폭이 고가의 폭보다 크다면 시가 -> 고가 ->
+    // 저가 -> 종가로 움직임 가정
     if (high - open >= open - low) {
       price_data.price = low;
       price_data.price_type = LOW;
@@ -542,22 +778,38 @@ vector<PriceData> Engine::GetPriceQueue(
     close_queue.push_back(price_data);
   }
 
-  // 벡터 결합
-  for (const auto& data : open_queue) {
-    price_queue.push_back(data);
+  vector<PriceData> result;
+  result.reserve(num_activated_symbols * 4);
+
+  // 모든 벡터의 데이터를 result에 이동
+  result.insert(result.end(), make_move_iterator(open_queue.begin()),
+                make_move_iterator(open_queue.end()));
+
+  result.insert(result.end(), make_move_iterator(high_low_queue1.begin()),
+                make_move_iterator(high_low_queue1.end()));
+
+  result.insert(result.end(), make_move_iterator(high_low_queue2.begin()),
+                make_move_iterator(high_low_queue2.end()));
+
+  result.insert(result.end(), make_move_iterator(close_queue.begin()),
+                make_move_iterator(close_queue.end()));
+
+  return result;
+}
+
+bool Engine::ExecuteStrategy(const shared_ptr<Strategy>& strategy) {
+  try {
+    strategy->Execute();
+  } catch ([[maybe_unused]] const IndicatorInvalidValue& e) {
+  } catch (const IndicatorOutOfRange& e) {
+    logger_->Log(LogLevel::WARNING_L, e.what(), __FILE__, __LINE__);
+  } catch (const OrderFailed& e) {
+    logger_->Log(LogLevel::WARNING_L, e.what(), __FILE__, __LINE__);
+  } catch (const Bankruptcy& e) {
+    logger_->Log(LogLevel::WARNING_L, e.what(), __FILE__, __LINE__);
+    SetBankruptcy();
+    return false;
   }
 
-  for (const auto& data : high_low_queue1) {
-    price_queue.push_back(data);
-  }
-
-  for (const auto& data : high_low_queue2) {
-    price_queue.push_back(data);
-  }
-
-  for (const auto& data : close_queue) {
-    price_queue.push_back(data);
-  }
-
-  return price_queue;
+  return true;
 }

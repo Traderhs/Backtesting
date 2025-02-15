@@ -44,7 +44,7 @@ string UtcTimestampToUtcDatetime(const int64_t timestamp_ms) {
 }
 
 int64_t UtcDatetimeToUtcTimestamp(const string& datetime,
-                                              const string& format) {
+                                  const string& format) {
   tm tm = {};
   istringstream ss(datetime);
 
@@ -136,9 +136,31 @@ int64_t ParseTimeframe(const string& timeframe_str) {
     }
 
     Logger::LogAndThrowError(
-      format("잘못된 타임프레임 유닛 {}이(가) 지정되었습니다.", unit),
-      __FILE__,__LINE__);
+        format("잘못된 타임프레임 유닛 {}이(가) 지정되었습니다.", unit),
+        __FILE__, __LINE__);
     return -1;
   }
 }
+
+string FormatTimeDiff(const int64_t diff_ms) {
+  if (diff_ms >= kYear)
+    return to_string(diff_ms / kYear) + "년 " +
+           to_string((diff_ms % kYear) / kMonth) + "개월";
+  if (diff_ms >= kMonth)
+    return to_string(diff_ms / kMonth) + "개월 " +
+           to_string((diff_ms % kMonth) / kWeek) + "주";
+  if (diff_ms >= kWeek)
+    return to_string(diff_ms / kWeek) + "주 " +
+           to_string((diff_ms % kWeek) / kDay) + "일";
+  if (diff_ms >= kDay)
+    return to_string(diff_ms / kDay) + "일 " +
+           to_string((diff_ms % kDay) / kHour) + "시간";
+  if (diff_ms >= kHour)
+    return to_string(diff_ms / kHour) + "시간 " +
+           to_string((diff_ms % kHour) / kMinute) + "분";
+  if (diff_ms >= kMinute)
+    return to_string(diff_ms / kMinute) + "분 " +
+           to_string((diff_ms % kMinute) / kSecond) + "초";
+  return to_string(diff_ms / kSecond) + "초";
 }
+}  // namespace time_utils

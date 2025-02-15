@@ -1,4 +1,5 @@
 // 표준 라이브러리
+#include <format>
 #include <memory>
 #include <ranges>
 
@@ -148,8 +149,8 @@ void BarHandler::ProcessBarIndex(const int symbol_idx, const BarType bar_type,
     }
   } catch ([[maybe_unused]] const IndexOutOfRange& e) {
     /* next_close_time이 바 데이터의 범위를 넘으면
-       최대 인덱스로 이동한 것이므로 return */
-    return;
+       최대 인덱스로 이동한 것이므로 이동 불가 */
+    throw;
   }
 }
 
@@ -157,7 +158,11 @@ void BarHandler::ProcessBarIndices(const BarType bar_type,
                                    const string& timeframe,
                                    const int64_t base_close_time) {
   for (int i = 0; i < GetBarData(bar_type, timeframe).GetNumSymbols(); i++) {
-    ProcessBarIndex(i, bar_type, timeframe, base_close_time);
+    try {
+      ProcessBarIndex(i, bar_type, timeframe, base_close_time);
+    } catch ([[maybe_unused]] const IndexOutOfRange& e) {
+      continue;
+    }
   }
 }
 
@@ -195,29 +200,24 @@ void BarHandler::SetCurrentBarIndex(const size_t bar_index) {
   }
 }
 
-void BarHandler::IncreaseBarIndex(const BarType bar_type,
-                                  const string& timeframe,
-                                  const int symbol_index) {
+size_t BarHandler::IncreaseBarIndex(const BarType bar_type,
+                                    const string& timeframe,
+                                    const int symbol_index) {
   switch (bar_type) {
     case BarType::TRADING: {
-      trading_bar_.IsValidSymbolIndex(symbol_index);
-
-      trading_index_[symbol_index]++;
+      return ++trading_index_[symbol_index];
     }
 
     case BarType::MAGNIFIER: {
-      magnifier_bar_.IsValidSymbolIndex(symbol_index);
-
-      magnifier_index_[symbol_index]++;
+      return ++magnifier_index_[symbol_index];
     }
 
     case BarType::REFERENCE: {
-      IsValidReferenceBarTimeframe(timeframe);
-      reference_bar_[timeframe].IsValidSymbolIndex(symbol_index);
-
-      reference_index_[timeframe][symbol_index]++;
+      return ++reference_index_[timeframe][symbol_index];
     }
   }
+
+  throw runtime_error("");
 }
 
 BarType BarHandler::GetCurrentBarType() const { return current_bar_type_; }
@@ -279,8 +279,8 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 
         if (parsed_magnifier_tf >= parsed_bar_data_tf) {
           Logger::LogAndThrowError(
-              format("주어진 트레이딩 타임프레임 {}은(는) "
-                     "돋보기 타임프레임 {}보다 높아야합니다.",
+              format("주어진 트레이딩 바 타임프레임 {}은(는) "
+                     "돋보기 바 타임프레임 {}보다 높아야합니다.",
                      timeframe, magnifier_tf),
               __FILE__, __LINE__);
           return;
@@ -288,8 +288,8 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 
         if (parsed_bar_data_tf % parsed_magnifier_tf != 0) {
           Logger::LogAndThrowError(
-              format("주어진 트레이딩 타임프레임 {}은(는) "
-                     "돋보기 타임프레임 {}의 배수여야 합니다.",
+              format("주어진 트레이딩 바 타임프레임 {}은(는) "
+                     "돋보기 바 타임프레임 {}의 배수여야 합니다.",
                      timeframe, magnifier_tf),
               __FILE__, __LINE__);
           return;
@@ -301,8 +301,8 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 
         if (parsed_reference_tf < parsed_bar_data_tf) {
           Logger::LogAndThrowError(
-              format("주어진 트레이딩 타임프레임 {}은(는) "
-                     "참조 타임프레임 {}과 같거나 낮아야합니다.",
+              format("주어진 트레이딩 바 타임프레임 {}은(는) "
+                     "참조 바 타임프레임 {}와(과) 같거나 낮아야합니다.",
                      timeframe, reference_tf),
               __FILE__, __LINE__);
           return;
@@ -310,8 +310,8 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 
         if (parsed_reference_tf % parsed_bar_data_tf != 0) {
           Logger::LogAndThrowError(
-              format("주어진 트레이딩 타임프레임 {}은(는) "
-                     "참조 타임프레임 {}의 약수여야 합니다.",
+              format("주어진 트레이딩 바 타임프레임 {}은(는) "
+                     "참조 바 타임프레임 {}의 약수여야 합니다.",
                      timeframe, reference_tf),
               __FILE__, __LINE__);
           return;
@@ -328,8 +328,8 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 
         if (parsed_trading_tf <= parsed_bar_data_tf) {
           Logger::LogAndThrowError(
-              format("주어진 돋보기 타임프레임 {}은(는) "
-                     "트레이딩 타임프레임 {}보다 낮아야합니다.",
+              format("주어진 돋보기 바 타임프레임 {}은(는) "
+                     "트레이딩 바 타임프레임 {}보다 낮아야합니다.",
                      timeframe, trading_tf),
               __FILE__, __LINE__);
           return;
@@ -337,8 +337,8 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 
         if (parsed_trading_tf % parsed_bar_data_tf != 0) {
           Logger::LogAndThrowError(
-              format("주어진 돋보기 타임프레임 {}은(는) "
-                     "트레이딩 타임프레임 {}의 약수여야 합니다.",
+              format("주어진 돋보기 바 타임프레임 {}은(는) "
+                     "트레이딩 바 타임프레임 {}의 약수여야 합니다.",
                      timeframe, trading_tf),
               __FILE__, __LINE__);
           return;
@@ -348,8 +348,8 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
       for (const auto& reference_tf : views::keys(reference_bar_)) {
         if (ParseTimeframe(reference_tf) <= parsed_bar_data_tf) {
           Logger::LogAndThrowError(
-              format("주어진 돋보기 타임프레임 {}은(는) "
-                     "참조 타임프레임 {}보다 낮아야합니다.",
+              format("주어진 돋보기 바 타임프레임 {}은(는) "
+                     "참조 바 타임프레임 {}보다 낮아야합니다.",
                      timeframe, reference_tf),
               __FILE__, __LINE__);
           return;
@@ -366,8 +366,8 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 
         if (parsed_trading_tf > parsed_bar_data_tf) {
           Logger::LogAndThrowError(
-              format("주어진 참조 타임프레임 {}은(는) "
-                     "트레이딩 타임프레임 {}과 같거나 높아야합니다.",
+              format("주어진 참조 바 타임프레임 {}은(는) "
+                     "트레이딩 바 타임프레임 {}와(과) 같거나 높아야합니다.",
                      timeframe, trading_tf),
               __FILE__, __LINE__);
           return;
@@ -375,8 +375,8 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 
         if (parsed_bar_data_tf % parsed_trading_tf != 0) {
           Logger::LogAndThrowError(
-              format("주어진 참조 타임프레임 {}은(는) "
-                     "트레이딩 타임프레임 {}의 배수여야 합니다.",
+              format("주어진 참조 바 타임프레임 {}은(는) "
+                     "트레이딩 바 타임프레임 {}의 배수여야 합니다.",
                      timeframe, trading_tf),
               __FILE__, __LINE__);
           return;
@@ -386,8 +386,8 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
       if (const auto& magnifier_tf = magnifier_bar_.GetTimeframe();
         !magnifier_tf.empty() && ParseTimeframe(magnifier_tf) >= parsed_bar_data_tf) {
         Logger::LogAndThrowError(
-            format("주어진 참조 타임프레임 {}은(는) "
-                   "돋보기 타임프레임 {}보다 높아야합니다.",
+            format("주어진 참조 바 타임프레임 {}은(는) "
+                   "돋보기 바 타임프레임 {}보다 높아야합니다.",
                    timeframe, magnifier_tf),
             __FILE__, __LINE__);
       }

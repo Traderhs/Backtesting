@@ -29,10 +29,24 @@ class Strategy {
   explicit Strategy(string name);
   virtual ~Strategy();
 
-  /// 전략 작성 시 사용하는 핸들러
   // ReSharper disable once CppInconsistentNaming
-  shared_ptr<OrderHandler>&
-      order;  // 주문 핸들러: 다형성에 의한 동적 작동하므로 static 제외
+  /// 전략 작성 시 사용하는 주문 핸들러
+  shared_ptr<OrderHandler>& order;  // 다형성에 의한 동적 작동하므로 static 제외
+
+  // ReSharper disable once CppInconsistentNaming
+  /// 전략 작성 시 사용하는 바 핸들러
+  static shared_ptr<BarHandler>& bar;
+
+  // ReSharper disable once CppInconsistentNaming
+  /// 트레이딩 바 타임프레임
+  string trading_timeframe;
+
+  // ReSharper disable once CppInconsistentNaming
+  /// 청산 시 진입 잔량의 전량 청산을 위해 사용하는 변수.
+  ///
+  /// 청산할 때 청산 수량은 내부적으로 진입 잔량의 최대값으로 변환되기 때문에
+  /// double 최대값으로 사용
+  const double entry_size = DBL_MAX;
 
   /// 전략 작성 편의성용 가격 데이터 지표화
   // ReSharper disable once CppInconsistentNaming

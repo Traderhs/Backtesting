@@ -2,6 +2,7 @@
 #include <any>
 #include <cmath>
 #include <format>
+#include <iomanip>
 
 // 외부 라이브러리
 #include <arrow/io/file.h>
@@ -41,21 +42,24 @@ double RoundToDecimalPlaces(const double value, const size_t decimal_places) {
   return round(value * scale) / scale;
 }
 
-shared_ptr<Table> ReadParquet(const string& file_path) {
+shared_ptr<arrow::Table> ReadParquet(const string& file_path) {
   try {
     // Arrow의 ReadableFile 생성
-    shared_ptr<io::ReadableFile> infile;
+    shared_ptr<arrow::io::ReadableFile> infile;
     PARQUET_ASSIGN_OR_THROW(
         infile,
         arrow::io::ReadableFile::Open(file_path, arrow::default_memory_pool()));
 
     // Parquet Arrow의 FileReader 생성
-    unique_ptr<parquet::arrow::FileReader> reader;
-    PARQUET_THROW_NOT_OK(parquet::arrow::OpenFile(
-        infile, arrow::default_memory_pool(), &reader));
+    arrow::Result<unique_ptr<parquet::arrow::FileReader>> result =
+        parquet::arrow::OpenFile(infile, arrow::default_memory_pool());
+
+    PARQUET_THROW_NOT_OK(result.status());
+    const unique_ptr<parquet::arrow::FileReader> reader =
+        move(result).ValueOrDie();
 
     // FileReader로 Table을 읽어옴
-    shared_ptr<Table> table;
+    shared_ptr<arrow::Table> table;
     PARQUET_THROW_NOT_OK(reader->ReadTable(&table));
 
     return table;
@@ -67,8 +71,8 @@ shared_ptr<Table> ReadParquet(const string& file_path) {
   }
 }
 
-any GetCellValue(const shared_ptr<Table>& table, const string& column_name,
-                 const int64_t row_index) {
+any GetCellValue(const shared_ptr<arrow::Table>& table,
+                 const string& column_name, const int64_t row_index) {
   // 열 인덱스 찾기
   const int column_index = table->schema()->GetFieldIndex(column_name);
   if (column_index == -1) {
@@ -80,7 +84,7 @@ any GetCellValue(const shared_ptr<Table>& table, const string& column_name,
   return GetCellValue(table, column_index, row_index);
 }
 
-any GetCellValue(const shared_ptr<Table>& table, const int column_index,
+any GetCellValue(const shared_ptr<arrow::Table>& table, const int column_index,
                  const int64_t row_index) {
   if (column_index < 0 || column_index >= table->num_columns()) {
     Logger::LogAndThrowError(
@@ -97,18 +101,18 @@ any GetCellValue(const shared_ptr<Table>& table, const int column_index,
   return GetScalarValue(chunked_array->GetScalar(row_index).ValueOrDie());
 }
 
-any GetScalarValue(const shared_ptr<Scalar>& scalar) {
+any GetScalarValue(const shared_ptr<arrow::Scalar>& scalar) {
   switch (const auto type = scalar->type->id()) {
-    case Type::INT16:
-      return dynamic_pointer_cast<Int16Scalar>(scalar)->value;
-    case Type::INT32:
-      return dynamic_pointer_cast<Int32Scalar>(scalar)->value;
-    case Type::INT64:
-      return dynamic_pointer_cast<Int64Scalar>(scalar)->value;
-    case Type::DOUBLE:
-      return dynamic_pointer_cast<DoubleScalar>(scalar)->value;
-    case Type::STRING:
-      return dynamic_pointer_cast<StringScalar>(scalar)->ToString();
+    case arrow::Type::INT16:
+      return dynamic_pointer_cast<arrow::Int16Scalar>(scalar)->value;
+    case arrow::Type::INT32:
+      return dynamic_pointer_cast<arrow::Int32Scalar>(scalar)->value;
+    case arrow::Type::INT64:
+      return dynamic_pointer_cast<arrow::Int64Scalar>(scalar)->value;
+    case arrow::Type::DOUBLE:
+      return dynamic_pointer_cast<arrow::DoubleScalar>(scalar)->value;
+    case arrow::Type::STRING:
+      return dynamic_pointer_cast<arrow::StringScalar>(scalar)->ToString();
     default:
       Logger::LogAndThrowError("해당되는 타입이 없습니다.: " + type, __FILE__,
                                __LINE__);
@@ -116,9 +120,10 @@ any GetScalarValue(const shared_ptr<Scalar>& scalar) {
   }
 }
 
-void TableToParquet(const shared_ptr<Table>& table, const string& file_path) {
-  static shared_ptr<io::FileOutputStream> outfile;
-  auto result = io::FileOutputStream::Open(file_path);
+void TableToParquet(const shared_ptr<arrow::Table>& table,
+                    const string& file_path) {
+  static shared_ptr<arrow::io::FileOutputStream> outfile;
+  auto result = arrow::io::FileOutputStream::Open(file_path);
   if (!result.ok()) {
     Logger::LogAndThrowError(
         "파일을 여는 데 실패했습니다.: " + result.status().ToString(), __FILE__,
@@ -128,7 +133,7 @@ void TableToParquet(const shared_ptr<Table>& table, const string& file_path) {
   outfile = result.ValueOrDie();
 
   const auto write_result = parquet::arrow::WriteTable(
-      *table, default_memory_pool(), outfile, table->num_rows());
+      *table, arrow::default_memory_pool(), outfile, table->num_rows());
   if (!write_result.ok())
     Logger::LogAndThrowError(
         "테이블을 저장하는 데 실패했습니다.: " + write_result.ToString(),
@@ -157,14 +162,14 @@ void VectorToCsv(const vector<double>& data, const string& file_name) {
   file.close();
 }
 
-pair<shared_ptr<Table>, shared_ptr<Table>> SplitTable(
-    const shared_ptr<Table>& table, const double split_ratio) {
+pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>> SplitTable(
+    const shared_ptr<arrow::Table>& table, const double split_ratio) {
   const int64_t num_rows = table->num_rows();
   const auto split_index =
       static_cast<int64_t>(static_cast<double>(num_rows) * split_ratio);
 
-  vector<shared_ptr<ChunkedArray>> first_chunked_arrays;
-  vector<shared_ptr<ChunkedArray>> second_chunked_arrays;
+  vector<shared_ptr<arrow::ChunkedArray>> first_chunked_arrays;
+  vector<shared_ptr<arrow::ChunkedArray>> second_chunked_arrays;
   first_chunked_arrays.reserve(table->num_columns());
   second_chunked_arrays.reserve(table->num_columns());
 
@@ -174,8 +179,8 @@ pair<shared_ptr<Table>, shared_ptr<Table>> SplitTable(
         table->column(i)->Slice(split_index, num_rows - split_index));
   }
 
-  return {Table::Make(table->schema(), first_chunked_arrays),
-          Table::Make(table->schema(), second_chunked_arrays)};
+  return {arrow::Table::Make(table->schema(), first_chunked_arrays),
+          arrow::Table::Make(table->schema(), second_chunked_arrays)};
 }
 
 double RoundToTickSize(const double price, const double tick_size) {
@@ -187,5 +192,19 @@ double RoundToTickSize(const double price, const double tick_size) {
   }
 
   return round(price / tick_size) * tick_size;
+}
+
+string FormatDollar(const double price) {
+  ostringstream oss;
+  oss.imbue(global_locale); // 천 단위 쉼표 추가
+  oss << showpoint; // 소수점 유지
+  oss << fixed; // 고정 소수점 형식
+
+  if (price < 0)
+    oss << "-$" << -price;  // 음수일 때 -$
+  else
+    oss << "$" << price;     // 양수일 때 $
+
+  return oss.str();
 }
 }

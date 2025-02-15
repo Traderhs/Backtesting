@@ -44,7 +44,7 @@ Order::Order()
 Order::~Order() = default;
 
 // ===========================================================================
-Order& Order::SetLeverage(const unsigned char leverage) {
+Order& Order::SetLeverage(const int leverage) {
   leverage_ = leverage;
   return *this;
 }
@@ -197,7 +197,7 @@ Order& Order::SetExitFilledPrice(const double exit_filled_price) {
 }
 
 // ===========================================================================
-unsigned char Order::GetLeverage() const { return leverage_; }
+int Order::GetLeverage() const { return leverage_; }
 double Order::GetMarginCallPrice() const { return margin_call_price_; }
 
 // ===========================================================================

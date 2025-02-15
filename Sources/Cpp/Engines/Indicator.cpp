@@ -6,6 +6,7 @@
 #include "Engines/Indicator.hpp"
 
 // 내부 헤더
+#include "Engines/Analyzer.hpp"
 #include "Engines/BarData.hpp"
 #include "Engines/BarHandler.hpp"
 #include "Engines/BaseBarHandler.hpp"
@@ -35,10 +36,14 @@ Indicator::Indicator(string name, string timeframe)
   // output_의 심볼 개수를 트레이딩 바 심볼의 개수로 초기화
   output_.resize(num_symbols);
 }
-Indicator::~Indicator() = default;
+Indicator::~Indicator() {
+  // Analyzer로 저장
+}
 
 bool Indicator::is_calculating_ = false;
+string Indicator::calculating_name_ = string();
 
+shared_ptr<Analyzer>& Indicator::analyzer_ = Analyzer::GetAnalyzer();
 shared_ptr<BarHandler>& Indicator::bar_ = BarHandler::GetBarHandler();
 shared_ptr<Engine>& Indicator::engine_ = Engine::GetEngine();
 shared_ptr<Logger>& Indicator::logger_ = Logger::GetLogger();
@@ -56,12 +61,16 @@ double Indicator::operator[](const size_t index) {
   const auto original_bar_type = bar_->GetCurrentBarType();
   const auto& original_reference_tf = bar_->GetCurrentReferenceTimeframe();
 
-  // 지표 계산 중 다른 타임프레임 사용 시 에러 발생
+  // 특정 지표 계산 중 해당 지표와 다른 타임프레임의 지표 사용 시 에러 발생
+  // -> 특정 지표 내 사용하는 지표의 타임프레임은
+  //    해당 지표의 타임프레임과 일치해야 함
   if (is_calculating_ && original_reference_tf != timeframe_) {
-    throw runtime_error(
-        format("지표 계산에 사용하는 {} 지표의 타임프레임 {}은(는) "
-               "해당 지표의 타임프레임 {}와 동일해야 합니다.",
-               name_, timeframe_, original_reference_tf));
+    Logger::LogAndThrowError(
+        format("{} 지표 계산에 사용하는 {} 지표의 타임프레임 {}은(는) "
+               "{} 지표의 타임프레임 {}와 동일해야 합니다.",
+               calculating_name_, name_, timeframe_, calculating_name_,
+               original_reference_tf),
+        __FILE__, __LINE__);
   }
 
   // 지표 참조를 위해 데이터 환경 설정
@@ -113,6 +122,7 @@ void Indicator::CalculateAll() {
         bar_->GetBarData(BarType::REFERENCE, timeframe_);
 
     is_calculating_ = true;
+    calculating_name_ = name_;
     bar_->SetCurrentBarType(BarType::REFERENCE, timeframe_);
 
     // 전체 트레이딩 심볼들을 순회하며 지표 계산
@@ -138,7 +148,7 @@ void Indicator::CalculateAll() {
 
       // 다른 지표 계산을 위해서 변경한 인덱스와 지표 멤버 변수 초기화
       bar_->SetCurrentBarIndex(0);
-      Initialize();
+      this->Initialize();
     }
 
     is_calculated_ = true;
@@ -149,10 +159,10 @@ void Indicator::CalculateAll() {
                         timeframe_),
                  __FILE__, __LINE__);
 
-  } catch (exception& e) {
+  } catch ([[maybe_unused]] const exception& e) {
     Logger::LogAndThrowError(
-        format("{} {} 지표를 계산하는 중 에러가 발생했습니다. | {}", name_,
-               timeframe_, e.what()),
+        format("{} {} 지표를 계산하는 중 에러가 발생했습니다.", name_,
+               timeframe_),
         __FILE__, __LINE__);
   }
 

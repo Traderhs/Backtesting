@@ -12,7 +12,6 @@
 
 // 네임 스페이스
 using namespace std;
-using namespace arrow;
 
 /// Binance 바 데이터의 Fetch와 Update를 담당하는 클래스
 class BinanceFetcher final : public BaseFetcher {
@@ -78,7 +77,7 @@ class BinanceFetcher final : public BaseFetcher {
    * @param klines 추가할 klines 데이터를 포함하는 JSON 객체의 deque
    * @return 변환된 Arrow Array Vector
    */
-  static vector<shared_ptr<Array>> GetArraysAddedKlines(
+  static vector<shared_ptr<arrow::Array>> GetArraysAddedKlines(
       const vector<json>& klines);
 
   /**

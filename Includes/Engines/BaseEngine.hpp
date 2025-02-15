@@ -5,6 +5,7 @@
 #include <vector>
 
 // 전방 선언
+class Analyzer;
 class BarHandler;
 class Strategy;
 enum class BarType;
@@ -19,11 +20,6 @@ using namespace std;
 /// 엔진의 기본적인 설정, 초기화를 담당하는 클래스
 class BaseEngine {
  public:
-  bool debug_mode_;  // 디버그 로그가 기록되는 모드
-
-  /// 디버그 로그가 기록되는 모드로 설정하는 함수
-  void SetDebugMode();
-
   /**
    * 주어진 파일 경로에서 Parquet 데이터를 읽고
    * 지정된 바 타입으로 처리하여 핸들러에 추가하는 함수
@@ -61,19 +57,31 @@ class BaseEngine {
   void DecreaseUsedMargin(double decrease_margin);
 
   /// 파산을 당했을 때 설정하는 함수
-  inline void SetBankruptcy();
+  void SetBankruptcy();
 
-  // ==========================================================================
   /// 엔진 설정을 반환하는 함수
-  [[nodiscard]] inline Config GetConfig() const;
+  [[nodiscard]] Config GetConfig() const;
 
   /// 지갑 자금을 반환하는 함수
-  [[nodiscard]] inline double GetWalletBalance() const;
+  [[nodiscard]] double GetWalletBalance() const;
+
+  /// 최고 지갑 자금을 반환하는 함수
+  [[nodiscard]] double GetMaxWalletBalance() const;
+
+  // 현재 드로우다운을 반환하는 함수
+  [[nodiscard]] double GetDrawdown() const;
+
+  // 최고 드로우다운을 반환하는 함수
+  [[nodiscard]] double GetMaxDrawdown() const;
+
+  /// 자금 관련 통계 항목을 업데이트하는 함수
+  void UpdateStatistics();
 
  protected:
   BaseEngine();
   ~BaseEngine();
 
+  static shared_ptr<Analyzer>& analyzer_;
   static shared_ptr<BarHandler>& bar_;
   static shared_ptr<Logger>& logger_;
 
@@ -101,7 +109,6 @@ class BaseEngine {
 
   // 자금 관련 통계 항목
   double max_wallet_balance_;  /// 최고 자금
-  double min_wallet_balance_;  /// 최저 자금
   double drawdown_;            /// 현재 드로우다운
   double max_drawdown_;        /// 최고 드로우다운
   int liquidations_;           /// 강제 청산 횟수

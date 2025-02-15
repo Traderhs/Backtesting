@@ -45,9 +45,9 @@ int main() {
     BarType::TRADING);
 
   Engine::AddBarData(
-     "BTCUSDT",
-     "D:/Programming/Backtesting/Data/Klines/BTCUSDT/1m.parquet",
-     BarType::MAGNIFIER);
+    "BTCUSDT",
+    "D:/Programming/Backtesting/Data/Klines/BTCUSDT/1m.parquet",
+    BarType::MAGNIFIER);
 
   const auto& strategy = make_shared<TestStrategy>("Test Strategy");
   Backtesting::engine_->AddStrategy(strategy);
@@ -60,7 +60,5 @@ int main() {
   .SetSlippage({0.1, 0});
 
   Backtesting::engine_->SetConfig(config);
-
-  Backtesting::engine_->SetDebugMode();
-  Backtesting::engine_->Backtesting();
+  Backtesting::engine_->Backtesting(false);
 }
