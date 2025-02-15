@@ -1,16 +1,17 @@
 // 표준 라이브러리
+#include <cmath>
 #include <format>
 
 // 파일 헤더
 #include "Engines/BaseOrderHandler.hpp"
 
 // 내부 헤더
-#include <Engines/Exception.hpp>
-
+#include "Engines/Analyzer.hpp"
 #include "Engines/BarData.hpp"
 #include "Engines/BarHandler.hpp"
 #include "Engines/DataUtils.hpp"
 #include "Engines/Engine.hpp"
+#include "Engines/Exception.hpp"
 #include "Engines/TimeUtils.hpp"
 
 // 네임 스페이스
@@ -21,11 +22,14 @@ BaseOrderHandler::BaseOrderHandler()
     : current_position_size(0), config_(engine_->GetConfig()) {}
 BaseOrderHandler::~BaseOrderHandler() = default;
 
+shared_ptr<Analyzer>& BaseOrderHandler::analyzer_ = Analyzer::GetAnalyzer();
 shared_ptr<BarHandler>& BaseOrderHandler::bar_ = BarHandler::GetBarHandler();
 shared_ptr<Engine>& BaseOrderHandler::engine_ = Engine::GetEngine();
 shared_ptr<Logger>& BaseOrderHandler::logger_ = Logger::GetLogger();
 
-void BaseOrderHandler::InitializeOrders(const int num_symbols) {
+void BaseOrderHandler::InitializeOrderHandler(const int num_symbols) {
+  config_ = engine_->GetConfig();
+
   pending_entries_.resize(num_symbols);
   filled_entries_.resize(num_symbols);
   pending_exits_.resize(num_symbols);
@@ -49,8 +53,8 @@ double BaseOrderHandler::GetUnrealizedPnl() const {
       // 진입 방향에 따라 손익 합산
       // 부분 청산 시 남은 진입 물량만 미실현 손익에 포함됨
       pnl +=
-          CalculatePnl(filled_entry->GetEntryDirection(),
-                       bar.GetBar(symbol_idx, bar_->GetCurrentBarIndex()).open,
+          CalculatePnl(bar.GetBar(symbol_idx, bar_->GetCurrentBarIndex()).open,
+                       filled_entry->GetEntryDirection(),
                        filled_entry->GetEntryFilledPrice(),
                        filled_entry->GetEntryFilledSize() -
                            filled_entry->GetExitFilledSize(),
@@ -64,9 +68,27 @@ double BaseOrderHandler::GetUnrealizedPnl() const {
   return pnl;
 }
 
-double BaseOrderHandler::CalculateSlippagePrice(
-    const double order_price, const OrderType order_type,
-    const Direction direction, const unsigned char leverage) const {
+void BaseOrderHandler::UpdateCurrentPositionSize() {
+  double sum_position_size = 0;
+
+  for (const auto& filled_entry :
+       filled_entries_[bar_->GetCurrentSymbolIndex()]) {
+    double position_size =
+        filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize();
+
+    position_size = filled_entry->GetEntryDirection() == Direction::LONG
+                        ? position_size
+                        : -position_size;
+    sum_position_size += position_size;
+  }
+
+  current_position_size = sum_position_size;
+}
+
+double BaseOrderHandler::CalculateSlippagePrice(const double order_price,
+                                                const OrderType order_type,
+                                                const Direction direction,
+                                                const int leverage) const {
   double slippage_points = 0;
 
   // 시장가, 지정가에 따라 슬리피지가 달라짐
@@ -117,9 +139,10 @@ double BaseOrderHandler::CalculateSlippagePrice(
   return -1;
 }
 
-double BaseOrderHandler::CalculateCommission(
-    const double filled_price, const OrderType order_type,
-    const double filled_position_size, const unsigned char leverage) const {
+double BaseOrderHandler::CalculateCommission(const double filled_price,
+                                             const OrderType order_type,
+                                             const double filled_position_size,
+                                             const int leverage) const {
   // 시장가, 지정가에 따라 수수료가 달라짐
   switch (order_type) {
     case OrderType::MARKET:
@@ -146,7 +169,7 @@ double BaseOrderHandler::CalculateCommission(
 
 double BaseOrderHandler::CalculateMarginCallPrice(
     const double entry_filled_price, const Direction entry_direction,
-    const unsigned char leverage) {
+    const int leverage) {
   const double margin_call_percentage = 100 / static_cast<double>(leverage);
 
   double margin_call_price = 0;
@@ -160,11 +183,11 @@ double BaseOrderHandler::CalculateMarginCallPrice(
                               CountDecimalPlaces(entry_filled_price));
 }
 
-double BaseOrderHandler::CalculatePnl(const Direction entry_direction,
-                                      const double base_price,
+double BaseOrderHandler::CalculatePnl(const double base_price,
+                                      const Direction entry_direction,
                                       const double entry_price,
                                       const double position_size,
-                                      const unsigned char leverage) {
+                                      const int leverage) {
   if (entry_direction == Direction::LONG) {
     return (base_price - entry_price) * position_size * leverage;
   }
@@ -180,7 +203,8 @@ double BaseOrderHandler::CalculatePnl(const Direction entry_direction,
 void BaseOrderHandler::IsValidDirection(const Direction direction) {
   if (direction == Direction::NONE) {
     throw InvalidValue(
-        "주어진 방향 NONE은 LONG 혹은 SHORT으로 지정해야 합니다.");
+        "주어진 방향 NONE은 유효하지 않으며, "
+        "LONG 혹은 SHORT으로 지정해야 합니다.");
   }
 }
 
@@ -197,7 +221,7 @@ void BaseOrderHandler::IsValidPositionSize(const double position_size) {
   }
 }
 
-void BaseOrderHandler::IsValidLeverage(const unsigned char leverage) {
+void BaseOrderHandler::IsValidLeverage(const int leverage) {
   if (leverage < 1) {
     throw InvalidValue(
         format("주어진 레버리지 {}은(는) 1과 같거나 커야합니다.", leverage));
@@ -253,17 +277,14 @@ void BaseOrderHandler::IsValidTrailPoint(double trail_point) {
 void BaseOrderHandler::LogFormattedInfo(const LogLevel log_level,
                                         const string& formatted_message,
                                         const char* file, const int line) {
-  if (engine_->debug_mode_) {
-    const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
-    const int symbol_idx = bar_->GetCurrentSymbolIndex();
+  const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
+  const int symbol_idx = bar_->GetCurrentSymbolIndex();
 
-    logger_->Log(
+  logger_->Log(
       log_level,
-      format("{} | {} | {}",
-             bar.GetSymbolName(symbol_idx),
+      format("{} | {} | {}", bar.GetSymbolName(symbol_idx),
              UtcTimestampToUtcDatetime(
-               bar.GetBar(symbol_idx, bar_->GetCurrentBarIndex()).open_time),
+                 bar.GetBar(symbol_idx, bar_->GetCurrentBarIndex()).open_time),
              formatted_message),
-          file, line);
-  }
+      file, line);
 }

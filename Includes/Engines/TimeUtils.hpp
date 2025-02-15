@@ -22,6 +22,7 @@ constexpr int64_t kHour = 60 * kMinute;
 constexpr int64_t kDay = 24 * kHour;
 constexpr int64_t kWeek = 7 * kDay;
 constexpr int64_t kMonth = 30 * kDay;  // 한 달을 30일로 가정
+constexpr int64_t kYear = 12 * kMonth;
 
 /**
  * 현재 시스템의 로컬 시간대를 기준으로 현재 날짜와 시간을 반환하는 함수
@@ -59,4 +60,7 @@ string FormatTimeframe(int64_t timeframe_ms);
 
 /// 타임프레임 문자열을 타임스탬프로 변환하여 반환하는 함수
 int64_t ParseTimeframe(const string& timeframe_str);
+
+/// 타임스탬프 차이를 보기 쉬운 시간으로 포맷하여 반환하는 함수
+string FormatTimeDiff(int64_t diff_ms);
 }

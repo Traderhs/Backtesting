@@ -5,6 +5,7 @@
 #include "Engines/BaseEngine.hpp"
 
 // 내부 헤더
+#include "Engines/Analyzer.hpp"
 #include "Engines/BarHandler.hpp"
 #include "Engines/DataUtils.hpp"
 #include "Engines/Strategy.hpp"
@@ -13,23 +14,20 @@
 using namespace data_utils;
 
 BaseEngine::BaseEngine()
-    : debug_mode_(false),
-      wallet_balance_(-1),
+    : wallet_balance_(-1),
       available_balance_(-1),
       unrealized_pnl_(0),
       used_margin_(0),
       is_bankruptcy_(false),
       max_wallet_balance_(-1),
-      min_wallet_balance_(-1),
       drawdown_(0),
       max_drawdown_(0),
       liquidations_(0) {}
 BaseEngine::~BaseEngine() = default;
 
+shared_ptr<Analyzer>& BaseEngine::analyzer_ = Analyzer::GetAnalyzer();
 shared_ptr<BarHandler>& BaseEngine::bar_ = BarHandler::GetBarHandler();
 shared_ptr<Logger>& BaseEngine::logger_ = Logger::GetLogger();
-
-void BaseEngine::SetDebugMode() { debug_mode_ = true; }
 
 void BaseEngine::AddBarData(const string& symbol_name, const string& file_path,
                             const BarType bar_type,
@@ -52,7 +50,6 @@ void BaseEngine::SetConfig(const Config& config) {
   wallet_balance_ = initial_balance;
   available_balance_ = initial_balance;
   max_wallet_balance_ = initial_balance;
-  min_wallet_balance_ = initial_balance;
 }
 
 bool BaseEngine::IncreaseWalletBalance(const double increase_balance) {
@@ -131,3 +128,16 @@ void BaseEngine::SetBankruptcy() { is_bankruptcy_ = true; }
 Config BaseEngine::GetConfig() const { return config_; }
 
 double BaseEngine::GetWalletBalance() const { return wallet_balance_; }
+
+double BaseEngine::GetMaxWalletBalance() const { return max_wallet_balance_; }
+
+double BaseEngine::GetDrawdown() const { return drawdown_; }
+
+double BaseEngine::GetMaxDrawdown() const { return max_drawdown_; }
+
+
+void BaseEngine::UpdateStatistics() {
+  max_wallet_balance_ = max(max_wallet_balance_, wallet_balance_);
+  drawdown_ = (1 - wallet_balance_ / max_wallet_balance_) * 100;
+  max_drawdown_ = max(max_drawdown_, drawdown_);
+}

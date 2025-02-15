@@ -188,11 +188,11 @@ void BinanceFetcher::UpdateBarData(const string& symbol,
 
     // 새로운 Array로 새로운 Table 생성
     const auto& schema = klines_file->schema();
-    const auto& new_table = Table::Make(schema, arrays);
+    const auto& new_table = arrow::Table::Make(schema, arrays);
 
     // 기존 Table과 새로운 Table을 수직으로 결합
-    const vector<shared_ptr<Table>>& tables_to_concatenate = {klines_file,
-                                                              new_table};
+    const vector<shared_ptr<arrow::Table>>& tables_to_concatenate = {
+        klines_file, new_table};
     const auto& concatenated_tables_result =
         ConcatenateTables(tables_to_concatenate);
 
@@ -377,14 +377,15 @@ vector<json> BinanceFetcher::ConcatKlines(const vector<json>& spot_klines,
 void BinanceFetcher::SaveKlines(const vector<json>& klines,
                                 const string& file_path) {
   // column 추가
-  const vector<string>& column_names(
-      {"Open Time", "Open", "High", "Low", "Close", "Volume", "Close Time"});
+  const vector<string>& column_names{"Open Time", "Open",   "High",      "Low",
+                                     "Close",     "Volume", "Close Time"};
 
-  vector<shared_ptr<Field>> arrow_fields;
+  vector<shared_ptr<arrow::Field>> arrow_fields;
   for (const auto& column_name : column_names) {
     const auto& field_type =
-        column_name == "Open Time" || column_name == "Close Time" ? int64()
-                                                                  : float64();
+        column_name == "Open Time" || column_name == "Close Time"
+            ? arrow::int64()
+            : arrow::float64();
     arrow_fields.push_back(field(column_name, field_type));
   }
 
@@ -395,13 +396,13 @@ void BinanceFetcher::SaveKlines(const vector<json>& klines,
   const auto& arrays = GetArraysAddedKlines(klines);
 
   // Table 생성
-  const auto& table = Table::Make(schema, arrays);
+  const auto& table = arrow::Table::Make(schema, arrays);
 
   // 저장
   TableToParquet(table, file_path);
 }
 
-vector<shared_ptr<Array>> BinanceFetcher::GetArraysAddedKlines(
+vector<shared_ptr<arrow::Array>> BinanceFetcher::GetArraysAddedKlines(
     const vector<json>& klines) {
   const size_t num_rows = klines.size();
 
@@ -427,21 +428,21 @@ vector<shared_ptr<Array>> BinanceFetcher::GetArraysAddedKlines(
   }
 
   // 빌더 생성
-  vector<shared_ptr<ArrayBuilder>> builders(7);
-  builders[0] = make_shared<Int64Builder>();  // Open Time
+  vector<shared_ptr<arrow::ArrayBuilder>> builders(7);
+  builders[0] = make_shared<arrow::Int64Builder>();  // Open Time
   for (int i = 1; i <= 5; i++) {
-    builders[i] = make_shared<DoubleBuilder>();  // OHLCV
+    builders[i] = make_shared<arrow::DoubleBuilder>();  // OHLCV
   }
-  builders[6] = make_shared<Int64Builder>();  // Close Time
+  builders[6] = make_shared<arrow::Int64Builder>();  // Close Time
 
   // 데이터를 Builder에 추가 후 Array에 추가
-  vector<shared_ptr<Array>> arrays(7);
+  vector<shared_ptr<arrow::Array>> arrays(7);
   const vector<vector<double>*>& price_data = {nullptr, &open, &high, &low, &close, &volume, nullptr};
   const vector<vector<int64_t>*>& time_data = {&open_time, nullptr, nullptr, nullptr, nullptr, nullptr, &close_time};
 
   for (int i = 0; i < 7; ++i) {
     if (i == 0 || i == 6) {  // 시간 데이터
-      auto builder = make_shared<Int64Builder>();
+      auto builder = make_shared<arrow::Int64Builder>();
       if (auto* int64_builder = builder.get();
         !int64_builder->AppendValues(*time_data[i]).ok() ||
           !int64_builder->Finish(&arrays[i]).ok()) {
@@ -451,7 +452,7 @@ vector<shared_ptr<Array>> BinanceFetcher::GetArraysAddedKlines(
             __FILE__, __LINE__);
       }
     } else {  // 가격 데이터
-      auto builder = make_shared<DoubleBuilder>();
+      auto builder = make_shared<arrow::DoubleBuilder>();
       if (auto* double_builder = builder.get();
         !double_builder->AppendValues(*price_data[i]).ok() ||
           !double_builder->Finish(&arrays[i]).ok()) {

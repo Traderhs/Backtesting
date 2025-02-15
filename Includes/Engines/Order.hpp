@@ -1,6 +1,7 @@
 #pragma once
 
 // 표준 라이브러리
+#include <cstdint>
 #include <string>
 
 // 네임 스페이스
@@ -18,7 +19,7 @@ class Order {
   Order();
   ~Order();
 
-  Order& SetLeverage(unsigned char leverage);
+  Order& SetLeverage(int leverage);
   Order& SetMarginCallPrice(double margin_call_price);
 
   // ===========================================================================
@@ -60,50 +61,50 @@ class Order {
   Order& SetExitFilledPrice(double exit_filled_price);
 
   // ===========================================================================
-  [[nodiscard]] inline unsigned char GetLeverage() const;
-  [[nodiscard]] inline double GetMarginCallPrice() const;
+  [[nodiscard]] int GetLeverage() const;
+  [[nodiscard]] double GetMarginCallPrice() const;
 
   // ===========================================================================
-  [[nodiscard]] inline string GetEntryName() const;
-  [[nodiscard]] inline OrderType GetEntryOrderType() const;
-  [[nodiscard]] inline Direction GetEntryDirection() const;
-  [[nodiscard]] inline double GetEntryCommission() const;
+  [[nodiscard]] string GetEntryName() const;
+  [[nodiscard]] OrderType GetEntryOrderType() const;
+  [[nodiscard]] Direction GetEntryDirection() const;
+  [[nodiscard]] double GetEntryCommission() const;
 
-  [[nodiscard]] inline double GetEntryTouchPrice() const;
-  [[nodiscard]] inline Direction GetEntryTouchDirection() const;
-  [[nodiscard]] inline double GetEntryExtremePrice() const;
-  [[nodiscard]] inline double GetEntryTrailPoint() const;
+  [[nodiscard]] double GetEntryTouchPrice() const;
+  [[nodiscard]] Direction GetEntryTouchDirection() const;
+  [[nodiscard]] double GetEntryExtremePrice() const;
+  [[nodiscard]] double GetEntryTrailPoint() const;
 
-  [[nodiscard]] inline int64_t GetEntryOrderTime() const;
-  [[nodiscard]] inline double GetEntryOrderSize() const;
-  [[nodiscard]] inline double GetEntryOrderPrice() const;
+  [[nodiscard]] int64_t GetEntryOrderTime() const;
+  [[nodiscard]] double GetEntryOrderSize() const;
+  [[nodiscard]] double GetEntryOrderPrice() const;
 
-  [[nodiscard]] inline int64_t GetEntryFilledTime() const;
-  [[nodiscard]] inline double GetEntryFilledSize() const;
-  [[nodiscard]] inline double GetEntryFilledPrice() const;
+  [[nodiscard]] int64_t GetEntryFilledTime() const;
+  [[nodiscard]] double GetEntryFilledSize() const;
+  [[nodiscard]] double GetEntryFilledPrice() const;
 
   // ===========================================================================
-  [[nodiscard]] inline string GetExitName() const;
-  [[nodiscard]] inline OrderType GetExitOrderType() const;
-  [[nodiscard]] inline Direction GetExitDirection() const;
-  [[nodiscard]] inline double GetExitCommission() const;
+  [[nodiscard]] string GetExitName() const;
+  [[nodiscard]] OrderType GetExitOrderType() const;
+  [[nodiscard]] Direction GetExitDirection() const;
+  [[nodiscard]] double GetExitCommission() const;
 
-  [[nodiscard]] inline double GetExitTouchPrice() const;
-  [[nodiscard]] inline Direction GetExitTouchDirection() const;
-  [[nodiscard]] inline double GetExitExtremePrice() const;
-  [[nodiscard]] inline double GetExitTrailPoint() const;
+  [[nodiscard]] double GetExitTouchPrice() const;
+  [[nodiscard]] Direction GetExitTouchDirection() const;
+  [[nodiscard]] double GetExitExtremePrice() const;
+  [[nodiscard]] double GetExitTrailPoint() const;
 
-  [[nodiscard]] inline int64_t GetExitOrderTime() const;
-  [[nodiscard]] inline double GetExitOrderSize() const;
-  [[nodiscard]] inline double GetExitOrderPrice() const;
+  [[nodiscard]] int64_t GetExitOrderTime() const;
+  [[nodiscard]] double GetExitOrderSize() const;
+  [[nodiscard]] double GetExitOrderPrice() const;
 
-  [[nodiscard]] inline int64_t GetExitFilledTime() const;
-  [[nodiscard]] inline double GetExitFilledSize() const;
-  [[nodiscard]] inline double GetExitFilledPrice() const;
+  [[nodiscard]] int64_t GetExitFilledTime() const;
+  [[nodiscard]] double GetExitFilledSize() const;
+  [[nodiscard]] double GetExitFilledPrice() const;
 
  private:
   // 통합 변수
-  unsigned char leverage_;    // 레버리지 배수
+  int leverage_;              // 레버리지 배수
   double margin_call_price_;  // 마진콜 가격  // 수정 필요 @@@@@@@@@@@@@@@@@@@@@
 
   // ===========================================================================
@@ -145,9 +146,9 @@ class Order {
                                        청산할지 결정 */
 
   // 시장가, 지정가 청산 주문 시 업데이트
-  int64_t exit_order_time_;   // 청산 주문 시간
-  double exit_order_size_;    // 청산 주문 수량
-  double exit_order_price_;   // 청산 주문 가격
+  int64_t exit_order_time_;  // 청산 주문 시간
+  double exit_order_size_;   // 청산 주문 수량
+  double exit_order_price_;  // 청산 주문 가격
 
   // 시장가, 지정가 청산 체결 시 업데이트
   int64_t exit_filled_time_;  // 청산 체결 시간

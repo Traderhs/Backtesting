@@ -46,7 +46,7 @@ class BarHandler final : public BaseBarHandler {
 
   // ===========================================================================
   /// 지정된 바 데이터 및 심볼에 해당되는 인덱스를 base_close_time 시점의
-  /// 인덱스까지 진행시키는 함수
+  /// 인덱스까지 최대한 진행시키는 함수
   void ProcessBarIndex(int symbol_idx, BarType bar_type,
                        const string& timeframe, int64_t base_close_time);
 
@@ -69,19 +69,19 @@ class BarHandler final : public BaseBarHandler {
   void SetCurrentBarIndex(size_t bar_index);
 
   /// 지정된 바 데이터 타입 및 심볼에 해당되는 바 데이터의
-  /// 인덱스를 하나 증가시키는 함수
-  void IncreaseBarIndex(BarType bar_type, const string& timeframe,
+  /// 인덱스를 하나 증가시키고 증가한 인덱스를 반환하는 함수
+  size_t IncreaseBarIndex(BarType bar_type, const string& timeframe,
                          int symbol_index);
 
   // ===========================================================================
   /// 현재 사용 중인 바의 타입을 반환하는 함수
-  [[nodiscard]] inline BarType GetCurrentBarType() const;
+  [[nodiscard]] BarType GetCurrentBarType() const;
 
   /// 현재 참조 바 데이터에서 사용 중인 타임프레임을 반환하는 함수
-  [[nodiscard]] inline string GetCurrentReferenceTimeframe() const;
+  [[nodiscard]] string GetCurrentReferenceTimeframe() const;
 
   /// 현재 사용 중인 심볼의 인덱스를 반환하는 함수
-  [[nodiscard]] inline int GetCurrentSymbolIndex() const;
+  [[nodiscard]] int GetCurrentSymbolIndex() const;
 
   /// 현재 사용 중인 바 데이터 타입 및 심볼과 타임프레임에 해당되는 바 데이터의
   /// 현재 인덱스를 반환하는 함수
