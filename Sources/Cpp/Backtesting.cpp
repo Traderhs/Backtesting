@@ -55,9 +55,9 @@ int main() {
   Config config;
   config.SetInitialBalance(10000)
   .SetCommissionType(CommissionType::COMMISSION_PERCENTAGE)
-  .SetCommission({0.04, 0.03})
+  .SetCommission({0.1, 0})
   .SetSlippageType(SlippageType::SLIPPAGE_PERCENTAGE)
-  .SetSlippage({0.1, 0});
+  .SetSlippage({0, 0});
 
   Backtesting::engine_->SetConfig(config);
   Backtesting::engine_->Backtesting(false);

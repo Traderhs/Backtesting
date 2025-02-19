@@ -12,6 +12,7 @@
 #include "Engines/DataUtils.hpp"
 #include "Engines/Engine.hpp"
 #include "Engines/Exception.hpp"
+#include "Engines/TechnicalAnalyzer.hpp"
 #include "Engines/TimeUtils.hpp"
 
 // 네임 스페이스
@@ -19,20 +20,39 @@ using namespace data_utils;
 using namespace time_utils;
 
 BaseOrderHandler::BaseOrderHandler()
-    : current_position_size(0), config_(engine_->GetConfig()) {}
+    : current_position_size(0),
+      config_(engine_->GetConfig()),
+      just_entered_(false),
+      just_exited_(false) {}
 BaseOrderHandler::~BaseOrderHandler() = default;
 
 shared_ptr<Analyzer>& BaseOrderHandler::analyzer_ = Analyzer::GetAnalyzer();
 shared_ptr<BarHandler>& BaseOrderHandler::bar_ = BarHandler::GetBarHandler();
 shared_ptr<Engine>& BaseOrderHandler::engine_ = Engine::GetEngine();
 shared_ptr<Logger>& BaseOrderHandler::logger_ = Logger::GetLogger();
+shared_ptr<TechnicalAnalyzer>& BaseOrderHandler::ta_ =
+    TechnicalAnalyzer::GetTechnicalAnalyzer();
 
-void BaseOrderHandler::InitializeOrderHandler(const int num_symbols) {
+void BaseOrderHandler::Initialize(const int num_symbols) {
   config_ = engine_->GetConfig();
 
   pending_entries_.resize(num_symbols);
   filled_entries_.resize(num_symbols);
   pending_exits_.resize(num_symbols);
+
+  last_entry_bar_indices_.resize(num_symbols);
+  last_exit_bar_indices_.resize(num_symbols);
+
+  // 아직 진입 및 청산이 없었던 심볼은 -1을 가짐
+  ranges::fill(last_entry_bar_indices_, -1);
+  ranges::fill(last_exit_bar_indices_, -1);
+
+  last_entry_prices_.resize(num_symbols);
+  last_exit_prices_.resize(num_symbols);
+
+  // 아직 진입 및 청산이 없었던 심볼은 NaN을 가짐
+  ranges::fill(last_entry_prices_, nan(""));
+  ranges::fill(last_exit_prices_, nan(""));
 }
 
 double BaseOrderHandler::GetUnrealizedPnl() const {
@@ -83,6 +103,46 @@ void BaseOrderHandler::UpdateCurrentPositionSize() {
   }
 
   current_position_size = sum_position_size;
+}
+
+void BaseOrderHandler::InitializeJustEntered() { just_entered_ = false; }
+void BaseOrderHandler::InitializeJustExited() { just_exited_ = false; }
+bool BaseOrderHandler::GetJustEntered() const { return just_entered_; }
+bool BaseOrderHandler::GetJustExited() const { return just_exited_; }
+
+double BaseOrderHandler::BarsSinceEntry() const {
+  // 전략 실행 시 무조건 트레이딩 바를 사용하므로 원본 바 타입은 저장하지 않음
+  const auto last_entry_bar_index =
+      last_entry_bar_indices_[bar_->GetCurrentSymbolIndex()];
+
+  if (last_entry_bar_index == -1) {
+    // 아직 진입이 없었던 심볼은 NaN을 반환 (기본 -1로 초기화 됨)
+    return nan("");
+  }
+
+  // 진입이 있었던 심볼은 현재 바 인덱스와의 차이를 구해 반환
+  return static_cast<double>(bar_->GetCurrentBarIndex() - last_entry_bar_index);
+}
+double BaseOrderHandler::BarsSinceExit() const {
+  // 전략 실행 시 무조건 트레이딩 바를 사용하므로 원본 바 타입은 저장하지 않음
+  const auto last_exit_bar_index =
+      last_exit_bar_indices_[bar_->GetCurrentSymbolIndex()];
+
+  if (last_exit_bar_index == -1) {
+    // 아직 진입이 없었던 심볼은 NaN을 반환 (기본 -1로 초기화 됨)
+    return nan("");
+  }
+
+  // 진입이 있었던 심볼은 현재 바 인덱스와의 차이를 구해 반환
+  return static_cast<double>(bar_->GetCurrentBarIndex() - last_exit_bar_index);
+}
+
+double BaseOrderHandler::LastEntryPrice() const {
+  return last_entry_prices_[bar_->GetCurrentSymbolIndex()];
+}
+
+double BaseOrderHandler::LastExitPrice() const {
+  return last_exit_prices_[bar_->GetCurrentSymbolIndex()];
 }
 
 double BaseOrderHandler::CalculateSlippagePrice(const double order_price,
@@ -232,8 +292,8 @@ void BaseOrderHandler::IsValidEntryName(const string& entry_name) const {
   /* 같은 이름으로 체결된 Entry Name이 여러 개 존재하면, 청산 시 Target Entry
      지정할 때의 로직이 꼬이기 때문에 하나의 Entry Name은 하나의 진입 체결로
      제한 */
-  for (const int symbol_idx = bar_->GetCurrentSymbolIndex();
-       const auto& filled_entry : filled_entries_[symbol_idx]) {
+  for (const auto& filled_entry :
+       filled_entries_[bar_->GetCurrentSymbolIndex()]) {
     /* 체결된 진입 주문 중 같은 이름이 하나라도 존재하면
        해당 entry_name으로 진입 불가 */
     if (entry_name == filled_entry->GetEntryName()) {
@@ -282,9 +342,30 @@ void BaseOrderHandler::LogFormattedInfo(const LogLevel log_level,
 
   logger_->Log(
       log_level,
-      format("{} | {} | {}", bar.GetSymbolName(symbol_idx),
-             UtcTimestampToUtcDatetime(
-                 bar.GetBar(symbol_idx, bar_->GetCurrentBarIndex()).open_time),
-             formatted_message),
-      file, line);
+      format("{} | {}", bar.GetSymbolName(symbol_idx), formatted_message), file,
+      line);
+}
+
+void BaseOrderHandler::UpdateLastEntryBarIndex(const int symbol_idx) {
+  const auto original_bar_type = bar_->GetCurrentBarType();
+
+  bar_->SetCurrentBarType(BarType::TRADING, "NONE");
+
+  last_entry_bar_indices_[symbol_idx] = bar_->GetCurrentBarIndex();
+
+  // 진입 시에는 트레이딩, 돋보기 바만 사용하며, 진입 바 인덱스는 진입 시에만
+  // 업데이트 되므로 타임프레임은 필요하지 않음
+  bar_->SetCurrentBarType(original_bar_type, "NONE");
+}
+
+void BaseOrderHandler::UpdateLastExitBarIndex(const int symbol_idx) {
+  const auto original_bar_type = bar_->GetCurrentBarType();
+
+  bar_->SetCurrentBarType(BarType::TRADING, "NONE");
+
+  last_exit_bar_indices_[symbol_idx] = bar_->GetCurrentBarIndex();
+
+  // 진입 시에는 트레이딩, 돋보기 바만 사용하며, 진입 바 인덱스는 진입 시에만
+  // 업데이트 되므로 타임프레임은 필요하지 않음
+  bar_->SetCurrentBarType(original_bar_type, "NONE");
 }

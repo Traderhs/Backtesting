@@ -20,6 +20,7 @@ shared_ptr<Logger>& BaseAnalyzer::logger_ = Logger::GetLogger();
 void BaseAnalyzer::Initialize(const double initial_balance) {
   trading_list_.push_back(Trade()
                               .SetSymbolName("-")
+                              .SetStrategyName("-")
                               .SetEntryName("-")
                               .SetExitName("-")
                               .SetEntryTime("-")
@@ -45,7 +46,8 @@ void BaseAnalyzer::TradingListToCsv(const string& file_path) const {
   }
 
   // CSV 헤더 작성
-  file << "거래 번호,심볼 이름,진입 이름,청산 이름,진입 방향,진입 시간,청산 "
+  file << "거래 번호,전략 이름,심볼 이름,진입 이름,청산 이름,진입 방향,진입 "
+          "시간,청산 "
           "시간,보유 시간,진입 수량,청산 수량,진입 가격,청산 "
           "가격,레버리지,진입 수수료,청산 수수료,손익,손익률,현재 자금,최대 "
           "자금,드로우다운,최고 드로우다운,보유 심볼 수\n";
@@ -53,6 +55,7 @@ void BaseAnalyzer::TradingListToCsv(const string& file_path) const {
   // 데이터 작성
   for (const auto& trade : trading_list_) {
     file << "\"" << trade.GetTradeNumber() << "\","
+         << "\"" << trade.GetStrategyName() << "\","
          << "\"" << trade.GetSymbolName() << "\","
          << "\"" << trade.GetEntryName() << "\","
          << "\"" << trade.GetExitName() << "\","

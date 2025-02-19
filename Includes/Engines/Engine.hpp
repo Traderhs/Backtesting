@@ -56,16 +56,18 @@ class Engine final : public BaseEngine {
                    const string& end = "",
                    const string& format = "%Y-%m-%d %H:%M:%S");
 
-  /// 백테스팅의 메인 로직 시작 전 엔진의 유효성 검사와 초기화를 하는 함수
-  void Initialize(bool use_bar_magnifier, const string& start,
-                  const string& end, const string& format);
-
-  /// 백테스팅의 메인 로직을 실행하는 함수
-  void BacktestingMain();
-
   /// 현재 바에 사용 가능 자금을 업데이트 하지 않았다면 전략별 미실현 손익과
   /// 사용한 마진에 따라 사용 가능 자금을 업데이트하고 반환하는 함수
   double UpdateAvailableBalance();
+
+  /// 해당되는 심볼 인덱스의 최대 소숫점 자리수를 반환하는 함수
+  [[nodiscard]] size_t GetMaxDecimalPlace(int symbol_idx) const;
+
+  /// 현재 사용 중인 전략의 이름을 반환하는 함수
+  [[nodiscard]] string GetCurrentStrategyName() const;
+
+  /// 현재 사용 중인 전략의 실행 타입을 반환하는 함수
+  [[nodiscard]] string GetCurrentStrategyType() const;
 
   /// 현재 사용 중인 바 데이터 현재 인덱스의 Open Time을 반환하는 함수
   [[nodiscard]] int64_t GetCurrentOpenTime() const;
@@ -84,28 +86,19 @@ class Engine final : public BaseEngine {
   // 바 데이터
   shared_ptr<BarData> trading_bar_;
   shared_ptr<BarData> magnifier_bar_;
-  shared_ptr<unordered_map<string, BarData>> reference_bar_;
+  shared_ptr<unordered_map<string, BarData>>
+      reference_bar_;  // [타임프레임, 바 데이터]
 
+  // ===========================================================================
   // 바 데이터 정보
-  int trading_bar_num_symbols_;  // 트레이딩 바 심볼 개수
+  int trading_bar_num_symbols_;  /// 트레이딩 바 심볼 개수
   int64_t
-      trading_bar_add_time_;  // 트레이딩 바 인덱스 하나 증가 시 증가하는 시간
+      trading_bar_add_time_;  /// 트레이딩 바 인덱스 하나 증가 시 증가하는 시간
+  string trading_bar_timeframe_;  /// 트레이딩 바 타임프레임
 
-  // 트레이딩 시간 정보
-  int64_t begin_open_time_;     // 전체 바 데이터의 가장 처음 Open Time
-  int64_t end_open_time_;       // 전체 바 데이터의 가장 마지막 Open Time
-  int64_t current_open_time_;   // 현재 사용 중인 바 인덱스의 Open Time
-  int64_t current_close_time_;  // 현재 사용 중인 바 인덱스의 Close Time
-
-  // 트레이딩 진행 여부
-  vector<bool> trading_began_;  // 심볼별로 트레이딩이 진행 중인지 결정
-  vector<bool> trading_ended_;  // 심볼별로 트레이딩이 끝났는지 결정
-
-  // 현재 바에서 트레이딩을 진행하는 심볼들
-  vector<int> activated_trading_symbol_indices_;
-  vector<size_t> activated_trading_bar_indices_;
-  vector<int> activated_magnifier_symbol_indices_;
-  vector<size_t> activated_magnifier_bar_indices_;
+  /// 각 심볼의 최대 소숫점 자릿수
+  /// 진입, 청산 시 정확한 가격에서 주문, 체결을 보장하기 위함
+  vector<size_t> max_decimal_places_;
 
   /// 백테스팅에서 바 돋보기 기능을 사용하는지 결정하는 플래그
   bool use_bar_magnifier_;
@@ -113,6 +106,37 @@ class Engine final : public BaseEngine {
   /// 현재 바에서 미실현 손익과 사용한 마진에 따라 사용 가능 자금이
   /// 업데이트 됐는지를 결정하는 플래그
   bool available_balance_updated_;
+
+  // ===========================================================================
+  // 전략 정보
+  string current_strategy_name_;  /// 현재 사용 중인 전략 이름
+  string current_strategy_type_;  /// 현재 사용 중인 전략 실행 타입
+
+  // ===========================================================================
+  // 트레이딩 시간 정보
+  int64_t begin_open_time_;     /// 전체 바 데이터의 가장 처음 Open Time
+  int64_t end_open_time_;       /// 전체 바 데이터의 가장 마지막 Open Time
+  int64_t current_open_time_;   /// 현재 사용 중인 바 인덱스의 Open Time
+  int64_t current_close_time_;  /// 현재 사용 중인 바 인덱스의 Close Time
+
+  // ===========================================================================
+  // 트레이딩 진행 여부
+  vector<bool> trading_began_;  /// 심볼별로 트레이딩이 진행 중인지 결정
+  vector<bool> trading_ended_;  /// 심볼별로 트레이딩이 끝났는지 결정
+
+  // 현재 바에서 트레이딩을 진행하는 심볼들
+  vector<int> activated_symbol_indices_;
+  vector<int> activated_magnifier_symbol_indices_;
+  vector<size_t> activated_magnifier_bar_indices_;
+  vector<int> activated_trading_symbol_indices_;
+  vector<size_t> activated_trading_bar_indices_;
+
+  /// 백테스팅의 메인 로직 시작 전 엔진의 유효성 검사와 초기화를 하는 함수
+  void Initialize(bool use_bar_magnifier, const string& start,
+                  const string& end, const string& format);
+
+  /// 백테스팅의 메인 로직을 실행하는 함수
+  void BacktestingMain();
 
   // ===========================================================================
   /// 바 데이터의 유효성을 검증하는 함수
@@ -131,6 +155,10 @@ class Engine final : public BaseEngine {
   /// 백테스팅 전 엔진의 변수들을 초기화하는 함수
   void InitializeEngine(bool use_bar_magnifier);
 
+  /// 해당되는 심볼 인덱스의 트레이딩 바 데이터에서
+  /// 최대 소숫점 자리수를 구하여 반환하는 함수
+  [[nodiscard]] size_t CountMaxDecimalPlace(int symbol_idx) const;
+
   /**
    * 모든 심볼에 대하여 현재 트레이딩 바 인덱스에서 트레이딩을 진행하는지
    * 확인하고 상태를 업데이트하는 함수.
@@ -145,7 +173,7 @@ class Engine final : public BaseEngine {
   void ClearActivatedVectors();
 
   /// 백테스팅이 끝났는지 검증하는 함수
-  bool IsBacktestingEnd() const;
+  [[nodiscard]] bool IsBacktestingEnd() const;
 
   /// UpdateTradingStatus 함수에서 활성화된 심볼 인덱스에 추가할 때,
   /// 참조 바가 사용 가능한지 확인하고, 사용 가능하면 조건에 따라 트레이딩
@@ -164,7 +192,7 @@ class Engine final : public BaseEngine {
       const BarData& bar_data, const vector<int>& activated_symbols,
       const vector<size_t>& activated_bar_indices);
 
-  /// 전략을 실행하는 함수.
-  /// 파산 당할 시 false를 반환
-  bool ExecuteStrategy(const shared_ptr<Strategy>& strategy);
+  /// 지정된 전략과 심볼에서 전략을 실행하는 함수
+  void ExecuteStrategy(const shared_ptr<Strategy>& strategy,
+                       const string& strategy_type, int symbol_index);
 };

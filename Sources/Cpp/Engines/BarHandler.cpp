@@ -125,24 +125,24 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
 
 void BarHandler::ProcessBarIndex(const int symbol_idx, const BarType bar_type,
                                  const string& timeframe,
-                                 const int64_t base_close_time) {
+                                 const int64_t target_close_time) {
   const auto& bar_data = GetBarData(bar_type, timeframe);
   auto& bar_index = GetBarIndex(bar_type, timeframe);
 
   try {
-    // 현재 Close Time이 Base Close Time보다 작을 때만 인덱스 증가 가능
+    // 현재 Close Time이 Target Close Time보다 작을 때만 인덱스 증가 가능
     while (bar_data.SafeGetBar(symbol_idx, bar_index[symbol_idx]).close_time <
-           base_close_time) {
-      /* 다음 바의 Close Time이 Base Close Time보다 작거나 같을 때만
+           target_close_time) {
+      /* 다음 바의 Close Time이 Target Close Time보다 작거나 같을 때만
          인덱스 증가 */
       if (const auto next_close_time =
               bar_data.SafeGetBar(symbol_idx, bar_index[symbol_idx] + 1)
                   .close_time;
-          next_close_time <= base_close_time) {
+          next_close_time <= target_close_time) {
         bar_index[symbol_idx]++;
       } else {
-        /* 다음 바 Close Time이 Base Close Time보다 크면 증가하지 않고 종료.
-           이 함수의 목적은 Base Close Time까지 지정된 심볼의 Close Time을
+        /* 다음 바 Close Time이 Target Close Time보다 크면 증가하지 않고 종료.
+           이 함수의 목적은 Target Close Time까지 지정된 심볼의 Close Time을
            이동시키는 것이기 때문 */
         break;
       }
@@ -156,10 +156,10 @@ void BarHandler::ProcessBarIndex(const int symbol_idx, const BarType bar_type,
 
 void BarHandler::ProcessBarIndices(const BarType bar_type,
                                    const string& timeframe,
-                                   const int64_t base_close_time) {
+                                   const int64_t target_close_time) {
   for (int i = 0; i < GetBarData(bar_type, timeframe).GetNumSymbols(); i++) {
     try {
-      ProcessBarIndex(i, bar_type, timeframe, base_close_time);
+      ProcessBarIndex(i, bar_type, timeframe, target_close_time);
     } catch ([[maybe_unused]] const IndexOutOfRange& e) {
       continue;
     }

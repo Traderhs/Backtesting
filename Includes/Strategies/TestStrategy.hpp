@@ -8,8 +8,9 @@ class TestStrategy final : public Strategy {
   ~TestStrategy() override;
 
   void Initialize() override;
-
-  void Execute() override;
+  void ExecuteOnClose() override;
+  void ExecuteAfterEntry() override;
+  void ExecuteAfterExit() override;
 
  private:
   // ReSharper disable once CppInconsistentNaming

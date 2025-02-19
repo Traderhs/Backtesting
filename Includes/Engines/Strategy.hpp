@@ -1,14 +1,19 @@
 #pragma once
 
+// 표준 라이브러리
+#include <cfloat>
+
 // 전방 선언
 class OrderHandler;
 class BarHandler;
 
 // 내부 헤더
+#include "Engines/Order.hpp"
 #include "Indicators/Indicators.hpp"
 
 // 네임 스페이스
 using namespace std;
+using enum Direction;
 
 /// 백테스팅 전략을 생성하기 위한 가상 클래스
 class Strategy {
@@ -16,8 +21,14 @@ class Strategy {
   /// 전략 실행 전 초기화를 통해 값을 미리 계산하기 위한 함수.
   virtual void Initialize() = 0;
 
-  /// 모든 바의 종가에서 전략을 실행하는 함수. 메인 로직을 작성.
-  virtual void Execute() = 0;
+  /// 모든 바의 종가에서 전략을 실행하는 함수
+  virtual void ExecuteOnClose() = 0;
+
+  /// 특정 심볼의 진입 직후 전략을 실행하는 함수
+  virtual void ExecuteAfterEntry() = 0;
+
+  /// 특정 심볼의 청산 직후 전략을 실행하는 함수
+  virtual void ExecuteAfterExit() = 0;
 
   /// 해당 전략의 이름을 반환하는 함수
   [[nodiscard]] string GetName() const;

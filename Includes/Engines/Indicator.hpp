@@ -1,7 +1,6 @@
 #pragma once
 
 // 표준 라이브러리
-#include <cmath>
 #include <vector>
 
 // 전방 선언
@@ -66,14 +65,11 @@ class Indicator {
   vector<vector<double>> output_;  // 지표의 계산된 값: 심볼<값>
   bool is_calculated_;             // 지표가 계산되었는지 확인하는 플래그
 
-  // 지표가 현재 계산 중인지 확인하는 플래그 -> 지표 내 다른 지표가 다른
-  // 타임프레임을 가질 수 없게 검사할 때 사용
+  // 지표가 현재 계산 중인지 확인하는 플래그 ->
+  // 지표 계산 시 사용하는 다른 지표가 계산하는 지표와 다른 타임프레임을 가질 수
+  // 없게 검사할 때 사용
   static bool is_calculating_;
 
-  // 계산 중인 지표의 이름을 저장
+  // 계산 중인 지표의 이름을 저장 (로그용)
   static string calculating_name_;
-
-  /// 현재 진행한 바 인덱스보다 과거의 바 인덱스를 참조하는지 검증하는 함수
-  void IsValidReferenceIndex(size_t reference_index,
-                             size_t current_bar_index) const;
 };

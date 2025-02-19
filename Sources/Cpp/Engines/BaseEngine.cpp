@@ -66,10 +66,10 @@ bool BaseEngine::IncreaseWalletBalance(const double increase_balance) {
 }
 
 bool BaseEngine::DecreaseWalletBalance(const double decrease_balance) {
-  if (decrease_balance <= 0 || decrease_balance > wallet_balance_) {
+  if (decrease_balance < 0 || decrease_balance > wallet_balance_) {
     logger_->Log(
         LogLevel::ERROR_L,
-        format("현재 자금 감소를 위해 주어진 {}는 0보다 커야 하며, "
+        format("현재 자금 감소를 위해 주어진 {}는 0과 같거나 커야 하며, "
                "지갑 자금 {}를 초과할 수 없습니다.",
                FormatDollar(decrease_balance), FormatDollar(wallet_balance_)),
         __FILE__, __LINE__);

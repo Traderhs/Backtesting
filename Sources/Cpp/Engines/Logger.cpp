@@ -72,6 +72,11 @@ void Logger::Log(const LogLevel& log_level, const string& message,
       WriteToFile(info_file_, log_message);
       break;
 
+    case LogLevel::ORDER_L:
+      ConsoleLog("ORDER_L", log_message);
+      WriteToFile(info_file_, log_message);
+      break;
+
     case LogLevel::WARNING_L:
       ConsoleLog("WARNING_L", log_message);
       WriteToFile(warning_file_, log_message);
@@ -89,6 +94,8 @@ void Logger::ConsoleLog(const string& level, const string& message) {
     cout << "\033[90m" << message << "\033[0m" << endl;  // Gray
   } else if (level == "INFO_L") {
     cout << "\033[38;2;200;200;200m" << message << "\033[0m" << endl;  // White
+  } else if (level == "ORDER_L") {
+    cout << "\033[32m" << message << "\033[0m" << endl;  // Green
   } else if (level == "WARNING_L") {
     cout << "\033[33m" << message << "\033[0m" << endl;  // Yellow
   } else if (level == "ERROR_L") {
