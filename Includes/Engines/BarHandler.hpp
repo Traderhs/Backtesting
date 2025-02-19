@@ -45,15 +45,15 @@ class BarHandler final : public BaseBarHandler {
                   BarType bar_type, const vector<int>& columns);
 
   // ===========================================================================
-  /// 지정된 바 데이터 및 심볼에 해당되는 인덱스를 base_close_time 시점의
+  /// 지정된 바 데이터 및 심볼에 해당되는 인덱스를 target_close_time 시점의
   /// 인덱스까지 최대한 진행시키는 함수
   void ProcessBarIndex(int symbol_idx, BarType bar_type,
-                       const string& timeframe, int64_t base_close_time);
+                       const string& timeframe, int64_t target_close_time);
 
-  /// 지정된 바 데이터의 모든 심볼의 인덱스를 base_close_time 시점의
+  /// 지정된 바 데이터의 모든 심볼의 인덱스를 target_close_time 시점의
   /// 인덱스까지 진행시키는 함수
   void ProcessBarIndices(BarType bar_type, const string& timeframe,
-                         int64_t base_close_time);
+                         int64_t target_close_time);
   // ===========================================================================
   /// 현재 사용 중인 바의 타입을 설정하는 함수.
   /// 타임프레임은 참조 바 사용 시에만 지정.

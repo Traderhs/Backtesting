@@ -10,7 +10,7 @@
 using namespace std;
 
 // 로그 레벨을 지정하는 열거형 클래스
-enum class LogLevel { DEBUG_L, INFO_L, WARNING_L, ERROR_L };
+enum class LogLevel { DEBUG_L, INFO_L, ORDER_L, WARNING_L, ERROR_L };
 
 /// 시스템 로깅을 담당하는 클래스
 class Logger final {

@@ -24,6 +24,11 @@ Trade& Trade::SetTradeNumber(const int trade_number) {
   return *this;
 }
 
+Trade& Trade::SetStrategyName(const string& strategy_name) {
+  strategy_name_ = strategy_name;
+  return *this;
+}
+
 Trade& Trade::SetSymbolName(const string& symbol_name) {
   symbol_name_ = symbol_name;
   return *this;
@@ -130,6 +135,7 @@ Trade& Trade::SetSymbolCount(const int symbol_count) {
 }
 
 int Trade::GetTradeNumber() const { return trade_number_; }
+string Trade::GetStrategyName() const { return strategy_name_; }
 string Trade::GetSymbolName() const { return symbol_name_; }
 string Trade::GetEntryName() const { return entry_name_; }
 string Trade::GetExitName() const { return exit_name_; }

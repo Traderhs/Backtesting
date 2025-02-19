@@ -1,3 +1,6 @@
+// 표준 라이브러리
+#include <cmath>
+
 // 파일 헤더
 #include "Indicators/SimpleMovingAverage.hpp"
 

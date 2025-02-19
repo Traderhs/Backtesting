@@ -146,7 +146,7 @@ void VectorToCsv(const vector<double>& data, const string& file_name) {
 
   // 파일 열기 실패 시 에러 출력
   if (!file.is_open()) {
-    Logger::LogAndThrowError(file_name + "파일을 열지 못했습니다.", __FILE__,
+    Logger::LogAndThrowError(file_name + " 파일을 열지 못했습니다.", __FILE__,
                              __LINE__);
   }
 

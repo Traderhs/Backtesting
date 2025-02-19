@@ -1,4 +1,5 @@
 // 표준 라이브러리
+#include <cmath>
 #include <format>
 #include <utility>
 
@@ -37,7 +38,9 @@ Indicator::Indicator(string name, string timeframe)
   output_.resize(num_symbols);
 }
 Indicator::~Indicator() {
-  // Analyzer로 저장
+  VectorToCsv(output_[0], R"(C:\Users\0908r\Desktop\)" + name_ + ".csv");
+  // Analyzer에 넣고 그리기
+  // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 }
 
 bool Indicator::is_calculating_ = false;
@@ -78,15 +81,16 @@ double Indicator::operator[](const size_t index) {
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
   const auto bar_index = bar_->GetCurrentBarIndex();
 
-  // 진행한 인덱스보다 과거 인덱스 참조 시 throw
-  IsValidReferenceIndex(index, bar_index);
+  // 진행한 인덱스보다 과거 인덱스 참조 시 NaN을 반환
+  if (index > bar_index) {
+    return nan("");
+  }
 
   // 원래 사용 중이던 데이터 환경으로 복구
   bar_->SetCurrentBarType(original_bar_type, original_reference_tf);
 
   // 결과값 반환
-  const auto value = output_[symbol_idx][bar_index - index];
-  return !isnan(value) ? value : throw IndicatorInvalidValue("");
+  return output_[symbol_idx][bar_index - index];
 }
 
 void Indicator::OutputToCsv(const string& file_name,
@@ -137,13 +141,9 @@ void Indicator::CalculateAll() {
         // 현재 바 데이터의 인덱스 증가
         bar_->SetCurrentBarIndex(j);
 
-        try {
-          output_[i][j] = Calculate();
-        } catch ([[maybe_unused]] IndicatorInvalidValue& e) {
-          /* 해당 지표 계산 시 타 지표를 사용하는데,
-             현재 바에서 타 지표 계산이 안 되어 nan이면 해당 지표 값도 nan */
-          output_[i][j] = nan("");
-        }
+        /* 지표 계산 시 타 지표를 사용하는 경우가 있는데,
+           현재 바에서 타 지표 계산이 안 되어 nan이면 해당 지표 값도 nan이 됨 */
+        output_[i][j] = Calculate();
       }
 
       // 다른 지표 계산을 위해서 변경한 인덱스와 지표 멤버 변수 초기화
@@ -158,8 +158,8 @@ void Indicator::CalculateAll() {
                  format("모든 심볼 {} {} 지표의 계산이 완료되었습니다.", name_,
                         timeframe_),
                  __FILE__, __LINE__);
-
-  } catch ([[maybe_unused]] const exception& e) {
+  } catch (const IndicatorOutOfRange& e) {
+    logger_->Log(LogLevel::ERROR_L, e.what(), __FILE__, __LINE__);
     Logger::LogAndThrowError(
         format("{} {} 지표를 계산하는 중 에러가 발생했습니다.", name_,
                timeframe_),
@@ -179,19 +179,3 @@ string Indicator::GetName() const { return name_; }
 string Indicator::GetTimeframe() const { return timeframe_; }
 
 vector<double> Indicator::GetInput() const { return input_; }
-
-void Indicator::IsValidReferenceIndex(const size_t reference_index,
-                                      const size_t current_bar_index) const {
-  // 진행한 인덱스보다 과거 인덱스 참조 시 throw
-  if (current_bar_index < reference_index) {
-    const auto& bar = bar_->GetBarData(BarType::REFERENCE, timeframe_);
-    const int symbol_idx = bar_->GetCurrentSymbolIndex();
-    const size_t bar_idx = bar_->GetCurrentBarIndex();
-
-    throw IndicatorOutOfRange(format(
-        "{} | {} | 진행한 인덱스보다 과거 인덱스를 사용하여 지표값을 참조할 "
-        "수 없습니다.",
-        bar.GetSymbolName(symbol_idx),
-        UtcTimestampToUtcDatetime(bar.GetBar(symbol_idx, bar_idx).open_time)));
-  }
-}

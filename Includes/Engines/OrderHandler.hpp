@@ -190,7 +190,7 @@ class OrderHandler final : public BaseOrderHandler {
   void ExitOppositeFilledEntries(Direction direction);
 
   /// 청산 시 자금, 통계 관련 처리를 하는 함수
-  void ExecuteExit(const shared_ptr<Order>& exit_order) const;
+  void ExecuteExit(const shared_ptr<Order>& exit_order);
 
   /// 진입 주문 취소 시 자금 관련 처리를 하는 함수
   static void ExecuteCancelEntry(const shared_ptr<Order>& cancel_order);
@@ -276,7 +276,9 @@ class OrderHandler final : public BaseOrderHandler {
                                           const shared_ptr<Order>& entry_order);
 
   /// 자금이 필요 자금보다 많은지 확인하는 함수
-  static void HasEnoughBalance(double balance, double needed_balance);
+  static void HasEnoughBalance(double balance, double needed_balance,
+                               const string& balance_type_msg,
+                               const string& purpose_msg);
 
   /// 분석기에 청산된 거래를 추가하는 함수
   void AddTrade(const shared_ptr<Order>& exit_order, double realized_pnl) const;

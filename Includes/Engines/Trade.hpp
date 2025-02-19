@@ -13,6 +13,7 @@ class Trade final {
   ~Trade();
 
   Trade& SetTradeNumber(int trade_number);
+  Trade& SetStrategyName(const string& strategy_name);
   Trade& SetSymbolName(const string& symbol_name);
   Trade& SetEntryName(const string& entry_name);
   Trade& SetExitName(const string& exit_name);
@@ -36,6 +37,7 @@ class Trade final {
   Trade& SetSymbolCount(int symbol_count);
 
   [[nodiscard]] int GetTradeNumber() const;
+  [[nodiscard]] string GetStrategyName() const;
   [[nodiscard]] string GetSymbolName() const;
   [[nodiscard]] string GetEntryName() const;
   [[nodiscard]] string GetExitName() const;
@@ -60,26 +62,27 @@ class Trade final {
 
  private:
   // 내부 변수
-  int trade_number_;            // 거래 번호
-  string symbol_name_;          // 심볼 이름
-  string entry_name_;           // 진입 이름
-  string exit_name_;            // 청산 이름
-  string entry_direction_;      // 진입 방향
-  string entry_time_;           // 진입 시간
-  string exit_time_;            // 청산 시간
-  string holding_time_;         // 보유 시간
-  double entry_size_;           // 진입 수량
-  double exit_size_;            // 청산 수량
-  double entry_price_;          // 진입 가격
-  double exit_price_;           // 청산 가격
-  int leverage_;                // 레버리지
-  double entry_commission_;     // 진입 수수료
-  double exit_commission_;      // 청산 수수료
-  double profit_loss_;          // 손익
-  double profit_loss_per_;      // 손익률
-  double wallet_balance_;       // 현재 자금
-  double max_wallet_balance_;   // 최대 자금
-  double drawdown_;             // 드로우다운
-  double max_drawdown_;         // 최고 드로우다운
-  int symbol_count_;            // 보유 심볼 수
+  int trade_number_;           // 거래 번호
+  string strategy_name_;       // 전략 이름
+  string symbol_name_;         // 심볼 이름
+  string entry_name_;          // 진입 이름
+  string exit_name_;           // 청산 이름
+  string entry_direction_;     // 진입 방향
+  string entry_time_;          // 진입 시간
+  string exit_time_;           // 청산 시간
+  string holding_time_;        // 보유 시간
+  double entry_size_;          // 진입 수량
+  double exit_size_;           // 청산 수량
+  double entry_price_;         // 진입 가격
+  double exit_price_;          // 청산 가격
+  int leverage_;               // 레버리지
+  double entry_commission_;    // 진입 수수료
+  double exit_commission_;     // 청산 수수료
+  double profit_loss_;         // 손익
+  double profit_loss_per_;     // 손익률
+  double wallet_balance_;      // 현재 자금
+  double max_wallet_balance_;  // 최대 자금
+  double drawdown_;            // 드로우다운
+  double max_drawdown_;        // 최고 드로우다운
+  int symbol_count_;           // 보유 심볼 수
 };

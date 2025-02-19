@@ -19,20 +19,6 @@ class IndexOutOfRange final : public runtime_error {
   explicit IndexOutOfRange(const string& message) : runtime_error(message) {}
 };
 
-/// 지표 값 참조 시 인덱스가 범위를 벗어났을 때 발생하는 에러
-class IndicatorOutOfRange final : public runtime_error {
- public:
-  explicit IndicatorOutOfRange(const string& message)
-      : runtime_error(message) {}
-};
-
-/// 지표 값 참조 시 nan이면 발생하는 에러
-class IndicatorInvalidValue final : public runtime_error {
- public:
-  explicit IndicatorInvalidValue(const string& message)
-      : runtime_error(message) {}
-};
-
 /// 진입 가능 자금이 부족할 때 발생하는 에러
 class InsufficientBalance final : public runtime_error {
  public:
@@ -46,9 +32,14 @@ class OrderFailed final : public runtime_error {
   explicit OrderFailed(const string& message) : runtime_error(message) {}
 };
 
+/// 청산 시 진입 주문을 찾기 못했을 때 발생하는 에러
+class EntryOrderNotFound final : public runtime_error {
+ public:
+  explicit EntryOrderNotFound(const string& message) : runtime_error(message) {}
+};
+
 /// 파산 시 발생하는 에러
 class Bankruptcy final : public runtime_error {
-  public:
-  explicit Bankruptcy(const string& message)
-    : runtime_error(message) {}
+ public:
+  explicit Bankruptcy(const string& message) : runtime_error(message) {}
 };
