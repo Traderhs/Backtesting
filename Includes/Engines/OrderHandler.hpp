@@ -245,6 +245,8 @@ class OrderHandler final : public BaseOrderHandler {
 
   /// 현재 사용 중인 심볼에서 지정된 청산 대기 주문을 시장가 혹은 지정가로
   /// 체결하는 함수. 자금 관련 처리를 하고 체결 주문으로 이동시킴.
+  ///
+  /// order_idx보다 작은 인덱스에서 주문이 삭제된 횟수를 카운트해서 반환.
   int FillPendingExitOrder(int symbol_idx, int order_idx, double filled_price);
 
   // ===========================================================================
