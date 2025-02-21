@@ -168,8 +168,8 @@ void OrderHandler::MarketEntry(const string& entry_name,
         order_time = next_bar.open_time;
         order_price = next_bar.open;
       } else {
-        // After Entry 혹은 After Exit 전략일 시 주문 시간은 현재 바의 Open
-        // Time, 주문 가격은 마지막 진입 가격 혹은 마지막 청산 가격
+        // After Entry, After Exit 전략일 시 주문 시간은 현재 바의 Open Time,
+        // 주문 가격은 마지막 진입 가격 혹은 마지막 청산 가격
 
         order_time = engine_->GetCurrentOpenTime();
 
@@ -396,8 +396,9 @@ void OrderHandler::MitEntry(const string& entry_name,
         .SetEntryOrderType(MIT)
         .SetEntryDirection(entry_direction)
         .SetEntryTouchPrice(touch_price)
-        .SetEntryTouchDirection(touch_price >= base_price ? Direction::LONG
-                                                          : Direction::SHORT)
+        .SetEntryTouchDirection(IsGreaterOrEqual(touch_price, base_price)
+                                    ? Direction::LONG
+                                    : Direction::SHORT)
         .SetEntryOrderSize(entry_size);
 
     // 해당 주문과 같은 이름의 대기 주문이 있으면 취소 (주문 수정)
@@ -474,8 +475,9 @@ void OrderHandler::LitEntry(const string& entry_name,
         .SetEntryOrderType(LIT)
         .SetEntryDirection(entry_direction)
         .SetEntryTouchPrice(touch_price)
-        .SetEntryTouchDirection(touch_price >= base_price ? Direction::LONG
-                                                          : Direction::SHORT)
+        .SetEntryTouchDirection(IsGreaterOrEqual(touch_price, base_price)
+                                    ? Direction::LONG
+                                    : Direction::SHORT)
         .SetEntryOrderSize(entry_size)
         .SetEntryOrderPrice(order_price);
 
@@ -552,13 +554,14 @@ void OrderHandler::TrailingEntry(const string& entry_name,
         .SetEntryOrderType(TRAILING)
         .SetEntryDirection(entry_direction)
         .SetEntryTouchPrice(touch_price)
-        .SetEntryTouchDirection(touch_price >= base_price ? Direction::LONG
-                                                          : Direction::SHORT)
+        .SetEntryTouchDirection(IsGreaterOrEqual(touch_price, base_price)
+                                    ? Direction::LONG
+                                    : Direction::SHORT)
         .SetEntryTrailPoint(trail_point)
         .SetEntryOrderSize(entry_size);
 
     // touch_price가 0이면 다음 시가부터 최고저가 추적을 시작
-    if (touch_price == 0) {
+    if (IsEqual(touch_price, 0.0)) {
       trailing_entry->SetEntryExtremePrice(base_price);
     }
 
@@ -569,7 +572,7 @@ void OrderHandler::TrailingEntry(const string& entry_name,
     pending_entries_[symbol_idx].push_back(trailing_entry);
 
     // 디버그 로그 기록
-    if (touch_price != 0) {
+    if (!IsEqual(touch_price, 0.0)) {
       LogFormattedInfo(ORDER_L,
                        format("트레일링 [{}] 터치 대기 | 터치 가격: {}",
                               entry_name, touch_price),
@@ -683,9 +686,9 @@ void OrderHandler::MarketExit(const string& exit_name,
         entry_order->GetExitFilledSize() + exit_filled_size;
     entry_order->SetExitFilledSize(total_exit_filled_size);
 
-    /* 원본 진입 주문의 청산 체결 수량이 진입 체결 수량과 같으면
-       filled_entries에서 삭제 (부동 소수점 오류 방지용 '>=') */
-    if (total_exit_filled_size >= entry_order->GetEntryFilledSize()) {
+    // 원본 진입 주문의 청산 체결 수량이 진입 체결 수량과 같으면
+    // filled_entries에서 삭제
+    if (IsEqual(total_exit_filled_size, entry_order->GetEntryFilledSize())) {
       auto& filled_entries = filled_entries_[symbol_idx];
       filled_entries.erase(filled_entries.begin() + entry_order_idx);
 
@@ -871,8 +874,9 @@ void OrderHandler::MitExit(const string& exit_name,
                               ? Direction::SHORT
                               : Direction::LONG)
         .SetExitTouchPrice(touch_price)
-        .SetExitTouchDirection(touch_price >= base_price ? Direction::LONG
-                                                         : Direction::SHORT)
+        .SetExitTouchDirection(IsGreaterOrEqual(touch_price, base_price)
+                                   ? Direction::LONG
+                                   : Direction::SHORT)
         .SetExitOrderSize(exit_size);
 
     // 대기 중인 청산에 추가
@@ -951,8 +955,9 @@ void OrderHandler::LitExit(const string& exit_name,
                               ? Direction::SHORT
                               : Direction::LONG)
         .SetExitTouchPrice(touch_price)
-        .SetExitTouchDirection(touch_price >= base_price ? Direction::LONG
-                                                         : Direction::SHORT)
+        .SetExitTouchDirection(IsGreaterOrEqual(touch_price, base_price)
+                                   ? Direction::LONG
+                                   : Direction::SHORT)
         .SetExitOrderSize(exit_size)
         .SetExitOrderPrice(order_price);
 
@@ -1053,13 +1058,14 @@ void OrderHandler::TrailingExit(const string& exit_name,
                               ? Direction::SHORT
                               : Direction::LONG)
         .SetExitTouchPrice(touch_price)
-        .SetExitTouchDirection(touch_price >= base_price ? Direction::LONG
-                                                         : Direction::SHORT)
+        .SetExitTouchDirection(IsGreaterOrEqual(touch_price, base_price)
+                                   ? Direction::LONG
+                                   : Direction::SHORT)
         .SetExitTrailPoint(trail_point)
         .SetExitOrderSize(exit_size);
 
     // touch_price가 0이면 다음 시가부터 최고저가 추적을 시작
-    if (touch_price == 0) {
+    if (IsEqual(touch_price, 0.0)) {
       trailing_exit->SetEntryExtremePrice(base_price);
     }
 
@@ -1067,7 +1073,7 @@ void OrderHandler::TrailingExit(const string& exit_name,
     pending_exits_[symbol_idx].push_back(trailing_exit);
 
     // 디버그 로그 기록
-    if (touch_price != 0) {
+    if (!IsEqual(touch_price, 0.0)) {
       LogFormattedInfo(ORDER_L,
                        format("트레일링 [{}] 터치 대기 | 터치 가격: {}",
                               exit_name, touch_price),
@@ -1110,7 +1116,8 @@ void OrderHandler::Cancel(const string& order_name) {
       // 청산 주문은 예약 증거금이 필요하지 않기 때문에 삭제만 함
       pending_exits.erase(pending_exits.begin() + order_idx);
 
-      LogFormattedInfo(ORDER_L, order_name + " 주문이 취소되었습니다.",
+      LogFormattedInfo(ORDER_L,
+                       format("[{}] 주문이 취소되었습니다.", order_name),
                        __FILE__, __LINE__);
       break;  // 동일한 청산 이름으로 청산 대기 불가능하므로 찾으면 바로 break
     }
@@ -1139,7 +1146,7 @@ void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry) {
     throw OrderFailed("시장가 진입 실패");
   }
 
-  // 지갑 자금에서 수수료 감소
+  // 지갑 자금에서 진입 수수료 감소
   engine_->DecreaseWalletBalance(entry_commission);
 
   // 사용한 마진에 진입 증거금 증가
@@ -1178,11 +1185,8 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
   const double exit_filled_size = exit_order->GetExitFilledSize();
   const double exit_filled_price = exit_order->GetExitFilledPrice();
 
-  // 지갑 자금에서 수수료 감소
-  if (!engine_->DecreaseWalletBalance(exit_order->GetExitCommission())) {
-    engine_->SetBankruptcy();
-    throw Bankruptcy("파산");
-  }
+  // 지갑 자금에서 청산 수수료 감소
+  engine_->DecreaseWalletBalance(exit_order->GetExitCommission());
 
   // 사용한 마진에서 청산 수량에 해당되는 마진만큼 진입 증거금 감소
   engine_->DecreaseUsedMargin(exit_filled_size * entry_filled_price);
@@ -1193,13 +1197,10 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
       exit_filled_size, exit_order->GetLeverage());
 
   // 지갑 자금에 실현 손익 계산
-  if (realized_pnl > 0) {
+  if (IsGreaterOrEqual(realized_pnl, 0.0)) {
     engine_->IncreaseWalletBalance(realized_pnl);
-  } else if (realized_pnl < 0) {
-    if (!engine_->DecreaseWalletBalance(abs(realized_pnl))) {
-      engine_->SetBankruptcy();
-      throw Bankruptcy("파산");
-    }
+  } else if (IsLess(realized_pnl, 0.0)) {
+    engine_->DecreaseWalletBalance(abs(realized_pnl));
   }
 
   // 전역 항목들 업데이트
@@ -1304,8 +1305,7 @@ void OrderHandler::CheckPendingLitEntries(const int symbol_idx,
   const auto& lit_entry = pending_entries_[symbol_idx][order_idx];
 
   // Order Time이 설정되지 않았으면 지정가 미주문 -> 터치 확인
-  // LIT 터치 확인은 시고저가에서 확인 시 종가에서 확인할 필요 없음
-  if (price_type != CLOSE && lit_entry->GetEntryOrderTime() == -1) {
+  if (lit_entry->GetEntryOrderTime() == -1) {
     if (IsPriceTouched(lit_entry->GetEntryTouchDirection(), price,
                        lit_entry->GetEntryTouchPrice())) {
       try {
@@ -1366,28 +1366,28 @@ void OrderHandler::CheckPendingTrailingEntries(const int symbol_idx,
 
       if (entry_direction == Direction::LONG) {
         // 진입 방향이 매수인 경우, 최저가를 추적
-        if (price < extreme_price) {
+        if (IsLess(price, extreme_price)) {
           trailing_entry->SetEntryExtremePrice(price);
           extreme_price = price;
         }
 
         // 진입 방향이 매수인 경우, 최저가로부터 Trail Point 증가 시 진입
         if (const double trail_price = extreme_price + trail_point;
-            price >= trail_price) {
+            IsGreaterOrEqual(price, trail_price)) {
           // 시가에서 조건 달성 시 주문 가격은 시가가 됨 (갭 고려)
           FillPendingMarketEntry(symbol_idx, order_idx,
                                  price_type == OPEN ? price : trail_price);
         }
       } else if (entry_direction == Direction::SHORT) {
         // 진입 방향이 매도인 경우, 최고가를 추적
-        if (price > extreme_price) {
+        if (IsGreater(price, extreme_price)) {
           trailing_entry->SetEntryExtremePrice(price);
           extreme_price = price;
         }
 
         // 진입 방향이 매도인 경우, 최고가로부터 Trail Point 감소 시 진입
         if (const double trail_price = extreme_price - trail_point;
-            price <= trail_price) {
+            IsLessOrEqual(price, trail_price)) {
           // 시가에서 조건 달성 시 주문 가격은 시가가 됨 (갭 고려)
           FillPendingMarketEntry(symbol_idx, order_idx,
                                  price_type == OPEN ? price : trail_price);
@@ -1513,11 +1513,8 @@ void OrderHandler::FillPendingLimitEntry(const int symbol_idx,
     throw OrderFailed("지정가 대기 주문 체결 실패");
   }
 
-  // 지갑 자금에서 수수료 감소
-  if (!engine_->DecreaseWalletBalance(entry_commission)) {
-    engine_->SetBankruptcy();
-    throw Bankruptcy("파산");
-  }
+  // 지갑 자금에서 진입 수수료 감소
+  engine_->DecreaseWalletBalance(entry_commission);
 
   // 전역 항목들 업데이트
   UpdateLastEntryBarIndex(symbol_idx);
@@ -1686,28 +1683,28 @@ int OrderHandler::CheckPendingTrailingExits(const int symbol_idx,
 
       if (exit_direction == Direction::LONG) {
         // 청산 방향이 매수인 경우, 최저가를 추적
-        if (price < extreme_price) {
+        if (IsLess(price, extreme_price)) {
           trailing_exit->SetExitExtremePrice(price);
           extreme_price = price;
         }
 
         // 청산 방향이 매수인 경우, 최저가로부터 Trail Point 증가 시 진입
         if (const double trail_price = extreme_price + trail_point;
-            price >= trail_price) {
+            IsGreaterOrEqual(price, trail_price)) {
           // 시가에서 조건 달성 시 주문 가격은 시가가 됨 (갭 고려)
           return FillPendingExitOrder(symbol_idx, order_idx,
                                       price_type == OPEN ? price : trail_price);
         }
       } else if (exit_direction == Direction::SHORT) {
         // 청산 방향이 매도인 경우, 최고가를 추적
-        if (price > extreme_price) {
+        if (IsGreater(price, extreme_price)) {
           trailing_exit->SetExitExtremePrice(price);
           extreme_price = price;
         }
 
         // 진입 방향이 매도인 경우, 최고가로부터 Trail Point 감소 시 진입
         if (const double trail_price = extreme_price - trail_point;
-            price <= trail_price) {
+            IsLessOrEqual(price, trail_price)) {
           // 시가에서 조건 달성 시 주문 가격은 시가가 됨 (갭 고려)
           return FillPendingExitOrder(symbol_idx, order_idx,
                                       price_type == OPEN ? price : trail_price);
@@ -1784,10 +1781,9 @@ int OrderHandler::FillPendingExitOrder(const int symbol_idx,
   entry_order->SetExitFilledSize(total_exit_filled_size);
 
   /* 원본 진입 주문의 청산 체결 수량이 진입 체결 수량과 같으면
-     filled_entries에서 삭제 (부동 소수점 오류 방지용 '>=') */
+     filled_entries에서 삭제                              */
   int deleted_below_count = 0;
-
-  if (total_exit_filled_size >= entry_order->GetEntryFilledSize()) {
+  if (IsEqual(total_exit_filled_size, entry_order->GetEntryFilledSize())) {
     auto& filled_entries = filled_entries_[symbol_idx];
     filled_entries.erase(filled_entries.begin() + entry_order_idx);
 
@@ -1829,20 +1825,6 @@ int OrderHandler::FillPendingExitOrder(const int symbol_idx,
   return deleted_below_count;
 }
 
-bool OrderHandler::IsLimitPriceSatisfied(const Direction order_direction,
-                                         const double price,
-                                         const double order_price) {
-  return (order_direction == Direction::LONG && price <= order_price) ||
-         (order_direction == Direction::SHORT && price >= order_price);
-}
-
-bool OrderHandler::IsPriceTouched(const Direction touch_direction,
-                                  const double price,
-                                  const double touch_price) {
-  return (touch_direction == Direction::LONG && price >= touch_price) ||
-         (touch_direction == Direction::SHORT && price <= touch_price);
-}
-
 pair<shared_ptr<Order>, int> OrderHandler::FindMatchingEntryOrder(
     const string& target_entry_name) const {
   // 현재 심볼의 체결된 진입들 순회
@@ -1870,24 +1852,12 @@ double OrderHandler::GetAdjustedExitFilledSize(
   const auto entry_filled_size = entry_order->GetEntryFilledSize();
   const auto exit_filled_size = entry_order->GetExitFilledSize();
   if (const auto total_exit_size = exit_size + exit_filled_size;
-      total_exit_size > entry_filled_size) {
+      IsGreater(total_exit_size, entry_filled_size)) {
     // 최대값으로 조정하여 반환
     return entry_filled_size - exit_filled_size;
   }
 
   return exit_size;
-}
-
-void OrderHandler::HasEnoughBalance(const double balance,
-                                    const double needed_balance,
-                                    const string& balance_type_msg,
-                                    const string& purpose_msg) {
-  if (balance < needed_balance) {
-    throw InsufficientBalance(
-        format("자금이 부족합니다. | {} 자금: ${} | {}: ${}", balance_type_msg,
-               RoundToDecimalPlaces(balance, 2), purpose_msg,
-               RoundToDecimalPlaces(needed_balance, 2)));
-  }
 }
 
 void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,

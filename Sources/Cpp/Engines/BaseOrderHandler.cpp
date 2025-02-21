@@ -21,7 +21,10 @@ using namespace time_utils;
 
 BaseOrderHandler::BaseOrderHandler()
     : current_position_size(0),
-      config_(engine_->GetConfig()),
+      market_commission_(nan("")),
+      limit_commission_(nan("")),
+      market_slippage_(nan("")),
+      limit_slippage_(nan("")),
       just_entered_(false),
       just_exited_(false) {}
 BaseOrderHandler::~BaseOrderHandler() = default;
@@ -34,19 +37,27 @@ shared_ptr<TechnicalAnalyzer>& BaseOrderHandler::ta_ =
     TechnicalAnalyzer::GetTechnicalAnalyzer();
 
 void BaseOrderHandler::Initialize(const int num_symbols) {
-  config_ = engine_->GetConfig();
+  // 엔진 설정 받아오기
+  const auto& config = engine_->GetConfig();
+  market_commission_ = config.GetMarketCommission();
+  limit_commission_ = config.GetLimitCommission();
+  market_slippage_ = config.GetMarketSlippage();
+  limit_slippage_ = config.GetLimitSlippage();
 
+  // 주문들을 심볼 개수로 초기화
   pending_entries_.resize(num_symbols);
   filled_entries_.resize(num_symbols);
   pending_exits_.resize(num_symbols);
 
+  // 마지막으로 진입 및 청산한 트레이딩 바 인덱스를 심볼 개수로 초기화
   last_entry_bar_indices_.resize(num_symbols);
   last_exit_bar_indices_.resize(num_symbols);
 
-  // 아직 진입 및 청산이 없었던 심볼은 -1을 가짐
-  ranges::fill(last_entry_bar_indices_, -1);
-  ranges::fill(last_exit_bar_indices_, -1);
+  // 아직 진입 및 청산이 없었던 심볼은 SIZE_MAX를 가짐
+  ranges::fill(last_entry_bar_indices_, SIZE_MAX);
+  ranges::fill(last_exit_bar_indices_, SIZE_MAX);
 
+  // 마지막으로 진입 및 청산한 가격을 심볼 개수로 초기화
   last_entry_prices_.resize(num_symbols);
   last_exit_prices_.resize(num_symbols);
 
@@ -115,7 +126,7 @@ double BaseOrderHandler::BarsSinceEntry() const {
   const auto last_entry_bar_index =
       last_entry_bar_indices_[bar_->GetCurrentSymbolIndex()];
 
-  if (last_entry_bar_index == -1) {
+  if (last_entry_bar_index == SIZE_MAX) {
     // 아직 진입이 없었던 심볼은 NaN을 반환 (기본 -1로 초기화 됨)
     return nan("");
   }
@@ -128,8 +139,8 @@ double BaseOrderHandler::BarsSinceExit() const {
   const auto last_exit_bar_index =
       last_exit_bar_indices_[bar_->GetCurrentSymbolIndex()];
 
-  if (last_exit_bar_index == -1) {
-    // 아직 진입이 없었던 심볼은 NaN을 반환 (기본 -1로 초기화 됨)
+  if (last_exit_bar_index == SIZE_MAX) {
+    // 아직 진입이 없었던 심볼은 NaN을 반환 (기본 SIZE_MAX로 초기화 됨)
     return nan("");
   }
 
@@ -159,8 +170,7 @@ double BaseOrderHandler::CalculateSlippagePrice(const double order_price,
       [[fallthrough]];
     case OrderType::TRAILING: {
       // 시장가 슬리피지 포인트 계산
-      slippage_points =
-          order_price * config_.GetSlippage().first / 100 * leverage;
+      slippage_points = order_price * market_slippage_ / 100 * leverage;
       break;
     }
 
@@ -168,8 +178,7 @@ double BaseOrderHandler::CalculateSlippagePrice(const double order_price,
       [[fallthrough]];
     case OrderType::LIT: {
       // 지정가 슬리피지 포인트 계산
-      slippage_points =
-          order_price * config_.GetSlippage().second / 100 * leverage;
+      slippage_points = order_price * limit_slippage_ / 100 * leverage;
       break;
     }
 
@@ -179,7 +188,7 @@ double BaseOrderHandler::CalculateSlippagePrice(const double order_price,
   }
 
   // 계산된 슬리피지 포인트가 0이면 슬리피지는 없음
-  if (slippage_points == 0) {
+  if (IsEqual(slippage_points, 0.0)) {
     return order_price;
   }
 
@@ -211,14 +220,14 @@ double BaseOrderHandler::CalculateCommission(const double filled_price,
       [[fallthrough]];
     case OrderType::TRAILING: {
       return filled_price * filled_position_size * leverage *
-             (config_.GetCommission().first / 100);
+             (market_commission_ / 100);
     }
 
     case OrderType::LIMIT:
       [[fallthrough]];
     case OrderType::LIT: {
       return filled_price * filled_position_size * leverage *
-             (config_.GetCommission().second / 100);
+             (limit_commission_ / 100);
     }
 
     default: {
@@ -269,22 +278,23 @@ void BaseOrderHandler::IsValidDirection(const Direction direction) {
 }
 
 void BaseOrderHandler::IsValidPrice(const double price) {
-  if (price <= 0 || isnan(price)) {
-    throw InvalidValue(format("주어진 가격 {}은(는) 0보다 커야합니다.", price));
+  if (IsLessOrEqual(price, 0.0) || isnan(price)) {
+    throw InvalidValue(
+        format("주어진 가격 {}은(는) 양수로 지정해야 합니다.", price));
   }
 }
 
 void BaseOrderHandler::IsValidPositionSize(const double position_size) {
-  if (position_size <= 0) {
-    throw InvalidValue(
-        format("주어진 포지션 크기 {}은(는) 0보다 커야합니다.", position_size));
+  if (IsLessOrEqual(position_size, 0.0)) {
+    throw InvalidValue(format(
+        "주어진 포지션 크기 {}은(는) 양수로 지정해야 합니다.", position_size));
   }
 }
 
 void BaseOrderHandler::IsValidLeverage(const int leverage) {
-  if (leverage < 1) {
-    throw InvalidValue(
-        format("주어진 레버리지 {}은(는) 1과 같거나 커야합니다.", leverage));
+  if (IsLess(leverage, 1)) {
+    throw InvalidValue(format(
+        "주어진 레버리지 {}은(는) 1보다 크거나 같아야 합니다.", leverage));
   }
 }
 
@@ -306,31 +316,62 @@ void BaseOrderHandler::IsValidEntryName(const string& entry_name) const {
 void BaseOrderHandler::IsValidLimitOrderPrice(const double limit_price,
                                               const double base_price,
                                               const Direction direction) {
-  if (direction == Direction::LONG && limit_price > base_price) {
+  if (direction == Direction::LONG && IsGreater(limit_price, base_price)) {
     throw InvalidValue(
-        format("지정가 {} 매수 주문은 기준가 {}과 같거나 작아야합니다.",
+        format("지정가 {} 매수 주문은 기준가 {}보다 작거나 같아야 합니다.",
                limit_price, base_price));
   }
 
-  if (direction == Direction::SHORT && limit_price < base_price) {
+  if (direction == Direction::SHORT && IsLess(limit_price, base_price)) {
     throw InvalidValue(
-        format("지정가 {} 매도 주문은 기준가 {}과 같거나 커야합니다.",
+        format("지정가 {} 매도 주문은 기준가 {}보다 크거나 같아야 합니다.",
                limit_price, base_price));
   }
 }
 
 void BaseOrderHandler::IsValidTrailingTouchPrice(const double touch_price) {
-  if (touch_price < 0) {
+  if (IsLessOrEqual(touch_price, 0.0)) {
     throw InvalidValue(
-        format("주어진 트레일링 터치 가격 {}은(는) 0과 같거나 커야합니다.",
+        format("주어진 트레일링 터치 가격 {}은(는) 0보다 크거나 같아야 합니다.",
                touch_price));
   }
 }
 
 void BaseOrderHandler::IsValidTrailPoint(double trail_point) {
-  if (trail_point <= 0) {
-    throw InvalidValue(format(
-        "주어진 트레일링 포인트 {}은(는) 0보다 커야합니다.", trail_point));
+  if (IsLessOrEqual(trail_point, 0.0)) {
+    throw InvalidValue(
+        format("주어진 트레일링 포인트 {}은(는) 양수로 지정해야 합니다.",
+               trail_point));
+  }
+}
+
+bool BaseOrderHandler::IsLimitPriceSatisfied(const Direction order_direction,
+                                             const double price,
+                                             const double order_price) {
+  return (order_direction == Direction::LONG &&
+          IsLessOrEqual(price, order_price)) ||
+         (order_direction == Direction::SHORT &&
+          IsGreaterOrEqual(price, order_price));
+}
+
+bool BaseOrderHandler::IsPriceTouched(const Direction touch_direction,
+                                      const double price,
+                                      const double touch_price) {
+  return (touch_direction == Direction::LONG &&
+          IsGreaterOrEqual(price, touch_price)) ||
+         (touch_direction == Direction::SHORT &&
+          IsLessOrEqual(price, touch_price));
+}
+
+void BaseOrderHandler::HasEnoughBalance(const double balance,
+                                        const double needed_balance,
+                                        const string& balance_type_msg,
+                                        const string& purpose_msg) {
+  if (IsLess(balance, needed_balance)) {
+    throw InsufficientBalance(
+        format("자금이 부족합니다. | {} 자금: ${} | {}: ${}", balance_type_msg,
+               RoundToDecimalPlaces(balance, 2), purpose_msg,
+               RoundToDecimalPlaces(needed_balance, 2)));
   }
 }
 

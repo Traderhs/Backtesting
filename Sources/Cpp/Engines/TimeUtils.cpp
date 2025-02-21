@@ -143,6 +143,16 @@ int64_t ParseTimeframe(const string& timeframe_str) {
 }
 
 string FormatTimeDiff(const int64_t diff_ms) {
+  // 같은 봉에서의 거래일 경우
+  if (diff_ms == 0) {
+    return "동일봉 거래";
+  }
+
+  // 1초 미만
+  if (diff_ms < kSecond) {
+    return to_string(diff_ms) + "밀리초";
+  }
+
   if (diff_ms >= kYear)
     return to_string(diff_ms / kYear) + "년 " +
            to_string((diff_ms % kYear) / kMonth) + "개월";

@@ -13,7 +13,7 @@ Volume::Volume(const string& name, const string& timeframe)
 
 void Volume::Initialize() {}
 
-double Volume::Calculate() {
+Numeric<double> Volume::Calculate() {
   return bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe())
       .GetBar(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex())
       .volume;

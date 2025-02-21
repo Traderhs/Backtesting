@@ -6,6 +6,9 @@
 // 외부 라이브러리
 #include <arrow/api.h>
 
+// 내부 헤더
+#include "Engines/Numeric.hpp"
+
 // 네임스페이스
 using namespace std;
 
@@ -80,22 +83,25 @@ any GetScalarValue(const shared_ptr<arrow::Scalar>& scalar);
  * @param table 저장할 데이터를 포함하는 Table 객체에 대한 shared_ptr
  * @param file_path 데이터를 저장할 Parquet 파일의 경로
  */
-void TableToParquet(const shared_ptr<arrow::Table>& table, const string& file_path);
+void TableToParquet(const shared_ptr<arrow::Table>& table,
+                    const string& file_path);
 
 /// 1차원 벡터를 csv로 저장하는 함수.
 /// 파일이 존재하는 경우 기존 내용은 초기화 됨.
 void VectorToCsv(const vector<double>& data, const string& file_name);
+void VectorToCsv(const vector<Numeric<double>>& data, const string& file_name);
 
 /**
- * 주어진 테이블을 주어진 비율로 분할하여 두 개의 서브 테이블을 생성하여 반환하는 함수
+ * 주어진 테이블을 주어진 비율로 분할하여 두 개의 서브 테이블을 생성하여
+ * 반환하는 함수
  *
  * @param table 분할할 원본 테이블을 가리키는 shared_ptr
  * @param split_ratio 테이블을 나눌 비율을 나타내는 값 (0.0 - 1.0)
- * @return 주어진 테이블을 `split_ratio`에 따라 나눈 두 개의 서브 테이블을 포함하는 pair 객체.
- *         첫 번째는 `split_ratio` 비율, 두 번째는 나머지 비율
+ * @return 주어진 테이블을 `split_ratio`에 따라 나눈 두 개의 서브 테이블을
+ * 포함하는 pair 객체. 첫 번째는 `split_ratio` 비율, 두 번째는 나머지 비율
  */
-pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>>
-  SplitTable(const shared_ptr<arrow::Table>& table, double split_ratio);
+pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>> SplitTable(
+    const shared_ptr<arrow::Table>& table, double split_ratio);
 
 /// 최소 틱 크기로 가격을 반올림하여 반환하는 함수
 double RoundToTickSize(double price, double tick_size);
@@ -105,4 +111,140 @@ static locale global_locale("en_US.UTF-8");
 
 /// 금액을 천 단위 쉼표와 달러 표기로 포맷하여 반환하는 함수
 string FormatDollar(double price);
+
+/// 부동소숫점 같은 값 비교를 위한 함수.
+/// 왼쪽 값이 오른쪽 값과 같으면 true를 반환함.
+template <typename T, typename U>
+[[nodiscard]] bool IsEqual(T a, U b) {
+  using CommonType =
+      common_type_t<T, U>;  // 두 타입을 호환되는 공통 타입으로 변환
+
+  const auto conv_a = static_cast<CommonType>(a);
+  const auto conv_b = static_cast<CommonType>(b);
+
+  // NaN과의 비교는 무조건 같지 않음
+  if (std::isnan(conv_a) || std::isnan(conv_b)) return false;
+
+  // 상대 오차를 사용하여 스케일에 따른 오차 고려
+  const CommonType abs_a = std::abs(conv_a);
+  const CommonType abs_b = std::abs(conv_b);
+  const CommonType diff = std::abs(conv_a - conv_b);
+
+  constexpr CommonType epsilon = numeric_limits<CommonType>::epsilon();
+
+  return diff / std::min(abs_a + abs_b, numeric_limits<CommonType>::max()) <
+         epsilon;
 }
+
+/// 부동소숫점 크기 비교를 위한 함수.
+/// 왼쪽 값이 오른쪽 값보다 크면 true를 반환함.
+template <typename T, typename U>
+[[nodiscard]] bool IsGreater(T a, U b) {
+  using CommonType =
+      common_type_t<T, U>;  // 두 타입을 호환되는 공통 타입으로 변환
+
+  const auto conv_a = static_cast<CommonType>(a);
+  const auto conv_b = static_cast<CommonType>(b);
+
+  // NaN과의 비교는 무조건 같지 않음
+  if (std::isnan(conv_a) || std::isnan(conv_b)) return false;
+
+  // 상대 오차를 사용하여 스케일에 따른 오차 고려
+  const CommonType abs_a = std::abs(conv_a);
+  const CommonType abs_b = std::abs(conv_b);
+  const CommonType diff = std::abs(conv_a - conv_b);
+
+  constexpr CommonType epsilon = numeric_limits<CommonType>::epsilon();
+
+  if (abs(diff) / std::min(abs_a + abs_b, numeric_limits<CommonType>::max()) <
+      epsilon) {
+    return false;
+  }
+
+  return diff > 0;
+}
+
+/// 부동소숫점 크기 비교를 위한 함수.
+/// 왼쪽 값이 오른쪽 값보다 크거나 같으면 true를 반환함.
+template <typename T, typename U>
+[[nodiscard]] bool IsGreaterOrEqual(T a, U b) {
+  using CommonType =
+      common_type_t<T, U>;  // 두 타입을 호환되는 공통 타입으로 변환
+
+  const auto conv_a = static_cast<CommonType>(a);
+  const auto conv_b = static_cast<CommonType>(b);
+
+  // NaN과의 비교는 무조건 같지 않음
+  if (std::isnan(conv_a) || std::isnan(conv_b)) return false;
+
+  // 상대 오차를 사용하여 스케일에 따른 오차 고려
+  const CommonType abs_a = std::abs(conv_a);
+  const CommonType abs_b = std::abs(conv_b);
+  const CommonType diff = std::abs(conv_a - conv_b);
+
+  constexpr CommonType epsilon = numeric_limits<CommonType>::epsilon();
+
+  if (abs(diff) / std::min(abs_a + abs_b, numeric_limits<CommonType>::max()) <
+      epsilon) {
+    return true;  // 거의 같으면 크거나 같다고 판단
+  }
+
+  return diff > 0;
+}
+
+/// 부동소숫점 크기 비교를 위한 함수.
+/// 왼쪽 값이 오른쪽 값보다 작으면 true를 반환함.
+template <typename T, typename U>
+[[nodiscard]] bool IsLess(T a, U b) {
+  using CommonType =
+      common_type_t<T, U>;  // 두 타입을 호환되는 공통 타입으로 변환
+
+  const auto conv_a = static_cast<CommonType>(a);
+  const auto conv_b = static_cast<CommonType>(b);
+
+  // NaN과의 비교는 무조건 같지 않음
+  if (std::isnan(conv_a) || std::isnan(conv_b)) return false;
+
+  // 상대 오차를 사용하여 스케일에 따른 오차 고려
+  const CommonType abs_a = std::abs(conv_a);
+  const CommonType abs_b = std::abs(conv_b);
+  const CommonType diff = std::abs(conv_a - conv_b);
+
+  constexpr CommonType epsilon = numeric_limits<CommonType>::epsilon();
+
+  if (abs(diff) / std::min(abs_a + abs_b, numeric_limits<CommonType>::max()) <
+      epsilon) {
+    return false;
+  }
+
+  return diff < 0;
+}
+
+/// 부동소숫점 크기 비교를 위한 함수.
+/// 왼쪽 값이 오른쪽 값보다 작거나 크면 true를 반환함.
+template <typename T, typename U>
+[[nodiscard]] bool IsLessOrEqual(T a, U b) {
+  using CommonType =
+      common_type_t<T, U>;  // 두 타입을 호환되는 공통 타입으로 변환
+
+  const auto conv_a = static_cast<CommonType>(a);
+  const auto conv_b = static_cast<CommonType>(b);
+
+  // NaN과의 비교는 무조건 같지 않음
+  if (std::isnan(conv_a) || std::isnan(conv_b)) return false;
+
+  // 상대 오차를 사용하여 스케일에 따른 오차 고려
+  const CommonType abs_a = std::abs(conv_a);
+  const CommonType abs_b = std::abs(conv_b);
+  const CommonType diff = std::abs(conv_a - conv_b);
+
+  constexpr CommonType epsilon = numeric_limits<CommonType>::epsilon();
+
+  if (abs(diff) / std::min(abs_a + abs_b, numeric_limits<CommonType>::max()) <
+      epsilon) {
+    return true;  // 거의 같으면 작거나 같다고 판단
+  }
+
+  return diff < 0;
+}
+}  // namespace data_utils

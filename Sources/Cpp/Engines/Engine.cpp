@@ -365,59 +365,6 @@ void Engine::IsValidBarData(const bool use_bar_magnifier) {
                __LINE__);
 }
 
-void Engine::IsValidConfig() const {
-  const auto& config = GetConfig();
-
-  if (isnan(config.GetInitialBalance()) ||
-      config.GetCommissionType() == CommissionType::COMMISSION_NONE ||
-      isnan(config.GetCommission().first) ||
-      isnan(config.GetCommission().second) ||
-      config.GetSlippageType() == SlippageType::SLIPPAGE_NONE ||
-      isnan(config.GetSlippage().first) || isnan(config.GetSlippage().second)) {
-    Logger::LogAndThrowError("엔진 설정값을 모두 초기화해야 합니다.", __FILE__,
-                             __LINE__);
-  }
-
-  if (const auto market_commission = config.GetCommission().first;
-      market_commission > 100 || market_commission < 0) {
-    Logger::LogAndThrowError(
-        format("지정된 시장가 수수료율 {}%는 100% 초과 혹은 "
-               "0% 미만으로 설정할 수 없습니다.",
-               market_commission),
-        __FILE__, __LINE__);
-  }
-
-  if (const auto limit_commission = config.GetCommission().second;
-      limit_commission > 100 || limit_commission < 0) {
-    Logger::LogAndThrowError(
-        format("지정된 지정가 수수료율 {}%는 100% 초과 혹은 "
-               "0% 미만으로 설정할 수 없습니다.",
-               limit_commission),
-        __FILE__, __LINE__);
-  }
-
-  if (const auto market_slippage = config.GetSlippage().first;
-      market_slippage > 100 || market_slippage < 0) {
-    Logger::LogAndThrowError(
-        format("지정된 시장가 슬리피지율 {}%는 100% 초과 혹은 "
-               "0% 미만으로 설정할 수 없습니다.",
-               market_slippage),
-        __FILE__, __LINE__);
-  }
-
-  if (const auto limit_slippage = config.GetSlippage().second;
-      limit_slippage > 100 || limit_slippage < 0) {
-    Logger::LogAndThrowError(
-        format("지정된 지정가 슬리피지율 {}%는 100% 초과 혹은 "
-               "0% 미만으로 설정할 수 없습니다.",
-               limit_slippage),
-        __FILE__, __LINE__);
-  }
-
-  logger_->Log(INFO_L, "엔진 설정값 검증이 완료되었습니다.", __FILE__,
-               __LINE__);
-}
-
 void Engine::IsValidDateRange(const string& start, const string& end,
                               const string& format) {
   const auto& trading_bar = bar_->GetBarData(BarType::TRADING);
@@ -487,6 +434,12 @@ void Engine::IsValidStrategies() const {
 }
 
 void Engine::InitializeEngine(const bool use_bar_magnifier) {
+  // 자금 설정
+  const auto initial_balance = config_.GetInitialBalance();
+  wallet_balance_ = initial_balance;
+  available_balance_ = initial_balance;
+  max_wallet_balance_ = initial_balance;
+
   // 바 데이터 초기화
   trading_bar_ = make_shared<BarData>(bar_->GetBarData(BarType::TRADING));
   magnifier_bar_ = make_shared<BarData>(bar_->GetBarData(BarType::MAGNIFIER));
@@ -548,9 +501,60 @@ void Engine::InitializeEngine(const bool use_bar_magnifier) {
   }
 
   // 분석기 초기화
-  analyzer_->Initialize(config_.GetInitialBalance());
+  analyzer_->Initialize(initial_balance);
 
   logger->Log(INFO_L, "엔진 초기화가 완료되었습니다.", __FILE__, __LINE__);
+}
+
+void Engine::IsValidConfig() const {
+  if (isnan(config_.GetInitialBalance()) ||
+      config_.GetCommissionType() == CommissionType::COMMISSION_NONE ||
+      isnan(config_.GetMarketCommission()) ||
+      isnan(config_.GetLimitCommission()) ||
+      config_.GetSlippageType() == SlippageType::SLIPPAGE_NONE ||
+      isnan(config_.GetMarketSlippage()) || isnan(config_.GetLimitSlippage())) {
+    Logger::LogAndThrowError("엔진 설정값을 모두 초기화해야 합니다.", __FILE__,
+                             __LINE__);
+  }
+
+  if (const auto market_commission = config_.GetMarketCommission();
+      IsGreater(market_commission, 100.0) || IsLess(market_commission, 0.0)) {
+    Logger::LogAndThrowError(
+        format("지정된 시장가 수수료율 {}%는 100% 초과 혹은 "
+               "0% 미만으로 설정할 수 없습니다.",
+               market_commission),
+        __FILE__, __LINE__);
+  }
+
+  if (const auto limit_commission = config_.GetLimitCommission();
+      IsGreater(limit_commission, 100.0) || IsLess(limit_commission, 0.0)) {
+    Logger::LogAndThrowError(
+        format("지정된 지정가 수수료율 {}%는 100% 초과 혹은 "
+               "0% 미만으로 설정할 수 없습니다.",
+               limit_commission),
+        __FILE__, __LINE__);
+  }
+
+  if (const auto market_slippage = config_.GetMarketSlippage();
+      IsGreater(market_slippage, 100.0) || IsLess(market_slippage, 0.0)) {
+    Logger::LogAndThrowError(
+        format("지정된 시장가 슬리피지율 {}%는 100% 초과 혹은 "
+               "0% 미만으로 설정할 수 없습니다.",
+               market_slippage),
+        __FILE__, __LINE__);
+  }
+
+  if (const auto limit_slippage = config_.GetLimitSlippage();
+      IsGreater(limit_slippage, 100.0) || IsLess(limit_slippage, 0.0)) {
+    Logger::LogAndThrowError(
+        format("지정된 지정가 슬리피지율 {}%는 100% 초과 혹은 "
+               "0% 미만으로 설정할 수 없습니다.",
+               limit_slippage),
+        __FILE__, __LINE__);
+  }
+
+  logger_->Log(INFO_L, "엔진 설정값 검증이 완료되었습니다.", __FILE__,
+               __LINE__);
 }
 
 size_t Engine::CountMaxDecimalPlace(const int symbol_idx) const {
@@ -767,7 +771,7 @@ void Engine::ProcessOhlc(const vector<int>& activated_symbols,
     const auto& [price, price_type, symbol_idx] = price_data;
 
     // 가격 유효성 검사
-    if (price <= 0 || isnan(price)) {
+    if (IsLessOrEqual(price, 0.0) || isnan(price)) {
       logger_->Log(WARNING_L,
                    format("현재가 {}이(가) 유효하지 않으므로 마진콜과 대기 "
                           "주문의 체결을 확인할 수 없습니다.",
@@ -861,7 +865,7 @@ vector<PriceData> Engine::GetPriceQueue(
     // 시가 -> 저가 -> 고가 -> 종가로 움직임 가정.
     // 시가 대비 저가의 폭이 고가의 폭보다 크다면
     // 시가 -> 고가 -> 저가 -> 종가로 움직임 가정.
-    if (high - open >= open - low) {
+    if (IsGreaterOrEqual(high - open, open - low)) {
       price_data.price = low;
       price_data.price_type = LOW;
       high_low_queue1.push_back(price_data);
@@ -935,8 +939,8 @@ void Engine::ExecuteStrategy(const shared_ptr<Strategy>& strategy,
     } else {
       throw runtime_error("전략 타입이 잘못 지정되었습니다.");
     }
-  } catch (const Bankruptcy& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
+  } catch ([[maybe_unused]] const Bankruptcy& e) {
+    SetBankruptcy();
     throw;
   }
 

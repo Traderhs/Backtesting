@@ -11,7 +11,6 @@ class Engine;
 class TechnicalAnalyzer;
 
 // 내부 헤더
-#include "Engines/Config.hpp"
 #include "Engines/Logger.hpp"
 #include "Engines/Order.hpp"
 
@@ -25,8 +24,7 @@ class BaseOrderHandler {
   /// 현재 심볼의 포지션 사이즈. 양수면 매수 진입, 음수면 매도 진입.
   double current_position_size;
 
-  /// 엔진 설정을 불러오고 주문들과 기타 설정을
-  /// 심볼의 개수 크기로 초기화하는 함수
+  /// 엔진 설정을 불러오고 주문들과 기타 설정을 초기화하는 함수
   void Initialize(int num_symbols);
 
   /// 현재 미실현 손익의 합계를 반환하는 함수.
@@ -68,7 +66,6 @@ class BaseOrderHandler {
   /// 현재 심볼의 마지막 청산 가격을 반환하는 함수
   [[nodiscard]] double LastExitPrice() const;
 
-
  protected:
   BaseOrderHandler();
   ~BaseOrderHandler();
@@ -78,7 +75,12 @@ class BaseOrderHandler {
   static shared_ptr<Engine>& engine_;
   static shared_ptr<Logger>& logger_;
   static shared_ptr<TechnicalAnalyzer>& ta_;
-  Config config_;
+
+  // 수수료 및 슬리피지 엔진 설정
+  double market_commission_;
+  double limit_commission_;
+  double market_slippage_;
+  double limit_slippage_;
 
   // 진입 및 청산 주문: 심볼 인덱스<주문>
   vector<deque<shared_ptr<Order>>> pending_entries_;  // 대기 중인 진입 주문
@@ -144,6 +146,29 @@ class BaseOrderHandler {
 
   /// 트레일링 포인트가 유효한지 확인하는 함수
   static void IsValidTrailPoint(double trail_point);
+
+  /// 지정가 주문에서 현재 가격이 진입 방향에 따라 주문 가격보다 낮아졌거나
+  /// 커졌는지 확인하는 함수.
+  ///
+  /// 매수 진입의 경우, 가격이 주문 가격과 같거나 낮아지면 조건 만족.
+  ///
+  /// 매도 진입의 경우, 가격이 주문 가격과 같거나 높아지면 조건 만족.
+  static bool IsLimitPriceSatisfied(Direction order_direction, double price,
+                                    double order_price);
+
+  /// 현재 가격이 터치 방향에 따라 터치 가격보다 커졌거나 작아졌는지 확인하는
+  /// 함수.
+  ///
+  /// 터치 방향이 매수인 경우, 터치 가격과 같거나 커지면 조건 만족.
+  ///
+  /// 터치 방향이 매도인 경우, 터치 가격과 같거나 작아지면 조건 만족.
+  static bool IsPriceTouched(Direction touch_direction, double price,
+                             double touch_price);
+
+  /// 자금이 필요 자금보다 많은지 확인하는 함수
+  static void HasEnoughBalance(double balance, double needed_balance,
+                               const string& balance_type_msg,
+                               const string& purpose_msg);
 
   /// 디버그 모드에서 심볼 이름으로 포맷된 로그를 발생시키는 함수.
   static void LogFormattedInfo(LogLevel log_level,

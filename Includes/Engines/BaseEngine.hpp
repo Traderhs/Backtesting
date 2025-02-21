@@ -42,13 +42,10 @@ class BaseEngine {
 
   // ==========================================================================
   /// 지갑 자금을 증가시키는 함수.
-  bool IncreaseWalletBalance(double increase_balance);
+  void IncreaseWalletBalance(double increase_balance);
 
   /// 지갑 자금을 감소시키는 함수 (양수로 지정).
-  bool DecreaseWalletBalance(double decrease_balance);
-
-  /// 사용 가능 자금을 감소시키는 함수 (양수로 지정)
-  bool DecreaseAvailableBalance(double decrease_balance);
+  void DecreaseWalletBalance(double decrease_balance);
 
   /// 사용한 마진을 증가시키는 함수
   void IncreaseUsedMargin(double increase_margin);
@@ -91,7 +88,7 @@ class BaseEngine {
   /// 자금 관련 사전 설정 항목
   Config config_;
 
-  // 자금 관련 중도 설정 항목
+  // 자금 항목
   /// 지갑 자금 = 초기 자금 ± 실현 손익 ± 펀딩피 - 수수료
   double wallet_balance_;
 

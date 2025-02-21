@@ -142,15 +142,15 @@ class Engine final : public BaseEngine {
   /// 바 데이터의 유효성을 검증하는 함수
   static void IsValidBarData(bool use_bar_magnifier);
 
-  /// 엔진 설정의 유효성을 검증하는 함수
-  void IsValidConfig() const;
-
   /// Start, End의 시간 범위가 바 데이터 시간 범위 내인지 유효성을 검증하는 함수
   void IsValidDateRange(const string& start, const string& end,
                         const string& format);
 
   /// 엔진에 추가된 전략의 유효성을 검증하는 함수
   void IsValidStrategies() const;
+
+  /// 엔진 설정의 유효성을 검증하는 함수
+  void IsValidConfig() const;
 
   /// 백테스팅 전 엔진의 변수들을 초기화하는 함수
   void InitializeEngine(bool use_bar_magnifier);

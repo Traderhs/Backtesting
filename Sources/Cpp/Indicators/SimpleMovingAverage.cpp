@@ -30,7 +30,7 @@ void SimpleMovingAverage::Initialize() {
   can_calculate_ = false;
 }
 
-double SimpleMovingAverage::Calculate() {
+Numeric<double> SimpleMovingAverage::Calculate() {
   // 가장 최근 데이터를 추가
   sum_ += source_[0];
 

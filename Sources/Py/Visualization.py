@@ -22,7 +22,7 @@ fig = go.Figure(data=[go.Candlestick(
     hoverinfo='x+y'
 )])
 
-# 라인 차트 추가 (예: 'Indicator'라는 열이 지표값을 가지고 있다고 가정)
+# 라인 차트 추가
 fig.add_trace(go.Scatter(
     x=df['Open Time'],  # 동일한 시간 값 사용
     y=indicator_df1[0],  # CSV에서 읽은 지표값

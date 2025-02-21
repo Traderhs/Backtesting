@@ -13,11 +13,10 @@ TestStrategy::~TestStrategy() = default;
 
 void TestStrategy::Initialize() {}
 
-#include <iostream>
 void TestStrategy::ExecuteOnClose() {
   if (order->current_position_size == 0) {
     if (close[0] > sma1[0] && close[1] < sma1[1]) {
-      order->LimitEntry("매수 진입", LONG, 0.1, sma1[0], 1);
+      order->LimitEntry("매수 진입", LONG, 0.1, sma1[0], 10);
     }
   }
 }

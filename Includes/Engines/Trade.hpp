@@ -81,7 +81,7 @@ class Trade final {
   double profit_loss_;         // 손익
   double profit_loss_per_;     // 손익률
   double wallet_balance_;      // 현재 자금
-  double max_wallet_balance_;  // 최대 자금
+  double max_wallet_balance_;  // 최고 자금
   double drawdown_;            // 드로우다운
   double max_drawdown_;        // 최고 드로우다운
   int symbol_count_;           // 보유 심볼 수

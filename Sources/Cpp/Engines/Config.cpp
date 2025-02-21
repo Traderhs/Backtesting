@@ -7,9 +7,11 @@
 Config::Config()
     : initial_balance_(nan("")),
       commission_type_(CommissionType::COMMISSION_NONE),
-      commission_({nan(""), nan("")}),
+      market_commission_(nan("")),
+      limit_commission_(nan("")),
       slippage_type_(SlippageType::SLIPPAGE_NONE),
-      slippage_({nan(""), nan("")}) {}
+      market_slippage_(nan("")),
+      limit_slippage_(nan("")) {}
 Config::~Config() = default;
 
 Config& Config::SetInitialBalance(const double initial_balance) {
@@ -22,8 +24,13 @@ Config& Config::SetCommissionType(const CommissionType commission_type) {
   return *this;
 }
 
-Config& Config::SetCommission(const pair<double, double>& commission) {
-  commission_ = commission;
+Config& Config::SetMarketCommission(const double market_commission) {
+  market_commission_ = market_commission;
+  return *this;
+}
+
+Config& Config::SetLimitCommission(const double limit_commission) {
+  limit_commission_ = limit_commission;
   return *this;
 }
 
@@ -32,13 +39,20 @@ Config& Config::SetSlippageType(const SlippageType slippage_type) {
   return *this;
 }
 
-Config& Config::SetSlippage(const pair<double, double>& slippage) {
-  slippage_ = slippage;
+Config& Config::SetMarketSlippage(const double market_slippage) {
+  market_slippage_ = market_slippage;
+  return *this;
+}
+
+Config& Config::SetLimitSlippage(const double limit_slippage) {
+  limit_slippage_ = limit_slippage;
   return *this;
 }
 
 double Config::GetInitialBalance() const { return initial_balance_; }
 CommissionType Config::GetCommissionType() const { return commission_type_; }
-pair<double, double> Config::GetCommission() const { return commission_; }
+double Config::GetMarketCommission() const { return market_commission_; }
+double Config::GetLimitCommission() const { return limit_commission_; }
 SlippageType Config::GetSlippageType() const { return slippage_type_; }
-pair<double, double> Config::GetSlippage() const { return slippage_; }
+double Config::GetMarketSlippage() const { return market_slippage_; }
+double Config::GetLimitSlippage() const { return limit_slippage_; }
