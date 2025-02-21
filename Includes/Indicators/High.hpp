@@ -11,5 +11,5 @@ class High final : public Indicator {
  private:
   void Initialize() override;
 
-  double Calculate() override;
+  Numeric<double> Calculate() override;
 };

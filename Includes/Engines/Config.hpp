@@ -26,15 +26,19 @@ class Config final {
 
   Config& SetInitialBalance(double initial_balance);
   Config& SetCommissionType(CommissionType commission_type);
-  Config& SetCommission(const pair<double, double>& commission);
+  Config& SetMarketCommission(double market_commission);
+  Config& SetLimitCommission(double limit_commission);
   Config& SetSlippageType(SlippageType slippage_type);
-  Config& SetSlippage(const pair<double, double>& slippage);
+  Config& SetMarketSlippage(double market_slippage);
+  Config& SetLimitSlippage(double limit_slippage);
 
   [[nodiscard]] double GetInitialBalance() const;
   [[nodiscard]] CommissionType GetCommissionType() const;
-  [[nodiscard]] pair<double, double> GetCommission() const;
+  [[nodiscard]] double GetMarketCommission() const;
+  [[nodiscard]] double GetLimitCommission() const;
   [[nodiscard]] SlippageType GetSlippageType() const;
-  [[nodiscard]] pair<double, double> GetSlippage() const;
+  [[nodiscard]] double GetMarketSlippage() const;
+  [[nodiscard]] double GetLimitSlippage() const;
 
  private:
   /// 초기 자금
@@ -43,12 +47,18 @@ class Config final {
   /// 수수료 타입
   CommissionType commission_type_;
 
-  /// <시장가 수수료, 지정가 수수료>: 퍼센트로 지정 시 100 곱한 값 (5% -> 5)
-  pair<double, double> commission_;
+  /// 시장가 수수료: 퍼센트로 지정 시 100 곱한 값 (5% -> 5)
+  double market_commission_;
+
+  /// 지정가 수수료: 퍼센트로 지정 시 100 곱한 값 (5% -> 5)
+  double limit_commission_;
 
   /// 슬리피지 타입
   SlippageType slippage_type_;
 
-  /// <시장가 슬리피지, 지정가 슬리피지>: 퍼센트로 지정 시 100 곱한 값 (5% -> 5)
-  pair<double, double> slippage_;
+  /// 시장가 슬리피지: 퍼센트로 지정 시 100 곱한 값 (5% -> 5)
+  double market_slippage_;
+
+  /// 지정가 슬리피지: 퍼센트로 지정 시 100 곱한 값 (5% -> 5)
+  double limit_slippage_;
 };

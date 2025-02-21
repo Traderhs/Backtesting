@@ -10,6 +10,7 @@ class Engine;
 
 // 내부 헤더
 #include "Engines/Logger.hpp"
+#include "Engines/Numeric.hpp"
 
 // 네임 스페이스
 using namespace std;
@@ -19,7 +20,7 @@ class Indicator {
  public:
   /// 지표의 계산된 값을 반환하는 연산자 오버로딩.
   /// 사용법: 지표 클래스 객체[n개 바 전 인덱스]
-  [[nodiscard]] double operator[](size_t index);
+  [[nodiscard]] Numeric<double> operator[](size_t index);
 
   /// 해당되는 심볼의 계산된 지표값을 csv로 저장하는 함수
   void OutputToCsv(const string& file_name, int symbol_index) const;
@@ -39,7 +40,7 @@ class Indicator {
   virtual void Initialize() = 0;
 
   /// 각 바에서 지표를 계산하는 함수. 메인 로직을 작성.
-  virtual double Calculate() = 0;
+  virtual Numeric<double> Calculate() = 0;
 
   /// 모든 심볼의 모든 바에 해당되는 지표 값을 계산하는 함수.
   /// ※ 주의: 상속받은 커스텀 지표의 생성자에서 호출해야 함.
@@ -59,11 +60,11 @@ class Indicator {
   [[nodiscard]] vector<double> GetInput() const;
 
  private:
-  string name_;                    // 지표의 이름
-  string timeframe_;               // 지표의 타임프레임
-  vector<double> input_;           // 지표의 파라미터
-  vector<vector<double>> output_;  // 지표의 계산된 값: 심볼<값>
-  bool is_calculated_;             // 지표가 계산되었는지 확인하는 플래그
+  string name_;                             // 지표의 이름
+  string timeframe_;                        // 지표의 타임프레임
+  vector<double> input_;                    // 지표의 파라미터
+  vector<vector<Numeric<double>>> output_;  // 지표의 계산된 값: 심볼<값>
+  bool is_calculated_;  // 지표가 계산되었는지 확인하는 플래그
 
   // 지표가 현재 계산 중인지 확인하는 플래그 ->
   // 지표 계산 시 사용하는 다른 지표가 계산하는 지표와 다른 타임프레임을 가질 수

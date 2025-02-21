@@ -13,7 +13,7 @@ Close::Close(const string& name, const string& timeframe)
 
 void Close::Initialize() {}
 
-double Close::Calculate() {
+Numeric<double> Close::Calculate() {
   return bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe())
       .GetBar(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex())
       .close;

@@ -13,7 +13,7 @@ Low::Low(const string& name, const string& timeframe)
 
 void Low::Initialize() {}
 
-double Low::Calculate() {
+Numeric<double> Low::Calculate() {
   return bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe())
       .GetBar(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex())
       .low;

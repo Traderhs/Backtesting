@@ -13,7 +13,6 @@
 #include "Engines/BaseBarHandler.hpp"
 #include "Engines/DataUtils.hpp"
 #include "Engines/Engine.hpp"
-#include "Engines/Exception.hpp"
 #include "Engines/TimeUtils.hpp"
 
 // 네임 스페이스
@@ -38,7 +37,7 @@ Indicator::Indicator(string name, string timeframe)
   output_.resize(num_symbols);
 }
 Indicator::~Indicator() {
-  VectorToCsv(output_[0], R"(C:\Users\0908r\Desktop\)" + name_ + ".csv");
+  OutputToCsv(R"(C:\Users\0908r\Desktop\)" + name_ + ".csv", 0);
   // Analyzer에 넣고 그리기
   // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 }
@@ -51,15 +50,21 @@ shared_ptr<BarHandler>& Indicator::bar_ = BarHandler::GetBarHandler();
 shared_ptr<Engine>& Indicator::engine_ = Engine::GetEngine();
 shared_ptr<Logger>& Indicator::logger_ = Logger::GetLogger();
 
-double Indicator::operator[](const size_t index) {
+Numeric<double> Indicator::operator[](const size_t index) {
   if (!is_calculated_) {
-    Logger::LogAndThrowError(
+    logger_->Log(
+        LogLevel::ERROR_L,
         format("{} {} 지표가 계산되지 않았습니다. CalculateAll 함수를 지표 "
                "생성자에서 호출해야 합니다.",
                name_, timeframe_),
         __FILE__, __LINE__);
+    Logger::LogAndThrowError(
+        format("이미 호출했을 경우 지표 계산 순서를 변경해야 합니다.", name_,
+               timeframe_),
+        __FILE__, __LINE__);
   }
 
+  // =======================================================================
   // 원래 사용중인 데이터 정보 저장
   const auto original_bar_type = bar_->GetCurrentBarType();
   const auto& original_reference_tf = bar_->GetCurrentReferenceTimeframe();
@@ -101,7 +106,8 @@ void Indicator::OutputToCsv(const string& file_name,
     trading_bar.IsValidSymbolIndex(symbol_index);
 
     VectorToCsv(output_[symbol_index], file_name);
-  } catch (...) {
+  } catch (const exception& e) {
+    logger_->Log(LogLevel::ERROR_L, e.what(), __FILE__, __LINE__);
     Logger::LogAndThrowError(
         format("{} {}의 {}을(를) 파일로 저장하는 중 에러가 발생했습니다.",
                trading_bar.GetSymbolName(symbol_index), timeframe_, name_),
@@ -121,50 +127,41 @@ void Indicator::CalculateAll() {
   const auto original_reference_tf = bar_->GetCurrentReferenceTimeframe();
   const auto original_symbol_idx = bar_->GetCurrentSymbolIndex();
 
-  try {
-    const auto& reference_bar =
-        bar_->GetBarData(BarType::REFERENCE, timeframe_);
+  const auto& reference_bar = bar_->GetBarData(BarType::REFERENCE, timeframe_);
 
-    is_calculating_ = true;
-    calculating_name_ = name_;
-    bar_->SetCurrentBarType(BarType::REFERENCE, timeframe_);
+  is_calculating_ = true;
+  calculating_name_ = name_;
+  bar_->SetCurrentBarType(BarType::REFERENCE, timeframe_);
 
-    // 전체 트레이딩 심볼들을 순회하며 지표 계산
-    for (int i = 0; i < output_.size(); i++) {
-      bar_->SetCurrentSymbolIndex(i);
+  // 전체 트레이딩 심볼들을 순회하며 지표 계산
+  for (int i = 0; i < output_.size(); i++) {
+    bar_->SetCurrentSymbolIndex(i);
 
-      // 해당 심볼의 모든 바를 순회
-      const auto num_bars = reference_bar.GetNumBars(i);
-      output_[i].resize(num_bars);
+    // 해당 심볼의 모든 바를 순회
+    const auto num_bars = reference_bar.GetNumBars(i);
+    output_[i].resize(num_bars);
 
-      for (int j = 0; j < num_bars; j++) {
-        // 현재 바 데이터의 인덱스 증가
-        bar_->SetCurrentBarIndex(j);
+    for (int j = 0; j < num_bars; j++) {
+      // 현재 심볼의 바 인덱스를 증가시키며 지표 계산
+      bar_->SetCurrentBarIndex(j);
 
-        /* 지표 계산 시 타 지표를 사용하는 경우가 있는데,
-           현재 바에서 타 지표 계산이 안 되어 nan이면 해당 지표 값도 nan이 됨 */
-        output_[i][j] = Calculate();
-      }
-
-      // 다른 지표 계산을 위해서 변경한 인덱스와 지표 멤버 변수 초기화
-      bar_->SetCurrentBarIndex(0);
-      this->Initialize();
+      /* 지표 계산 시 타 지표를 사용하는 경우가 있는데,
+         현재 바에서 타 지표 계산이 안 되어 nan이면 해당 지표 값도 nan이 됨 */
+      output_[i][j] = Calculate();
     }
 
-    is_calculated_ = true;
-
-    // 계산 완료 로그
-    logger_->Log(LogLevel::INFO_L,
-                 format("모든 심볼 {} {} 지표의 계산이 완료되었습니다.", name_,
-                        timeframe_),
-                 __FILE__, __LINE__);
-  } catch (const IndicatorOutOfRange& e) {
-    logger_->Log(LogLevel::ERROR_L, e.what(), __FILE__, __LINE__);
-    Logger::LogAndThrowError(
-        format("{} {} 지표를 계산하는 중 에러가 발생했습니다.", name_,
-               timeframe_),
-        __FILE__, __LINE__);
+    // 다른 지표 계산을 위해서 변경한 인덱스와 지표 멤버 변수 초기화
+    bar_->SetCurrentBarIndex(0);
+    this->Initialize();
   }
+
+  is_calculated_ = true;
+
+  // 계산 완료 로그
+  logger_->Log(LogLevel::INFO_L,
+               format("모든 심볼 {} {} 지표의 계산이 완료되었습니다.", name_,
+                      timeframe_),
+               __FILE__, __LINE__);
 
   // 원본 설정을 복원
   is_calculating_ = false;

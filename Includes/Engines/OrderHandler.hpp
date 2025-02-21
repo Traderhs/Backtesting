@@ -250,24 +250,6 @@ class OrderHandler final : public BaseOrderHandler {
   int FillPendingExitOrder(int symbol_idx, int order_idx, double filled_price);
 
   // ===========================================================================
-  /// 지정가 주문에서 현재 가격이 진입 방향에 따라 주문 가격보다 낮아졌거나
-  /// 커졌는지 확인하는 함수.
-  ///
-  /// 매수 진입의 경우, 가격이 주문 가격과 같거나 낮아지면 조건 만족.
-  ///
-  /// 매도 진입의 경우, 가격이 주문 가격과 같거나 높아지면 조건 만족.
-  static inline bool IsLimitPriceSatisfied(Direction order_direction,
-                                           double price, double order_price);
-
-  /// 현재 가격이 터치 방향에 따라 터치 가격보다 커졌거나 작아졌는지 확인하는
-  /// 함수.
-  ///
-  /// 터치 방향이 매수인 경우, 터치 가격과 같거나 커지면 조건 만족.
-  ///
-  /// 터치 방향이 매도인 경우, 터치 가격과 같거나 작아지면 조건 만족.
-  static inline bool IsPriceTouched(Direction touch_direction, double price,
-                                    double touch_price);
-
   /// 체결된 진입 주문에서 Target Entry Name과 같은 주문을 찾아 주문 인덱스와
   /// 함께 반환하는 함수
   [[nodiscard]] pair<shared_ptr<Order>, int> FindMatchingEntryOrder(
@@ -276,11 +258,6 @@ class OrderHandler final : public BaseOrderHandler {
   /// 청산 체결 크기가 진입 체결 크기를 넘지 않도록 조정하여 반환하는 함수
   static double GetAdjustedExitFilledSize(double exit_size,
                                           const shared_ptr<Order>& entry_order);
-
-  /// 자금이 필요 자금보다 많은지 확인하는 함수
-  static void HasEnoughBalance(double balance, double needed_balance,
-                               const string& balance_type_msg,
-                               const string& purpose_msg);
 
   /// 분석기에 청산된 거래를 추가하는 함수
   void AddTrade(const shared_ptr<Order>& exit_order, double realized_pnl) const;

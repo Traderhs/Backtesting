@@ -12,7 +12,7 @@
 // 네임 스페이스
 using namespace data_utils;
 
-BaseAnalyzer::BaseAnalyzer() : trade_num_(0) {}
+BaseAnalyzer::BaseAnalyzer() : trade_num_(1) {}
 BaseAnalyzer::~BaseAnalyzer() = default;
 
 shared_ptr<Logger>& BaseAnalyzer::logger_ = Logger::GetLogger();
@@ -49,7 +49,7 @@ void BaseAnalyzer::TradingListToCsv(const string& file_path) const {
   file << "거래 번호,전략 이름,심볼 이름,진입 이름,청산 이름,진입 방향,진입 "
           "시간,청산 "
           "시간,보유 시간,진입 수량,청산 수량,진입 가격,청산 "
-          "가격,레버리지,진입 수수료,청산 수수료,손익,손익률,현재 자금,최대 "
+          "가격,레버리지,진입 수수료,청산 수수료,손익,손익률,현재 자금,최고 "
           "자금,드로우다운,최고 드로우다운,보유 심볼 수\n";
 
   // 데이터 작성

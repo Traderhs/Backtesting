@@ -146,15 +146,35 @@ void VectorToCsv(const vector<double>& data, const string& file_name) {
 
   // 파일 열기 실패 시 에러 출력
   if (!file.is_open()) {
-    Logger::LogAndThrowError(file_name + " 파일을 열지 못했습니다.", __FILE__,
-                             __LINE__);
+    throw runtime_error(file_name + " 파일을 열지 못했습니다.");
   }
 
   // 최대 15자리 소수점 저장
   file << fixed << setprecision(15);
 
   // 벡터 데이터를 CSV 형식으로 작성
-  for (const auto& value : data) {
+  for (const double value : data) {
+    file << value << '\n';  // 각 값을 한 줄씩 쓰기
+  }
+
+  // 파일 닫기
+  file.close();
+}
+
+void VectorToCsv(const vector<Numeric<double>>& data, const string& file_name) {
+  // 파일 출력 스트림 열기
+  ofstream file(file_name, ios::trunc);  // trunc 옵션으로 파일 내용 초기화
+
+  // 파일 열기 실패 시 에러 출력
+  if (!file.is_open()) {
+    throw runtime_error(file_name + " 파일을 열지 못했습니다.");
+  }
+
+  // 최대 15자리 소수점 저장
+  file << fixed << setprecision(15);
+
+  // 벡터 데이터를 CSV 형식으로 작성
+  for (const double value : data) {
     file << value << '\n';  // 각 값을 한 줄씩 쓰기
   }
 
@@ -184,7 +204,7 @@ pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>> SplitTable(
 }
 
 double RoundToTickSize(const double price, const double tick_size) {
-  if (tick_size <= 0) {
+  if (IsLessOrEqual(tick_size, 0.0)) {
     Logger::LogAndThrowError(
         format("주어진 틱 사이즈 {}은(는) 0보다 커야합니다.",
                to_string(tick_size)),
@@ -196,15 +216,15 @@ double RoundToTickSize(const double price, const double tick_size) {
 
 string FormatDollar(const double price) {
   ostringstream oss;
-  oss.imbue(global_locale); // 천 단위 쉼표 추가
-  oss << showpoint; // 소수점 유지
-  oss << fixed; // 고정 소수점 형식
+  oss.imbue(global_locale);  // 천 단위 쉼표 추가
+  oss << showpoint;          // 소수점 유지
+  oss << fixed;              // 고정 소수점 형식
 
-  if (price < 0)
+  if (IsLess(price, 0.0))
     oss << "-$" << -price;  // 음수일 때 -$
   else
-    oss << "$" << price;     // 양수일 때 $
+    oss << "$" << price;  // 양수일 때 $
 
   return oss.str();
 }
-}
+}  // namespace data_utils

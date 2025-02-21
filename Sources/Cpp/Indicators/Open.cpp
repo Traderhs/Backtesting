@@ -13,7 +13,7 @@ Open::Open(const string& name, const string& timeframe)
 
 void Open::Initialize() {}
 
-double Open::Calculate() {
+Numeric<double> Open::Calculate() {
   return bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe())
       .GetBar(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex())
       .open;
