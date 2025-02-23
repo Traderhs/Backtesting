@@ -70,8 +70,7 @@ fig.update_layout(
         spikemode="across",
         spikethickness=1,
         spikedash="solid",
-        showline=True,
-        showgrid=True,
+        showline=True,        showgrid=True,
         tickformat=".6~g"  # 기존 설정 유지
     )
 )

@@ -18,8 +18,7 @@ using namespace data_utils;
 using namespace time_utils;
 
 BarHandler::BarHandler()
-    : is_strategy_created_(false),
-      current_bar_type_(BarType::TRADING),
+    : current_bar_type_(BarType::TRADING),
       current_symbol_index_(-1) {}
 void BarHandler::Deleter::operator()(const BarHandler* p) const { delete p; }
 
@@ -61,9 +60,6 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
   try {
     switch (bar_type) {
       case BarType::TRADING: {
-        // 트레이딩 바 추가가 가능한지 검증
-        IsTradingBarAddable();
-
         // 데이터 추가
         trading_bar_.SetBarData(symbol_name, bar_data_timeframe, bar_data,
                                 columns);
@@ -114,7 +110,7 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
 
   logger_->Log(
       LogLevel::INFO_L,
-      format("[{} - {}] 기간의 {} {}이(가) {} 바 데이터로 추가되었습니다.",
+      format("[{} - {}] 기간의 [{} {}]이(가) {} 바 데이터로 추가되었습니다.",
              UtcTimestampToUtcDatetime(
                  any_cast<int64_t>(GetCellValue(bar_data, columns[0], 0))),
              UtcTimestampToUtcDatetime(any_cast<int64_t>(
@@ -256,15 +252,6 @@ string BarHandler::CalculateTimeframe(const shared_ptr<Table>& bar_data,
 
   // 두 번째 Open Time과 첫 번째 Open Time의 차이
   return FormatTimeframe(snd_open_time - fst_open_time);
-}
-
-void BarHandler::IsTradingBarAddable() const {
-  if (is_strategy_created_) {
-    Logger::LogAndThrowError(
-        "전략이 생성되어 트레이딩 바 데이터를 추가할 수 없습니다. "
-        "전략 생성 전 트레이딩 바 데이터를 모두 추가해야 합니다.",
-        __FILE__, __LINE__);
-  }
 }
 
 void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,

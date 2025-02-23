@@ -8,6 +8,7 @@
 class Analyzer;
 class BarHandler;
 class Strategy;
+class Indicator;
 enum class BarType;
 
 // 내부 헤더
@@ -34,11 +35,17 @@ class BaseEngine {
                          BarType bar_type,
                          const vector<int>& columns = {0, 1, 2, 3, 4, 5, 6});
 
-  /// 엔진에 전략을 추가하는 함수
+  /// 전략을 엔진에 추가하는 함수
   void AddStrategy(const shared_ptr<Strategy>& strategy);
+
+  /// 전략에서 사용하는 지표를 엔진에 추가하는 함수
+  void AddIndicator(Indicator& indicator);
 
   /// 엔진 설정을 세팅하는 함수
   void SetConfig(const Config& config);
+
+  /// 엔진이 초기화 되었는지 여부를 반환하는 함수
+  [[nodiscard]] bool IsInitialized() const;
 
   // ==========================================================================
   /// 지갑 자금을 증가시키는 함수.
@@ -55,6 +62,9 @@ class BaseEngine {
 
   /// 파산을 당했을 때 설정하는 함수
   void SetBankruptcy();
+
+  /// 메인 디렉토리를 반환하는 함수
+  [[nodiscard]] string GetMainDirectory() const;
 
   /// 엔진 설정을 반환하는 함수
   [[nodiscard]] Config GetConfig() const;
@@ -82,10 +92,20 @@ class BaseEngine {
   static shared_ptr<BarHandler>& bar_;
   static shared_ptr<Logger>& logger_;
 
+  /// 엔진이 초기화 되었는지 여부를 결정하는 플래그
+  bool initialized_;
+
+  /// 한 회의 백테스팅에서 사용할 메인 디렉토리
+  string main_directory_;
+
   /// 엔진에 추가된 전략
   vector<shared_ptr<Strategy>> strategies_;
 
-  /// 자금 관련 사전 설정 항목
+  /// 전략에서 사용하는 지표
+  vector<reference_wrapper<Indicator>> indicators_;
+  vector<string> indicator_names_;
+
+  /// 엔진의 사전 설정 항목
   Config config_;
 
   // 자금 항목

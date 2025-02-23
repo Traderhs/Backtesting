@@ -9,19 +9,12 @@
 
 SimpleMovingAverage::SimpleMovingAverage(const string& name,
                                          const string& timeframe,
-                                         Indicator& source, const double period)
+                                         Indicator& source,
+                                         const double period)
     : Indicator(name, timeframe), source_(source) {
-  SetInput({period});
-
   // 타입 안정성과 속도를 위해 미리 변환
   double_period_ = period;
-  size_t_period_ = static_cast<size_t>(period);
-
-  count_ = 0;
-  sum_ = 0;
-  can_calculate_ = false;
-
-  CalculateAll();
+  size_period_ = static_cast<size_t>(period);
 }
 
 void SimpleMovingAverage::Initialize() {
@@ -35,7 +28,7 @@ Numeric<double> SimpleMovingAverage::Calculate() {
   sum_ += source_[0];
 
   if (!can_calculate_) {
-    if (count_++ < size_t_period_ - 1) {
+    if (count_++ < size_period_ - 1) {
       // 아직 계산할 수 있는 데이터 부족
       return nan("");
     }
@@ -46,6 +39,6 @@ Numeric<double> SimpleMovingAverage::Calculate() {
   }
 
   // 가장 오래된 데이터를 제거
-  sum_ -= source_[size_t_period_];
+  sum_ -= source_[size_period_];
   return sum_ / double_period_;
 }

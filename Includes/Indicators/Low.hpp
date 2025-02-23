@@ -9,6 +9,8 @@ class Low final : public Indicator {
   explicit Low(const string& name, const string& timeframe);
 
  private:
+  BarData* reference_bar_;
+
   void Initialize() override;
 
   Numeric<double> Calculate() override;

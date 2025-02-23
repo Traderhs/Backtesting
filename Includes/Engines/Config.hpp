@@ -1,6 +1,7 @@
 #pragma once
 
 // 표준 라이브러리
+#include <string>
 #include <utility>
 
 // 네임 스페이스
@@ -24,6 +25,7 @@ class Config final {
   Config();
   ~Config();
 
+  Config& SetRootDirectory(const string& root_directory);
   Config& SetInitialBalance(double initial_balance);
   Config& SetCommissionType(CommissionType commission_type);
   Config& SetMarketCommission(double market_commission);
@@ -32,6 +34,7 @@ class Config final {
   Config& SetMarketSlippage(double market_slippage);
   Config& SetLimitSlippage(double limit_slippage);
 
+  [[nodiscard]] string GetRootDirectory() const;
   [[nodiscard]] double GetInitialBalance() const;
   [[nodiscard]] CommissionType GetCommissionType() const;
   [[nodiscard]] double GetMarketCommission() const;
@@ -41,6 +44,9 @@ class Config final {
   [[nodiscard]] double GetLimitSlippage() const;
 
  private:
+  /// 루트 폴더
+  string root_directory_;
+
   /// 초기 자금
   double initial_balance_;
 

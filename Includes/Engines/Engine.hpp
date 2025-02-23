@@ -135,10 +135,6 @@ class Engine final : public BaseEngine {
   void Initialize(bool use_bar_magnifier, const string& start,
                   const string& end, const string& format);
 
-  /// 백테스팅의 메인 로직을 실행하는 함수
-  void BacktestingMain();
-
-  // ===========================================================================
   /// 바 데이터의 유효성을 검증하는 함수
   static void IsValidBarData(bool use_bar_magnifier);
 
@@ -152,8 +148,17 @@ class Engine final : public BaseEngine {
   /// 엔진 설정의 유효성을 검증하는 함수
   void IsValidConfig() const;
 
-  /// 백테스팅 전 엔진의 변수들을 초기화하는 함수
+  /// 저장에 필요한 폴더들을 생성하는 함수
+  void CreateDirectories();
+
+  /// 엔진의 변수들을 초기화하는 함수
   void InitializeEngine(bool use_bar_magnifier);
+
+  /// 전략에서 사용하는 지표들을 계산하고 저장하는 함수
+  void InitializeIndicators() const;
+
+  /// 백테스팅의 메인 로직을 실행하는 함수
+  void BacktestingMain();
 
   /// 해당되는 심볼 인덱스의 트레이딩 바 데이터에서
   /// 최대 소숫점 자리수를 구하여 반환하는 함수

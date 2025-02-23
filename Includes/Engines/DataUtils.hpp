@@ -2,12 +2,10 @@
 
 // 표준 라이브러리
 #include <any>
+#include <cmath>
 
 // 외부 라이브러리
 #include <arrow/api.h>
-
-// 내부 헤더
-#include "Engines/Numeric.hpp"
 
 // 네임스페이스
 using namespace std;
@@ -86,11 +84,6 @@ any GetScalarValue(const shared_ptr<arrow::Scalar>& scalar);
 void TableToParquet(const shared_ptr<arrow::Table>& table,
                     const string& file_path);
 
-/// 1차원 벡터를 csv로 저장하는 함수.
-/// 파일이 존재하는 경우 기존 내용은 초기화 됨.
-void VectorToCsv(const vector<double>& data, const string& file_name);
-void VectorToCsv(const vector<Numeric<double>>& data, const string& file_name);
-
 /**
  * 주어진 테이블을 주어진 비율로 분할하여 두 개의 서브 테이블을 생성하여
  * 반환하는 함수
@@ -116,135 +109,53 @@ string FormatDollar(double price);
 /// 왼쪽 값이 오른쪽 값과 같으면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsEqual(T a, U b) {
-  using CommonType =
-      common_type_t<T, U>;  // 두 타입을 호환되는 공통 타입으로 변환
+  using CommonType = std::common_type_t<T, U>;
 
-  const auto conv_a = static_cast<CommonType>(a);
-  const auto conv_b = static_cast<CommonType>(b);
+  const CommonType diff =
+      std::fabs(static_cast<CommonType>(a) - static_cast<CommonType>(b));
+  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
 
-  // NaN과의 비교는 무조건 같지 않음
-  if (std::isnan(conv_a) || std::isnan(conv_b)) return false;
-
-  // 상대 오차를 사용하여 스케일에 따른 오차 고려
-  const CommonType abs_a = std::abs(conv_a);
-  const CommonType abs_b = std::abs(conv_b);
-  const CommonType diff = std::abs(conv_a - conv_b);
-
-  constexpr CommonType epsilon = numeric_limits<CommonType>::epsilon();
-
-  return diff / std::min(abs_a + abs_b, numeric_limits<CommonType>::max()) <
-         epsilon;
+  return diff <= tolerance;
 }
 
 /// 부동소숫점 크기 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값보다 크면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsGreater(T a, U b) {
-  using CommonType =
-      common_type_t<T, U>;  // 두 타입을 호환되는 공통 타입으로 변환
+  using CommonType = std::common_type_t<T, U>;
 
-  const auto conv_a = static_cast<CommonType>(a);
-  const auto conv_b = static_cast<CommonType>(b);
+  const CommonType diff =
+      static_cast<CommonType>(a) - static_cast<CommonType>(b);
+  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
 
-  // NaN과의 비교는 무조건 같지 않음
-  if (std::isnan(conv_a) || std::isnan(conv_b)) return false;
-
-  // 상대 오차를 사용하여 스케일에 따른 오차 고려
-  const CommonType abs_a = std::abs(conv_a);
-  const CommonType abs_b = std::abs(conv_b);
-  const CommonType diff = std::abs(conv_a - conv_b);
-
-  constexpr CommonType epsilon = numeric_limits<CommonType>::epsilon();
-
-  if (abs(diff) / std::min(abs_a + abs_b, numeric_limits<CommonType>::max()) <
-      epsilon) {
-    return false;
-  }
-
-  return diff > 0;
+  return diff > tolerance;  // 차이가 tolerance보다 크면 a가 더 큼
 }
 
 /// 부동소숫점 크기 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값보다 크거나 같으면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsGreaterOrEqual(T a, U b) {
-  using CommonType =
-      common_type_t<T, U>;  // 두 타입을 호환되는 공통 타입으로 변환
+  using CommonType = std::common_type_t<T, U>;
 
-  const auto conv_a = static_cast<CommonType>(a);
-  const auto conv_b = static_cast<CommonType>(b);
+  const CommonType diff =
+      static_cast<CommonType>(a) - static_cast<CommonType>(b);
+  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
 
-  // NaN과의 비교는 무조건 같지 않음
-  if (std::isnan(conv_a) || std::isnan(conv_b)) return false;
-
-  // 상대 오차를 사용하여 스케일에 따른 오차 고려
-  const CommonType abs_a = std::abs(conv_a);
-  const CommonType abs_b = std::abs(conv_b);
-  const CommonType diff = std::abs(conv_a - conv_b);
-
-  constexpr CommonType epsilon = numeric_limits<CommonType>::epsilon();
-
-  if (abs(diff) / std::min(abs_a + abs_b, numeric_limits<CommonType>::max()) <
-      epsilon) {
-    return true;  // 거의 같으면 크거나 같다고 판단
-  }
-
-  return diff > 0;
+  return diff >=
+         -tolerance;  // 차이가 tolerance보다 크거나 같으면 a가 크거나 같음
 }
 
 /// 부동소숫점 크기 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값보다 작으면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsLess(T a, U b) {
-  using CommonType =
-      common_type_t<T, U>;  // 두 타입을 호환되는 공통 타입으로 변환
-
-  const auto conv_a = static_cast<CommonType>(a);
-  const auto conv_b = static_cast<CommonType>(b);
-
-  // NaN과의 비교는 무조건 같지 않음
-  if (std::isnan(conv_a) || std::isnan(conv_b)) return false;
-
-  // 상대 오차를 사용하여 스케일에 따른 오차 고려
-  const CommonType abs_a = std::abs(conv_a);
-  const CommonType abs_b = std::abs(conv_b);
-  const CommonType diff = std::abs(conv_a - conv_b);
-
-  constexpr CommonType epsilon = numeric_limits<CommonType>::epsilon();
-
-  if (abs(diff) / std::min(abs_a + abs_b, numeric_limits<CommonType>::max()) <
-      epsilon) {
-    return false;
-  }
-
-  return diff < 0;
+  return !data_utils::IsGreaterOrEqual(a, b);
 }
 
 /// 부동소숫점 크기 비교를 위한 함수.
-/// 왼쪽 값이 오른쪽 값보다 작거나 크면 true를 반환함.
+/// 왼쪽 값이 오른쪽 값보다 작거나 같으면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsLessOrEqual(T a, U b) {
-  using CommonType =
-      common_type_t<T, U>;  // 두 타입을 호환되는 공통 타입으로 변환
-
-  const auto conv_a = static_cast<CommonType>(a);
-  const auto conv_b = static_cast<CommonType>(b);
-
-  // NaN과의 비교는 무조건 같지 않음
-  if (std::isnan(conv_a) || std::isnan(conv_b)) return false;
-
-  // 상대 오차를 사용하여 스케일에 따른 오차 고려
-  const CommonType abs_a = std::abs(conv_a);
-  const CommonType abs_b = std::abs(conv_b);
-  const CommonType diff = std::abs(conv_a - conv_b);
-
-  constexpr CommonType epsilon = numeric_limits<CommonType>::epsilon();
-
-  if (abs(diff) / std::min(abs_a + abs_b, numeric_limits<CommonType>::max()) <
-      epsilon) {
-    return true;  // 거의 같으면 작거나 같다고 판단
-  }
-
-  return diff < 0;
+  return !data_utils::IsGreater(a, b);
 }
 }  // namespace data_utils

@@ -9,6 +9,8 @@ class Open final : public Indicator {
   explicit Open(const string& name, const string& timeframe);
 
  private:
+  BarData* reference_bar_;
+
   void Initialize() override;
 
   Numeric<double> Calculate() override;
