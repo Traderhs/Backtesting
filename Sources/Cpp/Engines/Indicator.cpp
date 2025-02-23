@@ -1,6 +1,7 @@
 // 표준 라이브러리
 #include <cmath>
 #include <format>
+#include <iomanip>
 #include <utility>
 
 // 파일 헤더
@@ -19,28 +20,9 @@
 using namespace data_utils;
 using namespace time_utils;
 
-Indicator::Indicator(string name, string timeframe)
-    : name_(move(name)), timeframe_(move(timeframe)), is_calculated_(false) {
-  const int num_symbols = bar_->GetBarData(BarType::TRADING).GetNumSymbols();
-
-  /* Strategy 클래스에 포함된 OHLCV 지표 계산으로 인해, 미리 output_을
-     resize해야 하기 때문에 전략 추가 전 트레이딩 바 데이터를 추가해야 함 */
-  if (num_symbols == 0) {
-    // 전략 추가 -> 지표 추가 순서이므로 로그 메세지는 '전략'으로 사용
-    Logger::LogAndThrowError(
-        "트레이딩 바 데이터가 추가되지 않았습니다. 트레이딩 바 데이터 추가 후 "
-        "전략을 추가해야 합니다.",
-        __FILE__, __LINE__);
-  }
-
-  // output_의 심볼 개수를 트레이딩 바 심볼의 개수로 초기화
-  output_.resize(num_symbols);
-}
-Indicator::~Indicator() {
-  OutputToCsv(R"(C:\Users\0908r\Desktop\)" + name_ + ".csv", 0);
-  // Analyzer에 넣고 그리기
-  // @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
-}
+Indicator::Indicator(const string& name, const string& timeframe)
+    : name_(name), timeframe_(timeframe), is_calculated_(false) {}
+Indicator::~Indicator() = default;
 
 bool Indicator::is_calculating_ = false;
 string Indicator::calculating_name_ = string();
@@ -52,16 +34,8 @@ shared_ptr<Logger>& Indicator::logger_ = Logger::GetLogger();
 
 Numeric<double> Indicator::operator[](const size_t index) {
   if (!is_calculated_) {
-    logger_->Log(
-        LogLevel::ERROR_L,
-        format("{} {} 지표가 계산되지 않았습니다. CalculateAll 함수를 지표 "
-               "생성자에서 호출해야 합니다.",
-               name_, timeframe_),
-        __FILE__, __LINE__);
-    Logger::LogAndThrowError(
-        format("이미 호출했을 경우 지표 계산 순서를 변경해야 합니다.", name_,
-               timeframe_),
-        __FILE__, __LINE__);
+    CalculateIndicator();
+    SaveIndicator();
   }
 
   // =======================================================================
@@ -75,7 +49,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
   if (is_calculating_ && original_reference_tf != timeframe_) {
     Logger::LogAndThrowError(
         format("{} 지표 계산에 사용하는 {} 지표의 타임프레임 {}은(는) "
-               "{} 지표의 타임프레임 {}와 동일해야 합니다.",
+               "{} 지표의 타임프레임 {}와(과) 동일해야 합니다.",
                calculating_name_, name_, timeframe_, calculating_name_,
                original_reference_tf),
         __FILE__, __LINE__);
@@ -86,93 +60,159 @@ Numeric<double> Indicator::operator[](const size_t index) {
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
   const auto bar_index = bar_->GetCurrentBarIndex();
 
+  // 원래 사용 중이던 데이터 환경으로 복구
+  bar_->SetCurrentBarType(original_bar_type, original_reference_tf);
+
   // 진행한 인덱스보다 과거 인덱스 참조 시 NaN을 반환
   if (index > bar_index) {
     return nan("");
   }
 
-  // 원래 사용 중이던 데이터 환경으로 복구
-  bar_->SetCurrentBarType(original_bar_type, original_reference_tf);
-
   // 결과값 반환
   return output_[symbol_idx][bar_index - index];
 }
 
-void Indicator::OutputToCsv(const string& file_name,
-                            const int symbol_index) const {
+void Indicator::CalculateIndicator() {
+  try {
+    // 타 지표에서 다른 지표 참조 시 미계산 됐으면 자동 계산 후 참조하는데,
+    // 이러한 상황에서 중복 계산을 방지하기 위함
+    if (is_calculated_) {
+      return;
+    }
+
+    // 엔진이 초기화되기 전 지표를 계산하면 모든 심볼의 계산이 어려우므로 에러
+    if (!engine_->IsInitialized()) {
+      Logger::LogAndThrowError(
+          format("엔진 초기화 전 [{} {}] 지표 계산을 시도했습니다.", name_,
+                 timeframe_),
+          __FILE__, __LINE__);
+    }
+    // ===========================================================================
+
+    // 원본 설정을 저장
+    const auto original_bar_type = bar_->GetCurrentBarType();
+    const auto original_reference_tf = bar_->GetCurrentReferenceTimeframe();
+    const auto original_symbol_idx = bar_->GetCurrentSymbolIndex();
+
+    // 사전 설정
+    const auto& reference_bar =
+        bar_->GetBarData(BarType::REFERENCE, timeframe_);
+    is_calculating_ = true;
+    calculating_name_ = name_;
+    output_.resize(reference_bar.GetNumSymbols());
+    bar_->SetCurrentBarType(BarType::REFERENCE, timeframe_);
+
+    // 전체 트레이딩 심볼들을 순회하며 지표 계산
+    for (int symbol_idx = 0; symbol_idx < output_.size(); symbol_idx++) {
+      this->Initialize();
+      bar_->SetCurrentSymbolIndex(symbol_idx);
+
+      // 해당 심볼의 모든 바를 순회
+      const auto num_bars = reference_bar.GetNumBars(symbol_idx);
+      output_[symbol_idx].resize(num_bars);
+
+      for (int bar_idx = 0; bar_idx < num_bars; bar_idx++) {
+        // 현재 심볼의 바 인덱스를 증가시키며 지표 계산
+        bar_->SetCurrentBarIndex(bar_idx);
+
+        /* 지표 계산 시 타 지표를 사용하는 경우가 있는데,
+           현재 바에서 타 지표 계산이 안 되어 nan이면 해당 지표 값도 nan이 됨 */
+        output_[symbol_idx][bar_idx] = Calculate();
+      }
+
+      // 변경한 바 인덱스를 초기화
+      bar_->SetCurrentBarIndex(0);
+    }
+
+    is_calculated_ = true;
+    logger_->Log(LogLevel::INFO_L,
+                 format("모든 심볼의 [{} {}] 지표 계산이 완료되었습니다.",
+                        name_, timeframe_),
+                 __FILE__, __LINE__);
+
+    // 원본 설정을 복원
+    is_calculating_ = false;
+    bar_->SetCurrentBarType(original_bar_type, original_reference_tf);
+    bar_->SetCurrentSymbolIndex(original_symbol_idx);
+  } catch (...) {
+    Logger::LogAndThrowError(
+        format("[{} {}] 지표 계산 중 오류가 발생했습니다.", name_, timeframe_),
+        __FILE__, __LINE__);
+  }
+}
+
+void Indicator::SaveIndicator() const {
   const auto& trading_bar = bar_->GetBarData(BarType::TRADING);
+  const auto& file_path = engine_->GetMainDirectory() +
+                          format("/Indicators/{} {}.csv", name_, timeframe_);
 
   try {
-    trading_bar.IsValidSymbolIndex(symbol_index);
+    if (!is_calculated_) {
+      throw runtime_error("지표 계산 전 저장할 수 없습니다.");
+    }
 
-    VectorToCsv(output_[symbol_index], file_name);
+    // 파일 출력 스트림 열기
+    ofstream file(file_path, ios::trunc);  // trunc 옵션으로 파일 내용 초기화
+
+    // 파일 열기 실패 시 에러 출력
+    if (!file.is_open()) {
+      throw runtime_error(file_path + " 파일을 열지 못했습니다.");
+    }
+
+    // 최대 15자리 소수점 저장
+    file << fixed << setprecision(15);
+
+    size_t max_num_bars = 0;
+    for (int symbol_idx = 0; symbol_idx < output_.size(); symbol_idx++) {
+      // 심볼 이름들로 파일 헤더를 추가
+      file << trading_bar.GetSymbolName(symbol_idx);
+
+      if (symbol_idx != output_.size() - 1) {
+        file << ',';  // 마지막 symbol_name 뒤에는 쉼표를 추가하지 않음
+      }
+
+      // 심볼 중 최대 바 인덱스 크기 계산
+      if (const auto num_bars = trading_bar.GetNumBars(symbol_idx);
+          num_bars > max_num_bars) {
+        max_num_bars = num_bars;
+      }
+    }
+
+    file << '\n';  // 헤더 끝난 후 한 줄 개행
+
+    // 각 심볼의 지표값을 한 줄씩 쓰기
+    for (size_t bar_idx = 0; bar_idx < max_num_bars; bar_idx++) {
+      for (int symbol_idx = 0; symbol_idx < output_.size(); symbol_idx++) {
+        try {
+          file << output_[symbol_idx][bar_idx];
+        } catch (...) {
+          // 심볼별로 바 개수가 다르므로 최대 개수에 도달하면 저장하지 않음
+        }
+
+        if (bar_idx != output_[symbol_idx].size() - 1) {
+          file << ',';  // 값 사이에 쉼표 추가
+        }
+      }
+
+      file << '\n';
+    }
+
+    // 파일 닫기
+    file.close();
   } catch (const exception& e) {
     logger_->Log(LogLevel::ERROR_L, e.what(), __FILE__, __LINE__);
     Logger::LogAndThrowError(
-        format("{} {}의 {}을(를) 파일로 저장하는 중 에러가 발생했습니다.",
-               trading_bar.GetSymbolName(symbol_index), timeframe_, name_),
+        format("[{} {}] 지표를 {} 경로에 저장하는 중 에러가 발생했습니다.",
+               name_, timeframe_, file_path),
         __FILE__, __LINE__);
   }
 
-  logger_->Log(
-      LogLevel::INFO_L,
-      format("{} | {} {}의 {}이(가) csv파일로 저장되었습니다.", file_name,
-             trading_bar.GetSymbolName(symbol_index), timeframe_, name_),
-      __FILE__, __LINE__);
-}
-
-void Indicator::CalculateAll() {
-  // 원본 설정을 저장
-  const auto original_bar_type = bar_->GetCurrentBarType();
-  const auto original_reference_tf = bar_->GetCurrentReferenceTimeframe();
-  const auto original_symbol_idx = bar_->GetCurrentSymbolIndex();
-
-  const auto& reference_bar = bar_->GetBarData(BarType::REFERENCE, timeframe_);
-
-  is_calculating_ = true;
-  calculating_name_ = name_;
-  bar_->SetCurrentBarType(BarType::REFERENCE, timeframe_);
-
-  // 전체 트레이딩 심볼들을 순회하며 지표 계산
-  for (int i = 0; i < output_.size(); i++) {
-    bar_->SetCurrentSymbolIndex(i);
-
-    // 해당 심볼의 모든 바를 순회
-    const auto num_bars = reference_bar.GetNumBars(i);
-    output_[i].resize(num_bars);
-
-    for (int j = 0; j < num_bars; j++) {
-      // 현재 심볼의 바 인덱스를 증가시키며 지표 계산
-      bar_->SetCurrentBarIndex(j);
-
-      /* 지표 계산 시 타 지표를 사용하는 경우가 있는데,
-         현재 바에서 타 지표 계산이 안 되어 nan이면 해당 지표 값도 nan이 됨 */
-      output_[i][j] = Calculate();
-    }
-
-    // 다른 지표 계산을 위해서 변경한 인덱스와 지표 멤버 변수 초기화
-    bar_->SetCurrentBarIndex(0);
-    this->Initialize();
-  }
-
-  is_calculated_ = true;
-
-  // 계산 완료 로그
   logger_->Log(LogLevel::INFO_L,
-               format("모든 심볼 {} {} 지표의 계산이 완료되었습니다.", name_,
-                      timeframe_),
+               format("[{} {}] 지표가 {} 경로에 저장되었습니다.", name_,
+                      timeframe_, file_path),
                __FILE__, __LINE__);
-
-  // 원본 설정을 복원
-  is_calculating_ = false;
-  bar_->SetCurrentBarType(original_bar_type, original_reference_tf);
-  bar_->SetCurrentSymbolIndex(original_symbol_idx);
 }
-
-void Indicator::SetInput(const vector<double>& input) { input_ = input; }
 
 string Indicator::GetName() const { return name_; }
 
 string Indicator::GetTimeframe() const { return timeframe_; }
-
-vector<double> Indicator::GetInput() const { return input_; }

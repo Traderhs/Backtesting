@@ -2,13 +2,14 @@
 
 // 표준 라이브러리
 #include <cfloat>
+#include <optional>
 
 // 전방 선언
-class OrderHandler;
 class BarHandler;
 
 // 내부 헤더
 #include "Engines/Order.hpp"
+#include "Engines/OrderHandler.hpp"
 #include "Indicators/Indicators.hpp"
 
 // 네임 스페이스
@@ -18,6 +19,8 @@ using enum Direction;
 /// 백테스팅 전략을 생성하기 위한 가상 클래스
 class Strategy {
  public:
+  Strategy() = delete;
+
   /// 전략 실행 전 초기화를 통해 값을 미리 계산하기 위한 함수.
   virtual void Initialize() = 0;
 
@@ -29,6 +32,9 @@ class Strategy {
 
   /// 특정 심볼의 청산 직후 전략을 실행하는 함수
   virtual void ExecuteAfterExit() = 0;
+
+  /// 엔진 초기화 시 trading_timeframe을 초기화하는 함수
+  void SetTradingTimeframe(const string& trading_timeframe);
 
   /// 해당 전략의 이름을 반환하는 함수
   [[nodiscard]] string GetName() const;
@@ -50,12 +56,12 @@ class Strategy {
 
   // ReSharper disable once CppInconsistentNaming
   /// 트레이딩 바 타임프레임
-  string trading_timeframe;
+  optional<string> trading_timeframe;
 
   // ReSharper disable once CppInconsistentNaming
-  /// 청산 시 진입 잔량의 전량 청산을 위해 사용하는 변수.
+  /// 커스텀 지표에서 청산 시 진입 잔량의 전량 청산을 위해 사용하는 변수.
   ///
-  /// 청산할 때 청산 수량은 내부적으로 진입 잔량의 최대값으로 변환되기 때문에
+  /// 엔진 내부적으로 청산 수량은 진입 잔량의 최대값으로 변환되기 때문에
   /// double 최대값으로 사용
   const double entry_size = DBL_MAX;
 

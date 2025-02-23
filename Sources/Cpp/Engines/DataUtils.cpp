@@ -1,8 +1,6 @@
 ﻿// 표준 라이브러리
 #include <any>
-#include <cmath>
 #include <format>
-#include <iomanip>
 
 // 외부 라이브러리
 #include <arrow/io/file.h>
@@ -138,48 +136,6 @@ void TableToParquet(const shared_ptr<arrow::Table>& table,
     Logger::LogAndThrowError(
         "테이블을 저장하는 데 실패했습니다.: " + write_result.ToString(),
         __FILE__, __LINE__);
-}
-
-void VectorToCsv(const vector<double>& data, const string& file_name) {
-  // 파일 출력 스트림 열기
-  ofstream file(file_name, ios::trunc);  // trunc 옵션으로 파일 내용 초기화
-
-  // 파일 열기 실패 시 에러 출력
-  if (!file.is_open()) {
-    throw runtime_error(file_name + " 파일을 열지 못했습니다.");
-  }
-
-  // 최대 15자리 소수점 저장
-  file << fixed << setprecision(15);
-
-  // 벡터 데이터를 CSV 형식으로 작성
-  for (const double value : data) {
-    file << value << '\n';  // 각 값을 한 줄씩 쓰기
-  }
-
-  // 파일 닫기
-  file.close();
-}
-
-void VectorToCsv(const vector<Numeric<double>>& data, const string& file_name) {
-  // 파일 출력 스트림 열기
-  ofstream file(file_name, ios::trunc);  // trunc 옵션으로 파일 내용 초기화
-
-  // 파일 열기 실패 시 에러 출력
-  if (!file.is_open()) {
-    throw runtime_error(file_name + " 파일을 열지 못했습니다.");
-  }
-
-  // 최대 15자리 소수점 저장
-  file << fixed << setprecision(15);
-
-  // 벡터 데이터를 CSV 형식으로 작성
-  for (const double value : data) {
-    file << value << '\n';  // 각 값을 한 줄씩 쓰기
-  }
-
-  // 파일 닫기
-  file.close();
 }
 
 pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>> SplitTable(

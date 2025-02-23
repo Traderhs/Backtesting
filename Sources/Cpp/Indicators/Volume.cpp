@@ -8,13 +8,15 @@
 
 Volume::Volume(const string& name, const string& timeframe)
     : Indicator(name, timeframe) {
-  CalculateAll();
+  reference_bar_ = nullptr;
 }
 
-void Volume::Initialize() {}
+void Volume::Initialize() {
+  reference_bar_ = &bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe());
+}
 
 Numeric<double> Volume::Calculate() {
-  return bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe())
-      .GetBar(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex())
+  return reference_bar_
+      ->GetBar(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex())
       .volume;
 }

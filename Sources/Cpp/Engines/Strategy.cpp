@@ -6,30 +6,25 @@
 #include "Engines/Strategy.hpp"
 
 // 내부 헤더
-#include "Engines/BarData.hpp"
 #include "Engines/BarHandler.hpp"
 #include "Engines/BaseBarHandler.hpp"
 #include "Engines/OrderHandler.hpp"
 
 Strategy::Strategy(string name)
     : order(OrderHandler::GetOrderHandler(name)),
-      open("Open", bar->GetBarData(BarType::TRADING).GetTimeframe()),
-      high("High", bar->GetBarData(BarType::TRADING).GetTimeframe()),
-      low("Low", bar->GetBarData(BarType::TRADING).GetTimeframe()),
-      close("Close", bar->GetBarData(BarType::TRADING).GetTimeframe()),
-      volume("Volume", bar->GetBarData(BarType::TRADING).GetTimeframe()),
-      name_(move(name)) {
-  trading_timeframe = bar->GetBarData(BarType::TRADING).GetTimeframe();
-
-  /* 전략 생성 시 OHLCV 지표 계산으로 인해, 지표들의 output_을 트레이딩 바
-   데이터의 심볼 개수로 resize해야 하기 때문에 전략 추가 전 모든 트레이딩 바
-   데이터를 추가해야 함 */
-  bar->is_strategy_created_ = true;
-}
+      open(Indicator::Create<Open>("Open", "1d")),
+      high(Indicator::Create<High>("High", "1d")),
+      low(Indicator::Create<Low>("Low", "1d")),
+      close(Indicator::Create<Close>("Close", "1d")),
+      volume(Indicator::Create<Volume>("Volume", "1d")),
+      name_(move(name)) {}
 Strategy::~Strategy() = default;
 
 // ReSharper disable once CppInconsistentNaming
 shared_ptr<BarHandler>& Strategy::bar = BarHandler::GetBarHandler();
 
+void Strategy::SetTradingTimeframe(const string& trading_timeframe) {
+  this->trading_timeframe = trading_timeframe;
+}
 string Strategy::GetName() const { return name_; }
 shared_ptr<OrderHandler> Strategy::GetOrderHandler() const { return order; }

@@ -8,13 +8,15 @@
 
 Low::Low(const string& name, const string& timeframe)
     : Indicator(name, timeframe) {
-  CalculateAll();
+  reference_bar_ = nullptr;
 }
 
-void Low::Initialize() {}
+void Low::Initialize() {
+  reference_bar_ = &bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe());
+}
 
 Numeric<double> Low::Calculate() {
-  return bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe())
-      .GetBar(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex())
+  return reference_bar_
+      ->GetBar(bar_->GetCurrentSymbolIndex(), bar_->GetCurrentBarIndex())
       .low;
 }

@@ -21,12 +21,6 @@ class BarHandler final : public BaseBarHandler {
   BarHandler(const BarHandler&) = delete;             // 복사 생성자 삭제
   BarHandler& operator=(const BarHandler&) = delete;  // 대입 연산자 삭제
 
-  /**
-   * 전략이 하나라도 생성되었는지 확인하는 플래그.
-   * 전략 생성 전 트레이딩 바를 모두 추가해야 전략에서 정상적으로 지표가
-   * 계산되기 때문에 이 플래그가 필요
-   */
-  bool is_strategy_created_;
 
   /// BarHandler의 싱글톤 인스턴스를 반환하는 함수
   static shared_ptr<BarHandler>& GetBarHandler();
@@ -116,14 +110,6 @@ class BarHandler final : public BaseBarHandler {
    * @return 첫 번째 Open Time과 두 번째 Open Time의 차이를 포맷한 타임프레임 문자열
    */
   static string CalculateTimeframe(const shared_ptr<Table>& bar_data, int open_time_column);
-
-  /**
-   * 트레이딩 바 데이터가 추가 가능한지 검증하는 함수.
-   * 전략 생성 시 OHLCV 지표 계산으로 인해, 미리 지표들의 output_을
-   * resize해야 하는데, 이때 트레이딩 바 데이터를 이용하므로 전략 추가 이후엔
-   * 트레이딩 바 데이터 추가가 불가능해짐.
-   */
-  void IsTradingBarAddable() const;
 
   /// 바 데이터 타입간 타임프레임이 유효한지 검증하는 함수
   void IsValidTimeframeBetweenBars(const string& timeframe, BarType bar_type);

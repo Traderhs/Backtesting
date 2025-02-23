@@ -14,6 +14,11 @@ Config::Config()
       limit_slippage_(nan("")) {}
 Config::~Config() = default;
 
+Config& Config::SetRootDirectory(const string& root_directory) {
+  root_directory_ = root_directory;
+  return *this;
+}
+
 Config& Config::SetInitialBalance(const double initial_balance) {
   initial_balance_ = initial_balance;
   return *this;
@@ -49,6 +54,7 @@ Config& Config::SetLimitSlippage(const double limit_slippage) {
   return *this;
 }
 
+string Config::GetRootDirectory() const { return root_directory_; }
 double Config::GetInitialBalance() const { return initial_balance_; }
 CommissionType Config::GetCommissionType() const { return commission_type_; }
 double Config::GetMarketCommission() const { return market_commission_; }

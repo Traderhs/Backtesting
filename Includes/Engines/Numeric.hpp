@@ -11,57 +11,110 @@ template <typename T>
 class Numeric final {
  public:
   // 생성자
+  Numeric() : value_(T{}) {}
   // ReSharper disable once CppNonExplicitConvertingConstructor
-  Numeric(T v);  // NOLINT(*-explicit-constructor)
+  Numeric(T v) : value_(v) {}  // NOLINT(*-explicit-constructor)
 
   // ReSharper disable once CppNonExplicitConversionOperator
-  operator T() const;  // NOLINT(*-explicit-constructor)
+  operator T() const { return value_; }  // NOLINT(*-explicit-constructor)
 
   // Numeric 간 산술 연산자
-  Numeric operator+(const Numeric& other) const;
-  Numeric operator-(const Numeric& other) const;
-  Numeric operator*(const Numeric& other) const;
-  Numeric operator/(const Numeric& other) const;
-  Numeric operator+=(const Numeric& other) const;
-  Numeric operator-=(const Numeric& other) const;
+  Numeric operator+(const Numeric& other) const {
+    return Numeric(value_ + other.value_);
+  }
+  Numeric operator-(const Numeric& other) const {
+    return Numeric(value_ - other.value_);
+  }
+  Numeric operator*(const Numeric& other) const {
+    return Numeric(value_ * other.value_);
+  }
+  Numeric operator/(const Numeric& other) const {
+    return Numeric(value_ / other.value_);
+  }
+  Numeric operator+=(const Numeric& other) {
+    value_ += other.value_;  // 다른 객체의 value를 더함
+    return *this;            // 자기 자신을 반환
+  }
+  Numeric operator-=(const Numeric& other) {
+    value_ -= other.value_;  // 다른 객체의 value를 더함
+    return *this;            // 자기 자신을 반환
+  }
 
   // Numeric 간 비교 연산자
-  bool operator==(const Numeric& other) const;
-  bool operator!=(const Numeric& other) const;
-  bool operator>(const Numeric& other) const;
-  bool operator>=(const Numeric& other) const;
-  bool operator<(const Numeric& other) const;
-  bool operator<=(const Numeric& other) const;
+  bool operator==(const Numeric& other) const {
+    return data_utils::IsEqual(value_, other.value_);
+  }
+  bool operator!=(const Numeric& other) const {
+    return !data_utils::IsEqual(value_, other.value_);
+  }
+  bool operator>(const Numeric& other) const {
+    return data_utils::IsGreater(value_, other.value_);
+  }
+  bool operator>=(const Numeric& other) const {
+    return data_utils::IsGreaterOrEqual(value_, other.value_);
+  }
+  bool operator<(const Numeric& other) const {
+    return data_utils::IsLess(value_, other.value_);
+  }
+  bool operator<=(const Numeric& other) const {
+    return data_utils::IsLessOrEqual(value_, other.value_);
+  }
 
-  // Numeric + T (산술 연산자)
+  // Numeric + U (산술 연산자)
   template <typename U>
-  Numeric operator+(U other) const;
+  Numeric operator+(U other) const {
+    return Numeric(value_ + other);
+  }
   template <typename U>
-  Numeric operator-(U other) const;
+  Numeric operator-(U other) const {
+    return Numeric(value_ - other);
+  }
   template <typename U>
-  Numeric operator*(U other) const;
+  Numeric operator*(U other) const {
+    return Numeric(value_ * other);
+  }
   template <typename U>
-  Numeric operator/(U other) const;
+  Numeric operator/(U other) const {
+    return Numeric(value_ / other);
+  }
   template <typename U>
-  Numeric operator+=(U other) const;
+  Numeric operator+=(U other) const {
+    value_ += other;  // 다른 객체를 더함
+    return *this;     // 자기 자신을 반환
+  }
   template <typename U>
-  Numeric operator-=(U other) const;
+  Numeric operator-=(U other) const {
+    value_ -= other;  // 다른 객체를 뺌
+    return *this;     // 자기 자신을 반환
+  }
 
-  // Numeric + T 비교 연산자
+  // Numeric + U 비교 연산자
   template <typename U>
-  bool operator==(U other) const;
+  bool operator==(U other) const {
+    return data_utils::IsEqual(value_, other);
+  }
   template <typename U>
-  bool operator!=(U other) const;
+  bool operator!=(U other) const {
+    return !data_utils::IsEqual(value_, other);
+  }
   template <typename U>
-  bool operator>(U other) const;
+  bool operator>(U other) const {
+    return data_utils::IsGreater(value_, other);
+  }
   template <typename U>
-  bool operator>=(U other) const;
+  bool operator>=(U other) const {
+    return data_utils::IsGreaterOrEqual(value_, other);
+  }
   template <typename U>
-  bool operator<(U other) const;
+  bool operator<(U other) const {
+    return data_utils::IsLess(value_, other);
+  }
   template <typename U>
-  bool operator<=(U other) const;
+  bool operator<=(U other) const {
+    return data_utils::IsLessOrEqual(value_, other);
+  }
 
-  // T + Numeric 산술 연산자 (friend)
+  // U + Numeric 산술 연산자 (friend)
   template <typename U>
   friend Numeric operator+(U lhs, const Numeric& rhs) {
     return Numeric(lhs + rhs.value_);
@@ -79,17 +132,17 @@ class Numeric final {
     return Numeric(lhs / rhs.value_);
   }
   template <typename U>
-  friend Numeric operator+=(U lhs, const Numeric& rhs) {
+  friend U& operator+=(U& lhs, const Numeric& rhs) {
     lhs += rhs.value_;
     return lhs;
   }
   template <typename U>
-  friend Numeric operator-=(U lhs, const Numeric& rhs) {
+  friend U& operator-=(U& lhs, const Numeric& rhs) {
     lhs -= rhs.value_;
     return lhs;
   }
 
-  // T + Numeric 비교 연산자 (friend)
+  // U + Numeric 비교 연산자 (friend)
   template <typename U>
   friend bool operator==(U lhs, const Numeric& rhs) {
     return data_utils::IsEqual(lhs, rhs.value_);

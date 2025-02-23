@@ -1,9 +1,9 @@
 // 표준 라이브러리
 #include <array>
 #include <cmath>
+#include <filesystem>
 #include <format>
 #include <iostream>
-#include <ranges>
 #include <set>
 #include <utility>
 
@@ -65,21 +65,34 @@ void Engine::Backtesting(const bool use_bar_magnifier, const string& start,
   BacktestingMain();
   cout << string(217, '=') << endl;
 
-  const string& file_path = R"(C:\Users\0908r\Desktop\test.csv)";
-  try {
-    // 각 트레이딩별 다른 폴더에 저장
-    analyzer_->TradingListToCsv(file_path);
-  } catch ([[maybe_unused]] const exception& e) {
-    logger_->Log(ERROR_L,
-                 std::format("거래 목록을 {} 경로에 저장하는 데 실패했습니다.",
-                             file_path),
-                 __FILE__, __LINE__);
-  }
-
-  // 설정, 지표값 등 저장 필요
+  // 설정, 지표값 등 저장 필요@@@@@@@@@@@@@@@@@@@@@@@@@
 
   logger_->Log(INFO_L, "백테스팅이 완료되었습니다.", __FILE__, __LINE__);
 }
+
+double Engine::UpdateAvailableBalance() {
+  if (!available_balance_updated_) {
+    unrealized_pnl_ = 0;
+
+    // 전략별 미실현 손익을 합산
+    for (const auto& strategy : strategies_) {
+      unrealized_pnl_ += strategy->GetOrderHandler()->GetUnrealizedPnl();
+    }
+
+    // 사용 가능 자금 업데이트
+    available_balance_ = wallet_balance_ + unrealized_pnl_ - used_margin_;
+    available_balance_updated_ = true;
+  }
+
+  return available_balance_;
+}
+
+size_t Engine::GetMaxDecimalPlace(const int symbol_idx) const {
+  return max_decimal_places_[symbol_idx];
+}
+string Engine::GetCurrentStrategyName() const { return current_strategy_name_; }
+string Engine::GetCurrentStrategyType() const { return current_strategy_type_; }
+int64_t Engine::GetCurrentOpenTime() const { return current_open_time_; }
 
 void Engine::Initialize(const bool use_bar_magnifier, const string& start,
                         const string& end, const string& format) {
@@ -89,8 +102,374 @@ void Engine::Initialize(const bool use_bar_magnifier, const string& start,
   IsValidDateRange(start, end, format);
   IsValidStrategies();
 
-  // 엔진 초기화
+  // 폴더 생성
+  CreateDirectories();
+
+  // 초기화
   InitializeEngine(use_bar_magnifier);
+  InitializeIndicators();
+}
+
+void Engine::IsValidBarData(const bool use_bar_magnifier) {
+  const auto& trading_bar = bar_->GetBarData(BarType::TRADING);
+  const auto trading_num_symbols = trading_bar.GetNumSymbols();
+
+  // 1.1. 트레이딩 바 데이터가 비었는지 검증
+  if (!trading_num_symbols)
+    Logger::LogAndThrowError("트레이딩 바 데이터가 비어있습니다.", __FILE__,
+                             __LINE__);
+
+  // 1.2. 트레이딩 바 데이터의 중복 가능성 검증
+  // set은 중복 불가능하므로 set에 추가한 open 개수가 심볼 개수와 다르다면
+  // 중복 추가 가능성 높음
+  set<double> trading_bar_open;
+  for (int i = 0; i < trading_num_symbols; i++) {
+    trading_bar_open.insert(trading_bar.GetBar(i, 0).open);
+  }
+
+  if (trading_bar_open.size() != trading_num_symbols) {
+    logger_->Log(WARNING_L,
+                 "트레이딩 바 데이터에 중복된 데이터가 다른 심볼로 추가되었을 "
+                 "가능성이 있습니다.",
+                 __FILE__, __LINE__);
+  }
+
+  if (use_bar_magnifier) {
+    const auto& magnifier_bar = bar_->GetBarData(BarType::MAGNIFIER);
+    const auto magnifier_num_symbols = magnifier_bar.GetNumSymbols();
+
+    /* 2.1. 트레이딩 바 데이터의 심볼 개수와 돋보기 바 데이터의
+            심볼 개수가 같은지 검증 */
+    if (magnifier_num_symbols != trading_num_symbols) {
+      Logger::LogAndThrowError(
+          format("돋보기 기능 사용 시 트레이딩 바 데이터에 추가된 "
+                 "심볼 개수({}개)와 돋보기 바 데이터에 추가된 심볼 "
+                 "개수({}개)는 동일해야 합니다.",
+                 trading_num_symbols, magnifier_num_symbols),
+          __FILE__, __LINE__);
+    }
+
+    /* 2.2. 트레이딩 바 데이터의 심볼들이 돋보기 바 데이터에 존재하고
+            순서가 같은지 검증 */
+    for (int i = 0; i < trading_num_symbols; ++i) {
+      if (const auto& symbol_name = trading_bar.GetSymbolName(i);
+          symbol_name != magnifier_bar.GetSymbolName(i)) {
+        Logger::LogAndThrowError(
+            format("돋보기 바 데이터에 {}이(가) 존재하지 않거나 "
+                   "트레이딩 바에 추가된 심볼 순서와 일치하지 않습니다.",
+                   symbol_name),
+            __FILE__, __LINE__);
+      }
+    }
+
+    // 2.3. 돋보기 바 데이터의 중복 가능성 검증
+    // set은 중복 불가능하므로 set에 추가한 open 개수가 심볼 개수와 다르다면
+    // 중복 추가 가능성 높음
+    set<double> magnifier_open;
+    for (int i = 0; i < magnifier_num_symbols; i++) {
+      magnifier_open.insert(magnifier_bar.GetBar(i, 0).open);
+    }
+
+    if (magnifier_open.size() != magnifier_num_symbols) {
+      logger_->Log(WARNING_L,
+                   "돋보기 바 데이터에 중복된 데이터가 다른 심볼로 추가되었을 "
+                   "가능성이 있습니다.",
+                   __FILE__, __LINE__);
+    }
+  }
+
+  for (const auto& [reference_timeframe, reference_bar] :
+       bar_->GetAllReferenceBarData()) {
+    const auto reference_num_symbols = reference_bar.GetNumSymbols();
+
+    /* ※ 참조 바 데이터의 심볼 개수와 순서 검증은 추후 트레이딩 바 심볼 외
+          다른 데이터(경제 지표 등)의 참조가 필요할 때 삭제 */
+
+    /* 3.1. 트레이딩 바 데이터의 심볼 개수와 참조 바 데이터의
+            심볼 개수가 같은지 검증 */
+    if (reference_num_symbols != trading_num_symbols) {
+      Logger::LogAndThrowError(
+          format("트레이딩 바 데이터에 추가된 심볼 개수({}개)와 참조 바 "
+                 "데이터 {}에 추가된 심볼 개수({}개)는 동일해야 합니다.",
+                 trading_num_symbols, reference_timeframe,
+                 reference_num_symbols),
+          __FILE__, __LINE__);
+    }
+
+    /* 3.2. 트레이딩 바 데이터의 심볼들이 참조 바 데이터에 존재하고
+            순서가 같은지 검증 */
+    for (int i = 0; i < trading_num_symbols; ++i) {
+      if (const auto& symbol_name = trading_bar.GetSymbolName(i);
+          symbol_name != reference_bar.GetSymbolName(i)) {
+        Logger::LogAndThrowError(
+            format("참조 바 데이터 {}에 {}이(가) 존재하지 않거나 "
+                   "트레이딩 바에 추가된 심볼 순서와 일치하지 않습니다.",
+                   reference_timeframe, symbol_name),
+            __FILE__, __LINE__);
+      }
+    }
+
+    // 3.3. 참조 바 데이터의 중복 가능성 검증
+    // set은 중복 불가능하므로 set에 추가한 open 개수가 심볼 개수와 다르다면
+    // 중복 추가 가능성 높음
+    set<double> reference_open;
+    for (int i = 0; i < reference_num_symbols; i++) {
+      reference_open.insert(reference_bar.GetBar(i, 0).open);
+    }
+
+    if (reference_open.size() != reference_num_symbols) {
+      logger_->Log(
+          WARNING_L,
+          format("참조 바 데이터 {}에 중복된 데이터가 다른 심볼로 추가되었을 "
+                 "가능성이 있습니다.",
+                 reference_timeframe),
+          __FILE__, __LINE__);
+    }
+  }
+
+  logger_->Log(INFO_L, "바 데이터 유효성 검증이 완료되었습니다.", __FILE__,
+               __LINE__);
+}
+
+void Engine::IsValidDateRange(const string& start, const string& end,
+                              const string& format) {
+  const auto& trading_bar = bar_->GetBarData(BarType::TRADING);
+  for (int symbol_idx = 0; symbol_idx < trading_bar.GetNumSymbols();
+       symbol_idx++) {
+    // 백테스팅 시작 시 가장 처음의 Open Time 값 구하기
+    begin_open_time_ =
+        min(begin_open_time_, trading_bar.GetBar(symbol_idx, 0).open_time);
+
+    // 백테스팅 시작 시 가장 끝의 Open Time 값 구하기
+    end_open_time_ = max(
+        end_open_time_,
+        trading_bar.GetBar(symbol_idx, trading_bar.GetNumBars(symbol_idx) - 1)
+            .open_time);
+  }
+
+  // Start가 지정된 경우 범위 체크
+  if (!start.empty()) {
+    if (const auto start_time = UtcDatetimeToUtcTimestamp(start, format);
+        start_time < begin_open_time_) {
+      Logger::LogAndThrowError(
+          std::format("지정된 Start 시간 {}은(는) 최소 시간 {}의 "
+                      "전으로 지정할 수 없습니다.",
+                      start, UtcTimestampToUtcDatetime(begin_open_time_)),
+          __FILE__, __LINE__);
+    } else {
+      begin_open_time_ = start_time;
+    }
+  }
+
+  // End가 지정된 경우 범위 체크
+  if (!end.empty()) {
+    if (const auto end_time = UtcDatetimeToUtcTimestamp(end, format);
+        end_time > end_open_time_) {
+      Logger::LogAndThrowError(
+          std::format("지정된 End 시간 {}은(는) 최대 시간 {}의 "
+                      "후로 지정할 수 없습니다.",
+                      end, UtcTimestampToUtcDatetime(end_open_time_)),
+          __FILE__, __LINE__);
+    } else {
+      end_open_time_ = end_time;
+    }
+  }
+
+  // Start, End가 둘다 지정된 경우 범위 체크
+  if (!start.empty() && !end.empty()) {
+    if (UtcDatetimeToUtcTimestamp(start, format) >
+        UtcDatetimeToUtcTimestamp(end, format)) {
+      Logger::LogAndThrowError(
+          std::format("지정된 Start 시간 {}은(는) 지정된 End 시간 {}의 전으로 "
+                      "지정할 수 없습니다.",
+                      start, end),
+          __FILE__, __LINE__);
+    }
+  }
+
+  logger_->Log(INFO_L, "날짜 유효성 검증이 완료되었습니다.", __FILE__,
+               __LINE__);
+}
+
+void Engine::IsValidStrategies() const {
+  if (strategies_.empty()) {
+    Logger::LogAndThrowError("엔진에 전략이 추가되지 않았습니다.", __FILE__,
+                             __LINE__);
+  }
+
+  logger_->Log(INFO_L, "전략 유효성 검증이 완료되었습니다.", __FILE__,
+               __LINE__);
+}
+
+void Engine::IsValidConfig() const {
+  const auto& root_directory = config_.GetRootDirectory();
+  const auto initial_balance = config_.GetInitialBalance();
+  const auto commission_type = config_.GetCommissionType();
+  const auto market_commission = config_.GetMarketCommission();
+  const auto limit_commission = config_.GetLimitCommission();
+  const auto slippage_type = config_.GetSlippageType();
+  const auto market_slippage = config_.GetMarketSlippage();
+  const auto limit_slippage = config_.GetLimitSlippage();
+
+  if (root_directory.empty() || isnan(initial_balance) ||
+      commission_type == CommissionType::COMMISSION_NONE ||
+      isnan(market_commission) || isnan(limit_commission) ||
+      slippage_type == SlippageType::SLIPPAGE_NONE || isnan(market_slippage) ||
+      isnan(limit_slippage)) {
+    Logger::LogAndThrowError("엔진 설정값을 모두 초기화해야 합니다.", __FILE__,
+                             __LINE__);
+  }
+
+  if (!filesystem::exists(root_directory)) {
+    Logger::LogAndThrowError(
+        format("지정된 루트 폴더 {}은(는) 유효하지 않습니다.", root_directory),
+        __FILE__, __LINE__);
+  }
+
+  if (IsGreater(market_commission, 100.0) || IsLess(market_commission, 0.0)) {
+    Logger::LogAndThrowError(
+        format("지정된 시장가 수수료율 {}%는 100% 초과 혹은 "
+               "0% 미만으로 설정할 수 없습니다.",
+               market_commission),
+        __FILE__, __LINE__);
+  }
+
+  if (IsGreater(limit_commission, 100.0) || IsLess(limit_commission, 0.0)) {
+    Logger::LogAndThrowError(
+        format("지정된 지정가 수수료율 {}%는 100% 초과 혹은 "
+               "0% 미만으로 설정할 수 없습니다.",
+               limit_commission),
+        __FILE__, __LINE__);
+  }
+
+  if (IsGreater(market_slippage, 100.0) || IsLess(market_slippage, 0.0)) {
+    Logger::LogAndThrowError(
+        format("지정된 시장가 슬리피지율 {}%는 100% 초과 혹은 "
+               "0% 미만으로 설정할 수 없습니다.",
+               market_slippage),
+        __FILE__, __LINE__);
+  }
+
+  if (IsGreater(limit_slippage, 100.0) || IsLess(limit_slippage, 0.0)) {
+    Logger::LogAndThrowError(
+        format("지정된 지정가 슬리피지율 {}%는 100% 초과 혹은 "
+               "0% 미만으로 설정할 수 없습니다.",
+               limit_slippage),
+        __FILE__, __LINE__);
+  }
+
+  logger_->Log(INFO_L, "엔진 설정값 검증이 완료되었습니다.", __FILE__,
+               __LINE__);
+}
+
+void Engine::CreateDirectories() {
+  try {
+    // 전략 이름들을 이어붙인 이름 + 현재 시간이 이번 백테스팅의 메인 폴더
+    string main_directory = config_.GetRootDirectory() + "/Results/";
+
+    for (const auto& strategy : strategies_) {
+      main_directory += strategy->GetName() + "_";
+    }
+
+    main_directory += GetCurrentLocalDatetime();
+
+    // 에러가 발생하는 문자들 대체 (드라이브 경로의 ':' 제외)
+    replace(main_directory.begin() + 3, main_directory.end(), ':', '-');
+
+    filesystem::create_directory(main_directory);
+    main_directory_ = main_directory;
+
+    // 지표 저장 폴더 생성
+    filesystem::create_directory(main_directory + "/Indicators");
+  } catch (const exception& e) {
+    logger->Log(ERROR_L, e.what(), __FILE__, __LINE__);
+    Logger::LogAndThrowError("폴더 생성 중 에러가 발생했습니다.", __FILE__,
+                             __LINE__);
+  }
+}
+
+void Engine::InitializeEngine(const bool use_bar_magnifier) {
+  // 자금 설정
+  const auto initial_balance = config_.GetInitialBalance();
+  wallet_balance_ = initial_balance;
+  available_balance_ = initial_balance;
+  max_wallet_balance_ = initial_balance;
+
+  // 바 데이터 초기화
+  trading_bar_ = make_shared<BarData>(bar_->GetBarData(BarType::TRADING));
+  magnifier_bar_ = make_shared<BarData>(bar_->GetBarData(BarType::MAGNIFIER));
+  reference_bar_ = make_shared<unordered_map<string, BarData>>(
+      bar_->GetAllReferenceBarData());
+
+  // 바 데이터 정보 초기화
+  trading_bar_num_symbols_ = trading_bar_->GetNumSymbols();
+  trading_bar_add_time_ = ParseTimeframe(trading_bar_->GetTimeframe());
+  trading_bar_timeframe_ = trading_bar_->GetTimeframe();
+
+  // 각 심볼의 최대 소숫점 자리수 초기화
+  max_decimal_places_.resize(trading_bar_num_symbols_);
+  for (int i = 0; i < trading_bar_num_symbols_; i++) {
+    max_decimal_places_[i] = CountMaxDecimalPlace(i);
+  }
+
+  // 트레이딩 시간 정보 초기화
+  current_open_time_ = begin_open_time_;
+  current_close_time_ = begin_open_time_ + trading_bar_add_time_ - 1;
+
+  // 시작 시간까지 트레이딩 바의 인덱스를 이동
+  bar_->ProcessBarIndices(BarType::TRADING, "NONE", current_close_time_);
+
+  // trading_began_, trading_ended 초기화
+  trading_began_.resize(trading_bar_num_symbols_);
+  trading_ended_.resize(trading_bar_num_symbols_);
+
+  for (int i = 0; i < trading_bar_num_symbols_; i++) {
+    bar_->SetCurrentSymbolIndex(i);
+
+    // 첫 시작 시간이 begin_open_time과 같다면 바로 시작하는 Symbol
+    if (trading_bar_->GetBar(i, bar_->GetCurrentBarIndex()).open_time ==
+        begin_open_time_) {
+      trading_began_[i] = true;
+    } else {
+      trading_began_[i] = false;
+    }
+
+    trading_ended_[i] = false;
+  }
+
+  // 활성화된 심볼들 초기화
+  activated_symbol_indices_.resize(trading_bar_num_symbols_);
+  activated_magnifier_symbol_indices_.resize(trading_bar_num_symbols_);
+  activated_magnifier_bar_indices_.resize(trading_bar_num_symbols_);
+  activated_trading_symbol_indices_.resize(trading_bar_num_symbols_);
+  activated_trading_bar_indices_.resize(trading_bar_num_symbols_);
+
+  // 돋보기 기능 사용 여부 결정
+  if (use_bar_magnifier) {
+    use_bar_magnifier_ = true;
+  }
+
+  // 전략별 주문 핸들러 및 전략 초기화
+  for (const auto& strategy : strategies_) {
+    strategy->GetOrderHandler()->Initialize(trading_bar_num_symbols_);
+    strategy->Initialize();
+    strategy->SetTradingTimeframe(trading_bar_timeframe_);
+  }
+
+  // 분석기 초기화
+  analyzer_->Initialize(initial_balance);
+
+  initialized_ = true;
+  logger->Log(INFO_L, "엔진 초기화가 완료되었습니다.", __FILE__, __LINE__);
+}
+
+void Engine::InitializeIndicators() const {
+  for (const auto& ref_indicator : indicators_) {
+    auto& indicator = ref_indicator.get();
+    indicator.CalculateIndicator();
+    indicator.SaveIndicator();
+
+  }
 }
 
 void Engine::BacktestingMain() {
@@ -218,343 +597,6 @@ void Engine::BacktestingMain() {
     logger_->Log(ERROR_L, "파산으로 인해 백테스팅을 종료합니다.", __FILE__,
                  __LINE__);
   }
-}
-
-double Engine::UpdateAvailableBalance() {
-  if (!available_balance_updated_) {
-    unrealized_pnl_ = 0;
-
-    // 전략별 미실현 손익을 합산
-    for (const auto& strategy : strategies_) {
-      unrealized_pnl_ += strategy->GetOrderHandler()->GetUnrealizedPnl();
-    }
-
-    // 사용 가능 자금 업데이트
-    available_balance_ = wallet_balance_ + unrealized_pnl_ - used_margin_;
-    available_balance_updated_ = true;
-  }
-
-  return available_balance_;
-}
-
-size_t Engine::GetMaxDecimalPlace(const int symbol_idx) const {
-  return max_decimal_places_[symbol_idx];
-}
-string Engine::GetCurrentStrategyName() const { return current_strategy_name_; }
-string Engine::GetCurrentStrategyType() const { return current_strategy_type_; }
-int64_t Engine::GetCurrentOpenTime() const { return current_open_time_; }
-
-void Engine::IsValidBarData(const bool use_bar_magnifier) {
-  const auto& trading_bar = bar_->GetBarData(BarType::TRADING);
-  const auto trading_num_symbols = trading_bar.GetNumSymbols();
-
-  // 1.1. 트레이딩 바 데이터가 비었는지 검증
-  if (!trading_num_symbols)
-    Logger::LogAndThrowError("트레이딩 바 데이터가 비어있습니다.", __FILE__,
-                             __LINE__);
-
-  // 1.2. 트레이딩 바 데이터의 중복 가능성 검증
-  // set은 중복 불가능하므로 set에 추가한 open 개수가 심볼 개수와 다르다면
-  // 중복 추가 가능성 높음
-  set<double> trading_bar_open;
-  for (int i = 0; i < trading_num_symbols; i++) {
-    trading_bar_open.insert(trading_bar.GetBar(i, 0).open);
-  }
-
-  if (trading_bar_open.size() != trading_num_symbols) {
-    logger_->Log(WARNING_L,
-                 "트레이딩 바 데이터에 중복된 데이터가 다른 심볼로 추가되었을 "
-                 "가능성이 있습니다.",
-                 __FILE__, __LINE__);
-  }
-
-  if (use_bar_magnifier) {
-    const auto& magnifier_bar = bar_->GetBarData(BarType::MAGNIFIER);
-    const auto magnifier_num_symbols = magnifier_bar.GetNumSymbols();
-
-    /* 2.1. 트레이딩 바 데이터의 심볼 개수와 돋보기 바 데이터의
-            심볼 개수가 같은지 검증 */
-    if (magnifier_num_symbols != trading_num_symbols) {
-      Logger::LogAndThrowError(
-          format("돋보기 기능 사용 시 트레이딩 바 데이터에 추가된 "
-                 "심볼 개수({}개)와 돋보기 바 데이터에 추가된 심볼 "
-                 "개수({}개)는 동일해야 합니다.",
-                 trading_num_symbols, magnifier_num_symbols),
-          __FILE__, __LINE__);
-    }
-
-    /* 2.2. 트레이딩 바 데이터의 심볼들이 돋보기 바 데이터에 존재하고
-            순서가 같은지 검증 */
-    for (int i = 0; i < trading_num_symbols; ++i) {
-      if (const auto& symbol_name = trading_bar.GetSymbolName(i);
-          symbol_name != magnifier_bar.GetSymbolName(i)) {
-        Logger::LogAndThrowError(
-            format("돋보기 바 데이터에 {}이(가) 존재하지 않거나 "
-                   "트레이딩 바에 추가된 심볼 순서와 일치하지 않습니다.",
-                   symbol_name),
-            __FILE__, __LINE__);
-      }
-    }
-
-    // 2.3. 돋보기 바 데이터의 중복 가능성 검증
-    // set은 중복 불가능하므로 set에 추가한 open 개수가 심볼 개수와 다르다면
-    // 중복 추가 가능성 높음
-    set<double> magnifier_open;
-    for (int i = 0; i < magnifier_num_symbols; i++) {
-      magnifier_open.insert(magnifier_bar.GetBar(i, 0).open);
-    }
-
-    if (magnifier_open.size() != magnifier_num_symbols) {
-      logger_->Log(WARNING_L,
-                   "돋보기 바 데이터에 중복된 데이터가 다른 심볼로 추가되었을 "
-                   "가능성이 있습니다.",
-                   __FILE__, __LINE__);
-    }
-  }
-
-  for (const auto& [reference_timeframe, reference_bar] :
-       bar_->GetAllReferenceBarData()) {
-    const auto reference_num_symbols = reference_bar.GetNumSymbols();
-
-    /* ※ 참조 바 데이터의 심볼 개수와 순서 검증은 추후 트레이딩 바 심볼 외
-          다른 데이터(경제 지표 등)의 참조가 필요할 때 삭제 */
-
-    /* 3.1. 트레이딩 바 데이터의 심볼 개수와 참조 바 데이터의
-            심볼 개수가 같은지 검증 */
-    if (reference_num_symbols != trading_num_symbols) {
-      Logger::LogAndThrowError(
-          format("트레이딩 바 데이터에 추가된 심볼 개수({}개)와 참조 바 "
-                 "데이터 {}에 추가된 심볼 개수({}개)는 동일해야 합니다.",
-                 trading_num_symbols, reference_timeframe,
-                 reference_num_symbols),
-          __FILE__, __LINE__);
-    }
-
-    /* 3.2. 트레이딩 바 데이터의 심볼들이 참조 바 데이터에 존재하고
-            순서가 같은지 검증 */
-    for (int i = 0; i < trading_num_symbols; ++i) {
-      if (const auto& symbol_name = trading_bar.GetSymbolName(i);
-          symbol_name != reference_bar.GetSymbolName(i)) {
-        Logger::LogAndThrowError(
-            format("참조 바 데이터 {}에 {}이(가) 존재하지 않거나 "
-                   "트레이딩 바에 추가된 심볼 순서와 일치하지 않습니다.",
-                   reference_timeframe, symbol_name),
-            __FILE__, __LINE__);
-      }
-    }
-
-    // 3.3. 참조 바 데이터의 중복 가능성 검증
-    // set은 중복 불가능하므로 set에 추가한 open 개수가 심볼 개수와 다르다면
-    // 중복 추가 가능성 높음
-    set<double> reference_open;
-    for (int i = 0; i < reference_num_symbols; i++) {
-      reference_open.insert(reference_bar.GetBar(i, 0).open);
-    }
-
-    if (reference_open.size() != reference_num_symbols) {
-      logger_->Log(
-          WARNING_L,
-          format("참조 바 데이터 {}에 중복된 데이터가 다른 심볼로 추가되었을 "
-                 "가능성이 있습니다.",
-                 reference_timeframe),
-          __FILE__, __LINE__);
-    }
-  }
-
-  logger_->Log(INFO_L, "바 데이터 유효성 검증이 완료되었습니다.", __FILE__,
-               __LINE__);
-}
-
-void Engine::IsValidDateRange(const string& start, const string& end,
-                              const string& format) {
-  const auto& trading_bar = bar_->GetBarData(BarType::TRADING);
-  for (int i = 0; i < trading_bar.GetNumSymbols(); i++) {
-    // 백테스팅 시작 시 가장 처음의 Open Time 값 구하기
-    begin_open_time_ =
-        min(begin_open_time_, trading_bar.GetBar(i, 0).open_time);
-
-    // 백테스팅 시작 시 가장 끝의 Open Time 값 구하기
-    end_open_time_ =
-        max(end_open_time_,
-            trading_bar.GetBar(i, trading_bar.GetNumBars(i) - 1).open_time);
-  }
-
-  // Start가 지정된 경우 범위 체크
-  if (!start.empty()) {
-    if (const auto start_time = UtcDatetimeToUtcTimestamp(start, format);
-        start_time < begin_open_time_) {
-      Logger::LogAndThrowError(
-          std::format("지정된 Start 시간 {}은(는) 최소 시간 {}의 "
-                      "전으로 지정할 수 없습니다.",
-                      start, UtcTimestampToUtcDatetime(begin_open_time_)),
-          __FILE__, __LINE__);
-    } else {
-      begin_open_time_ = start_time;
-    }
-  }
-
-  // End가 지정된 경우 범위 체크
-  if (!end.empty()) {
-    if (const auto end_time = UtcDatetimeToUtcTimestamp(end, format);
-        end_time > end_open_time_) {
-      Logger::LogAndThrowError(
-          std::format("지정된 End 시간 {}은(는) 최대 시간 {}의 "
-                      "후로 지정할 수 없습니다.",
-                      end, UtcTimestampToUtcDatetime(end_open_time_)),
-          __FILE__, __LINE__);
-    } else {
-      end_open_time_ = end_time;
-    }
-  }
-
-  // Start, End가 둘다 지정된 경우 범위 체크
-  if (!start.empty() && !end.empty()) {
-    if (UtcDatetimeToUtcTimestamp(start, format) >
-        UtcDatetimeToUtcTimestamp(end, format)) {
-      Logger::LogAndThrowError(
-          std::format("지정된 Start 시간 {}은(는) 지정된 End 시간 {}의 전으로 "
-                      "지정할 수 없습니다.",
-                      start, end),
-          __FILE__, __LINE__);
-    }
-  }
-
-  logger_->Log(INFO_L, "날짜 유효성 검증이 완료되었습니다.", __FILE__,
-               __LINE__);
-}
-
-void Engine::IsValidStrategies() const {
-  if (strategies_.empty()) {
-    Logger::LogAndThrowError("엔진에 전략이 추가되지 않았습니다.", __FILE__,
-                             __LINE__);
-  }
-
-  logger_->Log(INFO_L, "전략 유효성 검증이 완료되었습니다.", __FILE__,
-               __LINE__);
-}
-
-void Engine::InitializeEngine(const bool use_bar_magnifier) {
-  // 자금 설정
-  const auto initial_balance = config_.GetInitialBalance();
-  wallet_balance_ = initial_balance;
-  available_balance_ = initial_balance;
-  max_wallet_balance_ = initial_balance;
-
-  // 바 데이터 초기화
-  trading_bar_ = make_shared<BarData>(bar_->GetBarData(BarType::TRADING));
-  magnifier_bar_ = make_shared<BarData>(bar_->GetBarData(BarType::MAGNIFIER));
-  reference_bar_ = make_shared<unordered_map<string, BarData>>(
-      bar_->GetAllReferenceBarData());
-
-  // 바 데이터 정보 초기화
-  trading_bar_num_symbols_ = trading_bar_->GetNumSymbols();
-  trading_bar_add_time_ = ParseTimeframe(trading_bar_->GetTimeframe());
-  trading_bar_timeframe_ = trading_bar_->GetTimeframe();
-
-  // 각 심볼의 최대 소숫점 자리수 초기화
-  max_decimal_places_.resize(trading_bar_num_symbols_);
-  for (int i = 0; i < trading_bar_num_symbols_; i++) {
-    max_decimal_places_[i] = CountMaxDecimalPlace(i);
-  }
-
-  // 트레이딩 시간 정보 초기화
-  current_open_time_ = begin_open_time_;
-  current_close_time_ = begin_open_time_ + trading_bar_add_time_ - 1;
-
-  // 시작 시간까지 트레이딩 바의 인덱스를 이동
-  bar_->ProcessBarIndices(BarType::TRADING, "NONE", current_close_time_);
-
-  // trading_began_, trading_ended 초기화
-  trading_began_.resize(trading_bar_num_symbols_);
-  trading_ended_.resize(trading_bar_num_symbols_);
-
-  for (int i = 0; i < trading_bar_num_symbols_; i++) {
-    bar_->SetCurrentSymbolIndex(i);
-
-    // 첫 시작 시간이 begin_open_time과 같다면 바로 시작하는 Symbol
-    if (trading_bar_->GetBar(i, bar_->GetCurrentBarIndex()).open_time ==
-        begin_open_time_) {
-      trading_began_[i] = true;
-    } else {
-      trading_began_[i] = false;
-    }
-
-    trading_ended_[i] = false;
-  }
-
-  // 활성화된 심볼들 초기화
-  activated_symbol_indices_.resize(trading_bar_num_symbols_);
-  activated_magnifier_symbol_indices_.resize(trading_bar_num_symbols_);
-  activated_magnifier_bar_indices_.resize(trading_bar_num_symbols_);
-  activated_trading_symbol_indices_.resize(trading_bar_num_symbols_);
-  activated_trading_bar_indices_.resize(trading_bar_num_symbols_);
-
-  // 돋보기 기능 사용 여부 결정
-  if (use_bar_magnifier) {
-    use_bar_magnifier_ = true;
-  }
-
-  // 전략별 주문 핸들러 및 전략 초기화
-  for (const auto& strategy : strategies_) {
-    strategy->GetOrderHandler()->Initialize(trading_bar_num_symbols_);
-    strategy->Initialize();
-  }
-
-  // 분석기 초기화
-  analyzer_->Initialize(initial_balance);
-
-  logger->Log(INFO_L, "엔진 초기화가 완료되었습니다.", __FILE__, __LINE__);
-}
-
-void Engine::IsValidConfig() const {
-  if (isnan(config_.GetInitialBalance()) ||
-      config_.GetCommissionType() == CommissionType::COMMISSION_NONE ||
-      isnan(config_.GetMarketCommission()) ||
-      isnan(config_.GetLimitCommission()) ||
-      config_.GetSlippageType() == SlippageType::SLIPPAGE_NONE ||
-      isnan(config_.GetMarketSlippage()) || isnan(config_.GetLimitSlippage())) {
-    Logger::LogAndThrowError("엔진 설정값을 모두 초기화해야 합니다.", __FILE__,
-                             __LINE__);
-  }
-
-  if (const auto market_commission = config_.GetMarketCommission();
-      IsGreater(market_commission, 100.0) || IsLess(market_commission, 0.0)) {
-    Logger::LogAndThrowError(
-        format("지정된 시장가 수수료율 {}%는 100% 초과 혹은 "
-               "0% 미만으로 설정할 수 없습니다.",
-               market_commission),
-        __FILE__, __LINE__);
-  }
-
-  if (const auto limit_commission = config_.GetLimitCommission();
-      IsGreater(limit_commission, 100.0) || IsLess(limit_commission, 0.0)) {
-    Logger::LogAndThrowError(
-        format("지정된 지정가 수수료율 {}%는 100% 초과 혹은 "
-               "0% 미만으로 설정할 수 없습니다.",
-               limit_commission),
-        __FILE__, __LINE__);
-  }
-
-  if (const auto market_slippage = config_.GetMarketSlippage();
-      IsGreater(market_slippage, 100.0) || IsLess(market_slippage, 0.0)) {
-    Logger::LogAndThrowError(
-        format("지정된 시장가 슬리피지율 {}%는 100% 초과 혹은 "
-               "0% 미만으로 설정할 수 없습니다.",
-               market_slippage),
-        __FILE__, __LINE__);
-  }
-
-  if (const auto limit_slippage = config_.GetLimitSlippage();
-      IsGreater(limit_slippage, 100.0) || IsLess(limit_slippage, 0.0)) {
-    Logger::LogAndThrowError(
-        format("지정된 지정가 슬리피지율 {}%는 100% 초과 혹은 "
-               "0% 미만으로 설정할 수 없습니다.",
-               limit_slippage),
-        __FILE__, __LINE__);
-  }
-
-  logger_->Log(INFO_L, "엔진 설정값 검증이 완료되었습니다.", __FILE__,
-               __LINE__);
 }
 
 size_t Engine::CountMaxDecimalPlace(const int symbol_idx) const {

@@ -14,10 +14,10 @@ class SimpleMovingAverage final : public Indicator {
   Numeric<double> Calculate() override;
 
   double double_period_;
-  size_t size_t_period_;
+  size_t size_period_;
 
   Indicator& source_;
-  int count_;
-  double sum_;
-  bool can_calculate_;
+  int count_{};
+  double sum_{};
+  bool can_calculate_{};
 };

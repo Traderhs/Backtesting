@@ -1,14 +1,15 @@
 #pragma once
 
 // 표준 라이브러리
+#include <memory>
 #include <vector>
 
 // 전방 선언
 class Analyzer;
 class BarHandler;
-class Engine;
 
 // 내부 헤더
+#include "Engines/Engine.hpp"
 #include "Engines/Logger.hpp"
 #include "Engines/Numeric.hpp"
 
@@ -18,15 +19,36 @@ using namespace std;
 /// 전략 구현 시 사용하는 지표를 생성하기 위한 가상 클래스
 class Indicator {
  public:
+  // 커스텀 지표에서 실수로 이름과 타임프레임을 미전달하는 경우를 방지하기 위함
+  Indicator() = delete;
+
+  // Factory 메서드 추가
+  template <typename CustomIndicator, typename... Args>
+  static CustomIndicator Create(const string& name, const string& timeframe,
+                                Args&&... args) {
+    CustomIndicator indicator(name, timeframe, std::forward<Args>(args)...);
+    Engine::GetEngine()->AddIndicator(indicator);
+    return indicator;
+  }
+
   /// 지표의 계산된 값을 반환하는 연산자 오버로딩.
   /// 사용법: 지표 클래스 객체[n개 바 전 인덱스]
   [[nodiscard]] Numeric<double> operator[](size_t index);
 
-  /// 해당되는 심볼의 계산된 지표값을 csv로 저장하는 함수
-  void OutputToCsv(const string& file_name, int symbol_index) const;
+  /// 모든 심볼의 모든 바에 해당되는 지표 값을 계산하는 함수.
+  void CalculateIndicator();
+
+  /// 계산된 지표값을 csv로 저장하는 함수
+  void SaveIndicator() const;
+
+  /// 지표의 이름을 반환하는 함수
+  [[nodiscard]] string GetName() const;
+
+  /// 지표의 타임프레임을 반환하는 함수
+  [[nodiscard]] string GetTimeframe() const;
 
  protected:
-  explicit Indicator(string name, string timeframe);
+  Indicator(const string& name, const string& timeframe);
   virtual ~Indicator();
 
   static shared_ptr<Analyzer>& analyzer_;
@@ -41,23 +63,6 @@ class Indicator {
 
   /// 각 바에서 지표를 계산하는 함수. 메인 로직을 작성.
   virtual Numeric<double> Calculate() = 0;
-
-  /// 모든 심볼의 모든 바에 해당되는 지표 값을 계산하는 함수.
-  /// ※ 주의: 상속받은 커스텀 지표의 생성자에서 호출해야 함.
-  void CalculateAll();
-
-  /// 지표의 파라미터를 설정하는 함수. 파라미터 성과 최적화를 위해 사용.
-  /// ※ 주의: 상속받은 커스텀 지표의 생성자에서 호출해야 함.
-  void SetInput(const vector<double>& input);
-
-  /// 지표의 이름을 반환하는 함수
-  [[nodiscard]] string GetName() const;
-
-  /// 지표의 타임프레임을 반환하는 함수
-  [[nodiscard]] string GetTimeframe() const;
-
-  /// 지표의 파라미터를 반환하는 함수
-  [[nodiscard]] vector<double> GetInput() const;
 
  private:
   string name_;                             // 지표의 이름

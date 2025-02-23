@@ -16,7 +16,8 @@
 using namespace data_utils;
 
 BaseEngine::BaseEngine()
-    : wallet_balance_(nan("")),
+    : initialized_(false),
+      wallet_balance_(nan("")),
       available_balance_(nan("")),
       unrealized_pnl_(0),
       used_margin_(0),
@@ -41,13 +42,29 @@ void BaseEngine::AddStrategy(const shared_ptr<Strategy>& strategy) {
   strategies_.push_back(strategy);
 
   logger_->Log(LogLevel::INFO_L,
-               strategy->GetName() + " 전략이 추가되었습니다.", __FILE__,
-               __LINE__);
+               format("[{}] 전략이 추가되었습니다.", strategy->GetName()),
+               __FILE__, __LINE__);
 }
 
-void BaseEngine::SetConfig(const Config& config) {
-  config_ = config;
+void BaseEngine::AddIndicator(Indicator& indicator) {
+  // 중복 이름 검사
+  const auto& name = indicator.GetName();
+  if (const auto& it = ranges::find(indicator_names_, name);
+      it != indicator_names_.end()) {
+    Logger::LogAndThrowError(
+        format("지표는 동일한 이름 [{}]을(를) 가질 수 없습니다.", name),
+        __FILE__, __LINE__);
+  } else {
+    indicator_names_.push_back(name);
+  }
+
+  // 추가
+  indicators_.push_back(ref(indicator));
 }
+
+void BaseEngine::SetConfig(const Config& config) { config_ = config; }
+
+bool BaseEngine::IsInitialized() const { return initialized_; }
 
 void BaseEngine::IncreaseWalletBalance(const double increase_balance) {
   if (IsLess(increase_balance, 0.0)) {
@@ -138,6 +155,8 @@ void BaseEngine::DecreaseUsedMargin(const double decrease_margin) {
 }
 
 void BaseEngine::SetBankruptcy() { is_bankruptcy_ = true; }
+
+string BaseEngine::GetMainDirectory() const { return main_directory_; }
 
 Config BaseEngine::GetConfig() const { return config_; }
 
