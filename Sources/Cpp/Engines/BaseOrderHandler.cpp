@@ -67,6 +67,10 @@ void BaseOrderHandler::Initialize(const int num_symbols) {
 }
 
 double BaseOrderHandler::GetUnrealizedPnl() const {
+  if (UtcTimestampToUtcDatetime(engine_->GetCurrentOpenTime()) == "2025-01-13 07:00:00") {
+    UtcTimestampToUtcDatetime(engine_->GetCurrentOpenTime());
+  }
+
   // 사용 중인 정보 저장
   const auto original_symbol_idx = bar_->GetCurrentSymbolIndex();
 

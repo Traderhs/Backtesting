@@ -2,7 +2,6 @@
 #include <cmath>
 #include <format>
 #include <iomanip>
-#include <utility>
 
 // 파일 헤더
 #include "Engines/Indicator.hpp"
@@ -21,11 +20,31 @@ using namespace data_utils;
 using namespace time_utils;
 
 Indicator::Indicator(const string& name, const string& timeframe)
-    : name_(name), timeframe_(timeframe), is_calculated_(false) {}
+    : is_calculated_(false) {
+  try {
+    if (name.empty()) {
+      logger_->LogAndThrowError("지표 이름이 비어있습니다.", __FILE__,
+                                __LINE__);
+    }
+
+    if (timeframe.empty()) {
+      logger_->LogAndThrowError(
+          format("[{}] 지표의 타임프레임이 비어있습니다.", name), __FILE__,
+          __LINE__);
+    }
+
+    name_ = name;
+    timeframe_ = timeframe;
+  } catch ([[maybe_unused]] const exception& e) {
+    logger_->LogAndThrowError("지표 생성 중 오류가 발생했습니다.", __FILE__,
+                              __LINE__);
+  }
+}
 Indicator::~Indicator() = default;
 
+vector<reference_wrapper<Indicator>> Indicator::indicators_;
 bool Indicator::is_calculating_ = false;
-string Indicator::calculating_name_ = string();
+string Indicator::calculating_name_;
 
 shared_ptr<Analyzer>& Indicator::analyzer_ = Analyzer::GetAnalyzer();
 shared_ptr<BarHandler>& Indicator::bar_ = BarHandler::GetBarHandler();
@@ -35,7 +54,6 @@ shared_ptr<Logger>& Indicator::logger_ = Logger::GetLogger();
 Numeric<double> Indicator::operator[](const size_t index) {
   if (!is_calculated_) {
     CalculateIndicator();
-    SaveIndicator();
   }
 
   // =======================================================================
@@ -81,7 +99,7 @@ void Indicator::CalculateIndicator() {
     }
 
     // 엔진이 초기화되기 전 지표를 계산하면 모든 심볼의 계산이 어려우므로 에러
-    if (!engine_->IsInitialized()) {
+    if (!engine_->IsEngineInitialized()) {
       Logger::LogAndThrowError(
           format("엔진 초기화 전 [{} {}] 지표 계산을 시도했습니다.", name_,
                  timeframe_),
@@ -182,18 +200,18 @@ void Indicator::SaveIndicator() const {
 
     // 각 심볼의 지표값을 한 줄씩 쓰기
     for (size_t bar_idx = 0; bar_idx < max_num_bars; bar_idx++) {
-      for (int symbol_idx = 0; symbol_idx < output_.size(); symbol_idx++) {
+      for (const auto& output : output_) {
         try {
-          file << output_[symbol_idx][bar_idx];
-        } catch (...) {
+          // 예외를 발생시키기 위해 at을 사용
+          file << output.at(bar_idx);
+        } catch ([[maybe_unused]] const exception& e) {
           // 심볼별로 바 개수가 다르므로 최대 개수에 도달하면 저장하지 않음
         }
 
-        if (bar_idx != output_[symbol_idx].size() - 1) {
-          file << ',';  // 값 사이에 쉼표 추가
-        }
+        file << ',';  // 값 사이에 쉼표 추가
       }
 
+      // 하나의 바 인덱스 기록이 완료되었으면 개행
       file << '\n';
     }
 
@@ -208,9 +226,24 @@ void Indicator::SaveIndicator() const {
   }
 
   logger_->Log(LogLevel::INFO_L,
-               format("[{} {}] 지표가 {} 경로에 저장되었습니다.", name_,
-                      timeframe_, file_path),
+               format("[{} {}] 지표가 저장되었습니다.", name_, timeframe_),
                __FILE__, __LINE__);
+}
+
+void Indicator::SetTimeframe(const string& timeframe) {
+  if (!is_calculated_) {
+    timeframe_ = timeframe;
+  } else {
+    logger_->LogAndThrowError(
+        format(
+            "[{}] 지표가 계산 완료되었으므로 타임프레임 변경을 할 수 없습니다.",
+            name_),
+        __FILE__, __LINE__);
+  }
+}
+
+vector<reference_wrapper<Indicator>> Indicator::GetIndicators() {
+  return indicators_;
 }
 
 string Indicator::GetName() const { return name_; }

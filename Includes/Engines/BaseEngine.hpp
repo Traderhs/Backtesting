@@ -36,16 +36,16 @@ class BaseEngine {
                          const vector<int>& columns = {0, 1, 2, 3, 4, 5, 6});
 
   /// 전략을 엔진에 추가하는 함수
-  void AddStrategy(const shared_ptr<Strategy>& strategy);
-
-  /// 전략에서 사용하는 지표를 엔진에 추가하는 함수
-  void AddIndicator(Indicator& indicator);
+  void AddStrategy(Strategy& strategy);
 
   /// 엔진 설정을 세팅하는 함수
   void SetConfig(const Config& config);
 
+  /// 심볼간 중복된 데이터 검사를 끄는 함수
+  void NoDuplicateDataCheck();
+
   /// 엔진이 초기화 되었는지 여부를 반환하는 함수
-  [[nodiscard]] bool IsInitialized() const;
+  [[nodiscard]] bool IsEngineInitialized() const;
 
   // ==========================================================================
   /// 지갑 자금을 증가시키는 함수.
@@ -92,17 +92,23 @@ class BaseEngine {
   static shared_ptr<BarHandler>& bar_;
   static shared_ptr<Logger>& logger_;
 
+  /// 심볼간 중복된 데이터 검사를 하는지 여부를 결정하는 플래그
+  bool check_duplicate_data_;
+
   /// 엔진이 초기화 되었는지 여부를 결정하는 플래그
-  bool initialized_;
+  bool engine_initialized_;
 
   /// 한 회의 백테스팅에서 사용할 메인 디렉토리
   string main_directory_;
 
-  /// 엔진에 추가된 전략
-  vector<shared_ptr<Strategy>> strategies_;
+  /// 엔진에 추가된 전략.
+  /// 사용자 레벨에서 전략 추가 시 간편성을 추가하기 위하여 우선 참조로 저장.
+  vector<reference_wrapper<Strategy>> ref_strategies_;
+  vector<Strategy*> strategies_;
+  vector<string> strategy_names_;
 
-  /// 전략에서 사용하는 지표
-  vector<reference_wrapper<Indicator>> indicators_;
+  /// 전략에서 사용하는 지표.
+  vector<Indicator*> indicators_;
   vector<string> indicator_names_;
 
   /// 엔진의 사전 설정 항목
@@ -130,7 +136,10 @@ class BaseEngine {
   double max_drawdown_;        /// 최고 드로우다운
   int liquidations_;           /// 강제 청산 횟수
   // @@@@@@@@@@@@@@@@ 마진콜 X ->
-  // 유지 증거금 계산 메커니즘 도입 -> 진입 금액에 따라 진입 레버리지 제한 -> api로 받아와야함
-  // 유지 증거금 -> 강제 청산 가격 계산
-  // 강제 청산시 보험 기금 감소됨 -> 이것도 만들기
+  // 유지 증거금 계산 메커니즘 도입 -> 진입 금액에 따라 진입 레버리지 제한 ->
+  // api로 받아와야함 유지 증거금 -> 강제 청산 가격 계산 강제 청산시 보험 기금
+  // 감소됨 -> 이것도 만들기
+
+  /// =로 콘솔창을 분리하는 출력을 발생시키는 함수
+  static void PrintSeparator();
 };

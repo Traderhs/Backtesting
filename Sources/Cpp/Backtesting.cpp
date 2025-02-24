@@ -53,14 +53,26 @@ shared_ptr<BinanceFetcher> Backtesting::fetcher_ =
 
 int main() {
   Engine::AddBarData(
-      "BTCUSDT", "D:/Programming/Backtesting/Data/Klines/BTCUSDT/1d.parquet",
+      "BTCUSDT", "D:/Programming/Backtesting/Data/Klines/BTCUSDT/1h.parquet",
+      BarType::TRADING);
+
+  Engine::AddBarData(
+    "ETHUSDT", "D:/Programming/Backtesting/Data/Klines/ETHUSDT/1h.parquet",
+    BarType::TRADING);
+
+  Engine::AddBarData(
+    "XRPUSDT", "D:/Programming/Backtesting/Data/Klines/XRPUSDT/1h.parquet",
+    BarType::TRADING);
+
+  Engine::AddBarData(
+      "APTUSDT", "D:/Programming/Backtesting/Data/Klines/APTUSDT/1h.parquet",
       BarType::TRADING);
 
   Engine::AddBarData(
       "BTCUSDT", "D:/Programming/Backtesting/Data/Klines/BTCUSDT/1m.parquet",
       BarType::MAGNIFIER);
 
-  const auto& strategy = make_shared<TestStrategy>("Test Strategy");
+  auto strategy = TestStrategy("Test Strategy");
   Backtesting::engine_->AddStrategy(strategy);
 
   Config config;

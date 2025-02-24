@@ -21,6 +21,9 @@ class BaseFetcher {
   BaseFetcher();
   ~BaseFetcher();
 
+  /// =로 콘솔창을 분리하는 출력을 발생시키는 함수
+  static void PrintSeparator();
+
   /**
    * 제공된 URL에서 주어진 파라미터를 사용하여 데이터를 가져오는 함수
    *
