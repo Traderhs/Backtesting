@@ -45,17 +45,18 @@ void BinanceFetcher::FetchBarData(const string& symbol,
 
   if (exists(klines_path_ + "/" + symbol + "/" + timeframe_filename +
              ".parquet")) {
-    logger_->Log(LogLevel::WARNING_L,
-                 format("[Spot-Futures {} {}] 파일이 이미 존재합니다.\n{}",
-                        symbol, timeframe_filename, string(217, '-')),
-                 __FILE__, __LINE__);
+    logger_->Log(
+        LogLevel::WARNING_L,
+        format("[{} {}] 파일이 이미 존재합니다.", symbol, timeframe_filename),
+        __FILE__, __LINE__);
+    PrintSeparator();
     return;
   }
 
-  logger_->Log(LogLevel::INFO_L,
-               format("[Spot-Futures {} {}] 파일 생성을 시작합니다.", symbol,
-                      timeframe_filename),
-               __FILE__, __LINE__);
+  logger_->Log(
+      LogLevel::INFO_L,
+      format("[{} {}] 파일 생성을 시작합니다.", symbol, timeframe_filename),
+      __FILE__, __LINE__);
 
   const unordered_map<string, string>& futures_params = {
       {"pair", symbol},
@@ -104,12 +105,12 @@ void BinanceFetcher::FetchBarData(const string& symbol,
 
       logger_->Log(
           LogLevel::INFO_L,
-          format("[{} - {}] 기간의 [Spot-Futures {} {}] 파일이 "
-                 "생성되었습니다.\n{}",
+          format("[{} - {}] 기간의 [{} {}] 파일이 생성되었습니다.",
                  UtcTimestampToUtcDatetime(spot_futures_klines.front().at(0)),
                  UtcTimestampToUtcDatetime(spot_futures_klines.back().at(6)),
-                 symbol, timeframe_filename, string(217, '-')),
+                 symbol, timeframe_filename),
           __FILE__, __LINE__);
+      PrintSeparator();
     } else {
       // 현물 데이터가 없는 종목이면 선물만 저장
       SaveKlines(transformed_futures_klines,
@@ -117,13 +118,14 @@ void BinanceFetcher::FetchBarData(const string& symbol,
 
       logger_->Log(LogLevel::INFO_L,
                    format("[{} - {}] 기간의 [Futures {} {}] 파일이 "
-                          "생성되었습니다.\n{}",
+                          "생성되었습니다.",
                           UtcTimestampToUtcDatetime(
                               transformed_futures_klines.front().at(0)),
                           UtcTimestampToUtcDatetime(
                               transformed_futures_klines.back().at(6)),
-                          symbol, timeframe_filename, string(217, '-')),
+                          symbol, timeframe_filename),
                    __FILE__, __LINE__);
+      PrintSeparator();
     }
   } else {
     Logger::LogAndThrowError(
@@ -140,10 +142,10 @@ void BinanceFetcher::UpdateBarData(const string& symbol,
 
   if (!exists(file_path)) {
     logger_->Log(LogLevel::WARNING_L,
-                 format("[Spot-Futures {} {}] 파일이 존재하지 않아 업데이트할 "
-                        "수 없습니다.\n{}",
-                        symbol, filename_timeframe, string(217, '-')),
+                 format("[{} {}] 파일이 존재하지 않아 업데이트할 수 없습니다.",
+                        symbol, filename_timeframe),
                  __FILE__, __LINE__);
+    PrintSeparator();
     return;
   }
 
@@ -156,14 +158,13 @@ void BinanceFetcher::UpdateBarData(const string& symbol,
   const auto end_close_time = any_cast<int64_t>(
       GetCellValue(klines_file, "Close Time", klines_file->num_rows() - 1));
 
-  logger_->Log(
-      LogLevel::INFO_L,
-      format("[{} - {}] 기간의 [Spot-Futures {} {}] 파일이 존재합니다. 최신 "
-             "선물 데이터 업데이트를 시작합니다.",
-             UtcTimestampToUtcDatetime(begin_open_time),
-             UtcTimestampToUtcDatetime(end_close_time), symbol,
-             filename_timeframe),
-      __FILE__, __LINE__);
+  logger_->Log(LogLevel::INFO_L,
+               format("[{} - {}] 기간의 [{} {}] 파일이 존재합니다. "
+                      "최신 선물 데이터 업데이트를 시작합니다.",
+                      UtcTimestampToUtcDatetime(begin_open_time),
+                      UtcTimestampToUtcDatetime(end_close_time), symbol,
+                      filename_timeframe),
+               __FILE__, __LINE__);
 
   // 새로운 Open Time의 시작은 Klines file의 마지막 Open Time의 다음 값
   const auto end_open_time = any_cast<int64_t>(
@@ -202,26 +203,24 @@ void BinanceFetcher::UpdateBarData(const string& symbol,
     logger_->Log(
         LogLevel::INFO_L,
         format(
-            "[{} - {}] 기간의 [Spot-Futures {} {}] 파일이 "
-            "업데이트되었습니다.\n{}",
+            "[{} - {}] 기간의 [{} {}] 파일이 업데이트되었습니다.",
             UtcTimestampToUtcDatetime(transformed_futures_klines.front().at(0)),
             UtcTimestampToUtcDatetime(transformed_futures_klines.back().at(6)),
-            symbol, filename_timeframe, string(217, '-')),
+            symbol, filename_timeframe),
         __FILE__, __LINE__);
+    PrintSeparator();
   } else {
     logger_->Log(LogLevel::WARNING_L,
-                 format("[Spot-Futures {} {}] 파일이 이미 최신 버전입니다.\n{}",
-                        symbol, filename_timeframe, string(217, '-')),
+                 format("[{} {}] 파일이 이미 최신 버전입니다.", symbol,
+                        filename_timeframe),
                  __FILE__, __LINE__);
+    PrintSeparator();
   }
 }
 
 future<vector<json>> BinanceFetcher::FetchKlines(
     const string& url, const unordered_map<string, string>& params,
     const bool forward) {
-  logger_->Log(LogLevel::INFO_L, "Klines 데이터 Fetch를 시작합니다.", __FILE__,
-               __LINE__);
-
   return async(launch::async, [=] {
     deque<json> klines;
     auto param = params;
@@ -239,13 +238,6 @@ future<vector<json>> BinanceFetcher::FetchKlines(
                                        fetched_klines["code"] == -1121)) {
           break;
         }
-
-        logger_->Log(LogLevel::INFO_L,
-                     format("[{} - {}] 기간의 Fetch가 완료되었습니다.",
-                            UtcTimestampToUtcDatetime(fetched_klines[0][0]),
-                            UtcTimestampToUtcDatetime(
-                                fetched_klines[fetched_klines.size() - 1][0])),
-                     __FILE__, __LINE__);
 
         if (forward) {
           // 앞부터 순회하여 뒤에 붙임
@@ -286,9 +278,6 @@ string BinanceFetcher::GetFilenameWithTimeframe(const string& timeframe) {
 
 vector<json> BinanceFetcher::TransformKlines(const vector<json>& klines,
                                              const bool drop_latest) {
-  logger_->Log(LogLevel::INFO_L, "Klines 데이터 변환을 시작합니다.", __FILE__,
-               __LINE__);
-
   const size_t size = drop_latest ? klines.size() - 1 : klines.size();
   vector<json> transformed_klines(size);
 
@@ -437,27 +426,29 @@ vector<shared_ptr<arrow::Array>> BinanceFetcher::GetArraysAddedKlines(
 
   // 데이터를 Builder에 추가 후 Array에 추가
   vector<shared_ptr<arrow::Array>> arrays(7);
-  const vector<vector<double>*>& price_data = {nullptr, &open, &high, &low, &close, &volume, nullptr};
-  const vector<vector<int64_t>*>& time_data = {&open_time, nullptr, nullptr, nullptr, nullptr, nullptr, &close_time};
+  const vector<vector<double>*>& price_data = {nullptr, &open,   &high,  &low,
+                                               &close,  &volume, nullptr};
+  const vector<vector<int64_t>*>& time_data = {
+      &open_time, nullptr, nullptr, nullptr, nullptr, nullptr, &close_time};
 
   for (int i = 0; i < 7; ++i) {
     if (i == 0 || i == 6) {  // 시간 데이터
       auto builder = make_shared<arrow::Int64Builder>();
       if (auto* int64_builder = builder.get();
-        !int64_builder->AppendValues(*time_data[i]).ok() ||
+          !int64_builder->AppendValues(*time_data[i]).ok() ||
           !int64_builder->Finish(&arrays[i]).ok()) {
         Logger::LogAndThrowError(
             format("{} time 데이터를 처리하는 데 실패했습니다.",
-                  (i == 0 ? "Open" : "Close")),
+                   (i == 0 ? "Open" : "Close")),
             __FILE__, __LINE__);
       }
     } else {  // 가격 데이터
       auto builder = make_shared<arrow::DoubleBuilder>();
       if (auto* double_builder = builder.get();
-        !double_builder->AppendValues(*price_data[i]).ok() ||
+          !double_builder->AppendValues(*price_data[i]).ok() ||
           !double_builder->Finish(&arrays[i]).ok()) {
         Logger::LogAndThrowError("가격 데이터를 처리하는 데 실패했습니다.",
-                                __FILE__, __LINE__);
+                                 __FILE__, __LINE__);
       }
     }
   }

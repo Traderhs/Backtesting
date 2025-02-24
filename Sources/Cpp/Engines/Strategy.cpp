@@ -8,23 +8,29 @@
 // 내부 헤더
 #include "Engines/BarHandler.hpp"
 #include "Engines/BaseBarHandler.hpp"
+#include "Engines/Engine.hpp"
 #include "Engines/OrderHandler.hpp"
 
 Strategy::Strategy(string name)
     : order(OrderHandler::GetOrderHandler(name)),
-      open(Indicator::Create<Open>("Open", "1d")),
-      high(Indicator::Create<High>("High", "1d")),
-      low(Indicator::Create<Low>("Low", "1d")),
-      close(Indicator::Create<Close>("Close", "1d")),
-      volume(Indicator::Create<Volume>("Volume", "1d")),
+      trading_timeframe("NULL"),
+      open(Indicator::Create<Open>("Open", trading_timeframe)),
+      high(Indicator::Create<High>("High", trading_timeframe)),
+      low(Indicator::Create<Low>("Low", trading_timeframe)),
+      close(Indicator::Create<Close>("Close", trading_timeframe)),
+      volume(Indicator::Create<Volume>("Volume", trading_timeframe)),
       name_(move(name)) {}
 Strategy::~Strategy() = default;
 
 // ReSharper disable once CppInconsistentNaming
 shared_ptr<BarHandler>& Strategy::bar = BarHandler::GetBarHandler();
 
+// ReSharper disable once CppInconsistentNaming
+shared_ptr<Engine>& Strategy::engine = Engine::GetEngine();
+
 void Strategy::SetTradingTimeframe(const string& trading_timeframe) {
   this->trading_timeframe = trading_timeframe;
 }
+
 string Strategy::GetName() const { return name_; }
 shared_ptr<OrderHandler> Strategy::GetOrderHandler() const { return order; }

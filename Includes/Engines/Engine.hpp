@@ -108,19 +108,16 @@ class Engine final : public BaseEngine {
   bool available_balance_updated_;
 
   // ===========================================================================
-  // 전략 정보
   string current_strategy_name_;  /// 현재 사용 중인 전략 이름
   string current_strategy_type_;  /// 현재 사용 중인 전략 실행 타입
 
   // ===========================================================================
-  // 트레이딩 시간 정보
   int64_t begin_open_time_;     /// 전체 바 데이터의 가장 처음 Open Time
   int64_t end_open_time_;       /// 전체 바 데이터의 가장 마지막 Open Time
   int64_t current_open_time_;   /// 현재 사용 중인 바 인덱스의 Open Time
   int64_t current_close_time_;  /// 현재 사용 중인 바 인덱스의 Close Time
 
   // ===========================================================================
-  // 트레이딩 진행 여부
   vector<bool> trading_began_;  /// 심볼별로 트레이딩이 진행 중인지 결정
   vector<bool> trading_ended_;  /// 심볼별로 트레이딩이 끝났는지 결정
 
@@ -136,7 +133,7 @@ class Engine final : public BaseEngine {
                   const string& end, const string& format);
 
   /// 바 데이터의 유효성을 검증하는 함수
-  static void IsValidBarData(bool use_bar_magnifier);
+  void IsValidBarData(bool use_bar_magnifier) const;
 
   /// Start, End의 시간 범위가 바 데이터 시간 범위 내인지 유효성을 검증하는 함수
   void IsValidDateRange(const string& start, const string& end,
@@ -154,8 +151,11 @@ class Engine final : public BaseEngine {
   /// 엔진의 변수들을 초기화하는 함수
   void InitializeEngine(bool use_bar_magnifier);
 
+  /// 전략들을 초기화하는 함수
+  void InitializeStrategies();
+
   /// 전략에서 사용하는 지표들을 계산하고 저장하는 함수
-  void InitializeIndicators() const;
+  void InitializeIndicators();
 
   /// 백테스팅의 메인 로직을 실행하는 함수
   void BacktestingMain();
@@ -198,6 +198,6 @@ class Engine final : public BaseEngine {
       const vector<size_t>& activated_bar_indices);
 
   /// 지정된 전략과 심볼에서 전략을 실행하는 함수
-  void ExecuteStrategy(const shared_ptr<Strategy>& strategy,
-                       const string& strategy_type, int symbol_index);
+  void ExecuteStrategy(Strategy* strategy, const string& strategy_type,
+                       int symbol_index);
 };

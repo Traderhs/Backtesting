@@ -74,6 +74,7 @@ void Logger::Log(const LogLevel& log_level, const string& message,
 
     case LogLevel::ORDER_L:
       ConsoleLog("ORDER_L", log_message);
+      // 주문 로그는 info 파일에 기록
       WriteToFile(info_file_, log_message);
       break;
 

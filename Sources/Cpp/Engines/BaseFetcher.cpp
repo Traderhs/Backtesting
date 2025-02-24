@@ -1,13 +1,21 @@
+// 표준 라이브러리
+#include <iostream>
+
 // 외부 라이브러리
 #include <curl/curl.h>
 
 // 파일 헤더
 #include "Engines/BaseFetcher.hpp"
 
+// 네임 스페이스
+using namespace std;
+
 BaseFetcher::BaseFetcher() = default;
 BaseFetcher::~BaseFetcher() = default;
 
 shared_ptr<Logger>& BaseFetcher::logger_ = Logger::GetLogger();
+
+void BaseFetcher::PrintSeparator() { cout << string(217, '=') << endl; }
 
 future<json> BaseFetcher::Fetch(const string& url,
                                 const unordered_map<string, string>& params) {

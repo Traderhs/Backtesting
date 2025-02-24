@@ -23,11 +23,12 @@ class Indicator {
   Indicator() = delete;
 
   // Factory 메서드 추가
+  // 지표를 팩토리로 우회하여 생성하고 indicators_에 추가하고 반환하는 함수
   template <typename CustomIndicator, typename... Args>
   static CustomIndicator Create(const string& name, const string& timeframe,
                                 Args&&... args) {
     CustomIndicator indicator(name, timeframe, std::forward<Args>(args)...);
-    Engine::GetEngine()->AddIndicator(indicator);
+    indicators_.push_back(std::ref(indicator));
     return indicator;
   }
 
@@ -40,6 +41,12 @@ class Indicator {
 
   /// 계산된 지표값을 csv로 저장하는 함수
   void SaveIndicator() const;
+
+  /// 지표의 타임프레임을 설정하는 함수
+  void SetTimeframe(const string& timeframe);
+
+  /// 생성된 지표들의 벡터를 반환하는 함수
+  static vector<reference_wrapper<Indicator>> GetIndicators();
 
   /// 지표의 이름을 반환하는 함수
   [[nodiscard]] string GetName() const;
@@ -65,9 +72,10 @@ class Indicator {
   virtual Numeric<double> Calculate() = 0;
 
  private:
-  string name_;                             // 지표의 이름
-  string timeframe_;                        // 지표의 타임프레임
-  vector<double> input_;                    // 지표의 파라미터
+  static vector<reference_wrapper<Indicator>> indicators_;  // 생성한 지표들
+  string name_;                                             // 지표의 이름
+  string timeframe_;                                        // 지표의 타임프레임
+  vector<double> input_;                                    // 지표의 파라미터
   vector<vector<Numeric<double>>> output_;  // 지표의 계산된 값: 심볼<값>
   bool is_calculated_;  // 지표가 계산되었는지 확인하는 플래그
 

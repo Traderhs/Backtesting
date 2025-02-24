@@ -228,11 +228,7 @@ void OrderHandler::MarketEntry(const string& entry_name,
     Cancel(entry_name);
 
     // 자금 관련 처리 후 체결 주문에 추가
-    try {
-      ExecuteMarketEntry(market_entry);
-    } catch ([[maybe_unused]] const OrderFailed& e) {
-      throw;
-    }
+    ExecuteMarketEntry(market_entry);
 
     LogFormattedInfo(ORDER_L,
                      format("시장가 [{}] 체결 | 체결 가격: {}", entry_name,
@@ -619,12 +615,14 @@ void OrderHandler::MarketExit(const string& exit_name,
           order_price = LastExitPrice();
         }
       }
-    } catch (const IndexOutOfRange& e) {
-      LogFormattedInfo(
-          WARNING_L,
-          string(e.what()) + ": 마지막 바이기 때문에 청산할 수 없습니다.",
-          __FILE__, __LINE__);
-      throw OrderFailed("시장가 청산 실패");
+    } catch ([[maybe_unused]] const IndexOutOfRange& e) {
+      // 마지막 바인 경우 현재 바 종가에 청산
+      const auto& current_bar =
+          bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
+              .GetBar(bar_->GetCurrentSymbolIndex(),
+                      bar_->GetCurrentBarIndex());
+      order_time = current_bar.open_time;
+      order_price = current_bar.close;
     }
 
     // 유효성 검사
@@ -1121,6 +1119,15 @@ void OrderHandler::Cancel(const string& order_name) {
                        __FILE__, __LINE__);
       break;  // 동일한 청산 이름으로 청산 대기 불가능하므로 찾으면 바로 break
     }
+  }
+}
+
+void OrderHandler::CloseAllPositions() {
+  for (const auto& filled_entry :
+       filled_entries_[bar_->GetCurrentSymbolIndex()]) {
+    MarketExit(
+        "종료 청산", filled_entry->GetEntryName(),
+        filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize());
   }
 }
 
