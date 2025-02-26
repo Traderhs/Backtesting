@@ -21,14 +21,28 @@ using namespace time_utils;
 
 Indicator::Indicator(const string& name, const string& timeframe)
     : is_calculated_(false) {
+  // 증가 카운터는 Create 함수로만 증가하는데 Create 없이 직접 생성자 호출로
+  // 전 증가 카운터가 현재 증가 카운터와 같다면 오류 발생
+  if (pre_creation_counter_ == creation_counter_) {
+    logger_->Log(LogLevel::ERROR_L,
+                 "지표의 생성은 Create 함수의 호출로만 가능합니다.", __FILE__,
+                 __LINE__);
+    Logger::LogAndThrowError(
+        format("[{} {}] 지표를 생성하는 중 에러가 발생했습니다.", name,
+               timeframe),
+        __FILE__, __LINE__);
+  }
+
+  // 정상적으로 Create 함수를 통했다면 전 증가 가운터를 현재 카운터로 대입
+  pre_creation_counter_ = creation_counter_;
+
   try {
     if (name.empty()) {
-      logger_->LogAndThrowError("지표 이름이 비어있습니다.", __FILE__,
-                                __LINE__);
+      Logger::LogAndThrowError("지표 이름이 비어있습니다.", __FILE__, __LINE__);
     }
 
     if (timeframe.empty()) {
-      logger_->LogAndThrowError(
+      Logger::LogAndThrowError(
           format("[{}] 지표의 타임프레임이 비어있습니다.", name), __FILE__,
           __LINE__);
     }
@@ -36,58 +50,64 @@ Indicator::Indicator(const string& name, const string& timeframe)
     name_ = name;
     timeframe_ = timeframe;
   } catch ([[maybe_unused]] const exception& e) {
-    logger_->LogAndThrowError("지표 생성 중 오류가 발생했습니다.", __FILE__,
-                              __LINE__);
+    Logger::LogAndThrowError("지표 생성 중 오류가 발생했습니다.", __FILE__,
+                             __LINE__);
   }
 }
 Indicator::~Indicator() = default;
 
 vector<reference_wrapper<Indicator>> Indicator::indicators_;
-bool Indicator::is_calculating_ = false;
-string Indicator::calculating_name_;
-
 shared_ptr<Analyzer>& Indicator::analyzer_ = Analyzer::GetAnalyzer();
 shared_ptr<BarHandler>& Indicator::bar_ = BarHandler::GetBarHandler();
 shared_ptr<Engine>& Indicator::engine_ = Engine::GetEngine();
 shared_ptr<Logger>& Indicator::logger_ = Logger::GetLogger();
+size_t Indicator::creation_counter_ = 0;
+size_t Indicator::pre_creation_counter_ = 0;
+bool Indicator::is_calculating_ = false;
+string Indicator::calculating_name_;
+string Indicator::calculating_timeframe_;
 
 Numeric<double> Indicator::operator[](const size_t index) {
   if (!is_calculated_) {
     CalculateIndicator();
   }
 
-  // =======================================================================
-  // 원래 사용중인 데이터 정보 저장
-  const auto original_bar_type = bar_->GetCurrentBarType();
-  const auto& original_reference_tf = bar_->GetCurrentReferenceTimeframe();
-
   // 특정 지표 계산 중 해당 지표와 다른 타임프레임의 지표 사용 시 에러 발생
   // -> 특정 지표 내 사용하는 지표의 타임프레임은
   //    해당 지표의 타임프레임과 일치해야 함
-  if (is_calculating_ && original_reference_tf != timeframe_) {
-    Logger::LogAndThrowError(
-        format("{} 지표 계산에 사용하는 {} 지표의 타임프레임 {}은(는) "
-               "{} 지표의 타임프레임 {}와(과) 동일해야 합니다.",
-               calculating_name_, name_, timeframe_, calculating_name_,
-               original_reference_tf),
-        __FILE__, __LINE__);
+  if (is_calculating_ && timeframe_ != calculating_timeframe_) {
+    throw runtime_error(
+        format("[{} {}] 지표 계산에 사용하는 [{} {}] 지표의 타임프레임은 "
+               "[{} {}] 지표의 타임프레임과 동일해야 합니다.",
+               calculating_name_, calculating_timeframe_, name_, timeframe_,
+               calculating_name_, calculating_timeframe_));
   }
+
+  // =======================================================================
+  // 원래 사용중인 데이터 환경 저장
+  const auto original_bar_type = bar_->GetCurrentBarType();
+  const auto& original_reference_tf = bar_->GetCurrentReferenceTimeframe();
 
   // 지표 참조를 위해 데이터 환경 설정
   bar_->SetCurrentBarType(BarType::REFERENCE, timeframe_);
-  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
-  const auto bar_index = bar_->GetCurrentBarIndex();
 
-  // 원래 사용 중이던 데이터 환경으로 복구
+  // 필요한 인덱스 로딩
+  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+  const auto bar_idx = bar_->GetCurrentBarIndex();
+
+  // 원래 사용중인 데이터 환경으로 복구
   bar_->SetCurrentBarType(original_bar_type, original_reference_tf);
 
-  // 진행한 인덱스보다 과거 인덱스 참조 시 NaN을 반환
-  if (index > bar_index) {
+  // 진행한 인덱스보다 과거 인덱스를 참조하거나
+  // 현재 인덱스가 최대값을 초과했으면 NaN을 반환
+  if (index > bar_idx ||
+      bar_idx >= bar_->GetBarData(BarType::REFERENCE, timeframe_)
+                     .GetNumBars(symbol_idx)) {
     return nan("");
   }
 
   // 결과값 반환
-  return output_[symbol_idx][bar_index - index];
+  return output_[symbol_idx][bar_idx - index];
 }
 
 void Indicator::CalculateIndicator() {
@@ -106,35 +126,31 @@ void Indicator::CalculateIndicator() {
           __FILE__, __LINE__);
     }
     // ===========================================================================
-
-    // 원본 설정을 저장
-    const auto original_bar_type = bar_->GetCurrentBarType();
-    const auto original_reference_tf = bar_->GetCurrentReferenceTimeframe();
-    const auto original_symbol_idx = bar_->GetCurrentSymbolIndex();
-
     // 사전 설정
-    const auto& reference_bar =
+    const auto& indicator_reference_bar =
         bar_->GetBarData(BarType::REFERENCE, timeframe_);
     is_calculating_ = true;
     calculating_name_ = name_;
-    output_.resize(reference_bar.GetNumSymbols());
-    bar_->SetCurrentBarType(BarType::REFERENCE, timeframe_);
+    calculating_timeframe_ = timeframe_;
+    output_.resize(indicator_reference_bar.GetNumSymbols());
 
     // 전체 트레이딩 심볼들을 순회하며 지표 계산
     for (int symbol_idx = 0; symbol_idx < output_.size(); symbol_idx++) {
       this->Initialize();
+      bar_->SetCurrentBarType(BarType::REFERENCE, timeframe_);
       bar_->SetCurrentSymbolIndex(symbol_idx);
 
       // 해당 심볼의 모든 바를 순회
-      const auto num_bars = reference_bar.GetNumBars(symbol_idx);
+      const auto num_bars = bar_->GetBarData(BarType::REFERENCE, timeframe_)
+                                .GetNumBars(symbol_idx);
       output_[symbol_idx].resize(num_bars);
 
       for (int bar_idx = 0; bar_idx < num_bars; bar_idx++) {
         // 현재 심볼의 바 인덱스를 증가시키며 지표 계산
         bar_->SetCurrentBarIndex(bar_idx);
 
-        /* 지표 계산 시 타 지표를 사용하는 경우가 있는데,
-           현재 바에서 타 지표 계산이 안 되어 nan이면 해당 지표 값도 nan이 됨 */
+        // 지표 계산 시 타 지표를 사용하는 경우가 있는데,
+        // 현재 바에서 타 지표 계산이 안 되어 nan이면 해당 지표 값도 nan이 됨
         output_[symbol_idx][bar_idx] = Calculate();
       }
 
@@ -143,16 +159,13 @@ void Indicator::CalculateIndicator() {
     }
 
     is_calculated_ = true;
+    is_calculating_ = false;
     logger_->Log(LogLevel::INFO_L,
                  format("모든 심볼의 [{} {}] 지표 계산이 완료되었습니다.",
                         name_, timeframe_),
                  __FILE__, __LINE__);
-
-    // 원본 설정을 복원
-    is_calculating_ = false;
-    bar_->SetCurrentBarType(original_bar_type, original_reference_tf);
-    bar_->SetCurrentSymbolIndex(original_symbol_idx);
-  } catch (...) {
+  } catch (const exception& e) {
+    logger_->Log(LogLevel::ERROR_L, e.what(), __FILE__, __LINE__);
     Logger::LogAndThrowError(
         format("[{} {}] 지표 계산 중 오류가 발생했습니다.", name_, timeframe_),
         __FILE__, __LINE__);
@@ -160,7 +173,7 @@ void Indicator::CalculateIndicator() {
 }
 
 void Indicator::SaveIndicator() const {
-  const auto& trading_bar = bar_->GetBarData(BarType::TRADING);
+  const auto& bar_data = bar_->GetBarData(BarType::REFERENCE, timeframe_);
   const auto& file_path = engine_->GetMainDirectory() +
                           format("/Indicators/{} {}.csv", name_, timeframe_);
 
@@ -177,20 +190,20 @@ void Indicator::SaveIndicator() const {
       throw runtime_error(file_path + " 파일을 열지 못했습니다.");
     }
 
-    // 최대 15자리 소수점 저장
-    file << fixed << setprecision(15);
+    // 최대 10자리 소수점 저장
+    file << fixed << setprecision(10);
 
     size_t max_num_bars = 0;
     for (int symbol_idx = 0; symbol_idx < output_.size(); symbol_idx++) {
       // 심볼 이름들로 파일 헤더를 추가
-      file << trading_bar.GetSymbolName(symbol_idx);
+      file << bar_data.GetSymbolName(symbol_idx);
 
       if (symbol_idx != output_.size() - 1) {
         file << ',';  // 마지막 symbol_name 뒤에는 쉼표를 추가하지 않음
       }
 
       // 심볼 중 최대 바 인덱스 크기 계산
-      if (const auto num_bars = trading_bar.GetNumBars(symbol_idx);
+      if (const auto num_bars = bar_data.GetNumBars(symbol_idx);
           num_bars > max_num_bars) {
         max_num_bars = num_bars;
       }
@@ -234,10 +247,9 @@ void Indicator::SetTimeframe(const string& timeframe) {
   if (!is_calculated_) {
     timeframe_ = timeframe;
   } else {
-    logger_->LogAndThrowError(
-        format(
-            "[{}] 지표가 계산 완료되었으므로 타임프레임 변경을 할 수 없습니다.",
-            name_),
+    Logger::LogAndThrowError(
+        format("[{}] 지표가 계산되었으므로 타임프레임 변경을 할 수 없습니다.",
+               name_),
         __FILE__, __LINE__);
   }
 }

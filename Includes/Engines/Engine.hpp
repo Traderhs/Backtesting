@@ -103,23 +103,19 @@ class Engine final : public BaseEngine {
   /// 백테스팅에서 바 돋보기 기능을 사용하는지 결정하는 플래그
   bool use_bar_magnifier_;
 
-  /// 현재 바에서 미실현 손익과 사용한 마진에 따라 사용 가능 자금이
-  /// 업데이트 됐는지를 결정하는 플래그
-  bool available_balance_updated_;
+  // ===========================================================================
+  string current_strategy_name_;  // 현재 사용 중인 전략 이름
+  string current_strategy_type_;  // 현재 사용 중인 전략 실행 타입
 
   // ===========================================================================
-  string current_strategy_name_;  /// 현재 사용 중인 전략 이름
-  string current_strategy_type_;  /// 현재 사용 중인 전략 실행 타입
+  int64_t begin_open_time_;     // 전체 바 데이터의 가장 처음 Open Time
+  int64_t end_open_time_;       // 전체 바 데이터의 가장 마지막 Open Time
+  int64_t current_open_time_;   // 현재 사용 중인 바 인덱스의 Open Time
+  int64_t current_close_time_;  // 현재 사용 중인 바 인덱스의 Close Time
 
   // ===========================================================================
-  int64_t begin_open_time_;     /// 전체 바 데이터의 가장 처음 Open Time
-  int64_t end_open_time_;       /// 전체 바 데이터의 가장 마지막 Open Time
-  int64_t current_open_time_;   /// 현재 사용 중인 바 인덱스의 Open Time
-  int64_t current_close_time_;  /// 현재 사용 중인 바 인덱스의 Close Time
-
-  // ===========================================================================
-  vector<bool> trading_began_;  /// 심볼별로 트레이딩이 진행 중인지 결정
-  vector<bool> trading_ended_;  /// 심볼별로 트레이딩이 끝났는지 결정
+  vector<bool> trading_began_;  // 심볼별로 트레이딩이 진행 중인지 결정
+  vector<bool> trading_ended_;  // 심볼별로 트레이딩이 끝났는지 결정
 
   // 현재 바에서 트레이딩을 진행하는 심볼들
   vector<int> activated_symbol_indices_;
@@ -177,13 +173,16 @@ class Engine final : public BaseEngine {
   /// 초기화하는 함수
   void ClearActivatedVectors();
 
+  /// 트레이딩이 끝난 심볼의 상태 변화와 체결 진입 청산을 하는 함수
+  void ExecuteTradingEnd(int symbol_idx);
+
   /// 백테스팅이 끝났는지 검증하는 함수
   [[nodiscard]] bool IsBacktestingEnd() const;
 
   /// UpdateTradingStatus 함수에서 활성화된 심볼 인덱스에 추가할 때,
   /// 참조 바가 사용 가능한지 확인하고, 사용 가능하면 조건에 따라 트레이딩
   /// 바인지 돋보기 바인지 결정하고 추가하는 함수
-  void DetermineActivation(int symbol_idx, size_t bar_idx);
+  void DetermineActivation(int symbol_idx);
 
   /// 트레이딩 중인 심볼의 현재 바 인덱스에서 OHLC 가격을 기준으로
   /// 마진콜과 대기 중인 주문의 체결을 확인하는 함수

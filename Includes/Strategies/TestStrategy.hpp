@@ -17,4 +17,6 @@ class TestStrategy final : public Strategy {
   SimpleMovingAverage sma1;
   // ReSharper disable once CppInconsistentNaming
   SimpleMovingAverage sma2;
+
+
 };

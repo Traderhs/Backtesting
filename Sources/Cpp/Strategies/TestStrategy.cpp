@@ -5,8 +5,10 @@
 
 TestStrategy::TestStrategy(const string& name)
     : Strategy(name),
-      sma1(Indicator::Create<SimpleMovingAverage>("sma1", trading_timeframe, close, 20)),
-      sma2(Indicator::Create<SimpleMovingAverage>("sma2", trading_timeframe, close, 5)) {}
+      sma1(Indicator::Create<SimpleMovingAverage>("sma1", trading_timeframe,
+                                                  close, 20)),
+      sma2(Indicator::Create<SimpleMovingAverage>("sma2", trading_timeframe,
+                                                  close, 5)) {}
 TestStrategy::~TestStrategy() = default;
 
 void TestStrategy::Initialize() {}

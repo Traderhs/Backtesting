@@ -5,12 +5,13 @@
 #include "Indicators/SimpleMovingAverage.hpp"
 
 // 내부 헤더
+#include <iostream>
+
 #include "Engines/BarHandler.hpp"
 
 SimpleMovingAverage::SimpleMovingAverage(const string& name,
                                          const string& timeframe,
-                                         Indicator& source,
-                                         const double period)
+                                         Indicator& source, const double period)
     : Indicator(name, timeframe), source_(source) {
   // 타입 안정성과 속도를 위해 미리 변환
   double_period_ = period;
@@ -33,12 +34,12 @@ Numeric<double> SimpleMovingAverage::Calculate() {
       return nan("");
     }
 
-    // 처음으로 계산 가능해졌을 때 단순히 합을 나눠서 계산
+    // 처음으로 계산 가능해졌을 때 단순히 합을 지표 기간으로 나눠서 계산
     can_calculate_ = true;
     return sum_ / double_period_;
   }
 
-  // 가장 오래된 데이터를 제거
+  // 첫 계산 외에는 가장 오래된 데이터를 제거
   sum_ -= source_[size_period_];
   return sum_ / double_period_;
 }
