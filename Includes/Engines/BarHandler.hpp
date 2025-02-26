@@ -21,7 +21,6 @@ class BarHandler final : public BaseBarHandler {
   BarHandler(const BarHandler&) = delete;             // 복사 생성자 삭제
   BarHandler& operator=(const BarHandler&) = delete;  // 대입 연산자 삭제
 
-
   /// BarHandler의 싱글톤 인스턴스를 반환하는 함수
   static shared_ptr<BarHandler>& GetBarHandler();
 
@@ -41,12 +40,12 @@ class BarHandler final : public BaseBarHandler {
   // ===========================================================================
   /// 지정된 바 데이터 및 심볼에 해당되는 인덱스를 target_close_time 시점의
   /// 인덱스까지 최대한 진행시키는 함수
-  void ProcessBarIndex(int symbol_idx, BarType bar_type,
+  bool ProcessBarIndex(int symbol_idx, BarType bar_type,
                        const string& timeframe, int64_t target_close_time);
 
   /// 지정된 바 데이터의 모든 심볼의 인덱스를 target_close_time 시점의
   /// 인덱스까지 진행시키는 함수
-  void ProcessBarIndices(BarType bar_type, const string& timeframe,
+  bool ProcessBarIndices(BarType bar_type, const string& timeframe,
                          int64_t target_close_time);
   // ===========================================================================
   /// 현재 사용 중인 바의 타입을 설정하는 함수.
@@ -65,7 +64,7 @@ class BarHandler final : public BaseBarHandler {
   /// 지정된 바 데이터 타입 및 심볼에 해당되는 바 데이터의
   /// 인덱스를 하나 증가시키고 증가한 인덱스를 반환하는 함수
   size_t IncreaseBarIndex(BarType bar_type, const string& timeframe,
-                         int symbol_index);
+                          int symbol_index);
 
   // ===========================================================================
   /// 현재 사용 중인 바의 타입을 반환하는 함수
@@ -102,14 +101,16 @@ class BarHandler final : public BaseBarHandler {
   string current_reference_timeframe_;
 
   /**
-   * 주어진 데이터에서 첫 Open Time과 다음 Open Time의 시간 차이를 계산하여 타임프레임을
-   * 문자열로 반환하는 함수
+   * 주어진 데이터에서 첫 Open Time과 다음 Open Time의 시간 차이를 계산하여
+   * 타임프레임을 문자열로 반환하는 함수
    *
    * @param bar_data 바 데이터가 포함된 `Table` 객체를 가리키는 shared_ptr
    * @param open_time_column Open Time이 포함된 열의 인덱스
-   * @return 첫 번째 Open Time과 두 번째 Open Time의 차이를 포맷한 타임프레임 문자열
+   * @return 첫 번째 Open Time과 두 번째 Open Time의 차이를 포맷한 타임프레임
+   * 문자열
    */
-  static string CalculateTimeframe(const shared_ptr<Table>& bar_data, int open_time_column);
+  static string CalculateTimeframe(const shared_ptr<Table>& bar_data,
+                                   int open_time_column);
 
   /// 바 데이터 타입간 타임프레임이 유효한지 검증하는 함수
   void IsValidTimeframeBetweenBars(const string& timeframe, BarType bar_type);

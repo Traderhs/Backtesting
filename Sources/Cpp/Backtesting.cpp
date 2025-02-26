@@ -54,19 +54,26 @@ shared_ptr<BinanceFetcher> Backtesting::fetcher_ =
 int main() {
   Engine::AddBarData(
       "BTCUSDT", "D:/Programming/Backtesting/Data/Klines/BTCUSDT/1h.parquet",
-      BarType::TRADING);
+      TRADING);
 
   Engine::AddBarData(
     "ETHUSDT", "D:/Programming/Backtesting/Data/Klines/ETHUSDT/1h.parquet",
-    BarType::TRADING);
+    TRADING);
+  Engine::AddBarData(
+    "BTCUSDT", "D:/Programming/Backtesting/Data/Klines/BTCUSDT/1d.parquet",
+    REFERENCE);
 
   Engine::AddBarData(
+    "ETHUSDT", "D:/Programming/Backtesting/Data/Klines/ETHUSDT/1d.parquet",
+    REFERENCE);
+/*
+  Engine::AddBarData(
     "XRPUSDT", "D:/Programming/Backtesting/Data/Klines/XRPUSDT/1h.parquet",
-    BarType::TRADING);
+   TRADING);
 
   Engine::AddBarData(
       "APTUSDT", "D:/Programming/Backtesting/Data/Klines/APTUSDT/1h.parquet",
-      BarType::TRADING);
+      TRADING);*/
 
   Engine::AddBarData(
       "BTCUSDT", "D:/Programming/Backtesting/Data/Klines/BTCUSDT/1m.parquet",

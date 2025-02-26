@@ -8,8 +8,12 @@ class Engine;
 class BinanceFetcher;
 class Logger;
 
+// 내부 헤더
+#include <Engines/BaseBarHandler.hpp>
+
 // 네임 스페이스
 using namespace std;
+using enum BarType;
 
 class Backtesting final {
   public:

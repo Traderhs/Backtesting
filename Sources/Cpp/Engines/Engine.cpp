@@ -3,6 +3,7 @@
 #include <cmath>
 #include <filesystem>
 #include <format>
+#include <ranges>
 #include <set>
 #include <utility>
 
@@ -24,6 +25,7 @@
 using namespace data_utils;
 using namespace time_utils;
 using namespace std;
+using enum BarType;
 using enum PriceType;
 using enum LogLevel;
 
@@ -31,7 +33,6 @@ Engine::Engine()
     : trading_bar_num_symbols_(0),
       trading_bar_add_time_(0),
       use_bar_magnifier_(false),
-      available_balance_updated_(false),
       begin_open_time_(INT64_MAX),
       end_open_time_(0),
       current_open_time_(0),
@@ -77,18 +78,15 @@ void Engine::Backtesting(const bool use_bar_magnifier, const string& start,
 }
 
 double Engine::UpdateAvailableBalance() {
-  if (!available_balance_updated_) {
-    unrealized_pnl_ = 0;
+  unrealized_pnl_ = 0;
 
-    // 전략별 미실현 손익을 합산
-    for (const auto strategy : strategies_) {
-      unrealized_pnl_ += strategy->GetOrderHandler()->GetUnrealizedPnl();
-    }
-
-    // 사용 가능 자금 업데이트
-    available_balance_ = wallet_balance_ + unrealized_pnl_ - used_margin_;
-    available_balance_updated_ = true;
+  // 전략별 미실현 손익을 합산
+  for (const auto strategy : strategies_) {
+    unrealized_pnl_ += strategy->GetOrderHandler()->GetUnrealizedPnl();
   }
+
+  // 사용 가능 자금 업데이트
+  available_balance_ = wallet_balance_ + unrealized_pnl_ - used_margin_;
 
   return available_balance_;
 }
@@ -119,7 +117,7 @@ void Engine::Initialize(const bool use_bar_magnifier, const string& start,
 }
 
 void Engine::IsValidBarData(const bool use_bar_magnifier) const {
-  const auto& trading_bar = bar_->GetBarData(BarType::TRADING);
+  const auto& trading_bar = bar_->GetBarData(TRADING);
   const auto trading_num_symbols = trading_bar.GetNumSymbols();
 
   // 1.1. 트레이딩 바 데이터가 비었는지 검증
@@ -150,7 +148,7 @@ void Engine::IsValidBarData(const bool use_bar_magnifier) const {
   }
 
   if (use_bar_magnifier) {
-    const auto& magnifier_bar = bar_->GetBarData(BarType::MAGNIFIER);
+    const auto& magnifier_bar = bar_->GetBarData(MAGNIFIER);
     const auto magnifier_num_symbols = magnifier_bar.GetNumSymbols();
 
     /* 2.1. 트레이딩 바 데이터의 심볼 개수와 돋보기 바 데이터의
@@ -263,7 +261,7 @@ void Engine::IsValidBarData(const bool use_bar_magnifier) const {
 
 void Engine::IsValidDateRange(const string& start, const string& end,
                               const string& format) {
-  const auto& trading_bar = bar_->GetBarData(BarType::TRADING);
+  const auto& trading_bar = bar_->GetBarData(TRADING);
   for (int symbol_idx = 0; symbol_idx < trading_bar.GetNumSymbols();
        symbol_idx++) {
     // 백테스팅 시작 시 가장 처음의 Open Time 값 구하기
@@ -434,8 +432,8 @@ void Engine::InitializeEngine(const bool use_bar_magnifier) {
   max_wallet_balance_ = initial_balance;
 
   // 바 데이터 초기화
-  trading_bar_ = make_shared<BarData>(bar_->GetBarData(BarType::TRADING));
-  magnifier_bar_ = make_shared<BarData>(bar_->GetBarData(BarType::MAGNIFIER));
+  trading_bar_ = make_shared<BarData>(bar_->GetBarData(TRADING));
+  magnifier_bar_ = make_shared<BarData>(bar_->GetBarData(MAGNIFIER));
   reference_bar_ = make_shared<unordered_map<string, BarData>>(
       bar_->GetAllReferenceBarData());
 
@@ -456,7 +454,7 @@ void Engine::InitializeEngine(const bool use_bar_magnifier) {
   current_close_time_ = begin_open_time_ + trading_bar_add_time_ - 1;
 
   // 시작 시간까지 트레이딩 바의 인덱스를 이동
-  bar_->ProcessBarIndices(BarType::TRADING, "NONE", current_close_time_);
+  bar_->ProcessBarIndices(TRADING, "NONE", current_close_time_);
 
   // trading_began_, trading_ended 초기화
   trading_began_.resize(trading_bar_num_symbols_);
@@ -552,19 +550,17 @@ void Engine::BacktestingMain() {
         __FILE__, __LINE__);
 
     // 현재 바 인덱스의 트레이딩을 진행
-    // 돋보기 바를 사용하고 활성화된 심볼이 있으면
-    // 돋보기 바를 이용하여 백테스팅
+    // 돋보기 바에 활성화된 심볼이 있으면 돋보기 바를 이용하여 백테스팅
     const int64_t original_open_time = current_open_time_;
-    if (use_bar_magnifier_ && !activated_magnifier_symbol_indices_.empty()) {
-      bar_->SetCurrentBarType(BarType::MAGNIFIER, "NONE");
+    if (!activated_magnifier_symbol_indices_.empty()) {
+      bar_->SetCurrentBarType(MAGNIFIER, "NONE");
 
       do {
         // 활성화된 돋보기 바 인덱스 증가
         for (const auto& symbol_idx : activated_magnifier_symbol_indices_) {
           activated_magnifier_bar_indices_.push_back(
-              bar_->IncreaseBarIndex(BarType::MAGNIFIER, "NONE", symbol_idx));
+              bar_->IncreaseBarIndex(MAGNIFIER, "NONE", symbol_idx));
         }
-        available_balance_updated_ = false;
 
         // 현재 Open Time을 현재 돋보기 바의 Open Time으로 업데이트
         // 돋보기 바로 진행 시 정확한 주문, 체결 시간을 얻기 위함
@@ -590,9 +586,9 @@ void Engine::BacktestingMain() {
     // 트레이딩 바에 활성화된 심볼이 있으면 트레이딩 바를 이용하여 백테스팅
     // 1. 돋보기 바 자체를 미사용 2. 아직 돋보기 바 사용 불가능
     if (!activated_trading_symbol_indices_.empty()) {
-      bar_->SetCurrentBarType(BarType::TRADING, "NONE");
+      bar_->SetCurrentBarType(TRADING, "NONE");
 
-      const auto& bar_indices = bar_->GetBarIndex(BarType::TRADING, "NONE");
+      const auto& bar_indices = bar_->GetBarIndices(TRADING, "NONE");
       for (const auto& symbol_idx : activated_trading_symbol_indices_) {
         activated_trading_bar_indices_.push_back(bar_indices[symbol_idx]);
       }
@@ -641,10 +637,9 @@ void Engine::BacktestingMain() {
 
     // =======================================================================
     // 활성화된 심볼들의 트레이딩 바 인덱스 증가
-    for (const auto& symbol_idx : activated_symbol_indices_) {
-      bar_->IncreaseBarIndex(BarType::TRADING, "NONE", symbol_idx);
+    for (const auto symbol_idx : activated_symbol_indices_) {
+      bar_->IncreaseBarIndex(TRADING, "NONE", symbol_idx);
     }
-    available_balance_updated_ = false;
 
     /* current_open_time_ 업데이트:
        UpdateTradingStatus에서 트레이딩 시작 검증 시 사용
@@ -693,7 +688,7 @@ void Engine::UpdateTradingStatus() {
   for (int symbol_idx = 0; symbol_idx < trading_bar_num_symbols_;
        symbol_idx++) {
     // 사용 중인 바 정보 업데이트
-    bar_->SetCurrentBarType(BarType::TRADING, "NONE");
+    bar_->SetCurrentBarType(TRADING, "NONE");
     bar_->SetCurrentSymbolIndex(symbol_idx);
 
     const auto bar_idx = bar_->GetCurrentBarIndex();
@@ -709,37 +704,26 @@ void Engine::UpdateTradingStatus() {
         trading_bar_->IsValidIndex(symbol_idx, bar_idx);
       } catch ([[maybe_unused]] const IndexOutOfRange& e) {
         // 해당 심볼의 데이터의 끝까지 진행했다면 해당 심볼은 트레이딩 종료
-        trading_ended_[symbol_idx] = true;
-
-        // 진입해있던 잔량을 마지막 종가에 청산
-        // 하지만 루프 전 바 인덱스를 하나 증가시켰으므로 감소
-        bar_->SetCurrentBarIndex(bar_idx - 1);
-        for (const auto& strategy : strategies_) {
-          strategy->GetOrderHandler()->CloseAllPositions();
-        }
+        ExecuteTradingEnd(symbol_idx);
         continue;
       }
 
-      // 트레이딩 바 데이터 결손이 없는지 확인
+      // 트레이딩 바 데이터 결손이 있으면 트레이딩 불가
       if (current_open_time_ !=
           trading_bar_->GetBar(symbol_idx, bar_idx).open_time) {
         continue;
       }
 
       // 진행할 바가 남아있고 트레이딩 바 데이터 결손이 없으면 트레이딩 진행
-      DetermineActivation(symbol_idx, bar_idx);
-
+      DetermineActivation(symbol_idx);
     } else {
-      // 트레이딩을 시작하지 않은 심볼은 이번 바에서 시작했는지 검사.
-      // current_open_time_은 외부 함수 루프 전 현재 트레이딩 바의 Open
-      // Time으로 업데이트 하므로 현재 심볼의 Open Time이 같아지면 트레이딩
-      // 시작.
+      // 트레이딩을 시작하지 않은 심볼은 이번 바에서 시작했는지 검사
       if (const auto current_open_time =
               trading_bar_->GetBar(symbol_idx, bar_idx).open_time;
           current_open_time == current_open_time_) {
         trading_began_[symbol_idx] = true;
 
-        DetermineActivation(symbol_idx, bar_idx);
+        DetermineActivation(symbol_idx);
       }
     }
   }
@@ -753,13 +737,25 @@ void Engine::ClearActivatedVectors() {
   activated_magnifier_bar_indices_.clear();
 }
 
+void Engine::ExecuteTradingEnd(const int symbol_idx) {
+  trading_ended_[symbol_idx] = true;
+
+  // 진입해있던 잔량을 마지막 종가에 청산
+  // 하지만 루프 전 바 인덱스를 하나 증가시켰으므로 감소
+  bar_->SetCurrentBarType(TRADING, "NONE");
+  bar_->SetCurrentBarIndex(bar_->GetCurrentBarIndex() - 1);
+  for (const auto& strategy : strategies_) {
+    strategy->GetOrderHandler()->CloseAllPositions();
+  }
+}
+
 bool Engine::IsBacktestingEnd() const {
   // 한 심볼이라도 끝나지 않았으면 끝나지 않음
   return ranges::all_of(trading_ended_,
                         [](const bool is_end) { return is_end; });
 }
 
-void Engine::DetermineActivation(const int symbol_idx, const size_t bar_idx) {
+void Engine::DetermineActivation(const int symbol_idx) {
   // 트레이딩 전 바의 Close Time
   // 타임스탬프이므로 current_open_time - 1 == previous_close_time
   const auto prev_close_time = current_open_time_ - 1;
@@ -768,39 +764,37 @@ void Engine::DetermineActivation(const int symbol_idx, const size_t bar_idx) {
      1. 트레이딩 바의 타임프레임과 참조 바의 타임프레임이 같으면 바 인덱스를
         무조건 일치
      2. 참조 바의 타임프레임이 더 크다면 트레이딩 바의 Close Time이
-        참조 바의 Close Time을 지난 다음 바부터 해당 참조 바 인덱스를 참조
-     가능 2.1. 트레이딩 전 바 Close Time보다 참조 바의 Close Time이 작으면
+        참조 바의 Close Time을 지난 다음 바부터 해당 참조 바 인덱스를 참조 가능
+     2.1. 트레이딩 전 바 Close Time보다 참조 바의 Close Time이 작으면
           트레이딩 전 바 Close Time까지 최대한 증가 후 사용 가능.
      2.2. 트레이딩 전 바 Close Time과 참조 바의 Close Time이 같으면
           사용 가능
      2.3. 트레이딩 전 바 Close Time보다 참조 바의 Close Time이 같거나 크면
           아직 사용 불가능하므로 트레이딩 불가                         */
   for (const auto& [timeframe, reference_bar] : *reference_bar_) {
-    bar_->SetCurrentBarType(BarType::REFERENCE, timeframe);
+    bar_->SetCurrentBarType(REFERENCE, timeframe);
 
-    try {
-      if (timeframe == trading_bar_timeframe_) {
-        bar_->ProcessBarIndex(symbol_idx, BarType::REFERENCE, timeframe,
-                              current_close_time_);
+    if (timeframe == trading_bar_timeframe_) {
+      bar_->ProcessBarIndex(symbol_idx, REFERENCE, timeframe,
+                            current_close_time_);
+    } else {
+      if (reference_bar.GetBar(symbol_idx, bar_->GetCurrentBarIndex())
+              .close_time <= prev_close_time) {
+        bar_->ProcessBarIndex(symbol_idx, REFERENCE, timeframe,
+                              prev_close_time);
       } else {
-        if (reference_bar.GetBar(symbol_idx, bar_->GetCurrentBarIndex())
-                .close_time <= prev_close_time) {
-          bar_->ProcessBarIndex(symbol_idx, BarType::REFERENCE, timeframe,
-                                prev_close_time);
-        } else {
-          // 트레이딩 전 바 Close Time보다 참조 바의 Close Time이 크면
-          // 아직 사용 불가능하므로 트레이딩 불가
-          return;
-        }
+        // 트레이딩 전 바 Close Time보다 참조 바의 Close Time이 크면
+        // 참조 불가능하므로 트레이딩 불가
+        // 하지만 트레이딩 바는 인덱스를 맞추어 흘러가야 하므로 인덱스 증가
+        // * 원래 트레이딩 바 인덱스는 활성화된 심볼에서만 증가함
+        bar_->IncreaseBarIndex(TRADING, "NONE", symbol_idx);
+        return;
       }
-    } catch ([[maybe_unused]] const IndexOutOfRange& e) {
-      // 참조 바의 최대 인덱스에 도달하면 트레이딩 불가
-      return;
     }
   }
 
   if (use_bar_magnifier_) {
-    bar_->SetCurrentBarType(BarType::MAGNIFIER, "NONE");
+    bar_->SetCurrentBarType(MAGNIFIER, "NONE");
 
     int64_t magnifier_close_time =
         magnifier_bar_->GetBar(symbol_idx, bar_->GetCurrentBarIndex())
@@ -817,10 +811,8 @@ void Engine::DetermineActivation(const int symbol_idx, const size_t bar_idx) {
       bool can_use_magnifier = true;
 
       if (magnifier_close_time < prev_close_time) {
-        try {
-          bar_->ProcessBarIndex(symbol_idx, BarType::MAGNIFIER, "NONE",
-                                prev_close_time);
-        } catch ([[maybe_unused]] const IndexOutOfRange& e) {
+        if (!bar_->ProcessBarIndex(symbol_idx, MAGNIFIER, "NONE",
+                                   prev_close_time)) {
           // 돋보기 바의 최대 인덱스에 도달하여 트레이딩 전 바 Close
           // Time까지 이동시키지 못하면 돋보기 사용 불가
           can_use_magnifier = false;
@@ -828,12 +820,11 @@ void Engine::DetermineActivation(const int symbol_idx, const size_t bar_idx) {
       }
 
       if (can_use_magnifier) {
-        // 트레이딩 전 바 Close Time과 같은 Close Time을 갖는 돋보기 바
-        // 인덱스
+        // 트레이딩 전 바 Close Time과 같은
+        // Close Time을 갖는 돋보기 바 인덱스
         const auto updated_bar_idx = bar_->GetCurrentBarIndex();
 
-        // 현재 트레이딩 바의 Close Time까지 돋보기 바의 인덱스가 유효한지
-        // 확인
+        // 트레이딩 바의 Close Time까지 돋보기 바의 인덱스가 유효한지 확인
         try {
           size_t added_index = 1;
 
@@ -1021,7 +1012,7 @@ void Engine::ExecuteStrategy(Strategy* strategy, const string& strategy_type,
   const auto original_bar_type = bar_->GetCurrentBarType();
 
   // 전략은 트레이딩 바에서 실행됨
-  bar_->SetCurrentBarType(BarType::TRADING, "NONE");
+  bar_->SetCurrentBarType(TRADING, "NONE");
 
   // 지정된 심볼에서 전략 실행
   bar_->SetCurrentSymbolIndex(symbol_index);
