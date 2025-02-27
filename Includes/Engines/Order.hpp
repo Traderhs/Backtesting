@@ -61,6 +61,9 @@ class Order {
   Order& SetExitFilledPrice(double exit_filled_price);
 
   // ===========================================================================
+  static string OrderTypeToString(OrderType order_type);
+
+  // ===========================================================================
   [[nodiscard]] int GetLeverage() const;
   [[nodiscard]] double GetMarginCallPrice() const;
 

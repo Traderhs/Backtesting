@@ -18,8 +18,7 @@ using namespace data_utils;
 using namespace time_utils;
 
 BarHandler::BarHandler()
-    : current_bar_type_(BarType::TRADING),
-      current_symbol_index_(-1) {}
+    : current_bar_type_(BarType::TRADING), current_symbol_index_(-1) {}
 void BarHandler::Deleter::operator()(const BarHandler* p) const { delete p; }
 
 mutex BarHandler::mutex_;
@@ -100,7 +99,6 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
 
     // 타임프레임 유효성 검증
     IsValidTimeframeBetweenBars(bar_data_timeframe, bar_type);
-
   } catch (...) {
     Logger::LogAndThrowError(
         format("{} {}을(를) {} 바 데이터로 추가하는 중 오류가 발생했습니다.",
@@ -119,23 +117,23 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
       __FILE__, __LINE__);
 }
 
-void BarHandler::ProcessBarIndex(const int symbol_idx, const BarType bar_type,
+bool BarHandler::ProcessBarIndex(const int symbol_idx, const BarType bar_type,
                                  const string& timeframe,
                                  const int64_t target_close_time) {
   const auto& bar_data = GetBarData(bar_type, timeframe);
-  auto& bar_index = GetBarIndex(bar_type, timeframe);
+  auto& bar_indices = GetBarIndices(bar_type, timeframe);
 
   try {
     // 현재 Close Time이 Target Close Time보다 작을 때만 인덱스 증가 가능
-    while (bar_data.SafeGetBar(symbol_idx, bar_index[symbol_idx]).close_time <
+    while (bar_data.SafeGetBar(symbol_idx, bar_indices[symbol_idx]).close_time <
            target_close_time) {
       /* 다음 바의 Close Time이 Target Close Time보다 작거나 같을 때만
          인덱스 증가 */
       if (const auto next_close_time =
-              bar_data.SafeGetBar(symbol_idx, bar_index[symbol_idx] + 1)
+              bar_data.SafeGetBar(symbol_idx, bar_indices[symbol_idx] + 1)
                   .close_time;
           next_close_time <= target_close_time) {
-        bar_index[symbol_idx]++;
+        bar_indices[symbol_idx]++;
       } else {
         /* 다음 바 Close Time이 Target Close Time보다 크면 증가하지 않고 종료.
            이 함수의 목적은 Target Close Time까지 지정된 심볼의 Close Time을
@@ -143,23 +141,28 @@ void BarHandler::ProcessBarIndex(const int symbol_idx, const BarType bar_type,
         break;
       }
     }
+
+    // 정상적으로 모두 이동했으면 true를 반환
+    return true;
   } catch ([[maybe_unused]] const IndexOutOfRange& e) {
     /* next_close_time이 바 데이터의 범위를 넘으면
        최대 인덱스로 이동한 것이므로 이동 불가 */
-    throw;
+    return false;
   }
 }
 
-void BarHandler::ProcessBarIndices(const BarType bar_type,
+bool BarHandler::ProcessBarIndices(const BarType bar_type,
                                    const string& timeframe,
                                    const int64_t target_close_time) {
+  bool process_all = true;
   for (int i = 0; i < GetBarData(bar_type, timeframe).GetNumSymbols(); i++) {
-    try {
-      ProcessBarIndex(i, bar_type, timeframe, target_close_time);
-    } catch ([[maybe_unused]] const IndexOutOfRange& e) {
-      continue;
+    // 하나라도 정상 진행 실패 시 false를 반환
+    if (!ProcessBarIndex(i, bar_type, timeframe, target_close_time)) {
+      process_all = false;
     }
   }
+
+  return process_all;
 }
 
 void BarHandler::SetCurrentBarType(const BarType bar_type,
@@ -371,7 +374,8 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
       }
 
       if (const auto& magnifier_tf = magnifier_bar_.GetTimeframe();
-        !magnifier_tf.empty() && ParseTimeframe(magnifier_tf) >= parsed_bar_data_tf) {
+          !magnifier_tf.empty() &&
+          ParseTimeframe(magnifier_tf) >= parsed_bar_data_tf) {
         Logger::LogAndThrowError(
             format("주어진 참조 바 타임프레임 {}은(는) "
                    "돋보기 바 타임프레임 {}보다 높아야합니다.",
@@ -384,7 +388,7 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 
 void BarHandler::IsValidReferenceBarTimeframe(const string& timeframe) {
   if (const auto& timeframe_it = reference_bar_.find(timeframe);
-        timeframe_it == reference_bar_.end()) {
+      timeframe_it == reference_bar_.end()) {
     Logger::LogAndThrowError(
         format("참조 바 데이터에 타임프레임 {}은(는) 존재하지 않습니다.",
                timeframe),

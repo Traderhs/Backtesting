@@ -1,12 +1,13 @@
-import sys
+"""
+Parquet 파일을 출력하는 파일
+"""
 import pandas as pd
-from datetime import datetime
 
 pd.set_option('display.width', None)
 pd.set_option('display.max_colwidth', None)
 
 # 읽을 Parquet 파일 경로 설정
-path = "D:\\Programming\\Backtesting\\Data\\Klines\\ETHUSDT\\1h.parquet"
+path = "D:\\Programming\\Backtesting\\Data\\Klines\\BTCUSDT\\1h.parquet"
 
 df = pd.read_parquet(path)
 head = df.head(10).copy()
