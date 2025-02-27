@@ -9,6 +9,7 @@
 #include "Engines/Analyzer.hpp"
 #include "Engines/BarData.hpp"
 #include "Engines/BarHandler.hpp"
+#include "Engines/Config.hpp"
 #include "Engines/DataUtils.hpp"
 #include "Engines/Engine.hpp"
 #include "Engines/Exception.hpp"
@@ -39,10 +40,10 @@ shared_ptr<TechnicalAnalyzer>& BaseOrderHandler::ta_ =
 void BaseOrderHandler::Initialize(const int num_symbols) {
   // 엔진 설정 받아오기
   const auto& config = engine_->GetConfig();
-  market_commission_ = config.GetMarketCommission();
-  limit_commission_ = config.GetLimitCommission();
-  market_slippage_ = config.GetMarketSlippage();
-  limit_slippage_ = config.GetLimitSlippage();
+  market_commission_ = config->GetMarketCommission();
+  limit_commission_ = config->GetLimitCommission();
+  market_slippage_ = config->GetMarketSlippage();
+  limit_slippage_ = config->GetLimitSlippage();
 
   // 주문들을 심볼 개수로 초기화
   pending_entries_.resize(num_symbols);
@@ -67,11 +68,6 @@ void BaseOrderHandler::Initialize(const int num_symbols) {
 }
 
 double BaseOrderHandler::GetUnrealizedPnl() const {
-  if (UtcTimestampToUtcDatetime(engine_->GetCurrentOpenTime()) ==
-      "2025-01-13 07:00:00") {
-    UtcTimestampToUtcDatetime(engine_->GetCurrentOpenTime());
-  }
-
   // 사용 중인 정보 저장
   const auto original_symbol_idx = bar_->GetCurrentSymbolIndex();
 
@@ -208,9 +204,7 @@ double BaseOrderHandler::CalculateSlippagePrice(const double order_price,
                                 CountDecimalPlaces(order_price));
   }
 
-  LogFormattedInfo(LogLevel::WARNING_L, "슬리피지 계산 중 에러가 발생했습니다.",
-                   __FILE__, __LINE__);
-  return -1;
+  throw runtime_error("슬리피지 계산 오류");
 }
 
 double BaseOrderHandler::CalculateCommission(const double filled_price,
@@ -378,18 +372,6 @@ void BaseOrderHandler::HasEnoughBalance(const double balance,
                RoundToDecimalPlaces(balance, 2), purpose_msg,
                RoundToDecimalPlaces(needed_balance, 2)));
   }
-}
-
-void BaseOrderHandler::LogFormattedInfo(const LogLevel log_level,
-                                        const string& formatted_message,
-                                        const char* file, const int line) {
-  const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
-  const int symbol_idx = bar_->GetCurrentSymbolIndex();
-
-  logger_->Log(
-      log_level,
-      format("[{}] | {}", bar.GetSymbolName(symbol_idx), formatted_message), file,
-      line);
 }
 
 void BaseOrderHandler::UpdateLastEntryBarIndex(const int symbol_idx) {

@@ -81,8 +81,8 @@ int main() {
 
   Strategy::AddStrategy<TestStrategy>("Test Strategy");
 
-  Config config;
-  config.SetRootDirectory("D:/Programming/Backtesting")
+  Config::SetConfig()
+      .SetRootDirectory("D:/Programming/Backtesting")
       .SetInitialBalance(10000)
       .SetCommissionType(CommissionType::COMMISSION_PERCENTAGE)
       .SetMarketCommission(0.04)
@@ -91,6 +91,5 @@ int main() {
       .SetMarketSlippage(0.1)
       .SetLimitSlippage(0);
 
-  Backtesting::engine_->SetConfig(config);
   Backtesting::engine_->Backtesting(false);
 }

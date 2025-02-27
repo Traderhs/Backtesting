@@ -142,7 +142,7 @@ class Engine final : public BaseEngine {
                         const string& format);
 
   /// 엔진 설정의 유효성을 검증하는 함수
-  void IsValidConfig() const;
+  static void IsValidConfig();
 
   /// 엔진에 추가된 전략의 유효성을 검증하는 함수
   void IsValidStrategies();
