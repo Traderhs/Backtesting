@@ -1,14 +1,12 @@
 // 파일 헤더
 #include "Strategies/TestStrategy.hpp"
 
-#include <iostream>
-
 TestStrategy::TestStrategy(const string& name)
     : Strategy(name),
-      sma1(Indicator::Create<SimpleMovingAverage>("sma1", trading_timeframe,
-                                                  close, 20)),
-      sma2(Indicator::Create<SimpleMovingAverage>("sma2", trading_timeframe,
-                                                  close, 5)) {}
+      sma1(AddIndicator<SimpleMovingAverage>("sma1", trading_timeframe, close,
+                                             20)),
+      sma2(AddIndicator<SimpleMovingAverage>("sma2", trading_timeframe, close,
+                                             5)) {}
 TestStrategy::~TestStrategy() = default;
 
 void TestStrategy::Initialize() {}
@@ -32,7 +30,6 @@ void TestStrategy::ExecuteAfterEntry() {
   }
 }
 
-#include <Engines/TimeUtils.hpp>
 void TestStrategy::ExecuteAfterExit() {
   order->MarketEntry("매수 진입 3", LONG, 0.1, 1);
   order->LimitExit("매수 청산 3", "매수 진입 3", entry_size,

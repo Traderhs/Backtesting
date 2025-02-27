@@ -21,21 +21,6 @@ using namespace time_utils;
 
 Indicator::Indicator(const string& name, const string& timeframe)
     : is_calculated_(false) {
-  // 증가 카운터는 Create 함수로만 증가하는데 Create 없이 직접 생성자 호출로
-  // 전 증가 카운터가 현재 증가 카운터와 같다면 오류 발생
-  if (pre_creation_counter_ == creation_counter_) {
-    logger_->Log(LogLevel::ERROR_L,
-                 "지표의 생성은 Create 함수의 호출로만 가능합니다.", __FILE__,
-                 __LINE__);
-    Logger::LogAndThrowError(
-        format("[{} {}] 지표를 생성하는 중 에러가 발생했습니다.", name,
-               timeframe),
-        __FILE__, __LINE__);
-  }
-
-  // 정상적으로 Create 함수를 통했다면 전 증가 가운터를 현재 카운터로 대입
-  pre_creation_counter_ = creation_counter_;
-
   try {
     if (name.empty()) {
       Logger::LogAndThrowError("지표 이름이 비어있습니다.", __FILE__, __LINE__);
@@ -53,16 +38,30 @@ Indicator::Indicator(const string& name, const string& timeframe)
     Logger::LogAndThrowError("지표 생성 중 오류가 발생했습니다.", __FILE__,
                              __LINE__);
   }
+
+  // 증가 카운터는 AddIndicator 함수로만 증가하는데 AddIndicator 없이 직접
+  // 생성자 호출로 전 증가 카운터가 현재 증가 카운터와 같다면 오류 발생
+  if (pre_creation_counter_ == creation_counter_) {
+    logger->Log(LogLevel::ERROR_L,
+                "지표의 추가는 AddIndicator 함수의 호출로만 가능합니다.",
+                __FILE__, __LINE__);
+    Logger::LogAndThrowError(
+        format("[{} {}] 지표를 추가하는 중 에러가 발생했습니다.", name,
+               timeframe),
+        __FILE__, __LINE__);
+  }
+
+  // 정상적으로 AddIndicator 함수를 통했다면 전 증가 가운터에 현재 카운터를 대입
+  pre_creation_counter_ = creation_counter_;
 }
 Indicator::~Indicator() = default;
 
-vector<reference_wrapper<Indicator>> Indicator::indicators_;
 shared_ptr<Analyzer>& Indicator::analyzer_ = Analyzer::GetAnalyzer();
 shared_ptr<BarHandler>& Indicator::bar_ = BarHandler::GetBarHandler();
 shared_ptr<Engine>& Indicator::engine_ = Engine::GetEngine();
 shared_ptr<Logger>& Indicator::logger_ = Logger::GetLogger();
-size_t Indicator::creation_counter_ = 0;
-size_t Indicator::pre_creation_counter_ = 0;
+size_t Indicator::creation_counter_;
+size_t Indicator::pre_creation_counter_;
 bool Indicator::is_calculating_ = false;
 string Indicator::calculating_name_;
 string Indicator::calculating_timeframe_;
@@ -254,10 +253,8 @@ void Indicator::SetTimeframe(const string& timeframe) {
   }
 }
 
-vector<reference_wrapper<Indicator>> Indicator::GetIndicators() {
-  return indicators_;
-}
-
 string Indicator::GetName() const { return name_; }
 
 string Indicator::GetTimeframe() const { return timeframe_; }
+
+void Indicator::IncreaseCreationCounter() { creation_counter_++; }

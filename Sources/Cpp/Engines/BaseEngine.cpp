@@ -41,26 +41,6 @@ void BaseEngine::AddBarData(const string& symbol_name, const string& file_path,
   bar_->AddBarData(symbol_name, file_path, bar_type, columns);
 }
 
-void BaseEngine::AddStrategy(Strategy& strategy) {
-  // 중복 이름 검사
-  const auto& name = strategy.GetName();
-  if (const auto& it = ranges::find(strategy_names_, name);
-      it != strategy_names_.end()) {
-    Logger::LogAndThrowError(
-        format("전략은 동일한 이름 [{}]을(를) 가질 수 없습니다.", name),
-        __FILE__, __LINE__);
-  } else {
-    strategy_names_.push_back(name);
-  }
-
-  // 추가
-  ref_strategies_.push_back(ref(strategy));
-
-  logger_->Log(LogLevel::INFO_L,
-               format("[{}] 전략이 엔진에 추가되었습니다.", name), __FILE__,
-               __LINE__);
-}
-
 void BaseEngine::SetConfig(const Config& config) { config_ = config; }
 
 void BaseEngine::NoDuplicateDataCheck() { check_duplicate_data_ = false; }

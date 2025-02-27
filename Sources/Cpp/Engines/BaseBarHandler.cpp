@@ -1,3 +1,6 @@
+// 표준 라이브러리
+#include <format>
+
 // 파일 헤더
 #include "Engines/BaseBarHandler.hpp"
 
@@ -27,10 +30,9 @@ BarData& BaseBarHandler::GetBarData(const BarType bar_type,
     case BarType::REFERENCE: {
       const auto& timeframe_it = reference_bar_.find(timeframe);
       if (timeframe_it == reference_bar_.end()) {
-        Logger::LogAndThrowError(
-            "타임프레임 " + timeframe +
-                "은(는) 참조 바 데이터에 존재하지 않습니다.",
-            __FILE__, __LINE__);
+        throw runtime_error(
+            format("타임프레임 [{}]은(는) 참조 바 데이터에 존재하지 않습니다.",
+                   timeframe));
       }
 
       return timeframe_it->second;
@@ -43,8 +45,8 @@ BarData& BaseBarHandler::GetBarData(const BarType bar_type,
   }
 }
 
-vector<size_t>& BaseBarHandler::GetBarIndex(const BarType bar_type,
-                                            const string& timeframe) {
+vector<size_t>& BaseBarHandler::GetBarIndices(const BarType bar_type,
+                                              const string& timeframe) {
   switch (bar_type) {
     case BarType::TRADING: {
       return trading_index_;

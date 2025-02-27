@@ -67,7 +67,8 @@ void BaseOrderHandler::Initialize(const int num_symbols) {
 }
 
 double BaseOrderHandler::GetUnrealizedPnl() const {
-  if (UtcTimestampToUtcDatetime(engine_->GetCurrentOpenTime()) == "2025-01-13 07:00:00") {
+  if (UtcTimestampToUtcDatetime(engine_->GetCurrentOpenTime()) ==
+      "2025-01-13 07:00:00") {
     UtcTimestampToUtcDatetime(engine_->GetCurrentOpenTime());
   }
 
@@ -312,7 +313,7 @@ void BaseOrderHandler::IsValidEntryName(const string& entry_name) const {
        해당 entry_name으로 진입 불가 */
     if (entry_name == filled_entry->GetEntryName()) {
       throw InvalidValue(format(
-          "중복된 진입 이름 {}은(는) 동시에 체결될 수 없습니다.", entry_name));
+          "중복된 진입 이름 [{}]은(는) 동시에 체결될 수 없습니다.", entry_name));
     }
   }
 }
@@ -387,7 +388,7 @@ void BaseOrderHandler::LogFormattedInfo(const LogLevel log_level,
 
   logger_->Log(
       log_level,
-      format("{} | {}", bar.GetSymbolName(symbol_idx), formatted_message), file,
+      format("[{}] | {}", bar.GetSymbolName(symbol_idx), formatted_message), file,
       line);
 }
 

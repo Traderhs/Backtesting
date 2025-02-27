@@ -35,9 +35,6 @@ class BaseEngine {
                          BarType bar_type,
                          const vector<int>& columns = {0, 1, 2, 3, 4, 5, 6});
 
-  /// 전략을 엔진에 추가하는 함수
-  void AddStrategy(Strategy& strategy);
-
   /// 엔진 설정을 세팅하는 함수
   void SetConfig(const Config& config);
 
@@ -101,15 +98,13 @@ class BaseEngine {
   /// 한 회의 백테스팅에서 사용할 메인 디렉토리
   string main_directory_;
 
-  /// 엔진에 추가된 전략.
-  /// 사용자 레벨에서 전략 추가 시 간편성을 추가하기 위하여 우선 참조로 저장.
-  vector<reference_wrapper<Strategy>> ref_strategies_;
-  vector<Strategy*> strategies_;
-  vector<string> strategy_names_;
+  /// 엔진에 추가된 전략
+  vector<shared_ptr<Strategy>> strategies_;
 
-  /// 전략에서 사용하는 지표.
-  vector<Indicator*> indicators_;
-  vector<string> indicator_names_;
+  /// 전략에서 사용하는 지표
+  ///
+  /// 전략들<지표들>
+  vector<vector<shared_ptr<Indicator>>> indicators_;
 
   /// 엔진의 사전 설정 항목
   Config config_;

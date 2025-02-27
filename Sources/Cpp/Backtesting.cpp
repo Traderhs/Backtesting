@@ -57,30 +57,29 @@ int main() {
       TRADING);
 
   Engine::AddBarData(
-    "ETHUSDT", "D:/Programming/Backtesting/Data/Klines/ETHUSDT/1h.parquet",
-    TRADING);
+      "ETHUSDT", "D:/Programming/Backtesting/Data/Klines/ETHUSDT/1h.parquet",
+      TRADING);
   Engine::AddBarData(
-    "BTCUSDT", "D:/Programming/Backtesting/Data/Klines/BTCUSDT/1d.parquet",
-    REFERENCE);
+      "BTCUSDT", "D:/Programming/Backtesting/Data/Klines/BTCUSDT/1d.parquet",
+      REFERENCE);
 
   Engine::AddBarData(
-    "ETHUSDT", "D:/Programming/Backtesting/Data/Klines/ETHUSDT/1d.parquet",
-    REFERENCE);
-/*
-  Engine::AddBarData(
-    "XRPUSDT", "D:/Programming/Backtesting/Data/Klines/XRPUSDT/1h.parquet",
-   TRADING);
+      "ETHUSDT", "D:/Programming/Backtesting/Data/Klines/ETHUSDT/1d.parquet",
+      REFERENCE);
+  /*
+    Engine::AddBarData(
+      "XRPUSDT", "D:/Programming/Backtesting/Data/Klines/XRPUSDT/1h.parquet",
+     TRADING);
 
-  Engine::AddBarData(
-      "APTUSDT", "D:/Programming/Backtesting/Data/Klines/APTUSDT/1h.parquet",
-      TRADING);*/
+    Engine::AddBarData(
+        "APTUSDT", "D:/Programming/Backtesting/Data/Klines/APTUSDT/1h.parquet",
+        TRADING);*/
 
   Engine::AddBarData(
       "BTCUSDT", "D:/Programming/Backtesting/Data/Klines/BTCUSDT/1m.parquet",
-      BarType::MAGNIFIER);
+      MAGNIFIER);
 
-  auto strategy = TestStrategy("Test Strategy");
-  Backtesting::engine_->AddStrategy(strategy);
+  Strategy::AddStrategy<TestStrategy>("Test Strategy");
 
   Config config;
   config.SetRootDirectory("D:/Programming/Backtesting")

@@ -33,6 +33,7 @@ Engine::Engine()
     : trading_bar_num_symbols_(0),
       trading_bar_add_time_(0),
       use_bar_magnifier_(false),
+      current_strategy_type_(StrategyType::ON_CLOSE),
       begin_open_time_(INT64_MAX),
       end_open_time_(0),
       current_open_time_(0),
@@ -81,7 +82,7 @@ double Engine::UpdateAvailableBalance() {
   unrealized_pnl_ = 0;
 
   // 전략별 미실현 손익을 합산
-  for (const auto strategy : strategies_) {
+  for (const auto& strategy : strategies_) {
     unrealized_pnl_ += strategy->GetOrderHandler()->GetUnrealizedPnl();
   }
 
@@ -91,20 +92,28 @@ double Engine::UpdateAvailableBalance() {
   return available_balance_;
 }
 
+void Engine::SetCurrentStrategyType(const StrategyType strategy_type) {
+  current_strategy_type_ = strategy_type;
+}
+
 size_t Engine::GetMaxDecimalPlace(const int symbol_idx) const {
   return max_decimal_places_[symbol_idx];
 }
+
 string Engine::GetCurrentStrategyName() const { return current_strategy_name_; }
-string Engine::GetCurrentStrategyType() const { return current_strategy_type_; }
+StrategyType Engine::GetCurrentStrategyType() const {
+  return current_strategy_type_;
+}
 int64_t Engine::GetCurrentOpenTime() const { return current_open_time_; }
 
 void Engine::Initialize(const bool use_bar_magnifier, const string& start,
                         const string& end, const string& format) {
   // 유효성 검증
   IsValidBarData(use_bar_magnifier);
-  IsValidConfig();
   IsValidDateRange(start, end, format);
+  IsValidConfig();
   IsValidStrategies();
+  IsValidIndicators();
 
   // 폴더 생성
   CreateDirectories();
@@ -319,16 +328,6 @@ void Engine::IsValidDateRange(const string& start, const string& end,
                __LINE__);
 }
 
-void Engine::IsValidStrategies() const {
-  if (ref_strategies_.empty()) {
-    Logger::LogAndThrowError("엔진에 전략이 추가되지 않았습니다.", __FILE__,
-                             __LINE__);
-  }
-
-  logger_->Log(INFO_L, "전략 유효성 검증이 완료되었습니다.", __FILE__,
-               __LINE__);
-}
-
 void Engine::IsValidConfig() const {
   const auto& root_directory = config_.GetRootDirectory();
   const auto initial_balance = config_.GetInitialBalance();
@@ -386,7 +385,98 @@ void Engine::IsValidConfig() const {
         __FILE__, __LINE__);
   }
 
-  logger_->Log(INFO_L, "엔진 설정값 검증이 완료되었습니다.", __FILE__,
+  logger_->Log(INFO_L, "엔진 설정값 유효성 검증이 완료되었습니다.", __FILE__,
+               __LINE__);
+}
+
+void Engine::IsValidStrategies() {
+  // 전략들을 로딩
+  for (const auto& strategy : Strategy::GetStrategies()) {
+    strategies_.push_back(strategy);
+  }
+
+  // 중복 이름 검사
+  set<string> names;
+  string duplicate_name;
+  for (const auto& strategy : strategies_) {
+    if (string name = strategy->GetName(); !names.insert(name).second) {
+      duplicate_name = name;
+      break;
+    }
+  }
+
+  if (!duplicate_name.empty()) {
+    Logger::LogAndThrowError(
+        format("전략은 동일한 이름 [{}]을(를) 가질 수 없습니다.",
+               duplicate_name),
+        __FILE__, __LINE__);
+  }
+
+  // 전략 개수 검사
+  if (strategies_.empty()) {
+    Logger::LogAndThrowError("엔진에 전략이 추가되지 않았습니다.", __FILE__,
+                             __LINE__);
+  }
+
+  logger_->Log(INFO_L, "전략 유효성 검증이 완료되었습니다.", __FILE__,
+               __LINE__);
+}
+
+void Engine::IsValidIndicators() {
+  // 지표들을 로딩
+  indicators_.resize(strategies_.size());
+  for (int strategy_idx = 0; strategy_idx < strategies_.size();
+       strategy_idx++) {
+    set<string> names;
+    string strategy_name;
+    string duplicate_name;
+    for (const auto& indicator : strategies_[strategy_idx]->GetIndicators()) {
+      // 각 전략 내에서 지표들은 같은 이름을 가질 수 없도록 검사
+      if (string name = indicator->GetName(); !names.insert(name).second) {
+        strategy_name = strategies_[strategy_idx]->GetName();
+        duplicate_name = name;
+        break;
+      }
+
+      // 동일한 이름이 없다면 지표 벡터에 추가
+      indicators_[strategy_idx].push_back(indicator);
+    }
+
+    if (!duplicate_name.empty()) {
+      Logger::LogAndThrowError(format("[{}] 전략 내에서 동일한 이름의 지표 "
+                                      "[{}]을(를) 가질 수 없습니다.",
+                                      strategy_name, duplicate_name),
+                               __FILE__, __LINE__);
+    }
+  }
+
+  // 타임프레임 유효성 검사
+  for (int strategy_idx = 0; strategy_idx < strategies_.size();
+       strategy_idx++) {
+    for (const auto& indicator : indicators_[strategy_idx]) {
+      const string& timeframe = indicator->GetTimeframe();
+      try {
+        ParseTimeframe(timeframe);
+      } catch ([[maybe_unused]] const exception& e) {
+        // 지표에서 trading_timeframe을 변수를 사용하면 아직 초기화 전이기
+        // 때문에 TRADING_TIMEFRAME으로 지정되어 있는데 이 경우는 유효한
+        // 타임프레임이기 때문에 넘어감
+        if (timeframe == "TRADING_TIMEFRAME") {
+          continue;
+        }
+
+        logger_->Log(ERROR_L,
+                     format("[{}] 전략에서 사용하는 [{}] 지표의 타임프레임 "
+                            "[{}]이(가) 유효하지 않습니다.",
+                            strategies_[strategy_idx]->GetName(),
+                            indicator->GetName(), indicator->GetTimeframe()),
+                     __FILE__, __LINE__);
+      }
+      throw;
+    }
+  }
+
+  logger_->Log(INFO_L, "지표 유효성 검증이 완료되었습니다.", __FILE__,
                __LINE__);
 }
 
@@ -395,8 +485,8 @@ void Engine::CreateDirectories() {
     // 전략 이름들을 이어붙인 이름 + 현재 시간이 이번 백테스팅의 메인 폴더
     string main_directory = config_.GetRootDirectory() + "/Results/";
 
-    for (const auto ref_strategy : ref_strategies_) {
-      main_directory += ref_strategy.get().GetName() + "_";
+    for (const auto& strategy : strategies_) {
+      main_directory += strategy->GetName() + "_";
     }
 
     main_directory += GetCurrentLocalDatetime();
@@ -494,41 +584,34 @@ void Engine::InitializeEngine(const bool use_bar_magnifier) {
   logger->Log(INFO_L, "엔진 초기화가 완료되었습니다.", __FILE__, __LINE__);
 }
 
-void Engine::InitializeStrategies() {
+void Engine::InitializeStrategies() const {
   // 전략별 주문 핸들러 및 전략 초기화
-  for (const auto& ref_strategy : ref_strategies_) {
-    auto& strategy = ref_strategy.get();
-
-    strategies_.push_back(&strategy);
-    strategy.GetOrderHandler()->Initialize(trading_bar_num_symbols_);
-    strategy.Initialize();
-    strategy.SetTradingTimeframe(trading_bar_timeframe_);
+  for (const auto& strategy : strategies_) {
+    strategy->GetOrderHandler()->Initialize(trading_bar_num_symbols_);
+    strategy->Initialize();
+    strategy->SetTradingTimeframe(trading_bar_timeframe_);
   }
 
   logger->Log(INFO_L, "전략 초기화가 완료되었습니다.", __FILE__, __LINE__);
 }
 
-void Engine::InitializeIndicators() {
-  // 지표들을 로딩
-  for (const auto& ref_indicator : Indicator::GetIndicators()) {
-    // 전략에서 trading_timeframe을 사용하여 타임프레임이 공란이면
-    // 트레이딩 바의 타임프레임을 사용
-    auto& indicator = ref_indicator.get();
-    if (indicator.GetTimeframe() == "NULL") {
-      indicator.SetTimeframe(trading_bar_timeframe_);
+void Engine::InitializeIndicators() const {
+  // 전략에서 trading_timeframe을 사용하여 타임프레임이 공란이면
+  // 트레이딩 바의 타임프레임을 사용
+  for (const auto& indicators : indicators_) {
+    for (const auto& indicator : indicators) {
+      if (indicator->GetTimeframe() == "TRADING_TIMEFRAME") {
+        indicator->SetTimeframe(trading_bar_timeframe_);
+      }
+
+      // 지표 계산
+      indicator->CalculateIndicator();
     }
 
-    indicators_.push_back(&indicator);
-  }
-
-  // 지표 계산
-  for (const auto indicator : indicators_) {
-    indicator->CalculateIndicator();
-  }
-
-  // 지표 저장
-  for (const auto indicator : indicators_) {
-    indicator->SaveIndicator();
+    // 지표 저장
+    for (const auto& indicator : indicators) {
+      indicator->SaveIndicator();
+    }
   }
 
   logger->Log(INFO_L, "지표 초기화가 완료되었습니다.", __FILE__, __LINE__);
@@ -599,11 +682,11 @@ void Engine::BacktestingMain() {
 
     // =======================================================================
     // 활성화된 심볼들의 트레이딩 바에서 전략 실행
-    for (const auto strategy : strategies_) {
+    for (const auto& strategy : strategies_) {
       const auto& order_handler = strategy->GetOrderHandler();
 
       for (const auto symbol_idx : activated_symbol_indices_) {
-        ExecuteStrategy(strategy, "OnClose", symbol_idx);
+        ExecuteStrategy(strategy, StrategyType::ON_CLOSE, symbol_idx);
 
         bool just_entered = false;
         bool just_exited = false;
@@ -611,7 +694,7 @@ void Engine::BacktestingMain() {
           // On Close 전략 실행 후 진입이 있었을 경우 After Entry 전략 실행
           if (order_handler->GetJustEntered()) {
             order_handler->InitializeJustEntered();
-            ExecuteStrategy(strategy, "AfterEntry", symbol_idx);
+            ExecuteStrategy(strategy, StrategyType::AFTER_ENTRY, symbol_idx);
 
             // After Entry 전략 실행 시 추가 진입 혹은 청산 가능성이 있으므로
             // 상태를 다시 업데이트
@@ -622,7 +705,7 @@ void Engine::BacktestingMain() {
           // On Close 전략 실행 후 청산이 있었을 경우 After Exit 전략 실행
           if (order_handler->GetJustExited()) {
             order_handler->InitializeJustExited();
-            ExecuteStrategy(strategy, "AfterExit", {symbol_idx});
+            ExecuteStrategy(strategy, StrategyType::AFTER_EXIT, symbol_idx);
 
             // After Exit 전략 실행 시 추가 진입 혹은 청산 가능성이 있으므로
             // 상태를 다시 업데이트
@@ -740,13 +823,24 @@ void Engine::ClearActivatedVectors() {
 void Engine::ExecuteTradingEnd(const int symbol_idx) {
   trading_ended_[symbol_idx] = true;
 
-  // 진입해있던 잔량을 마지막 종가에 청산
-  // 하지만 루프 전 바 인덱스를 하나 증가시켰으므로 감소
+  // 진입 및 청산 대기 주문을 취소하고 체결된 진입 주문 잔량을 종가에 청산
+  // 메인 루프 전 트레이딩 바 인덱스를 하나 증가시켰으므로 하나 감소시켜야
+  // 마지막 바를 가리킴
   bar_->SetCurrentBarType(TRADING, "NONE");
   bar_->SetCurrentBarIndex(bar_->GetCurrentBarIndex() - 1);
+
   for (const auto& strategy : strategies_) {
-    strategy->GetOrderHandler()->CloseAllPositions();
+    const auto& order_handler = strategy->GetOrderHandler();
+    order_handler->CancelAll();
+    order_handler->CloseAll();
   }
+
+  logger_->Log(
+      ORDER_L,
+      format(
+          "[{}]의 트레이딩 바 데이터가 끝나 해당 심볼의 백테스팅을 종료합니다.",
+          trading_bar_->GetSymbolName(symbol_idx)),
+      __FILE__, __LINE__);
 }
 
 bool Engine::IsBacktestingEnd() const {
@@ -897,7 +991,7 @@ void Engine::ProcessOhlc(const vector<int>& activated_symbols,
         order_handler->CheckPendingEntries(price, price_type, symbol_idx);
         if (order_handler->GetJustEntered()) {
           order_handler->InitializeJustEntered();
-          ExecuteStrategy(strategy, "AfterEntry", symbol_idx);
+          ExecuteStrategy(strategy, StrategyType::AFTER_ENTRY, symbol_idx);
 
           // After Entry 전략 실행 시 추가 진입 혹은 청산 가능성이 있으므로
           // 상태를 다시 업데이트
@@ -909,7 +1003,7 @@ void Engine::ProcessOhlc(const vector<int>& activated_symbols,
         order_handler->CheckPendingExits(price, price_type, symbol_idx);
         if (order_handler->GetJustExited()) {
           order_handler->InitializeJustExited();
-          ExecuteStrategy(strategy, "AfterExit", symbol_idx);
+          ExecuteStrategy(strategy, StrategyType::AFTER_EXIT, symbol_idx);
 
           // After Exit 전략 실행 시 추가 진입 혹은 청산 가능성이 있으므로
           // 상태를 다시 업데이트
@@ -1006,15 +1100,14 @@ vector<PriceData> Engine::GetPriceQueue(
   return result;
 }
 
-void Engine::ExecuteStrategy(Strategy* strategy, const string& strategy_type,
+void Engine::ExecuteStrategy(const shared_ptr<Strategy>& strategy,
+                             const StrategyType strategy_type,
                              const int symbol_index) {
   // 원본 설정을 저장
   const auto original_bar_type = bar_->GetCurrentBarType();
 
-  // 전략은 트레이딩 바에서 실행됨
+  // 트레이딩 바의 지정된 심볼에서 전략 실행
   bar_->SetCurrentBarType(TRADING, "NONE");
-
-  // 지정된 심볼에서 전략 실행
   bar_->SetCurrentSymbolIndex(symbol_index);
 
   // 진입 및 청산 시 전략 이름을 설정해야하므로 미리 설정
@@ -1024,17 +1117,14 @@ void Engine::ExecuteStrategy(Strategy* strategy, const string& strategy_type,
   strategy->GetOrderHandler()->UpdateCurrentPositionSize();
 
   try {
-    if (strategy_type == "OnClose") {
-      current_strategy_type_ = "OnClose";
+    current_strategy_type_ = strategy_type;
+
+    if (strategy_type == StrategyType::ON_CLOSE) {
       strategy->ExecuteOnClose();
-    } else if (strategy_type == "AfterEntry") {
-      current_strategy_type_ = "AfterEntry";
+    } else if (strategy_type == StrategyType::AFTER_ENTRY) {
       strategy->ExecuteAfterEntry();
-    } else if (strategy_type == "AfterExit") {
-      current_strategy_type_ = "AfterExit";
+    } else if (strategy_type == StrategyType::AFTER_EXIT) {
       strategy->ExecuteAfterExit();
-    } else {
-      throw runtime_error("전략 타입이 잘못 지정되었습니다.");
     }
   } catch ([[maybe_unused]] const Bankruptcy& e) {
     SetBankruptcy();

@@ -170,8 +170,11 @@ class OrderHandler final : public BaseOrderHandler {
   /// order_name이 진입 대기 주문과 청산 대기 주문에 동시에 존재하면 모두 취소.
   void Cancel(const string& order_name);
 
-  /// 현재 심볼 인덱스의 모든 체결된 진입을 시장가로 청산하는 함수
-  void CloseAllPositions();
+  /// 현재 사용 중인 심볼 인덱스의 모든 진입 및 청산 대기 주문을 취소하는 함수
+  void CancelAll();
+
+  /// 현재 사용 중인 심볼 인덱스의 모든 체결된 진입을 시장가로 청산하는 함수
+  void CloseAll();
 
  private:
   // 멀티톤 인스턴스 관리
@@ -264,4 +267,6 @@ class OrderHandler final : public BaseOrderHandler {
 
   /// 분석기에 청산된 거래를 추가하는 함수
   void AddTrade(const shared_ptr<Order>& exit_order, double realized_pnl) const;
+
+  /// 주문 타입을
 };

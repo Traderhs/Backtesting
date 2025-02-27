@@ -25,6 +25,9 @@ struct PriceData {
   int symbol_index;
 };
 
+// 전략 타입을 지정하는 열거형 클래스
+enum class StrategyType { ON_CLOSE, AFTER_ENTRY, AFTER_EXIT };
+
 /**
  * 백테스팅 프로세스를 진행하는 클래스
  */
@@ -60,6 +63,9 @@ class Engine final : public BaseEngine {
   /// 사용한 마진에 따라 사용 가능 자금을 업데이트하고 반환하는 함수
   double UpdateAvailableBalance();
 
+  /// 현재 사용 중인 전략의 실행 타입을 설정하는 함수
+  void SetCurrentStrategyType(StrategyType strategy_type);
+
   /// 해당되는 심볼 인덱스의 최대 소숫점 자리수를 반환하는 함수
   [[nodiscard]] size_t GetMaxDecimalPlace(int symbol_idx) const;
 
@@ -67,7 +73,7 @@ class Engine final : public BaseEngine {
   [[nodiscard]] string GetCurrentStrategyName() const;
 
   /// 현재 사용 중인 전략의 실행 타입을 반환하는 함수
-  [[nodiscard]] string GetCurrentStrategyType() const;
+  [[nodiscard]] StrategyType GetCurrentStrategyType() const;
 
   /// 현재 사용 중인 바 데이터 현재 인덱스의 Open Time을 반환하는 함수
   [[nodiscard]] int64_t GetCurrentOpenTime() const;
@@ -104,8 +110,8 @@ class Engine final : public BaseEngine {
   bool use_bar_magnifier_;
 
   // ===========================================================================
-  string current_strategy_name_;  // 현재 사용 중인 전략 이름
-  string current_strategy_type_;  // 현재 사용 중인 전략 실행 타입
+  string current_strategy_name_;        // 현재 사용 중인 전략 이름
+  StrategyType current_strategy_type_;  // 현재 사용 중인 전략 실행 타입
 
   // ===========================================================================
   int64_t begin_open_time_;     // 전체 바 데이터의 가장 처음 Open Time
@@ -135,11 +141,14 @@ class Engine final : public BaseEngine {
   void IsValidDateRange(const string& start, const string& end,
                         const string& format);
 
-  /// 엔진에 추가된 전략의 유효성을 검증하는 함수
-  void IsValidStrategies() const;
-
   /// 엔진 설정의 유효성을 검증하는 함수
   void IsValidConfig() const;
+
+  /// 엔진에 추가된 전략의 유효성을 검증하는 함수
+  void IsValidStrategies();
+
+  /// 전략에서 사용하는 지표의 유효성을 검증하는 함수
+  void IsValidIndicators();
 
   /// 저장에 필요한 폴더들을 생성하는 함수
   void CreateDirectories();
@@ -148,10 +157,10 @@ class Engine final : public BaseEngine {
   void InitializeEngine(bool use_bar_magnifier);
 
   /// 전략들을 초기화하는 함수
-  void InitializeStrategies();
+  void InitializeStrategies() const;
 
   /// 전략에서 사용하는 지표들을 계산하고 저장하는 함수
-  void InitializeIndicators();
+  void InitializeIndicators() const;
 
   /// 백테스팅의 메인 로직을 실행하는 함수
   void BacktestingMain();
@@ -197,6 +206,6 @@ class Engine final : public BaseEngine {
       const vector<size_t>& activated_bar_indices);
 
   /// 지정된 전략과 심볼에서 전략을 실행하는 함수
-  void ExecuteStrategy(Strategy* strategy, const string& strategy_type,
-                       int symbol_index);
+  void ExecuteStrategy(const shared_ptr<Strategy>& strategy,
+                       StrategyType strategy_type, int symbol_index);
 };
