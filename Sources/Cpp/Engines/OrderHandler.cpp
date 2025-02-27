@@ -160,7 +160,7 @@ void OrderHandler::MarketEntry(const string& entry_name,
     try {
       // On Close 전략일 시 주문 시간과 주문 가격은 다음 봉의 Open Time과 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == "OnClose") {
+          strategy_type == StrategyType::ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 .SafeGetBar(bar_->GetCurrentSymbolIndex(),
@@ -173,9 +173,9 @@ void OrderHandler::MarketEntry(const string& entry_name,
 
         order_time = engine_->GetCurrentOpenTime();
 
-        if (strategy_type == "AfterEntry") {
+        if (strategy_type == StrategyType::AFTER_ENTRY) {
           order_price = LastEntryPrice();
-        } else if (strategy_type == "AfterExit") {
+        } else if (strategy_type == StrategyType::AFTER_EXIT) {
           order_price = LastExitPrice();
         }
       }
@@ -253,7 +253,7 @@ void OrderHandler::LimitEntry(const string& entry_name,
     try {
       // On Close 전략일 시 주문 시간과 기준 가격은 다음 봉의 Open Time과 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == "OnClose") {
+          strategy_type == StrategyType::ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 .SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1);
@@ -265,9 +265,9 @@ void OrderHandler::LimitEntry(const string& entry_name,
 
         order_time = engine_->GetCurrentOpenTime();
 
-        if (strategy_type == "AfterEntry") {
+        if (strategy_type == StrategyType::AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == "AfterExit") {
+        } else if (strategy_type == StrategyType::AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -349,16 +349,16 @@ void OrderHandler::MitEntry(const string& entry_name,
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == "OnClose") {
+          strategy_type == StrategyType::ON_CLOSE) {
         base_price = bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                          .SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1)
                          .open;
       } else {
         // After Entry 혹은 After Exit 전략일 시
         // 기준 가격은 마지막 진입 가격 혹은 마지막 청산 가격
-        if (strategy_type == "AfterEntry") {
+        if (strategy_type == StrategyType::AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == "AfterExit") {
+        } else if (strategy_type == StrategyType::AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -426,16 +426,16 @@ void OrderHandler::LitEntry(const string& entry_name,
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == "OnClose") {
+          strategy_type == StrategyType::ON_CLOSE) {
         base_price = bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                          .SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1)
                          .open;
       } else {
         // After Entry 혹은 After Exit 전략일 시
         // 기준 가격은 마지막 진입 가격 혹은 마지막 청산 가격
-        if (strategy_type == "AfterEntry") {
+        if (strategy_type == StrategyType::AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == "AfterExit") {
+        } else if (strategy_type == StrategyType::AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -506,16 +506,16 @@ void OrderHandler::TrailingEntry(const string& entry_name,
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == "OnClose") {
+          strategy_type == StrategyType::ON_CLOSE) {
         base_price = bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                          .SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1)
                          .open;
       } else {
         // After Entry 혹은 After Exit 전략일 시
         // 기준 가격은 마지막 진입 가격 혹은 마지막 청산 가격
-        if (strategy_type == "AfterEntry") {
+        if (strategy_type == StrategyType::AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == "AfterExit") {
+        } else if (strategy_type == StrategyType::AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -596,7 +596,7 @@ void OrderHandler::MarketExit(const string& exit_name,
     try {
       // On Close 전략일 시 주문 시간과 주문 가격은 다음 봉의 Open Time과 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == "OnClose") {
+          strategy_type == StrategyType::ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 .SafeGetBar(bar_->GetCurrentSymbolIndex(),
@@ -604,14 +604,14 @@ void OrderHandler::MarketExit(const string& exit_name,
         order_time = next_bar.open_time;
         order_price = next_bar.open;
       } else {
-        // After Entry 혹은 After Exit 전략일 시 주문 시간은 현재 바의 Open
-        // Time, 주문 가격은 마지막 진입 가격 혹은 마지막 청산 가격
+        // After Entry, After Exit 전략일 시 주문 시간은 현재 바의 Open Time,
+        // 주문 가격은 마지막 진입 가격 혹은 마지막 청산 가격
 
         order_time = engine_->GetCurrentOpenTime();
 
-        if (strategy_type == "AfterEntry") {
+        if (strategy_type == StrategyType::AFTER_ENTRY) {
           order_price = LastEntryPrice();
-        } else if (strategy_type == "AfterExit") {
+        } else if (strategy_type == StrategyType::AFTER_EXIT) {
           order_price = LastExitPrice();
         }
       }
@@ -723,7 +723,7 @@ void OrderHandler::LimitExit(const string& exit_name,
     try {
       // On Close 전략일 시 주문 시간과 기준 가격은 다음 봉의 Open Time과 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == "OnClose") {
+          strategy_type == StrategyType::ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 .SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1);
@@ -735,9 +735,9 @@ void OrderHandler::LimitExit(const string& exit_name,
 
         order_time = engine_->GetCurrentOpenTime();
 
-        if (strategy_type == "AfterEntry") {
+        if (strategy_type == StrategyType::AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == "AfterExit") {
+        } else if (strategy_type == StrategyType::AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -814,7 +814,7 @@ void OrderHandler::MitExit(const string& exit_name,
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == "OnClose") {
+          strategy_type == StrategyType::ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 .SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1);
@@ -823,9 +823,9 @@ void OrderHandler::MitExit(const string& exit_name,
         // After Entry 혹은 After Exit 전략일 시
         // 기준 가격은 마지막 진입 가격 혹은 마지막 청산 가격
 
-        if (strategy_type == "AfterEntry") {
+        if (strategy_type == StrategyType::AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == "AfterExit") {
+        } else if (strategy_type == StrategyType::AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -903,7 +903,7 @@ void OrderHandler::LitExit(const string& exit_name,
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == "OnClose") {
+          strategy_type == StrategyType::ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 .SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1);
@@ -912,9 +912,9 @@ void OrderHandler::LitExit(const string& exit_name,
         // After Entry 혹은 After Exit 전략일 시
         // 기준 가격은 마지막 진입 가격 혹은 마지막 청산 가격
 
-        if (strategy_type == "AfterEntry") {
+        if (strategy_type == StrategyType::AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == "AfterExit") {
+        } else if (strategy_type == StrategyType::AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -997,7 +997,7 @@ void OrderHandler::TrailingExit(const string& exit_name,
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == "OnClose") {
+          strategy_type == StrategyType::ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 .SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1);
@@ -1006,9 +1006,9 @@ void OrderHandler::TrailingExit(const string& exit_name,
         // After Entry 혹은 After Exit 전략일 시
         // 기준 가격은 마지막 진입 가격 혹은 마지막 청산 가격
 
-        if (strategy_type == "AfterEntry") {
+        if (strategy_type == StrategyType::AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == "AfterExit") {
+        } else if (strategy_type == StrategyType::AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -1093,15 +1093,20 @@ void OrderHandler::Cancel(const string& order_name) {
 
   // 진입 대기 주문에서 같은 이름이 존재할 시 삭제
   auto& pending_entries = pending_entries_[symbol_idx];
+
   for (int order_idx = 0; order_idx < pending_entries.size(); order_idx++) {
     if (const auto& pending_entry = pending_entries[order_idx];
         order_name == pending_entry->GetEntryName()) {
+      // 메모리 삭제되므로 로그용으로 미리 로딩
+      const auto order_type = pending_entry->GetEntryOrderType();
+
       // 예약 증거금 회복 과정 진행 후 삭제
       ExecuteCancelEntry(pending_entry);
       pending_entries.erase(pending_entries.begin() + order_idx);
 
       LogFormattedInfo(ORDER_L,
-                       format("[{}] 주문이 취소되었습니다.", order_name),
+                       format("{} [{}] 주문이 취소되었습니다.",
+                              Order::OrderTypeToString(order_type), order_name),
                        __FILE__, __LINE__);
       break;  // 동일한 진입 이름으로 진입 대기 불가능하므로 찾으면 바로 break
     }
@@ -1109,26 +1114,49 @@ void OrderHandler::Cancel(const string& order_name) {
 
   // 청산 대기 주문에서 같은 이름이 존재할 시 삭제
   auto& pending_exits = pending_exits_[symbol_idx];
+
   for (int order_idx = 0; order_idx < pending_exits.size(); order_idx++) {
-    if (order_name == pending_exits[order_idx]->GetExitName()) {
+    if (const auto& pending_exit = pending_exits[order_idx];
+        order_name == pending_exit->GetExitName()) {
+      // 메모리 삭제되므로 로그용으로 미리 로딩
+      const auto order_type = pending_exit->GetExitOrderType();
+
       // 청산 주문은 예약 증거금이 필요하지 않기 때문에 삭제만 함
       pending_exits.erase(pending_exits.begin() + order_idx);
 
       LogFormattedInfo(ORDER_L,
-                       format("[{}] 주문이 취소되었습니다.", order_name),
+                       format("{} [{}] 주문이 취소되었습니다.",
+                              Order::OrderTypeToString(order_type), order_name),
                        __FILE__, __LINE__);
       break;  // 동일한 청산 이름으로 청산 대기 불가능하므로 찾으면 바로 break
     }
   }
 }
 
-void OrderHandler::CloseAllPositions() {
+void OrderHandler::CancelAll() {
+  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+
+  for (const auto& pending_entry : pending_entries_[symbol_idx]) {
+    Cancel(pending_entry->GetEntryName());
+  }
+
+  for (const auto& pending_exit : pending_exits_[symbol_idx]) {
+    Cancel(pending_exit->GetExitName());
+  }
+}
+
+void OrderHandler::CloseAll() {
+  const auto original_strategy_type = engine_->GetCurrentStrategyType();
+  engine_->SetCurrentStrategyType(StrategyType::ON_CLOSE);
+
   for (const auto& filled_entry :
        filled_entries_[bar_->GetCurrentSymbolIndex()]) {
     MarketExit(
-        "종료 청산", filled_entry->GetEntryName(),
+        "전량 청산", filled_entry->GetEntryName(),
         filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize());
   }
+
+  engine_->SetCurrentStrategyType(original_strategy_type);
 }
 
 void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry) {
@@ -1460,7 +1488,7 @@ void OrderHandler::FillPendingMarketEntry(const int symbol_idx,
   LogFormattedInfo(
       ORDER_L,
       format("{} [{}] 체결 | 체결 가격: {}",
-             market_entry->GetEntryOrderType() == MIT ? "MIT" : "트레일링",
+             Order::OrderTypeToString(market_entry->GetEntryOrderType()),
              market_entry->GetEntryName(), slippage_filled_price),
       __FILE__, __LINE__);
 }
@@ -1535,7 +1563,7 @@ void OrderHandler::FillPendingLimitEntry(const int symbol_idx,
   LogFormattedInfo(
       ORDER_L,
       format("{} [{}] 체결 | 체결 가격: {}",
-             limit_entry->GetEntryOrderType() == LIMIT ? "지정가" : "LIT",
+             Order::OrderTypeToString(limit_entry->GetEntryOrderType()),
              limit_entry->GetEntryName(), slippage_filled_price),
       __FILE__, __LINE__);
 }
@@ -1813,19 +1841,9 @@ int OrderHandler::FillPendingExitOrder(const int symbol_idx,
   ExecuteExit(exit_order);
 
   // 디버그 로그 기록
-  string order_type_str;
-  if (order_type == LIMIT) {
-    order_type_str = "지정가";
-  } else if (order_type == MIT) {
-    order_type_str = "MIT";
-  } else if (order_type == LIT) {
-    order_type_str = "LIT";
-  } else if (order_type == TRAILING) {
-    order_type_str = "트레일링";
-  }
-
   LogFormattedInfo(ORDER_L,
-                   format("{} [{}] 체결 | 체결 가격: {}", order_type_str,
+                   format("{} [{}] 체결 | 체결 가격: {}",
+                          Order::OrderTypeToString(order_type),
                           exit_order->GetExitName(), slippage_filled_price),
                    __FILE__, __LINE__);
 
@@ -1845,11 +1863,10 @@ pair<shared_ptr<Order>, int> OrderHandler::FindMatchingEntryOrder(
   }
 
   // 원본 진입 주문을 찾지 못하면 청산 실패
-  LogFormattedInfo(
-      WARNING_L,
-      format("지정된 진입명 [{}]이(가) 존재하지 않아 청산할 수 없습니다.",
-             target_entry_name),
-      __FILE__, __LINE__);
+  LogFormattedInfo(WARNING_L,
+                   format("지정된 [{}]이(가) 존재하지 않아 청산할 수 없습니다.",
+                          target_entry_name),
+                   __FILE__, __LINE__);
   throw EntryOrderNotFound("");
 }
 
@@ -1915,4 +1932,16 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
           .SetDrawdown(engine_->GetDrawdown())
           .SetMaxDrawdown(engine_->GetMaxDrawdown())
           .SetSymbolCount(symbol_count));
+}
+
+void OrderHandler::LogFormattedInfo(const LogLevel log_level,
+                                    const string& formatted_message,
+                                    const char* file, const int line) {
+  const auto& bar = bar_->GetBarData(bar_->GetCurrentBarType());
+  const int symbol_idx = bar_->GetCurrentSymbolIndex();
+
+  logger_->Log(log_level,
+               format("[{}] [{}] | {}", engine_->GetCurrentStrategyName(),
+                      bar.GetSymbolName(symbol_idx), formatted_message),
+               file, line);
 }

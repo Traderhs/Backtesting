@@ -49,7 +49,7 @@ class Strategy {
   virtual void ExecuteAfterExit() = 0;
 
   /// 엔진 초기화 시 trading_timeframe을 설정하는 함수
-  void SetTradingTimeframe(const string& trading_timeframe);
+  static void SetTradingTimeframe(const string& trading_tf);
 
   /// 생성된 전략들의 벡터를 반환하는 함수
   static vector<shared_ptr<Strategy>>& GetStrategies();
@@ -111,7 +111,7 @@ class Strategy {
 
   // ReSharper disable once CppInconsistentNaming
   /// 트레이딩 바 타임프레임
-  string trading_timeframe;
+  static string trading_timeframe;
 
   /// 전략 작성 편의성용 가격 데이터 지표화
   // ReSharper disable once CppInconsistentNaming

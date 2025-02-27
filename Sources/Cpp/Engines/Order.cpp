@@ -1,5 +1,6 @@
 // 표준 라이브러리
 #include <cmath>
+#include <stdexcept>
 
 // 파일 헤더
 #include "Engines/Order.hpp"
@@ -194,6 +195,26 @@ Order& Order::SetExitFilledSize(const double exit_filled_size) {
 Order& Order::SetExitFilledPrice(const double exit_filled_price) {
   exit_filled_price_ = exit_filled_price;
   return *this;
+}
+// ===========================================================================
+string Order::OrderTypeToString(const OrderType order_type) {
+  if (order_type == OrderType::MARKET) {
+    return "시장가";
+  }
+  if (order_type == OrderType::LIMIT) {
+    return "지정가";
+  }
+  if (order_type == OrderType::MIT) {
+    return "MIT";
+  }
+  if (order_type == OrderType::LIT) {
+    return "LIT";
+  }
+  if (order_type == OrderType::TRAILING) {
+    return "트레일링";
+  }
+
+  throw runtime_error("");
 }
 
 // ===========================================================================
