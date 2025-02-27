@@ -506,7 +506,10 @@ void Engine::CreateDirectories() {
     main_directory_ = main_directory;
 
     // 지표 저장 폴더 생성
-    filesystem::create_directory(main_directory + "/Indicators");
+    for (const auto& strategy : strategies_) {
+      filesystem::create_directories(main_directory + "/Indicators/" +
+                                     strategy->GetName());
+    }
   } catch (const exception& e) {
     logger->Log(ERROR_L, e.what(), __FILE__, __LINE__);
     Logger::LogAndThrowError("폴더 생성 중 에러가 발생했습니다.", __FILE__,
@@ -589,8 +592,9 @@ void Engine::InitializeStrategies() const {
   for (const auto& strategy : strategies_) {
     strategy->GetOrderHandler()->Initialize(trading_bar_num_symbols_);
     strategy->Initialize();
-    strategy->SetTradingTimeframe(trading_bar_timeframe_);
   }
+
+  Strategy::SetTradingTimeframe(trading_bar_timeframe_);
 
   logger->Log(INFO_L, "전략 초기화가 완료되었습니다.", __FILE__, __LINE__);
 }
@@ -598,19 +602,25 @@ void Engine::InitializeStrategies() const {
 void Engine::InitializeIndicators() const {
   // 전략에서 trading_timeframe을 사용하여 타임프레임이 공란이면
   // 트레이딩 바의 타임프레임을 사용
-  for (const auto& indicators : indicators_) {
-    for (const auto& indicator : indicators) {
+  for (int strategy_idx = 0; strategy_idx < strategies_.size();
+       strategy_idx++) {
+    const string& strategy_name = strategies_[strategy_idx]->GetName();
+
+    for (const auto& indicator : indicators_[strategy_idx]) {
       if (indicator->GetTimeframe() == "TRADING_TIMEFRAME") {
         indicator->SetTimeframe(trading_bar_timeframe_);
       }
 
       // 지표 계산
-      indicator->CalculateIndicator();
+      indicator->CalculateIndicator(strategy_name);
     }
 
     // 지표 저장
-    for (const auto& indicator : indicators) {
-      indicator->SaveIndicator();
+    for (const auto& indicator : indicators_[strategy_idx]) {
+      indicator->SaveIndicator(
+          format("{}/Indicators/{}/{} {}.csv", main_directory_, strategy_name,
+                 indicator->GetName(), indicator->GetTimeframe()),
+          strategy_name);
     }
   }
 
@@ -830,6 +840,8 @@ void Engine::ExecuteTradingEnd(const int symbol_idx) {
   bar_->SetCurrentBarIndex(bar_->GetCurrentBarIndex() - 1);
 
   for (const auto& strategy : strategies_) {
+    current_strategy_name_ = strategy->GetName();
+
     const auto& order_handler = strategy->GetOrderHandler();
     order_handler->CancelAll();
     order_handler->CloseAll();

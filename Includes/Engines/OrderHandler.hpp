@@ -268,5 +268,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// 분석기에 청산된 거래를 추가하는 함수
   void AddTrade(const shared_ptr<Order>& exit_order, double realized_pnl) const;
 
-  /// 주문 타입을
+  /// 전략 이름과 심볼 이름으로 포맷된 로그를 발생시키는 함수
+  static void LogFormattedInfo(LogLevel log_level,
+                               const string& formatted_message,
+                               const char* file, int line);
 };

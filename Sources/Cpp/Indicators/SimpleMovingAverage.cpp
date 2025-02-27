@@ -5,8 +5,6 @@
 #include "Indicators/SimpleMovingAverage.hpp"
 
 // 내부 헤더
-#include <iostream>
-
 #include "Engines/BarHandler.hpp"
 
 SimpleMovingAverage::SimpleMovingAverage(const string& name,

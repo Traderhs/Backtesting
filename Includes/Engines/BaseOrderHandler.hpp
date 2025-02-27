@@ -170,11 +170,6 @@ class BaseOrderHandler {
                                const string& balance_type_msg,
                                const string& purpose_msg);
 
-  /// 디버그 모드에서 심볼 이름으로 포맷된 로그를 발생시키는 함수.
-  static void LogFormattedInfo(LogLevel log_level,
-                               const string& formatted_message,
-                               const char* file, int line);
-
   /// 지정된 심볼 마지막 진입의 트레이딩 바 인덱스를 업데이트하는 함수
   void UpdateLastEntryBarIndex(int symbol_idx);
 
