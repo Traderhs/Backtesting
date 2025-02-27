@@ -7,12 +7,12 @@
 // 전방 선언
 class Analyzer;
 class BarHandler;
+class Config;
 class Strategy;
 class Indicator;
 enum class BarType;
 
 // 내부 헤더
-#include "Engines/Config.hpp"
 #include "Engines/Logger.hpp"
 
 // 네임 스페이스
@@ -34,9 +34,6 @@ class BaseEngine {
   static void AddBarData(const string& symbol_name, const string& file_path,
                          BarType bar_type,
                          const vector<int>& columns = {0, 1, 2, 3, 4, 5, 6});
-
-  /// 엔진 설정을 세팅하는 함수
-  void SetConfig(const Config& config);
 
   /// 심볼간 중복된 데이터 검사를 끄는 함수
   void NoDuplicateDataCheck();
@@ -63,8 +60,8 @@ class BaseEngine {
   /// 메인 디렉토리를 반환하는 함수
   [[nodiscard]] string GetMainDirectory() const;
 
-  /// 엔진 설정을 반환하는 함수
-  [[nodiscard]] Config GetConfig() const;
+  /// 엔진 설정값을 반환하는 함수
+  static shared_ptr<Config> GetConfig();
 
   /// 지갑 자금을 반환하는 함수
   [[nodiscard]] double GetWalletBalance() const;
@@ -107,7 +104,8 @@ class BaseEngine {
   vector<vector<shared_ptr<Indicator>>> indicators_;
 
   /// 엔진의 사전 설정 항목
-  Config config_;
+  static shared_ptr<Config> config_;
+  friend class Config;
 
   // 자금 항목
   /// 지갑 자금 = 초기 자금 ± 실현 손익 ± 펀딩피 - 수수료

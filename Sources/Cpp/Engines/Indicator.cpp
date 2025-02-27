@@ -68,7 +68,9 @@ string Indicator::calculating_timeframe_;
 
 Numeric<double> Indicator::operator[](const size_t index) {
   if (!is_calculated_) {
-    CalculateIndicator();
+    throw runtime_error(
+        format("[{} {}] 전략이 계산되지 않았으므로 참조할 수 없습니다.", name_,
+               timeframe_));
   }
 
   // 특정 지표 계산 중 해당 지표와 다른 타임프레임의 지표 사용 시 에러 발생
@@ -109,7 +111,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
   return output_[symbol_idx][bar_idx - index];
 }
 
-void Indicator::CalculateIndicator() {
+void Indicator::CalculateIndicator(const string& strategy_name) {
   try {
     // 타 지표에서 다른 지표 참조 시 미계산 됐으면 자동 계산 후 참조하는데,
     // 이러한 상황에서 중복 계산을 방지하기 위함
@@ -120,8 +122,8 @@ void Indicator::CalculateIndicator() {
     // 엔진이 초기화되기 전 지표를 계산하면 모든 심볼의 계산이 어려우므로 에러
     if (!engine_->IsEngineInitialized()) {
       Logger::LogAndThrowError(
-          format("엔진 초기화 전 [{} {}] 지표 계산을 시도했습니다.", name_,
-                 timeframe_),
+          format("엔진 초기화 전 [{}] 전략의 [{} {}] 지표 계산을 시도했습니다.",
+                 strategy_name, name_, timeframe_),
           __FILE__, __LINE__);
     }
     // ===========================================================================
@@ -160,8 +162,8 @@ void Indicator::CalculateIndicator() {
     is_calculated_ = true;
     is_calculating_ = false;
     logger_->Log(LogLevel::INFO_L,
-                 format("모든 심볼의 [{} {}] 지표 계산이 완료되었습니다.",
-                        name_, timeframe_),
+                 format("[{}] 전략의 [{} {}] 지표 계산이 완료되었습니다.",
+                        strategy_name, name_, timeframe_),
                  __FILE__, __LINE__);
   } catch (const exception& e) {
     logger_->Log(LogLevel::ERROR_L, e.what(), __FILE__, __LINE__);
@@ -171,10 +173,9 @@ void Indicator::CalculateIndicator() {
   }
 }
 
-void Indicator::SaveIndicator() const {
+void Indicator::SaveIndicator(const string& file_path,
+                              const string& strategy_name) const {
   const auto& bar_data = bar_->GetBarData(BarType::REFERENCE, timeframe_);
-  const auto& file_path = engine_->GetMainDirectory() +
-                          format("/Indicators/{} {}.csv", name_, timeframe_);
 
   try {
     if (!is_calculated_) {
@@ -238,7 +239,8 @@ void Indicator::SaveIndicator() const {
   }
 
   logger_->Log(LogLevel::INFO_L,
-               format("[{} {}] 지표가 저장되었습니다.", name_, timeframe_),
+               format("[{}] 전략의 [{} {}] 지표가 저장되었습니다.",
+                      strategy_name, name_, timeframe_),
                __FILE__, __LINE__);
 }
 

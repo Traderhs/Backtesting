@@ -1,8 +1,12 @@
 #pragma once
 
 // 표준 라이브러리
+#include <memory>
 #include <string>
-#include <utility>
+
+// 내부 라이브러리
+#include "Engines/BaseEngine.hpp"
+#include "Engines/Logger.hpp"
 
 // 네임 스페이스
 using namespace std;
@@ -25,6 +29,17 @@ class Config final {
   Config();
   ~Config();
 
+  /// 전략에 설정값을 추가하는 함수
+  static Config& SetConfig() {
+    // SetConfig 함수를 통할 때만 생성 카운터 증가
+    creation_counter_++;
+
+    const auto& config = std::make_shared<Config>();
+    BaseEngine::config_ = config;
+
+    return *config;
+  }
+
   Config& SetRootDirectory(const string& root_directory);
   Config& SetInitialBalance(double initial_balance);
   Config& SetCommissionType(CommissionType commission_type);
@@ -44,6 +59,14 @@ class Config final {
   [[nodiscard]] double GetLimitSlippage() const;
 
  private:
+  static shared_ptr<Logger>& logger_;
+
+  // 설정값 생성 시 SetConfig 함수 사용을 강제하기 위한 목적
+  // 생성 카운터
+  static size_t creation_counter_;
+  // 전 생성 카운터
+  static size_t pre_creation_counter_;
+
   /// 루트 폴더
   string root_directory_;
 

@@ -14,7 +14,6 @@
 Strategy::Strategy(const string& name)
     : name_(name),
       order(OrderHandler::GetOrderHandler(name)),
-      trading_timeframe("TRADING_TIMEFRAME"),
       open(AddIndicator<Open>("Open", trading_timeframe)),
       high(AddIndicator<High>("High", trading_timeframe)),
       low(AddIndicator<Low>("Low", trading_timeframe)),
@@ -35,7 +34,10 @@ Strategy::Strategy(const string& name)
   pre_creation_counter_ = creation_counter_;
 
   if (name.empty()) {
-    Logger::LogAndThrowError("전략 이름이 비어있습니다.", __FILE__, __LINE__);
+    logger->Log(LogLevel::ERROR_L, "전략 이름이 비어있습니다.", __FILE__,
+                __LINE__);
+    Logger::LogAndThrowError("전략 생성 중 오류가 발생했습니다.", __FILE__,
+                             __LINE__);
   }
 }
 Strategy::~Strategy() = default;
@@ -53,8 +55,11 @@ shared_ptr<Engine>& Strategy::engine = Engine::GetEngine();
 // ReSharper disable once CppInconsistentNaming
 shared_ptr<Logger>& Strategy::logger = Logger::GetLogger();
 
-void Strategy::SetTradingTimeframe(const string& trading_timeframe) {
-  this->trading_timeframe = trading_timeframe;
+// ReSharper disable once CppInconsistentNaming
+string Strategy::trading_timeframe = "TRADING_TIMEFRAME";
+
+void Strategy::SetTradingTimeframe(const string& trading_tf) {
+  trading_timeframe = trading_tf;
 }
 
 vector<shared_ptr<Strategy>>& Strategy::GetStrategies() { return strategy_; }
