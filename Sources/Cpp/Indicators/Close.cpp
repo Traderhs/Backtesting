@@ -7,12 +7,10 @@
 #include "Engines/BaseBarHandler.hpp"
 
 Close::Close(const string& name, const string& timeframe)
-    : Indicator(name, timeframe) {
-  reference_bar_ = nullptr;
-}
+    : Indicator(name, timeframe) {}
 
 void Close::Initialize() {
-  reference_bar_ = &bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe());
+  reference_bar_ = bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe());
 }
 
 Numeric<double> Close::Calculate() {

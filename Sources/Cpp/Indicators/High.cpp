@@ -7,12 +7,10 @@
 #include "Engines/BaseBarHandler.hpp"
 
 High::High(const string& name, const string& timeframe)
-    : Indicator(name, timeframe) {
-  reference_bar_ = nullptr;
-}
+    : Indicator(name, timeframe) {}
 
 void High::Initialize() {
-  reference_bar_ = &bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe());
+  reference_bar_ = bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe());
 }
 
 Numeric<double> High::Calculate() {
