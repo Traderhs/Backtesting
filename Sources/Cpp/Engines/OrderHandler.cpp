@@ -101,7 +101,6 @@ void OrderHandler::CheckLiquidation(const double price,
       }
 
       ExecuteLiquidation(symbol_idx, order_idx, order_price);
-
     }
   }
 }
@@ -283,10 +282,6 @@ void OrderHandler::MarketEntry(const string& entry_name,
     // 수수료
     market_entry->SetEntryFee(
         CalculateTradingFee(MARKET, slippage_filled_price, entry_size));
-
-    // 강제 청산 가격
-    market_entry->SetLiquidationPrice(CalculateLiquidationPrice(
-        leverage, entry_direction, slippage_filled_price));
 
     // 해당 주문과 같은 이름의 대기 주문이 있으면 취소 (주문 수정)
     Cancel(entry_name);
@@ -547,7 +542,7 @@ void OrderHandler::LitEntry(const string& entry_name,
       IsValidLimitOrderPrice(order_price, touch_price, entry_direction);
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
-      throw OrderFailed("MIT 진입 실패");
+      throw OrderFailed("LIT 진입 실패");
     }
 
     // 해당 주문과 같은 이름의 대기 주문이 있으면 취소 (주문 수정)
@@ -1324,14 +1319,20 @@ void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry,
                                       const PriceType price_type) {
   // 필요한 정보 로딩
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+  const auto entry_direction = market_entry->GetEntryDirection();
   const auto entry_filled_price = market_entry->GetEntryFilledPrice();
+  const auto entry_filled_size = market_entry->GetEntryFilledSize();
 
   // 시장가 진입 마진 계산
   const double entry_margin =
-      CalculateMargin(entry_filled_price, market_entry->GetEntryFilledSize(),
+      CalculateMargin(entry_filled_price, entry_filled_size,
                       market_entry->GetLeverage(), price_type);
 
   market_entry->SetMargin(entry_margin);
+
+  // 강제 청산 가격 계산
+  market_entry->SetLiquidationPrice(CalculateLiquidationPrice(
+      entry_direction, entry_filled_price, entry_filled_size, entry_margin));
 
   // 진입 수수료 로딩
   const auto entry_fee = market_entry->GetEntryFee();
@@ -1348,7 +1349,7 @@ void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry,
   }
 
   // 해당 주문과 반대 방향의 체결 주문이 있으면 모두 청산
-  ExitOppositeFilledEntries(market_entry->GetEntryDirection());
+  ExitOppositeFilledEntries(entry_direction);
 
   // 지갑 자금에서 진입 수수료 감소
   engine_->DecreaseWalletBalance(entry_fee);
@@ -1651,11 +1652,6 @@ void OrderHandler::FillPendingMarketEntry(const int symbol_idx,
   market_entry->SetEntryFee(
       CalculateTradingFee(MARKET, slippage_filled_price, entry_filled_size));
 
-  // 강제 청산 가격
-  const auto leverage = market_entry->GetLeverage();
-  market_entry->SetLiquidationPrice(CalculateLiquidationPrice(
-      leverage, entry_direction, slippage_filled_price));
-
   // 자금 관련 처리 후 체결 주문에 추가
   ExecuteMarketEntry(market_entry, price_type);
 
@@ -1705,14 +1701,14 @@ void OrderHandler::FillPendingLimitEntry(const int symbol_idx,
       CalculateTradingFee(LIMIT, slippage_filled_price, entry_filled_size);
   limit_entry->SetEntryFee(entry_fee);
 
-  // 강제 청산 가격
-  const auto leverage = limit_entry->GetLeverage();
-  limit_entry->SetLiquidationPrice(CalculateLiquidationPrice(
-      leverage, entry_direction, slippage_filled_price));
+  // 현재 미실현 손실을 반영한 지정가 진입 마진 재계산
+  const auto entry_margin =
+      CalculateMargin(slippage_filled_price, entry_filled_size,
+                      limit_entry->GetLeverage(), price_type);
 
-  // 현재 미실현 손실을 반영한 지정가 진입 마진 계산
-  const auto entry_margin = CalculateMargin(
-      slippage_filled_price, entry_filled_size, leverage, price_type);
+  // 강제 청산 가격
+  limit_entry->SetLiquidationPrice(CalculateLiquidationPrice(
+      entry_direction, slippage_filled_price, entry_filled_size, entry_margin));
 
   // 마진 재설정 후 진입 가능 자금과 재비교
   engine_->DecreaseUsedMargin(limit_entry->GetMargin());
