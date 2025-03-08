@@ -13,6 +13,14 @@
 using namespace chrono;
 
 namespace time_utils {
+int64_t GetCurrentLocalTimestamp() { return time(nullptr) * 1000; }
+
+int64_t GetCurrentUtcTimestamp() {
+  const auto now = system_clock::now();
+  return std::chrono::duration_cast<milliseconds>(now.time_since_epoch())
+      .count();
+}
+
 string GetCurrentLocalDatetime() {
   const auto& now = system_clock::now();
   const time_t now_time_t = system_clock::to_time_t(now);
@@ -146,7 +154,7 @@ string FormatTimeDiff(const int64_t diff_ms) {
 
   // 1초 미만
   if (diff_ms < kSecond) {
-    return to_string(diff_ms) + "밀리초";
+    return to_string(static_cast<double>(diff_ms) / 1000.0) + "초";
   }
 
   if (diff_ms >= kYear)

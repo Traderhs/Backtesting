@@ -1,14 +1,17 @@
 #pragma once
 
 // 표준 라이브러리
+#include <mutex>
 #include <unordered_map>
-
-// 전방 선언
-enum class PriceType;
-struct PriceData;
 
 // 내부 헤더
 #include "Engines/BaseOrderHandler.hpp"
+
+// 전방 선언
+enum class BarType;
+enum class LogLevel;
+enum class PriceType;
+struct PriceData;
 
 /// 주문, 포지션 등과 관련된 세부적인 작업을 처리하는 클래스.
 /// 전략 이름에 따라 멀티톤으로 작동.
@@ -21,16 +24,17 @@ class OrderHandler final : public BaseOrderHandler {
   /// OrderHandler의 멀티톤 인스턴스를 반환하는 함수
   static shared_ptr<OrderHandler>& GetOrderHandler(const string& name);
 
-  /**
-   * 트레이딩 중인 심볼에서 지정된 가격을 기준으로 진입 대기 주문들이
-   * 체결됐는지 확인하고 실행하는 함수.
-   */
+  /// 트레이딩 중인 심볼에서 지정된 가격을 기준으로 강제 청산을 확인하고
+  /// 실행하는 함수
+  void CheckLiquidation(double price, PriceType price_type, int symbol_idx,
+                        BarType market_bar_type);
+
+  /// 트레이딩 중인 심볼에서 지정된 가격을 기준으로 진입 대기 주문들이
+  /// 체결됐는지 확인하고 실행하는 함수
   void CheckPendingEntries(double price, PriceType price_type, int symbol_idx);
 
-  /**
-   * 트레이딩 중인 심볼에서 지정된 가격을 기준으로 청산 대기 주문들이
-   * 체결됐는지 확인하고 실행하는 함수.
-   */
+  /// 트레이딩 중인 심볼에서 지정된 가격을 기준으로 청산 대기 주문들이
+  /// 체결됐는지 확인하고 실행하는 함수
   void CheckPendingExits(double price, PriceType price_type, int symbol_idx);
 
   // ===========================================================================
@@ -40,7 +44,7 @@ class OrderHandler final : public BaseOrderHandler {
    * ! 주의 사항 !
    * 1. 하나의 진입 이름으로는 하나의 진입만 체결할 수 있음.
    * 2. 동일한 진입 이름으로 주문 시 진입 대기 주문은 취소 후 재주문,
-   *    체결된 진입이 있을 경우 시장가 체결은 거부됨.
+   *    체결 시 동일한 진입 이름으로 체결된 진입이 있을 경우 체결이 거부됨.
    * 3. 체결된 하나의 진입 이름에 대해서 여러 청산 대기 주문을 가질 수 있음.
    * 4. 동일한 청산 이름으로 주문 시 대기 청산 주문은 취소 후 재주문.
    * 5. 하나의 청산 주문이 진입 수량을 부분 청산 시, 같은 진입 이름을 목표로
@@ -188,8 +192,15 @@ class OrderHandler final : public BaseOrderHandler {
   static unordered_map<string, shared_ptr<OrderHandler>> instances_;
 
   // ===========================================================================
+  /// 강제 청산 가격 달성 시 자금 관련 처리 후 청산시키는 함수
+  ///
+  /// 청산 확인은 Mark Price이지만 청산 가격은 실제 시장 가격 기준이므로
+  /// order_price는 시장 가격으로 지정
+  void ExecuteLiquidation(int symbol_idx, int order_idx, double order_price);
+
   /// 시장가 진입 시 자금 관련 처리 후 체결 주문에 추가하는 함수
-  void ExecuteMarketEntry(const shared_ptr<Order>& market_entry);
+  void ExecuteMarketEntry(const shared_ptr<Order>& market_entry,
+                          PriceType price_type);
 
   /// 현재 사용 중인 심볼에서 지정된 방향과 반대 방향의 진입 체결 주문이 있으면
   /// 모두 청산하는 함수
@@ -221,39 +232,42 @@ class OrderHandler final : public BaseOrderHandler {
   /// 현재 사용 중인 심볼에서 지정된 MIT/트레일링 진입 대기 주문을
   /// 시장가로 체결하는 함수. 자금 관련 처리를 하고 체결 주문으로 이동시킴.
   void FillPendingMarketEntry(int symbol_idx, int order_idx,
-                              double order_price);
+                              double current_price, PriceType price_type);
 
   /// 현재 사용 중인 심볼에서 지정된 지정가/LIT 진입 대기 주문을 지정가로
   /// 체결하는 함수. 자금 관련 처리를 하고 체결 주문으로 이동시킴.
   void FillPendingLimitEntry(int symbol_idx, int order_idx,
-                             double filled_price);
+                             double current_price, PriceType price_type);
 
   /// 현재 사용 중인 심볼에서 LIT 진입 대기 주문이 터치되었을 때 지정가로
   /// 주문하는 함수.
-  void OrderPendingLitEntry(int symbol_idx, int order_idx);
+  void OrderPendingLitEntry(int symbol_idx, int order_idx,
+                            PriceType price_type);
 
   // ===========================================================================
   /// 지정가 청산 대기 주문의 체결을 확인하고 체결시키는 함수
-  int CheckPendingLimitExits(int symbol_idx, int order_idx, double price,
-                             PriceType price_type);
+  [[nodiscard]] int CheckPendingLimitExits(int symbol_idx, int order_idx,
+                                           double price, PriceType price_type);
 
   /// MIT 청산 대기 주문의 체결을 확인하고 체결시키는 함수
-  int CheckPendingMitExits(int symbol_idx, int order_idx, double price,
-                           PriceType price_type);
+  [[nodiscard]] int CheckPendingMitExits(int symbol_idx, int order_idx,
+                                         double price, PriceType price_type);
 
   /// LIT 청산 대기 주문의 체결을 확인하고 체결시키는 함수
-  int CheckPendingLitExits(int symbol_idx, int order_idx, double price,
-                           PriceType price_type);
+  [[nodiscard]] int CheckPendingLitExits(int symbol_idx, int order_idx,
+                                         double price, PriceType price_type);
 
   /// 트레일링 청산 대기 주문의 체결을 확인하고 체결시키는 함수
-  int CheckPendingTrailingExits(int symbol_idx, int order_idx, double price,
-                                PriceType price_type);
+  [[nodiscard]] int CheckPendingTrailingExits(int symbol_idx, int order_idx,
+                                              double price,
+                                              PriceType price_type);
 
   /// 현재 사용 중인 심볼에서 지정된 청산 대기 주문을 시장가 혹은 지정가로
   /// 체결하는 함수. 자금 관련 처리를 하고 체결 주문으로 이동시킴.
   ///
   /// order_idx보다 작은 인덱스에서 주문이 삭제된 횟수를 카운트해서 반환.
-  int FillPendingExitOrder(int symbol_idx, int order_idx, double filled_price);
+  [[nodiscard]] int FillPendingExitOrder(int symbol_idx, int order_idx,
+                                         double current_price);
 
   // ===========================================================================
   /// 체결된 진입 주문에서 Target Entry Name과 같은 주문을 찾아 주문 인덱스와
@@ -262,8 +276,8 @@ class OrderHandler final : public BaseOrderHandler {
       const string& target_entry_name) const;
 
   /// 청산 체결 크기가 진입 체결 크기를 넘지 않도록 조정하여 반환하는 함수
-  static double GetAdjustedExitFilledSize(double exit_size,
-                                          const shared_ptr<Order>& entry_order);
+  [[nodiscard]] static double GetAdjustedExitFilledSize(
+      double exit_size, const shared_ptr<Order>& entry_order);
 
   /// 분석기에 청산된 거래를 추가하는 함수
   void AddTrade(const shared_ptr<Order>& exit_order, double realized_pnl) const;

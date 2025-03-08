@@ -35,8 +35,8 @@ Indicator::Indicator(const string& name, const string& timeframe)
     name_ = name;
     timeframe_ = timeframe;
   } catch ([[maybe_unused]] const exception& e) {
-    Logger::LogAndThrowError("지표 생성 중 오류가 발생했습니다.", __FILE__,
-                             __LINE__);
+    Logger::LogAndThrowError("지표를 생성하는 중 오류가 발생했습니다.",
+                             __FILE__, __LINE__);
   }
 
   // 증가 카운터는 AddIndicator 함수로만 증가하는데 AddIndicator 없이 직접
@@ -67,12 +67,6 @@ string Indicator::calculating_name_;
 string Indicator::calculating_timeframe_;
 
 Numeric<double> Indicator::operator[](const size_t index) {
-  if (!is_calculated_) {
-    throw runtime_error(
-        format("[{} {}] 전략이 계산되지 않았으므로 참조할 수 없습니다.", name_,
-               timeframe_));
-  }
-
   // 특정 지표 계산 중 해당 지표와 다른 타임프레임의 지표 사용 시 에러 발생
   // -> 특정 지표 내 사용하는 지표의 타임프레임은
   //    해당 지표의 타임프레임과 일치해야 함
@@ -101,9 +95,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
 
   // 진행한 인덱스보다 과거 인덱스를 참조하거나
   // 현재 인덱스가 최대값을 초과했으면 NaN을 반환
-  if (index > bar_idx ||
-      bar_idx >= bar_->GetBarData(BarType::REFERENCE, timeframe_)
-                     .GetNumBars(symbol_idx)) {
+  if (index > bar_idx || bar_idx >= reference_num_bars_[symbol_idx]) {
     return nan("");
   }
 
@@ -113,12 +105,6 @@ Numeric<double> Indicator::operator[](const size_t index) {
 
 void Indicator::CalculateIndicator(const string& strategy_name) {
   try {
-    // 타 지표에서 다른 지표 참조 시 미계산 됐으면 자동 계산 후 참조하는데,
-    // 이러한 상황에서 중복 계산을 방지하기 위함
-    if (is_calculated_) {
-      return;
-    }
-
     // 엔진이 초기화되기 전 지표를 계산하면 모든 심볼의 계산이 어려우므로 에러
     if (!engine_->IsEngineInitialized()) {
       Logger::LogAndThrowError(
@@ -133,7 +119,10 @@ void Indicator::CalculateIndicator(const string& strategy_name) {
     is_calculating_ = true;
     calculating_name_ = name_;
     calculating_timeframe_ = timeframe_;
-    output_.resize(indicator_reference_bar.GetNumSymbols());
+
+    const auto num_symbols = indicator_reference_bar->GetNumSymbols();
+    output_.resize(num_symbols);
+    reference_num_bars_.resize(num_symbols);
 
     // 전체 트레이딩 심볼들을 순회하며 지표 계산
     for (int symbol_idx = 0; symbol_idx < output_.size(); symbol_idx++) {
@@ -143,8 +132,9 @@ void Indicator::CalculateIndicator(const string& strategy_name) {
 
       // 해당 심볼의 모든 바를 순회
       const auto num_bars = bar_->GetBarData(BarType::REFERENCE, timeframe_)
-                                .GetNumBars(symbol_idx);
+                                ->GetNumBars(symbol_idx);
       output_[symbol_idx].resize(num_bars);
+      reference_num_bars_[symbol_idx] = num_bars;
 
       for (int bar_idx = 0; bar_idx < num_bars; bar_idx++) {
         // 현재 심볼의 바 인덱스를 증가시키며 지표 계산
@@ -196,14 +186,14 @@ void Indicator::SaveIndicator(const string& file_path,
     size_t max_num_bars = 0;
     for (int symbol_idx = 0; symbol_idx < output_.size(); symbol_idx++) {
       // 심볼 이름들로 파일 헤더를 추가
-      file << bar_data.GetSymbolName(symbol_idx);
+      file << bar_data->GetSymbolName(symbol_idx);
 
       if (symbol_idx != output_.size() - 1) {
         file << ',';  // 마지막 symbol_name 뒤에는 쉼표를 추가하지 않음
       }
 
       // 심볼 중 최대 바 인덱스 크기 계산
-      if (const auto num_bars = bar_data.GetNumBars(symbol_idx);
+      if (const auto num_bars = bar_data->GetNumBars(symbol_idx);
           num_bars > max_num_bars) {
         max_num_bars = num_bars;
       }

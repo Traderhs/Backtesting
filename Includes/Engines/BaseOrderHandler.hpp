@@ -2,6 +2,7 @@
 
 // 표준 라이브러리
 #include <deque>
+#include <memory>
 #include <vector>
 
 // 전방 선언
@@ -9,10 +10,12 @@ class Analyzer;
 class BarHandler;
 class Engine;
 class TechnicalAnalyzer;
-
-// 내부 헤더
-#include "Engines/Logger.hpp"
-#include "Engines/Order.hpp"
+class Logger;
+class Order;
+class SymbolInfo;
+enum class Direction;
+enum class OrderType;
+enum class PriceType;
 
 // 네임 스페이스
 using namespace std;
@@ -27,10 +30,8 @@ class BaseOrderHandler {
   /// 엔진 설정을 불러오고 주문들과 기타 설정을 초기화하는 함수
   void Initialize(int num_symbols);
 
-  /// 현재 미실현 손익의 합계를 반환하는 함수.
-  /// 업데이트 시점의 모든 심볼의 가격을 알기 어려우므로, 시가 시점의 평가
-  /// 손익으로 타협하여 계산
-  [[nodiscard]] double GetUnrealizedPnl() const;
+  /// 심볼 정보를 초기화하는 함수
+  static void SetSymbolInfo(const vector<SymbolInfo>& symbol_info);
 
   /// 현재 심볼의 포지션 사이즈 합계를 업데이트하는 함수
   void UpdateCurrentPositionSize();
@@ -40,6 +41,13 @@ class BaseOrderHandler {
 
   /// 현재 심볼과 바에서 청산이 이루어졌는지를 결정하는 플래그를 초기화하는 함수
   void InitializeJustExited();
+
+  /// 지정된 심볼 마크 가격의 지정된 가격 타입을 기준으로 계산한 미실현 손실의
+  /// 합계를 반환하는 함수.
+  ///
+  /// 마크 가격이 현재 Close Time과 일치하지 않는다면 트레이딩 바 가격을 사용
+  [[nodiscard]] double GetUnrealizedLoss(int symbol_idx,
+                                         PriceType price_type) const;
 
   /// 현재 심볼과 바에서 진입이 이루어졌는지 여부를 반환하는 함수
   [[nodiscard]] bool GetJustEntered() const;
@@ -76,11 +84,14 @@ class BaseOrderHandler {
   static shared_ptr<Logger>& logger_;
   static shared_ptr<TechnicalAnalyzer>& ta_;
 
+  // 심볼 정보
+  static vector<SymbolInfo> symbol_info_;
+
   // 수수료 및 슬리피지 엔진 설정
-  double market_commission_;
-  double limit_commission_;
-  double market_slippage_;
-  double limit_slippage_;
+  double taker_fee_;
+  double maker_fee_;
+  double taker_slippage_;
+  double maker_slippage_;
 
   // 진입 및 청산 주문: 심볼 인덱스<주문>
   vector<deque<shared_ptr<Order>>> pending_entries_;  // 대기 중인 진입 주문
@@ -100,25 +111,31 @@ class BaseOrderHandler {
   vector<double> last_exit_prices_;
 
   /// 주문 정보에 따라 슬리피지를 반영한 체결 가격을 반환하는 함수.
-  [[nodiscard]] double CalculateSlippagePrice(double order_price,
-                                              OrderType order_type,
+  [[nodiscard]] double CalculateSlippagePrice(OrderType order_type,
                                               Direction direction,
-                                              int leverage) const;
+                                              double order_price) const;
 
   /// 주문 정보에 따라 수수료 금액을 계산하여 반환하는 함수
-  [[nodiscard]] double CalculateCommission(double filled_price,
-                                           OrderType order_type,
-                                           double filled_position_size,
-                                           int leverage) const;
+  [[nodiscard]] double CalculateTradingFee(OrderType order_type,
+                                           double filled_price,
+                                           double filled_size) const;
 
-  /// 주문 정보에 따라 마진콜 가격을 계산하여 반환하는 함수
-  [[nodiscard]] static double CalculateMarginCallPrice(
-      double entry_filled_price, Direction entry_direction, int leverage);
+  /// 주문 정보에 따라 강제 청산 가격을 계산하여 반환하는 함수
+  [[nodiscard]] static double CalculateLiquidationPrice(
+      int leverage, Direction entry_direction, double entry_filled_price);
+
+  /// 진입 마진을 계산하여 반환하는 함수
+  ///
+  /// price_type은 미실현 손실을 계산하는 가격 기준을 지정
+  [[nodiscard]] double CalculateMargin(double order_price, double entry_size,
+                                       int leverage,
+                                       PriceType price_type) const;
 
   /// 진입 정보에 따라 PnL을 계산하는 함수
-  static double CalculatePnl(double base_price, Direction entry_direction,
-                             double entry_price, double position_size,
-                             int leverage);
+  [[nodiscard]] static double CalculatePnl(Direction entry_direction,
+                                           double base_price,
+                                           double entry_price,
+                                           double position_size);
 
   // 방향이 유효한 값인지 확인하는 함수
   static void IsValidDirection(Direction direction);
@@ -127,7 +144,11 @@ class BaseOrderHandler {
   static void IsValidPrice(double price);
 
   // 포지션 크기가 유효한 값인지 확인하는 함수
-  static void IsValidPositionSize(double position_size);
+  static void IsValidPositionSize(double position_size, OrderType order_type);
+
+  // 명목 가치(가격 * 포지션 크기)가 최소 기준을 통과하여
+  // 유효한 값인지 확인하는 함수
+  static void IsValidNotionalValue(double order_price, double position_size);
 
   // 레버리지가 유효한 값인지 확인하는 함수
   static void IsValidLeverage(int leverage);
@@ -153,8 +174,9 @@ class BaseOrderHandler {
   /// 매수 진입의 경우, 가격이 주문 가격과 같거나 낮아지면 조건 만족.
   ///
   /// 매도 진입의 경우, 가격이 주문 가격과 같거나 높아지면 조건 만족.
-  static bool IsLimitPriceSatisfied(Direction order_direction, double price,
-                                    double order_price);
+  [[nodiscard]] static bool IsLimitPriceSatisfied(Direction order_direction,
+                                                  double price,
+                                                  double order_price);
 
   /// 현재 가격이 터치 방향에 따라 터치 가격보다 커졌거나 작아졌는지 확인하는
   /// 함수.
@@ -162,8 +184,8 @@ class BaseOrderHandler {
   /// 터치 방향이 매수인 경우, 터치 가격과 같거나 커지면 조건 만족.
   ///
   /// 터치 방향이 매도인 경우, 터치 가격과 같거나 작아지면 조건 만족.
-  static bool IsPriceTouched(Direction touch_direction, double price,
-                             double touch_price);
+  [[nodiscard]] static bool IsPriceTouched(Direction touch_direction,
+                                           double price, double touch_price);
 
   /// 자금이 필요 자금보다 많은지 확인하는 함수
   static void HasEnoughBalance(double balance, double needed_balance,

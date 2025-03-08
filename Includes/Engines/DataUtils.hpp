@@ -3,12 +3,22 @@
 // 표준 라이브러리
 #include <any>
 #include <cmath>
+#include <future>
+#include <locale>
 
 // 외부 라이브러리
-#include <arrow/api.h>
+#include <nlohmann/json_fwd.hpp>
+
+// 전방 선언
+namespace arrow {
+class Array;
+class Table;
+struct Scalar;
+}  // namespace arrow
 
 // 네임스페이스
 using namespace std;
+using namespace nlohmann;
 
 /// 데이터 핸들링을 위한 유틸리티 네임스페이스
 namespace data_utils {
@@ -18,7 +28,7 @@ namespace data_utils {
  * @param value 소수 자릿수를 계산할 값
  * @return 주어진 double 값에 존재하는 소수점 자릿수의 개수
  */
-size_t CountDecimalPlaces(double value);
+[[nodiscard]] size_t CountDecimalPlaces(double value);
 
 /**
  * 주어진 값을 지정된 소수 자릿수로 반올림하여 반환하는 함수
@@ -27,7 +37,7 @@ size_t CountDecimalPlaces(double value);
  * @param decimal_places 값이 반올림될 소수점 자릿수
  * @return 주어진 값이 지정된 소수 자릿수로 반올림된 값
  */
-double RoundToDecimalPlaces(double value, size_t decimal_places);
+[[nodiscard]] double RoundToDecimalPlaces(double value, size_t decimal_places);
 
 /**
  * 지정된 경로의 Parquet 파일을 읽고 테이블로 변환하여 반환하는 함수
@@ -35,7 +45,7 @@ double RoundToDecimalPlaces(double value, size_t decimal_places);
  * @param file_path 읽을 Parquet 파일의 경로
  * @return 변환된 테이블을 포함하는 shared_ptr 객체
  */
-shared_ptr<arrow::Table> ReadParquet(const string& file_path);
+[[nodiscard]] shared_ptr<arrow::Table> ReadParquet(const string& file_path);
 
 /**
  * 지정된 테이블에서 주어진 열 이름과 행 인덱스에 해당하는
@@ -48,8 +58,8 @@ shared_ptr<arrow::Table> ReadParquet(const string& file_path);
  * @param row_index 값을 검색할 행의 인덱스
  * @return 지정된 열과 행의 인덱스에 해당하는 셀의 값
  */
-any GetCellValue(const shared_ptr<arrow::Table>& table,
-                 const string& column_name, int64_t row_index);
+[[nodiscard]] any GetCellValue(const shared_ptr<arrow::Table>& table,
+                               const string& column_name, int64_t row_index);
 
 /**
  * 지정된 테이블에서 주어진 열 인덱스와 행 인덱스에 해당하는
@@ -62,8 +72,8 @@ any GetCellValue(const shared_ptr<arrow::Table>& table,
  * @param row_index 값을 검색할 행의 인덱스
  * @return 지정된 열과 행의 인덱스에 해당하는 셀의 값
  */
-any GetCellValue(const shared_ptr<arrow::Table>& table, int column_index,
-                 int64_t row_index);
+[[nodiscard]] any GetCellValue(const shared_ptr<arrow::Table>& table,
+                               int column_index, int64_t row_index);
 
 /**
  * 주어진 Scalar 객체에서 값을 추출하여 반환하는 함수
@@ -73,7 +83,7 @@ any GetCellValue(const shared_ptr<arrow::Table>& table, int column_index,
  * @param scalar 값을 추출할 Scalar 객체의 shared_ptr
  * @return 주어진 Scalar의 실제 값
  */
-any GetScalarValue(const shared_ptr<arrow::Scalar>& scalar);
+[[nodiscard]] any GetScalarValue(const shared_ptr<arrow::Scalar>& scalar);
 
 /**
  * 주어진 테이블을 Parquet 파일 형식으로 지정된 파일 경로에 저장하는 함수
@@ -84,6 +94,9 @@ any GetScalarValue(const shared_ptr<arrow::Scalar>& scalar);
 void TableToParquet(const shared_ptr<arrow::Table>& table,
                     const string& file_path);
 
+/// Json을 지정된 경로에 파일로 저장하는 함수
+void JsonToFile(future<json> data, const string& file_path);
+
 /**
  * 주어진 테이블을 주어진 비율로 분할하여 두 개의 서브 테이블을 생성하여
  * 반환하는 함수
@@ -93,17 +106,17 @@ void TableToParquet(const shared_ptr<arrow::Table>& table,
  * @return 주어진 테이블을 `split_ratio`에 따라 나눈 두 개의 서브 테이블을
  * 포함하는 pair 객체. 첫 번째는 `split_ratio` 비율, 두 번째는 나머지 비율
  */
-pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>> SplitTable(
-    const shared_ptr<arrow::Table>& table, double split_ratio);
+[[nodiscard]] pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>>
+SplitTable(const shared_ptr<arrow::Table>& table, double split_ratio);
 
 /// 최소 틱 크기로 가격을 반올림하여 반환하는 함수
-double RoundToTickSize(double price, double tick_size);
+[[nodiscard]] double RoundToTickSize(double price, double tick_size);
 
 // FormatDollar에서 사용하는 공통 Locale 설정
 static locale global_locale("en_US.UTF-8");
 
 /// 금액을 천 단위 쉼표와 달러 표기로 포맷하여 반환하는 함수
-string FormatDollar(double price);
+[[nodiscard]] string FormatDollar(double price);
 
 /// 부동소숫점 같은 값 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값과 같으면 true를 반환함.
@@ -158,4 +171,7 @@ template <typename T, typename U>
 [[nodiscard]] bool IsLessOrEqual(T a, U b) {
   return !data_utils::IsGreater(a, b);
 }
+
+/// 환경 변수 값을 가져오는 함수
+[[nodiscard]] string GetEnvVariable(const string& env_var);
 }  // namespace data_utils

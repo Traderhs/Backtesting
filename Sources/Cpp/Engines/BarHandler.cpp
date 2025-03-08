@@ -3,6 +3,9 @@
 #include <memory>
 #include <ranges>
 
+// 외부 라이브러리
+#include "arrow/table.h"
+
 // 파일 헤더
 #include "Engines/BarHandler.hpp"
 
@@ -39,32 +42,53 @@ shared_ptr<BarHandler>& BarHandler::GetBarHandler() {
 void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
                             const BarType bar_type,
                             const vector<int>& columns) {
-  // Parquet 파일 읽기
-  const auto& bar_data = ReadParquet(file_path);
-
-  // 타임프레임 계산
-  const auto& bar_data_timeframe = CalculateTimeframe(bar_data, columns[0]);
-
   // 로그용 바 데이터 타입 문자열
   string bar_data_type_str;
-  if (bar_type == BarType::TRADING) {
-    bar_data_type_str = "트레이딩 및 참조";
-  } else if (bar_type == BarType::MAGNIFIER) {
-    bar_data_type_str = "돋보기";
-  } else if (bar_type == BarType::REFERENCE) {
-    bar_data_type_str = "참조";
+  switch (bar_type) {
+    case BarType::TRADING: {
+      bar_data_type_str = "트레이딩 및 참조";
+      break;
+    }
+    case BarType::MAGNIFIER: {
+      bar_data_type_str = "돋보기";
+      break;
+    }
+    case BarType::REFERENCE: {
+      bar_data_type_str = "참조";
+      break;
+    }
+    case BarType::MARK_PRICE: {
+      bar_data_type_str = "마크 가격";
+    }
   }
 
-  // 데이터 추가
+  shared_ptr<arrow::Table> bar_data;
+  string bar_data_timeframe;
   try {
+    // Parquet 파일 읽기
+    bar_data = ReadParquet(file_path);
+
+    // 타임프레임 계산
+    bar_data_timeframe = CalculateTimeframe(bar_data, columns[0]);
+
+    // 타임프레임 유효성 검증
+    IsValidTimeframeBetweenBars(bar_data_timeframe, bar_type);
+
+    // 데이터 추가
     switch (bar_type) {
       case BarType::TRADING: {
         // 데이터 추가
-        trading_bar_.SetBarData(symbol_name, bar_data_timeframe, bar_data,
-                                columns);
+        trading_bar_data_->SetBarData(symbol_name, bar_data_timeframe, bar_data,
+                                      columns);
 
-        // 트레이딩 바를 지표 계산용으로 사용하기 때문에 참조 바 데이터로도 추가
-        reference_bar_[bar_data_timeframe].SetBarData(
+        // 트레이딩 바를 지표 계산용으로도 사용하기 때문에
+        // 참조 바 데이터로 추가
+        if (const auto& timeframe_it =
+                reference_bar_data_.find(bar_data_timeframe);
+            timeframe_it == reference_bar_data_.end()) {
+          reference_bar_data_[bar_data_timeframe] = make_shared<BarData>();
+        }
+        reference_bar_data_[bar_data_timeframe]->SetBarData(
             symbol_name, bar_data_timeframe, bar_data, columns);
 
         // 인덱스 심볼 개수 추가
@@ -76,8 +100,8 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
 
       case BarType::MAGNIFIER: {
         // 데이터 추가
-        magnifier_bar_.SetBarData(symbol_name, bar_data_timeframe, bar_data,
-                                  columns);
+        magnifier_bar_data_->SetBarData(symbol_name, bar_data_timeframe,
+                                        bar_data, columns);
 
         // 인덱스 심볼 개수 추가
         magnifier_index_.push_back(0);
@@ -85,24 +109,34 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
       }
 
       case BarType::REFERENCE: {
-        auto& reference_bar = reference_bar_[bar_data_timeframe];
-
         // 데이터 추가
-        reference_bar.SetBarData(symbol_name, bar_data_timeframe, bar_data,
-                                 columns);
+        if (const auto& timeframe_it =
+                reference_bar_data_.find(bar_data_timeframe);
+            timeframe_it == reference_bar_data_.end()) {
+          reference_bar_data_[bar_data_timeframe] = make_shared<BarData>();
+        }
+        reference_bar_data_[bar_data_timeframe]->SetBarData(
+            symbol_name, bar_data_timeframe, bar_data, columns);
 
         // 인덱스 심볼 개수 추가
         reference_index_[bar_data_timeframe].push_back(0);
         break;
       }
-    }
 
-    // 타임프레임 유효성 검증
-    IsValidTimeframeBetweenBars(bar_data_timeframe, bar_type);
+      case BarType::MARK_PRICE: {
+        // 데이터 추가
+        mark_price_bar_data_->SetBarData(symbol_name, bar_data_timeframe,
+                                         bar_data, columns);
+
+        // 인덱스 심볼 개수 추가
+        mark_price_index_.push_back(0);
+        break;
+      }
+    }
   } catch (...) {
     Logger::LogAndThrowError(
-        format("{} {}을(를) {} 바 데이터로 추가하는 중 오류가 발생했습니다.",
-               symbol_name, bar_data_timeframe, bar_data_type_str),
+        format("{} 바 데이터를 추가하는 중 오류가 발생했습니다.",
+               bar_data_type_str),
         __FILE__, __LINE__);
   }
 
@@ -117,27 +151,25 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
       __FILE__, __LINE__);
 }
 
-bool BarHandler::ProcessBarIndex(const int symbol_idx, const BarType bar_type,
-                                 const string& timeframe,
+bool BarHandler::ProcessBarIndex(const BarType bar_type,
+                                 const string& timeframe, const int symbol_idx,
                                  const int64_t target_close_time) {
   const auto& bar_data = GetBarData(bar_type, timeframe);
   auto& bar_indices = GetBarIndices(bar_type, timeframe);
 
   try {
-    // 현재 Close Time이 Target Close Time보다 작을 때만 인덱스 증가 가능
-    while (bar_data.SafeGetBar(symbol_idx, bar_indices[symbol_idx]).close_time <
-           target_close_time) {
-      /* 다음 바의 Close Time이 Target Close Time보다 작거나 같을 때만
-         인덱스 증가 */
+    while (true) {
+      // 다음 바의 Close Time이 Target Close Time보다 작거나 같을 때만
+      // 인덱스 증가
       if (const auto next_close_time =
-              bar_data.SafeGetBar(symbol_idx, bar_indices[symbol_idx] + 1)
+              bar_data->SafeGetBar(symbol_idx, bar_indices[symbol_idx] + 1)
                   .close_time;
           next_close_time <= target_close_time) {
         bar_indices[symbol_idx]++;
       } else {
-        /* 다음 바 Close Time이 Target Close Time보다 크면 증가하지 않고 종료.
-           이 함수의 목적은 Target Close Time까지 지정된 심볼의 Close Time을
-           이동시키는 것이기 때문 */
+        // 다음 바 Close Time이 Target Close Time보다 크면 증가하지 않고 종료.
+        // 이 함수의 목적은 Target Close Time까지 지정된 심볼의 Close Time을
+        // 이동시키는 것이기 때문
         break;
       }
     }
@@ -145,8 +177,8 @@ bool BarHandler::ProcessBarIndex(const int symbol_idx, const BarType bar_type,
     // 정상적으로 모두 이동했으면 true를 반환
     return true;
   } catch ([[maybe_unused]] const IndexOutOfRange& e) {
-    /* next_close_time이 바 데이터의 범위를 넘으면
-       최대 인덱스로 이동한 것이므로 이동 불가 */
+    // next_close_time이 바 데이터의 범위를 넘으면 최대 인덱스로 이동한 것이므로
+    // 더 이상 이동 불가
     return false;
   }
 }
@@ -155,9 +187,11 @@ bool BarHandler::ProcessBarIndices(const BarType bar_type,
                                    const string& timeframe,
                                    const int64_t target_close_time) {
   bool process_all = true;
-  for (int i = 0; i < GetBarData(bar_type, timeframe).GetNumSymbols(); i++) {
+  for (int symbol_idx = 0;
+       symbol_idx < GetBarData(bar_type, timeframe)->GetNumSymbols();
+       symbol_idx++) {
     // 하나라도 정상 진행 실패 시 false를 반환
-    if (!ProcessBarIndex(i, bar_type, timeframe, target_close_time)) {
+    if (!ProcessBarIndex(bar_type, timeframe, symbol_idx, target_close_time)) {
       process_all = false;
     }
   }
@@ -195,6 +229,14 @@ void BarHandler::SetCurrentBarIndex(const size_t bar_index) {
     case BarType::REFERENCE: {
       reference_index_[current_reference_timeframe_][current_symbol_index_] =
           bar_index;
+      return;
+    }
+
+    case BarType::MARK_PRICE: {
+      Logger::LogAndThrowError(
+          "마크 바 데이터의 바 인덱스 설정은 불가능합니다.", __FILE__,
+          __LINE__);
+      return;
     }
   }
 }
@@ -213,6 +255,10 @@ size_t BarHandler::IncreaseBarIndex(const BarType bar_type,
 
     case BarType::REFERENCE: {
       return ++reference_index_[timeframe][symbol_index];
+    }
+
+    case BarType::MARK_PRICE: {
+      return ++mark_price_index_[symbol_index];
     }
   }
 
@@ -241,20 +287,58 @@ size_t BarHandler::GetCurrentBarIndex() {
       return reference_index_[current_reference_timeframe_]
                              [current_symbol_index_];
     }
+
+    case BarType::MARK_PRICE: {
+      return mark_price_index_[current_symbol_index_];
+    }
   }
 
   return -1;
 }
 
-string BarHandler::CalculateTimeframe(const shared_ptr<Table>& bar_data,
+string BarHandler::CalculateTimeframe(const shared_ptr<arrow::Table>& bar_data,
                                       const int open_time_column) {
-  const int64_t fst_open_time =
-      any_cast<int64_t>(GetCellValue(bar_data, open_time_column, 0));
-  const int64_t snd_open_time =
-      any_cast<int64_t>(GetCellValue(bar_data, open_time_column, 1));
+  const auto num_bars = bar_data->num_rows();
 
-  // 두 번째 Open Time과 첫 번째 Open Time의 차이
-  return FormatTimeframe(snd_open_time - fst_open_time);
+  // 앞뒤 10개 데이터를 비교해서 타임프레임을 구함
+  vector<int64_t> time_diffs;
+
+  // 앞 10개 차이 계산
+  for (size_t i = 1; i <= 10 && i < num_bars; i++) {
+    const auto fst_open_time = any_cast<int64_t>(
+        GetCellValue(bar_data, open_time_column, static_cast<int64_t>(i - 1)));
+    const auto snd_open_time = any_cast<int64_t>(
+        GetCellValue(bar_data, open_time_column, static_cast<int64_t>(i)));
+    time_diffs.push_back(snd_open_time - fst_open_time);
+  }
+
+  // 뒤 10개 차이 계산
+  for (size_t i = num_bars - 1; i >= num_bars - 10 && i > 0; i--) {
+    const auto fst_open_time = any_cast<int64_t>(
+        GetCellValue(bar_data, open_time_column, static_cast<int64_t>(i - 1)));
+    const auto snd_open_time = any_cast<int64_t>(
+        GetCellValue(bar_data, open_time_column, static_cast<int64_t>(i)));
+    time_diffs.push_back(snd_open_time - fst_open_time);
+  }
+
+  // 최빈값 계산
+  unordered_map<int64_t, int> freq_map;
+  for (const auto& diff : time_diffs) {
+    ++freq_map[diff];
+  }
+
+  // 최빈값 찾기
+  int64_t most_frequent_diff = 0;
+  int max_count = 0;
+  for (const auto& [diff, count] : freq_map) {
+    if (count > max_count) {
+      most_frequent_diff = diff;
+      max_count = count;
+    }
+  }
+
+  // 최빈값을 포맷하여 리턴
+  return FormatTimeframe(most_frequent_diff);
 }
 
 void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
@@ -263,14 +347,14 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 
   switch (bar_type) {
     case BarType::TRADING: {
-      if (const string& magnifier_tf = magnifier_bar_.GetTimeframe();
+      if (const string& magnifier_tf = magnifier_bar_data_->GetTimeframe();
           !magnifier_tf.empty()) {
         const auto parsed_magnifier_tf = ParseTimeframe(magnifier_tf);
 
         if (parsed_magnifier_tf >= parsed_bar_data_tf) {
           Logger::LogAndThrowError(
-              format("주어진 트레이딩 바 타임프레임 {}은(는) "
-                     "돋보기 바 타임프레임 {}보다 높아야합니다.",
+              format("주어진 트레이딩 바 데이터 타임프레임 [{}]은(는) "
+                     "돋보기 바 데이터 타임프레임 [{}]보다 높아야합니다.",
                      timeframe, magnifier_tf),
               __FILE__, __LINE__);
           return;
@@ -278,30 +362,31 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 
         if (parsed_bar_data_tf % parsed_magnifier_tf != 0) {
           Logger::LogAndThrowError(
-              format("주어진 트레이딩 바 타임프레임 {}은(는) "
-                     "돋보기 바 타임프레임 {}의 배수여야 합니다.",
+              format("주어진 트레이딩 바 데이터 타임프레임 [{}]은(는) "
+                     "돋보기 바 데이터 타임프레임 [{}]의 배수여야 합니다.",
                      timeframe, magnifier_tf),
               __FILE__, __LINE__);
           return;
         }
       }
 
-      for (const auto& reference_tf : views::keys(reference_bar_)) {
+      for (const auto& reference_tf : views::keys(reference_bar_data_)) {
         const auto parsed_reference_tf = ParseTimeframe(reference_tf);
 
         if (parsed_reference_tf < parsed_bar_data_tf) {
           Logger::LogAndThrowError(
-              format("주어진 트레이딩 바 타임프레임 {}은(는) "
-                     "참조 바 타임프레임 {}와(과) 같거나 낮아야합니다.",
-                     timeframe, reference_tf),
+              format(
+                  "주어진 트레이딩 바 데이터 타임프레임 [{}]은(는) "
+                  "참조 바 데이터 타임프레임 [{}]와(과) 같거나 낮아야합니다.",
+                  timeframe, reference_tf),
               __FILE__, __LINE__);
           return;
         }
 
         if (parsed_reference_tf % parsed_bar_data_tf != 0) {
           Logger::LogAndThrowError(
-              format("주어진 트레이딩 바 타임프레임 {}은(는) "
-                     "참조 바 타임프레임 {}의 약수여야 합니다.",
+              format("주어진 트레이딩 바 데이터 타임프레임 [{}]은(는) "
+                     "참조 바 데이터 타임프레임 [{}]의 약수여야 합니다.",
                      timeframe, reference_tf),
               __FILE__, __LINE__);
           return;
@@ -312,14 +397,14 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
     }
 
     case BarType::MAGNIFIER: {
-      if (const string& trading_tf = trading_bar_.GetTimeframe();
+      if (const string& trading_tf = trading_bar_data_->GetTimeframe();
           !trading_tf.empty()) {
         const auto parsed_trading_tf = ParseTimeframe(trading_tf);
 
         if (parsed_trading_tf <= parsed_bar_data_tf) {
           Logger::LogAndThrowError(
-              format("주어진 돋보기 바 타임프레임 {}은(는) "
-                     "트레이딩 바 타임프레임 {}보다 낮아야합니다.",
+              format("주어진 돋보기 바 데이터 타임프레임 [{}]은(는) "
+                     "트레이딩 바 데이터 타임프레임 [{}]보다 낮아야합니다.",
                      timeframe, trading_tf),
               __FILE__, __LINE__);
           return;
@@ -327,19 +412,19 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 
         if (parsed_trading_tf % parsed_bar_data_tf != 0) {
           Logger::LogAndThrowError(
-              format("주어진 돋보기 바 타임프레임 {}은(는) "
-                     "트레이딩 바 타임프레임 {}의 약수여야 합니다.",
+              format("주어진 돋보기 바 데이터 타임프레임 [{}]은(는) "
+                     "트레이딩 바 데이터 타임프레임 [{}]의 약수여야 합니다.",
                      timeframe, trading_tf),
               __FILE__, __LINE__);
           return;
         }
       }
 
-      for (const auto& reference_tf : views::keys(reference_bar_)) {
+      for (const auto& reference_tf : views::keys(reference_bar_data_)) {
         if (ParseTimeframe(reference_tf) <= parsed_bar_data_tf) {
           Logger::LogAndThrowError(
-              format("주어진 돋보기 바 타임프레임 {}은(는) "
-                     "참조 바 타임프레임 {}보다 낮아야합니다.",
+              format("주어진 돋보기 바 데이터 타임프레임 [{}]은(는) "
+                     "참조 바 데이터 타임프레임 [{}]보다 낮아야합니다.",
                      timeframe, reference_tf),
               __FILE__, __LINE__);
           return;
@@ -350,14 +435,14 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
     }
 
     case BarType::REFERENCE: {
-      if (const auto& trading_tf = trading_bar_.GetTimeframe();
+      if (const auto& trading_tf = trading_bar_data_->GetTimeframe();
           !trading_tf.empty()) {
         const auto parsed_trading_tf = ParseTimeframe(trading_tf);
 
         if (parsed_trading_tf > parsed_bar_data_tf) {
           Logger::LogAndThrowError(
-              format("주어진 참조 바 타임프레임 {}은(는) "
-                     "트레이딩 바 타임프레임 {}와(과) 같거나 높아야합니다.",
+              format("주어진 참조 바 데이터 타임프레임 [{}]은(는) 트레이딩 바 "
+                     "데이터 타임프레임 [{}]와(과) 같거나 높아야합니다.",
                      timeframe, trading_tf),
               __FILE__, __LINE__);
           return;
@@ -365,30 +450,50 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 
         if (parsed_bar_data_tf % parsed_trading_tf != 0) {
           Logger::LogAndThrowError(
-              format("주어진 참조 바 타임프레임 {}은(는) "
-                     "트레이딩 바 타임프레임 {}의 배수여야 합니다.",
+              format("주어진 참조 바 데이터 타임프레임 [{}]은(는) 트레이딩 바 "
+                     "데이터 타임프레임 [{}]의 배수여야 합니다.",
                      timeframe, trading_tf),
               __FILE__, __LINE__);
           return;
         }
       }
 
-      if (const auto& magnifier_tf = magnifier_bar_.GetTimeframe();
+      if (const auto& magnifier_tf = magnifier_bar_data_->GetTimeframe();
           !magnifier_tf.empty() &&
           ParseTimeframe(magnifier_tf) >= parsed_bar_data_tf) {
         Logger::LogAndThrowError(
-            format("주어진 참조 바 타임프레임 {}은(는) "
-                   "돋보기 바 타임프레임 {}보다 높아야합니다.",
+            format("주어진 참조 바 데이터 타임프레임 [{}]은(는) 돋보기 바 "
+                   "데이터 타임프레임 [{}]보다 높아야합니다.",
                    timeframe, magnifier_tf),
             __FILE__, __LINE__);
+      }
+
+      return;
+    }
+
+    case BarType::MARK_PRICE: {
+      // 바 데이터 추가 시점에는 돋보기 기능 사용 여부를 알 수 없으므로
+      // 트레이딩 혹은 돋보기 타임프레임 중 하나만 같아도 일단 통과
+      const auto& trading_tf = trading_bar_data_->GetTimeframe();
+      if (const auto& magnifier_tf = magnifier_bar_data_->GetTimeframe();
+          !trading_tf.empty() && !magnifier_tf.empty()) {
+        if (ParseTimeframe(trading_tf) != parsed_bar_data_tf &&
+            ParseTimeframe(magnifier_tf) != parsed_bar_data_tf) {
+          Logger::LogAndThrowError(
+              format("주어진 마크 가격 바 데이터 타임프레임 [{}]은(는) "
+                     "트레이딩 바 데이터 타임프레임 [{}] 혹은 돋보기 바 "
+                     "타임프레임 [{}]와(과) 같아야 합니다.",
+                     timeframe, trading_tf, magnifier_tf),
+              __FILE__, __LINE__);
+        }
       }
     }
   }
 }
 
 void BarHandler::IsValidReferenceBarTimeframe(const string& timeframe) {
-  if (const auto& timeframe_it = reference_bar_.find(timeframe);
-      timeframe_it == reference_bar_.end()) {
+  if (const auto& timeframe_it = reference_bar_data_.find(timeframe);
+      timeframe_it == reference_bar_data_.end()) {
     Logger::LogAndThrowError(
         format("참조 바 데이터에 타임프레임 {}은(는) 존재하지 않습니다.",
                timeframe),

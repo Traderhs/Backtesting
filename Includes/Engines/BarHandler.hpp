@@ -3,16 +3,8 @@
 // 표준 라이브러리
 #include <mutex>
 
-// 전방 선언
-namespace arrow {
-class Table;
-}
-
 // 내부 헤더
 #include "Engines/BaseBarHandler.hpp"
-
-// 네임 스페이스
-using namespace arrow;
 
 /// 바 데이터를 추가하고 세부 관리 및 처리를 하는 클래스
 class BarHandler final : public BaseBarHandler {
@@ -40,8 +32,8 @@ class BarHandler final : public BaseBarHandler {
   // ===========================================================================
   /// 지정된 바 데이터 및 심볼에 해당되는 인덱스를 target_close_time 시점의
   /// 인덱스까지 최대한 진행시키는 함수
-  bool ProcessBarIndex(int symbol_idx, BarType bar_type,
-                       const string& timeframe, int64_t target_close_time);
+  bool ProcessBarIndex(BarType bar_type, const string& timeframe,
+                       int symbol_idx, int64_t target_close_time);
 
   /// 지정된 바 데이터의 모든 심볼의 인덱스를 target_close_time 시점의
   /// 인덱스까지 진행시키는 함수
@@ -50,11 +42,9 @@ class BarHandler final : public BaseBarHandler {
   // ===========================================================================
   /// 현재 사용 중인 바의 타입을 설정하는 함수.
   /// 타임프레임은 참조 바 사용 시에만 지정.
-  /// ※ 주의: 함수 내에서 사용할 때 함수 종료 시 원상복구해야 함
   void SetCurrentBarType(BarType bar_type, const string& timeframe);
 
   /// 현재 사용 중인 심볼의 인덱스를 설정하는 함수
-  /// ※ 주의: 함수 내에서 사용할 때 함수 종료 시 원상복구해야 함
   void SetCurrentSymbolIndex(int symbol_index);
 
   /// 현재 사용 중인 바 데이터 타입 및 심볼과 타임프레임에 해당되는 바 데이터의
@@ -78,7 +68,7 @@ class BarHandler final : public BaseBarHandler {
 
   /// 현재 사용 중인 바 데이터 타입 및 심볼과 타임프레임에 해당되는 바 데이터의
   /// 현재 인덱스를 반환하는 함수
-  size_t GetCurrentBarIndex();
+  [[nodiscard]] size_t GetCurrentBarIndex();
 
  private:
   // 싱글톤 인스턴스 관리
@@ -91,7 +81,7 @@ class BarHandler final : public BaseBarHandler {
   static mutex mutex_;
   static shared_ptr<BarHandler> instance_;
 
-  /// 현재 사용 중인 바의 타입: TRADING, MAGNIFIER, REFERENCE
+  /// 현재 사용 중인 바의 타입: TRADING, MAGNIFIER, REFERENCE, MARK
   BarType current_bar_type_;
 
   /// 현재 사용 중인 심볼의 인덱스
@@ -101,16 +91,18 @@ class BarHandler final : public BaseBarHandler {
   string current_reference_timeframe_;
 
   /**
-   * 주어진 데이터에서 첫 Open Time과 다음 Open Time의 시간 차이를 계산하여
-   * 타임프레임을 문자열로 반환하는 함수
+   * 주어진 데이터에서 Open Time과 다음 Open Time의 시간 차이를 계산하여
+   * 타임프레임을 문자열로 반환하는 함수.
+   *
+   * 데이터 누락 시 부정확한 값이 계산될 수 있으므로 앞에서 10개, 뒤에서 10개의
+   * 데이터를 비교 후 최빈값으로 반환.
    *
    * @param bar_data 바 데이터가 포함된 `Table` 객체를 가리키는 shared_ptr
    * @param open_time_column Open Time이 포함된 열의 인덱스
-   * @return 첫 번째 Open Time과 두 번째 Open Time의 차이를 포맷한 타임프레임
-   * 문자열
+   * @return 타임프레임 문자열
    */
-  static string CalculateTimeframe(const shared_ptr<Table>& bar_data,
-                                   int open_time_column);
+  [[nodiscard]] static string CalculateTimeframe(
+      const shared_ptr<arrow::Table>& bar_data, int open_time_column);
 
   /// 바 데이터 타입간 타임프레임이 유효한지 검증하는 함수
   void IsValidTimeframeBetweenBars(const string& timeframe, BarType bar_type);

@@ -13,9 +13,9 @@ set(CMAKE_TOOLCHAIN_FILE "D:/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRIN
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Build types" FORCE)
 
 # 디버그 빌드 설정
-if(MSVC)
+if (MSVC)
     set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Zi /Od /RTC1")
-endif()
+endif ()
 set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} /DEBUG")
 
 # 패키지 임포트
@@ -24,6 +24,8 @@ find_package(CURL CONFIG REQUIRED)
 find_package(GTest CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Parquet CONFIG REQUIRED)
+find_package(OpenSSL REQUIRED)
+
 # ======================================================================================================================
 # Backtesting 설정
 file(GLOB HEADERS   # 해당 경로에서 hpp 파일들을 GLOB
@@ -45,7 +47,9 @@ target_link_libraries(Backtesting PRIVATE # Backtesting 타겟에 외부 라이�
         arrow_shared
         CURL::libcurl
         nlohmann_json::nlohmann_json
-        parquet_shared)
+        parquet_shared
+        OpenSSL::SSL
+        OpenSSL::Crypto)
 
 # MSVC 프로파일링 링크
 # target_link_options(Backtesting PRIVATE $<$<CONFIG:Release>:/PROFILE>)
@@ -74,7 +78,9 @@ target_link_libraries(Tests PRIVATE # Tests 타겟에 외부 라이브러리 연
         CURL::libcurl
         GTest::gtest_main
         nlohmann_json::nlohmann_json
-        parquet_shared)
+        parquet_shared
+        OpenSSL::SSL
+        OpenSSL::Crypto)
 
 # Google Test
 enable_testing()

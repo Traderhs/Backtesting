@@ -11,25 +11,28 @@
 // 네임 스페이스
 using namespace time_utils;
 
-BaseBarHandler::BaseBarHandler() = default;
+BaseBarHandler::BaseBarHandler()
+    : trading_bar_data_(make_shared<BarData>()),
+      magnifier_bar_data_(make_shared<BarData>()),
+      mark_price_bar_data_(make_shared<BarData>()) {}
 BaseBarHandler::~BaseBarHandler() = default;
 
 shared_ptr<Logger>& BaseBarHandler::logger_ = Logger::GetLogger();
 
-BarData& BaseBarHandler::GetBarData(const BarType bar_type,
-                                    const string& timeframe) {
+shared_ptr<BarData> BaseBarHandler::GetBarData(const BarType bar_type,
+                                               const string& timeframe) {
   switch (bar_type) {
     case BarType::TRADING: {
-      return trading_bar_;
+      return trading_bar_data_;
     }
 
     case BarType::MAGNIFIER: {
-      return magnifier_bar_;
+      return magnifier_bar_data_;
     }
 
     case BarType::REFERENCE: {
-      const auto& timeframe_it = reference_bar_.find(timeframe);
-      if (timeframe_it == reference_bar_.end()) {
+      const auto& timeframe_it = reference_bar_data_.find(timeframe);
+      if (timeframe_it == reference_bar_data_.end()) {
         throw runtime_error(
             format("타임프레임 [{}]은(는) 참조 바 데이터에 존재하지 않습니다.",
                    timeframe));
@@ -38,9 +41,13 @@ BarData& BaseBarHandler::GetBarData(const BarType bar_type,
       return timeframe_it->second;
     }
 
+    case BarType::MARK_PRICE: {
+      return mark_price_bar_data_;
+    }
+
     default: {
       // 컴파일러 에러 방지용
-      return trading_bar_;
+      return trading_bar_data_;
     }
   }
 }
@@ -68,6 +75,10 @@ vector<size_t>& BaseBarHandler::GetBarIndices(const BarType bar_type,
       return timeframe_it->second;
     }
 
+    case BarType::MARK_PRICE: {
+      return mark_price_index_;
+    }
+
     default: {
       // 컴파일러 에러 방지용
       return trading_index_;
@@ -75,6 +86,7 @@ vector<size_t>& BaseBarHandler::GetBarIndices(const BarType bar_type,
   }
 }
 
-unordered_map<string, BarData>& BaseBarHandler::GetAllReferenceBarData() {
-  return reference_bar_;
+unordered_map<string, shared_ptr<BarData>>
+BaseBarHandler::GetAllReferenceBarData() {
+  return reference_bar_data_;
 }
