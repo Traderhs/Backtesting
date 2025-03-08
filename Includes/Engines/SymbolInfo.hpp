@@ -28,8 +28,6 @@ class SymbolInfo final {
   SymbolInfo& SetMarketMinQty(double market_min_qty);
   SymbolInfo& SetQtyStep(double qty_step);
   SymbolInfo& SetMinNotional(double min_notional);
-  SymbolInfo& SetMaxMultiplier(double max_multiplier);
-  SymbolInfo& SetMinMultiplier(double min_multiplier);
   SymbolInfo& SetLiquidationFee(double liquidation_fee);
   SymbolInfo& SetLeverageBracket(
       const vector<LeverageBracket>& leverage_bracket);
@@ -41,8 +39,6 @@ class SymbolInfo final {
   [[nodiscard]] double GetMarketMinQty() const;
   [[nodiscard]] double GetQtyStep() const;
   [[nodiscard]] double GetMinNotional() const;
-  [[nodiscard]] double GetMaxMultiplier() const;
-  [[nodiscard]] double GetMinMultiplier() const;
   [[nodiscard]] double GetLiquidationFee() const;
   [[nodiscard]] vector<LeverageBracket>& GetLeverageBracket();
 
@@ -54,12 +50,6 @@ class SymbolInfo final {
   double market_min_qty_;  // 시장가 최소 수량        // 완
   double qty_step_;        // 수량 최소 단위          // 완
   double min_notional_;    // 최소 약정 금액           // 완
-  double
-      max_multiplier_;  // 현재가 대비 최대 주문 가격 비율     마크가격대비
-                        // 지정가인듯
-                        // https://www.binance.com/en/futures/trading-rules/perpetual
-                        // GetCurrentMarkPrice 함수 만들어서 가격 대비 해서 리턴
-  double min_multiplier_;   // 현재가 대비 최소 주문 가격 비율
   double liquidation_fee_;  // 강제 청산 수수료         // 완
   vector<LeverageBracket> leverage_brackets_;  // 레버리지 브라켓
 };

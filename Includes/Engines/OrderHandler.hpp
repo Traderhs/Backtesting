@@ -9,7 +9,6 @@
 
 // 전방 선언
 enum class BarType;
-enum class LogLevel;
 enum class PriceType;
 struct PriceData;
 
@@ -62,9 +61,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param entry_name 진입 이름
   /// @param entry_direction 진입 방향
   /// @param entry_size 진입 수량
-  /// @param leverage 레버리지
   void MarketEntry(const string& entry_name, Direction entry_direction,
-                   double entry_size, int leverage);
+                   double entry_size);
 
   /// 지정가 진입 주문을 위해 사용하는 함수
   ///
@@ -72,9 +70,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param entry_direction 진입 방향
   /// @param entry_size 진입 수량
   /// @param order_price 지정가 진입 주문 가격
-  /// @param leverage 레버리지
   void LimitEntry(const string& entry_name, Direction entry_direction,
-                  double entry_size, double order_price, int leverage);
+                  double entry_size, double order_price);
 
   /// Market if Touched 진입 주문을 위해 사용하는 함수.
   /// touch_price에 닿으면 시장가 진입 주문 접수.
@@ -83,9 +80,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param entry_direction 진입 방향
   /// @param entry_size 진입 수량
   /// @param touch_price 시장가 주문을 접수할 시점의 가격
-  /// @param leverage 레버리지
   void MitEntry(const string& entry_name, Direction entry_direction,
-                double entry_size, double touch_price, int leverage);
+                double entry_size, double touch_price);
 
   /// Limit if Touched 진입 주문을 위해 사용하는 함수.
   /// touch_price에 닿으면 order_price에 지정가 진입 주문 접수.
@@ -95,10 +91,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param entry_size 진입 수량
   /// @param touch_price 지정가 주문을 접수할 시점의 가격
   /// @param order_price 지정가 진입 주문 가격
-  /// @param leverage 레버리지
   void LitEntry(const string& entry_name, Direction entry_direction,
-                double entry_size, double touch_price, double order_price,
-                int leverage);
+                double entry_size, double touch_price, double order_price);
 
   /// 트레일링 진입 주문을 위해 사용하는 함수.
   /// touch_price에 닿으면 진입 방향에 따라 최고저가를 추적하며, 최고저가 대비
@@ -111,10 +105,8 @@ class OrderHandler final : public BaseOrderHandler {
   ///                    0으로 지정할 시 바로 추적을 시작
   /// @param trail_point 최고저가로부터 어느정도 움직였을 때 진입할지 결정하는
   ///                    포인트
-  /// @param leverage 레버리지
   void TrailingEntry(const string& entry_name, Direction entry_direction,
-                     double entry_size, double touch_price, double trail_point,
-                     int leverage);
+                     double entry_size, double touch_price, double trail_point);
 
   // ===========================================================================
   /// 시장가 청산 주문을 위해 사용하는 함수.
@@ -170,10 +162,6 @@ class OrderHandler final : public BaseOrderHandler {
                     double exit_size, double touch_price, double trail_point);
 
   // ===========================================================================
-  /// 주문 취소를 위해 사용하는 함수.
-  /// order_name이 진입 대기 주문과 청산 대기 주문에 동시에 존재하면 모두 취소.
-  void Cancel(const string& order_name);
-
   /// 현재 사용 중인 심볼 인덱스의 모든 진입 및 청산 대기 주문을 취소하는 함수
   void CancelAll();
 
@@ -208,9 +196,6 @@ class OrderHandler final : public BaseOrderHandler {
 
   /// 청산 시 자금, 통계 관련 처리를 하는 함수
   void ExecuteExit(const shared_ptr<Order>& exit_order);
-
-  /// 진입 주문 취소 시 자금 관련 처리를 하는 함수
-  static void ExecuteCancelEntry(const shared_ptr<Order>& cancel_order);
 
   // ===========================================================================
   /// 지정가 진입 대기 주문의 체결을 확인하고 체결시키는 함수
@@ -281,9 +266,4 @@ class OrderHandler final : public BaseOrderHandler {
 
   /// 분석기에 청산된 거래를 추가하는 함수
   void AddTrade(const shared_ptr<Order>& exit_order, double realized_pnl) const;
-
-  /// 전략 이름과 심볼 이름으로 포맷된 로그를 발생시키는 함수
-  static void LogFormattedInfo(LogLevel log_level,
-                               const string& formatted_message,
-                               const char* file, int line);
 };

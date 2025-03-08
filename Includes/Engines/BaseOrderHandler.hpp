@@ -16,6 +16,7 @@ class SymbolInfo;
 enum class Direction;
 enum class OrderType;
 enum class PriceType;
+enum class LogLevel;
 struct LeverageBracket;
 
 // 네임 스페이스
@@ -57,6 +58,17 @@ class BaseOrderHandler {
   [[nodiscard]] bool GetJustExited() const;
   // ===========================================================================
   // 전략에서 사용하는 함수들
+
+  /// 대기 주문 취소를 위해 사용하는 함수.
+  ///
+  /// order_name이 진입 대기 주문과 청산 대기 주문에 동시에 존재하면 모두 취소.
+  void Cancel(const string& order_name);
+
+  /// 현재 심볼의 레버리지를 변경하는 함수
+  ///
+  /// 현재 심볼에 체결된 주문이 없는 경우에만 변경 가능
+  void SetLeverage(int leverage);
+
   /// 현재 심볼 마지막 진입으로부터 몇 개의 트레이딩 바가 지났는지 계산하여
   /// 반환하는 함수
   ///
@@ -111,6 +123,14 @@ class BaseOrderHandler {
   vector<double> last_entry_prices_;
   vector<double> last_exit_prices_;
 
+  /// 전략 이름과 심볼 이름으로 포맷된 로그를 발생시키는 함수
+  static void LogFormattedInfo(LogLevel log_level,
+                               const string& formatted_message,
+                               const char* file, int line);
+
+  // 지정된 심볼의 설정된 레버리지를 반환하는 함수
+  [[nodiscard]] int GetLeverage(int symbol_idx) const;
+
   /// 주문 정보에 따라 슬리피지를 반영한 체결 가격을 반환하는 함수.
   [[nodiscard]] double CalculateSlippagePrice(OrderType order_type,
                                               Direction direction,
@@ -135,7 +155,6 @@ class BaseOrderHandler {
   ///
   /// price_type은 미실현 손실을 계산하는 가격 기준을 지정
   [[nodiscard]] double CalculateMargin(double order_price, double entry_size,
-                                       int leverage,
                                        PriceType price_type) const;
 
   /// 진입 정보에 따라 PnL을 계산하는 함수
@@ -157,8 +176,8 @@ class BaseOrderHandler {
   // 유효한 값인지 확인하는 함수
   static void IsValidNotionalValue(double order_price, double position_size);
 
-  // 레버리지가 유효한 값인지 확인하는 함수
-  static void IsValidLeverage(int leverage);
+  // 레버리지가 현재 브라켓의 최대 레버리지 이하인지 확인하는 함수
+  void IsValidLeverage(double order_price, double position_size) const;
 
   /// 진입 체결 시 진입 이름이 유효한지 확인하는 함수
   void IsValidEntryName(const string& entry_name) const;
@@ -204,4 +223,11 @@ class BaseOrderHandler {
 
   /// 지정된 심볼 마지막 청산의 트레이딩 바 인덱스를 업데이트하는 함수
   void UpdateLastExitBarIndex(int symbol_idx);
+
+ private:
+  /// 심볼별 현재 레버리지
+  vector<int> leverages_;
+
+  /// 진입 주문 취소 시 자금 관련 처리를 하는 함수
+  static void ExecuteCancelEntry(const shared_ptr<Order>& cancel_order);
 };
