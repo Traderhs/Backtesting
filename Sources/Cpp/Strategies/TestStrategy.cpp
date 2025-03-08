@@ -26,7 +26,9 @@ void TestStrategy::ExecuteOnClose() {
 }
 
 void TestStrategy::ExecuteAfterEntry() {
-
+  order->MarketEntry("매수 진입 2", Direction::LONG, 10, 100);
+  order->LimitExit("매수 청산 2", "매수 진입 2", entry_size,
+                   order->LastEntryPrice() * 1.01);
 }
 
 void TestStrategy::ExecuteAfterExit() {

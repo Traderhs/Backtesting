@@ -105,7 +105,7 @@ double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
 
   // 현재 마크 가격 바의 Close Time이 메인 Close Time과 같다면 유효하므로
   // 마크 가격 기준으로 Loss 계산. 그렇지 않다면 트레이딩 바를 기준으로 계산
-  Bar base_bar;
+  Bar base_bar{};
   bar_->SetCurrentBarType(BarType::MARK_PRICE, "NONE");
   if (const auto& current_mark_bar =
           bar_->GetBarData(BarType::MARK_PRICE, "NONE")
@@ -275,26 +275,56 @@ double BaseOrderHandler::CalculateTradingFee(const OrderType order_type,
 }
 
 double BaseOrderHandler::CalculateLiquidationPrice(
-    const int leverage, const Direction entry_direction,
-    const double entry_filled_price) {
-  const double margin_call_percentage = 100 / static_cast<double>(leverage);
+    const Direction entry_direction, const double order_price,
+    const double position_size, const double entry_margin) {
+  // 청산 가격
+  // = (진입 마진 + 유지 금액 - (진입 가격 * 포지션 크기: 롱 양수, 숏 음수))
+  //    / (포지션 크기 절댓값 * 유지 증거금율 - (포지션 크기: 롱 양수, 숏 음수))
+  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+  const auto& leverage_bracket =
+      GetLeverageBracket(symbol_idx, order_price, position_size);
+  const auto signed_position_size =
+      entry_direction == Direction::LONG ? position_size : -position_size;
 
-  double margin_call_price = 0;
-  if (entry_direction == Direction::LONG) {
-    margin_call_price = (1 - margin_call_percentage / 100) * entry_filled_price;
-  } else if (entry_direction == Direction::SHORT) {
-    margin_call_price = (1 + margin_call_percentage / 100) * entry_filled_price;
+  const auto numerator = entry_margin + leverage_bracket.maintenance_amount -
+                         order_price * signed_position_size;
+  const auto denominator =
+      position_size * leverage_bracket.maintenance_margin_rate -
+      signed_position_size;
+
+  const auto result = numerator / denominator;
+
+  // 롱의 경우, 청산가가 음수면 절대 청산되지 않음
+  if (result <= 0) {
+    return 0;
   }
 
-  return RoundToDecimalPlaces(margin_call_price,
-                              CountDecimalPlaces(entry_filled_price));
+  return RoundToTickSize(result, symbol_info_[symbol_idx].GetTickSize());
+}
+
+LeverageBracket BaseOrderHandler::GetLeverageBracket(
+    const int symbol_idx, const double order_price,
+    const double position_size) {
+  const auto notional_value = order_price * position_size;
+
+  for (const auto& leverage_bracket :
+       symbol_info_[symbol_idx].GetLeverageBracket()) {
+    if (leverage_bracket.min_notional_value <= notional_value &&
+        notional_value < leverage_bracket.max_notional_value) {
+      return leverage_bracket;
+    }
+  }
+
+  throw InvalidValue(
+      format("명목 가치 [{}]에 해당되는 레버리지 구간이 존재하지 않습니다.",
+             FormatDollar(notional_value)));
 }
 
 double BaseOrderHandler::CalculateMargin(const double order_price,
                                          const double entry_size,
                                          const int leverage,
                                          const PriceType price_type) const {
-  // 가격 * 수량 / 레버리지 + 해당 심볼의 미실현 손실
+  // 가격 * 수량 / 레버리지 + 해당 심볼의 미실현 손실의 절댓값
   return order_price * entry_size / leverage +
          GetUnrealizedLoss(bar_->GetCurrentSymbolIndex(), price_type);
 }

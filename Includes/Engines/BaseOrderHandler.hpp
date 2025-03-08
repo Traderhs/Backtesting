@@ -16,6 +16,7 @@ class SymbolInfo;
 enum class Direction;
 enum class OrderType;
 enum class PriceType;
+struct LeverageBracket;
 
 // 네임 스페이스
 using namespace std;
@@ -43,7 +44,7 @@ class BaseOrderHandler {
   void InitializeJustExited();
 
   /// 지정된 심볼 마크 가격의 지정된 가격 타입을 기준으로 계산한 미실현 손실의
-  /// 합계를 반환하는 함수.
+  /// 절댓값의 합계를 반환하는 함수.
   ///
   /// 마크 가격이 현재 Close Time과 일치하지 않는다면 트레이딩 바 가격을 사용
   [[nodiscard]] double GetUnrealizedLoss(int symbol_idx,
@@ -122,7 +123,13 @@ class BaseOrderHandler {
 
   /// 주문 정보에 따라 강제 청산 가격을 계산하여 반환하는 함수
   [[nodiscard]] static double CalculateLiquidationPrice(
-      int leverage, Direction entry_direction, double entry_filled_price);
+      Direction entry_direction, double order_price, double position_size,
+      double entry_margin);
+
+  /// 지정된 심볼과 명목 가치에 해당되는 레버리지 구간을 찾아 반환하는 함수
+  [[nodiscard]] static LeverageBracket GetLeverageBracket(int symbol_idx,
+                                                          double order_price,
+                                                          double position_size);
 
   /// 진입 마진을 계산하여 반환하는 함수
   ///

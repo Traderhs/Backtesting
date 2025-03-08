@@ -134,7 +134,7 @@ void BaseEngine::DecreaseWalletBalance(const double decrease_balance) {
     logger_->Log(
         LogLevel::ERROR_L,
         format(
-            "현재 자금 감소를 위해 주어진 [{}]는 0보다 크거나 같아야 합니다.",
+            "지갑 자금 감소를 위해 주어진 [{}]는 0보다 크거나 같아야 합니다.",
             FormatDollar(decrease_balance)),
         __FILE__, __LINE__);
     throw runtime_error("지갑 자금 감소 실패");
@@ -143,7 +143,7 @@ void BaseEngine::DecreaseWalletBalance(const double decrease_balance) {
   if (IsGreater(decrease_balance, wallet_balance_)) {
     logger_->Log(
         LogLevel::ERROR_L,
-        format("현재 자금 감소를 위해 주어진 [{}]는 지갑 자금 [{}]를 초과할 수 "
+        format("지갑 자금 감소를 위해 주어진 [{}]는 지갑 자금 [{}]를 초과할 수 "
                "없습니다.",
                FormatDollar(decrease_balance), FormatDollar(wallet_balance_)),
         __FILE__, __LINE__);
