@@ -12,8 +12,6 @@ SymbolInfo::SymbolInfo()
       market_min_qty_(nan("")),
       qty_step_(nan("")),
       min_notional_(nan("")),
-      max_multiplier_(nan("")),
-      min_multiplier_(nan("")),
       liquidation_fee_(nan("")) {}
 SymbolInfo::~SymbolInfo() = default;
 
@@ -52,16 +50,6 @@ SymbolInfo& SymbolInfo::SetMinNotional(const double min_notional) {
   return *this;
 }
 
-SymbolInfo& SymbolInfo::SetMaxMultiplier(const double max_multiplier) {
-  max_multiplier_ = max_multiplier;
-  return *this;
-}
-
-SymbolInfo& SymbolInfo::SetMinMultiplier(const double min_multiplier) {
-  min_multiplier_ = min_multiplier;
-  return *this;
-}
-
 SymbolInfo& SymbolInfo::SetLiquidationFee(const double liquidation_fee) {
   liquidation_fee_ = liquidation_fee;
   return *this;
@@ -80,8 +68,6 @@ double SymbolInfo::GetMarketMaxQty() const { return market_max_qty_; }
 double SymbolInfo::GetMarketMinQty() const { return market_min_qty_; }
 double SymbolInfo::GetQtyStep() const { return qty_step_; }
 double SymbolInfo::GetMinNotional() const { return min_notional_; }
-double SymbolInfo::GetMaxMultiplier() const { return max_multiplier_; }
-double SymbolInfo::GetMinMultiplier() const { return min_multiplier_; }
 double SymbolInfo::GetLiquidationFee() const { return liquidation_fee_; }
 vector<LeverageBracket>& SymbolInfo::GetLeverageBracket() {
   return leverage_brackets_;

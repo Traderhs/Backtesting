@@ -865,17 +865,9 @@ void Engine::InitializeSymbolInfo() {
               filter_count += 1;
               continue;
             }
-
-            if (filter.at("filterType") == "PERCENT_PRICE") {
-              symbol_info
-                  .SetMaxMultiplier(GetDoubleFromJson(filter, "multiplierUp"))
-                  .SetMinMultiplier(
-                      GetDoubleFromJson(filter, "multiplierDown"));
-              filter_count += 2;
-            }
           }
 
-          if (filter_count != 9) {
+          if (filter_count != 7) {
             Logger::LogAndThrowError(
                 "filters의 심볼 정보 중 일부가 존재하지 않습니다.", __FILE__,
                 __LINE__);
@@ -1038,11 +1030,6 @@ void Engine::BacktestingMain() {
         INFO_L,
         format("진행 시간: {}", UtcTimestampToUtcDatetime(current_open_time_)),
         __FILE__, __LINE__);
-
-    if (UtcTimestampToUtcDatetime(current_open_time_) ==
-        "2024-12-07 04:00:00") {
-      const auto original_open_time = current_open_time_;
-    }
 
     // 돋보기 바에 활성화된 심볼이 있으면 돋보기 바를 이용하여 체결 확인
     if (!activated_magnifier_symbol_indices_.empty()) {

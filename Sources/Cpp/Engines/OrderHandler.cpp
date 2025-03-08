@@ -12,7 +12,6 @@
 #include "Engines/DataUtils.hpp"
 #include "Engines/Engine.hpp"
 #include "Engines/Exception.hpp"
-#include "Engines/Logger.hpp"
 #include "Engines/Order.hpp"
 #include "Engines/SymbolInfo.hpp"
 #include "Engines/TimeUtils.hpp"
@@ -215,7 +214,9 @@ void OrderHandler::CheckPendingExits(const double price,
 
 void OrderHandler::MarketEntry(const string& entry_name,
                                const Direction entry_direction,
-                               const double entry_size, const int leverage) {
+                               const double entry_size) {
+  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+
   try {
     // 바 정보 로딩
     int64_t order_time = 0;
@@ -226,8 +227,7 @@ void OrderHandler::MarketEntry(const string& entry_name,
           strategy_type == StrategyType::ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
-                ->SafeGetBar(bar_->GetCurrentSymbolIndex(),
-                             bar_->GetCurrentBarIndex() + 1);
+                ->SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1);
         order_time = next_bar.open_time;
         order_price = next_bar.open;
       } else {
@@ -256,7 +256,7 @@ void OrderHandler::MarketEntry(const string& entry_name,
       IsValidDirection(entry_direction);
       IsValidPositionSize(entry_size, MARKET);
       IsValidNotionalValue(order_price, entry_size);
-      IsValidLeverage(leverage);
+      IsValidLeverage(order_price, entry_size);
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
       throw OrderFailed("시장가 진입 실패");
@@ -264,7 +264,7 @@ void OrderHandler::MarketEntry(const string& entry_name,
 
     // 주문 생성
     const auto market_entry = make_shared<Order>();
-    market_entry->SetLeverage(leverage)
+    market_entry->SetLeverage(GetLeverage(symbol_idx))
         .SetEntryName(entry_name)
         .SetEntryOrderType(MARKET)
         .SetEntryDirection(entry_direction)
@@ -302,11 +302,11 @@ void OrderHandler::MarketEntry(const string& entry_name,
 
 void OrderHandler::LimitEntry(const string& entry_name,
                               const Direction entry_direction,
-                              const double entry_size, double order_price,
-                              const int leverage) {
+                              const double entry_size, double order_price) {
+  const int symbol_idx = bar_->GetCurrentSymbolIndex();
+
   try {
     // 바 정보 로딩
-    const int symbol_idx = bar_->GetCurrentSymbolIndex();
     int64_t order_time = 0;
     double base_price = 0.0;
     try {
@@ -344,7 +344,7 @@ void OrderHandler::LimitEntry(const string& entry_name,
 
     // 주문 생성
     const auto limit_entry = make_shared<Order>();
-    limit_entry->SetLeverage(leverage)
+    limit_entry->SetLeverage(GetLeverage(symbol_idx))
         .SetEntryName(entry_name)
         .SetEntryOrderType(LIMIT)
         .SetEntryDirection(entry_direction)
@@ -358,7 +358,7 @@ void OrderHandler::LimitEntry(const string& entry_name,
       IsValidPositionSize(entry_size, LIMIT);
       IsValidPrice(order_price);
       IsValidNotionalValue(order_price, entry_size);
-      IsValidLeverage(leverage);
+      IsValidLeverage(order_price, entry_size);
       IsValidLimitOrderPrice(order_price, base_price, entry_direction);
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
@@ -366,9 +366,7 @@ void OrderHandler::LimitEntry(const string& entry_name,
     }
 
     // 예약 증거금 계산
-    const double entry_margin =
-        CalculateMargin(order_price, entry_size, leverage, CLOSE);
-
+    const double entry_margin = CalculateMargin(order_price, entry_size, CLOSE);
     limit_entry->SetMargin(entry_margin);
 
     // 주문 가능 여부 체크
@@ -403,11 +401,11 @@ void OrderHandler::LimitEntry(const string& entry_name,
 
 void OrderHandler::MitEntry(const string& entry_name,
                             const Direction entry_direction,
-                            const double entry_size, double touch_price,
-                            const int leverage) {
+                            const double entry_size, double touch_price) {
+  const int symbol_idx = bar_->GetCurrentSymbolIndex();
+
   try {
     // 바 정보 로딩
-    const int symbol_idx = bar_->GetCurrentSymbolIndex();
     double base_price = 0.0;
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
@@ -440,7 +438,7 @@ void OrderHandler::MitEntry(const string& entry_name,
 
     // 주문 생성
     const auto mit_entry = make_shared<Order>();
-    mit_entry->SetLeverage(leverage)
+    mit_entry->SetLeverage(GetLeverage(symbol_idx))
         .SetEntryName(entry_name)
         .SetEntryOrderType(MIT)
         .SetEntryDirection(entry_direction)
@@ -456,7 +454,7 @@ void OrderHandler::MitEntry(const string& entry_name,
       IsValidPositionSize(entry_size, MIT);
       IsValidPrice(touch_price);
       IsValidNotionalValue(touch_price, entry_size);
-      IsValidLeverage(leverage);
+      IsValidLeverage(touch_price, entry_size);
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
       throw OrderFailed("MIT 진입 실패");
@@ -483,10 +481,11 @@ void OrderHandler::MitEntry(const string& entry_name,
 void OrderHandler::LitEntry(const string& entry_name,
                             const Direction entry_direction,
                             const double entry_size, double touch_price,
-                            double order_price, const int leverage) {
+                            double order_price) {
+  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+
   try {
     // 바 정보 로딩
-    const auto symbol_idx = bar_->GetCurrentSymbolIndex();
     double base_price = 0.0;
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
@@ -520,7 +519,7 @@ void OrderHandler::LitEntry(const string& entry_name,
 
     // 주문 생성
     const auto lit_entry = make_shared<Order>();
-    lit_entry->SetLeverage(leverage)
+    lit_entry->SetLeverage(GetLeverage(symbol_idx))
         .SetEntryName(entry_name)
         .SetEntryOrderType(LIT)
         .SetEntryDirection(entry_direction)
@@ -538,7 +537,7 @@ void OrderHandler::LitEntry(const string& entry_name,
       IsValidPrice(touch_price);
       IsValidPrice(order_price);
       IsValidNotionalValue(order_price, entry_size);
-      IsValidLeverage(leverage);
+      IsValidLeverage(order_price, entry_size);
       IsValidLimitOrderPrice(order_price, touch_price, entry_direction);
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
@@ -566,10 +565,11 @@ void OrderHandler::LitEntry(const string& entry_name,
 void OrderHandler::TrailingEntry(const string& entry_name,
                                  const Direction entry_direction,
                                  const double entry_size, double touch_price,
-                                 const double trail_point, const int leverage) {
+                                 const double trail_point) {
+  const int symbol_idx = bar_->GetCurrentSymbolIndex();
+
   try {
     // 바 정보 로딩
-    const int symbol_idx = bar_->GetCurrentSymbolIndex();
     double base_price = 0.0;
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
@@ -602,7 +602,7 @@ void OrderHandler::TrailingEntry(const string& entry_name,
 
     // 주문 생성
     const auto trailing_entry = make_shared<Order>();
-    trailing_entry->SetLeverage(leverage)
+    trailing_entry->SetLeverage(GetLeverage(symbol_idx))
         .SetEntryName(entry_name)
         .SetEntryOrderType(TRAILING)
         .SetEntryDirection(entry_direction)
@@ -624,12 +624,20 @@ void OrderHandler::TrailingEntry(const string& entry_name,
       IsValidPositionSize(entry_size, TRAILING);
       IsValidTrailingTouchPrice(touch_price);
       IsValidTrailPoint(trail_point);
-      IsValidNotionalValue(entry_direction == Direction::LONG
-                               ? base_price - touch_price + trail_point
-                               : base_price + touch_price -
-                                     trail_point,  // 가장 불리한 진입가로 검사
-                           entry_size);
-      IsValidLeverage(leverage);
+
+      double start_price;
+      if (IsEqual(touch_price, 0.0)) {
+        start_price = base_price;
+      } else {
+        start_price = touch_price;
+      }
+
+      const double target_price =  // 가장 불리한 진입가로 검사
+          entry_direction == Direction::LONG ? start_price + trail_point
+                                             : start_price - trail_point;
+
+      IsValidNotionalValue(target_price, entry_size);
+      IsValidLeverage(target_price, entry_size);
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
       throw OrderFailed("트레일링 진입 실패");
@@ -1139,11 +1147,19 @@ void OrderHandler::TrailingExit(const string& exit_name,
       IsValidPositionSize(exit_size, TRAILING);
       IsValidTrailingTouchPrice(touch_price);
       IsValidTrailPoint(trail_point);
-      IsValidNotionalValue(trailing_exit->GetExitDirection() == Direction::LONG
-                               ? base_price - touch_price + trail_point
-                               : base_price + touch_price -
-                                     trail_point,  // 가장 불리한 청산가로 검사
-                           exit_size);
+
+      double start_price;
+      if (IsEqual(touch_price, 0.0)) {
+        start_price = base_price;
+      } else {
+        start_price = touch_price;
+      }
+
+      IsValidNotionalValue(  // 가장 불리한 청산가로 검사
+          trailing_exit->GetExitDirection() == Direction::LONG
+              ? start_price + trail_point
+              : start_price - trail_point,
+          exit_size);
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
       throw OrderFailed("트레일링 청산 실패");
@@ -1170,49 +1186,6 @@ void OrderHandler::TrailingExit(const string& exit_name,
     LogFormattedInfo(WARNING_L,
                      format("트레일링 [{}] 주문이 실패했습니다.", exit_name),
                      __FILE__, __LINE__);
-  }
-}
-
-void OrderHandler::Cancel(const string& order_name) {
-  const int symbol_idx = bar_->GetCurrentSymbolIndex();
-  auto& pending_entries = pending_entries_[symbol_idx];
-
-  // 진입 대기 주문에서 같은 이름이 존재할 시 삭제
-  for (int order_idx = 0; order_idx < pending_entries.size(); order_idx++) {
-    if (const auto pending_entry = pending_entries[order_idx];
-        order_name == pending_entry->GetEntryName()) {
-      // 메모리 삭제되므로 로그용으로 미리 로딩
-      const auto order_type = pending_entry->GetEntryOrderType();
-
-      // 예약 증거금 회복 과정 진행 후 삭제
-      ExecuteCancelEntry(pending_entry);
-      pending_entries.erase(pending_entries.begin() + order_idx);
-
-      LogFormattedInfo(ORDER_L,
-                       format("{} [{}] 주문이 취소되었습니다.",
-                              Order::OrderTypeToString(order_type), order_name),
-                       __FILE__, __LINE__);
-      break;  // 동일한 진입 이름으로 진입 대기 불가능하므로 찾으면 바로 break
-    }
-  }
-
-  // 청산 대기 주문에서 같은 이름이 존재할 시 삭제
-  auto& pending_exits = pending_exits_[symbol_idx];
-
-  for (int order_idx = 0; order_idx < pending_exits.size(); order_idx++) {
-    if (const auto pending_exit = pending_exits[order_idx];
-        order_name == pending_exit->GetExitName()) {
-      // 청산 주문은 예약 증거금이 필요하지 않기 때문에 삭제만 함
-      pending_exits.erase(pending_exits.begin() + order_idx);
-
-      LogFormattedInfo(
-          ORDER_L,
-          format("{} [{}] 주문이 취소되었습니다.",
-                 Order::OrderTypeToString(pending_exit->GetExitOrderType()),
-                 order_name),
-          __FILE__, __LINE__);
-      break;  // 동일한 청산 이름으로 청산 대기 불가능하므로 찾으면 바로 break
-    }
   }
 }
 
@@ -1325,8 +1298,7 @@ void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry,
 
   // 시장가 진입 마진 계산
   const double entry_margin =
-      CalculateMargin(entry_filled_price, entry_filled_size,
-                      market_entry->GetLeverage(), price_type);
+      CalculateMargin(entry_filled_price, entry_filled_size, price_type);
 
   market_entry->SetMargin(entry_margin);
 
@@ -1417,48 +1389,6 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
 
   // 분석기에 청산된 거래 추가
   AddTrade(exit_order, realized_pnl);
-}
-
-void OrderHandler::ExecuteCancelEntry(const shared_ptr<Order>& cancel_order) {
-  switch (cancel_order->GetEntryOrderType()) {
-    case MARKET: {
-      // 시장가는 바로 체결하므로 대기 주문이 없음
-      return;
-    }
-
-    case LIMIT: {
-      // 사용한 자금에서 예약 증거금 감소
-      engine_->DecreaseUsedMargin(cancel_order->GetEntryOrderSize() *
-                                  cancel_order->GetEntryOrderPrice());
-      return;
-    }
-
-    case MIT: {
-      /* MIT Touch 대기 중에는 예약 증거금을 사용하지 않으며,
-         Touch 이후에는 시장가로 체결하므로 대기 주문이 없음  */
-      return;
-    }
-
-    case LIT: {
-      if (cancel_order->GetEntryOrderTime() != -1) {
-        /* Entry Order Time이 설정되었다는 것은 Touch 했다는 의미이며,
-           Touch 이후에는 지정가로 예약 증거금을 사용하므로 사용한 자금에서 예약
-           증거금을 감소시켜야 함 */
-        engine_->DecreaseUsedMargin(cancel_order->GetEntryOrderSize() *
-                                    cancel_order->GetEntryOrderPrice());
-      }
-      return;
-    }
-
-    case TRAILING: {
-      /* Trailing Touch 대기 중에는 예약 증거금을 사용하지 않으며,
-         Touch 이후에는 가격을 추적하다 시장가로 체결하므로 대기 주문이 없음 */
-      return;
-    }
-
-    default:
-      return;
-  }
 }
 
 void OrderHandler::CheckPendingLimitEntries(const int symbol_idx,
@@ -1703,8 +1633,7 @@ void OrderHandler::FillPendingLimitEntry(const int symbol_idx,
 
   // 현재 미실현 손실을 반영한 지정가 진입 마진 재계산
   const auto entry_margin =
-      CalculateMargin(slippage_filled_price, entry_filled_size,
-                      limit_entry->GetLeverage(), price_type);
+      CalculateMargin(slippage_filled_price, entry_filled_size, price_type);
 
   // 강제 청산 가격
   limit_entry->SetLiquidationPrice(CalculateLiquidationPrice(
@@ -1756,9 +1685,9 @@ void OrderHandler::OrderPendingLitEntry(const int symbol_idx,
   lit_entry->SetEntryOrderTime(engine_->GetCurrentOpenTime());
 
   // 예약 증거금 계산
-  const double entry_margin = CalculateMargin(
-      lit_entry->GetEntryOrderPrice(), lit_entry->GetEntryOrderSize(),
-      lit_entry->GetLeverage(), price_type);
+  const double entry_margin =
+      CalculateMargin(lit_entry->GetEntryOrderPrice(),
+                      lit_entry->GetEntryOrderSize(), price_type);
 
   lit_entry->SetMargin(entry_margin);
 
@@ -2113,15 +2042,4 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
           .SetDrawdown(engine_->GetDrawdown())
           .SetMaxDrawdown(engine_->GetMaxDrawdown())
           .SetSymbolCount(symbol_count));
-}
-
-void OrderHandler::LogFormattedInfo(const LogLevel log_level,
-                                    const string& formatted_message,
-                                    const char* file, const int line) {
-  logger_->Log(log_level,
-               format("[{}] [{}] | {}", engine_->GetCurrentStrategyName(),
-                      bar_->GetBarData(bar_->GetCurrentBarType())
-                          ->GetSymbolName(bar_->GetCurrentSymbolIndex()),
-                      formatted_message),
-               file, line);
 }
