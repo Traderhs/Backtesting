@@ -9,7 +9,7 @@ class Volume final : public Indicator {
   explicit Volume(const string& name, const string& timeframe);
 
  private:
-  BarData* reference_bar_;
+  shared_ptr<BarData> reference_bar_;
 
   void Initialize() override;
 

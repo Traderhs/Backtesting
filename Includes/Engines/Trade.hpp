@@ -26,8 +26,9 @@ class Trade final {
   Trade& SetEntryPrice(double entry_price);
   Trade& SetExitPrice(double exit_price);
   Trade& SetLeverage(int leverage);
-  Trade& SetEntryCommission(double entry_commission);
-  Trade& SetExitCommission(double exit_commission);
+  Trade& SetEntryFee(double entry_fee);
+  Trade& SetExitFee(double exit_fee);
+  Trade& SetLiquidationFee(double liquidation_fee);
   Trade& SetProfitLoss(double profit_loss);
   Trade& SetProfitLossPer(double profit_loss_per);
   Trade& SetWalletBalance(double wallet_balance);
@@ -50,8 +51,9 @@ class Trade final {
   [[nodiscard]] double GetEntryPrice() const;
   [[nodiscard]] double GetExitPrice() const;
   [[nodiscard]] int GetLeverage() const;
-  [[nodiscard]] double GetEntryCommission() const;
-  [[nodiscard]] double GetExitCommission() const;
+  [[nodiscard]] double GetEntryFee() const;
+  [[nodiscard]] double GetExitFee() const;
+  [[nodiscard]] double GetLiquidationFee() const;
   [[nodiscard]] double GetProfitLoss() const;
   [[nodiscard]] double GetProfitLossPer() const;
   [[nodiscard]] double GetWalletBalance() const;
@@ -76,8 +78,9 @@ class Trade final {
   double entry_price_;         // 진입 가격
   double exit_price_;          // 청산 가격
   int leverage_;               // 레버리지
-  double entry_commission_;    // 진입 수수료
-  double exit_commission_;     // 청산 수수료
+  double entry_fee_;           // 진입 수수료
+  double exit_fee_;            // 청산 수수료
+  double liquidation_fee_;     // 강제 청산 수수료
   double profit_loss_;         // 손익
   double profit_loss_per_;     // 손익률
   double wallet_balance_;      // 현재 자금

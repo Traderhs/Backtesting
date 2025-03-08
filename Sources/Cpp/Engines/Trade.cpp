@@ -8,8 +8,9 @@ Trade::Trade()
       entry_price_(0.0),
       exit_price_(0.0),
       leverage_(0),
-      entry_commission_(0.0),
-      exit_commission_(0.0),
+      entry_fee_(0.0),
+      exit_fee_(0.0),
+      liquidation_fee_(0.0),
       profit_loss_(0.0),
       profit_loss_per_(0.0),
       wallet_balance_(0.0),
@@ -89,13 +90,18 @@ Trade& Trade::SetLeverage(const int leverage) {
   return *this;
 }
 
-Trade& Trade::SetEntryCommission(const double entry_commission) {
-  entry_commission_ = entry_commission;
+Trade& Trade::SetEntryFee(const double entry_fee) {
+  entry_fee_ = entry_fee;
   return *this;
 }
 
-Trade& Trade::SetExitCommission(const double exit_commission) {
-  exit_commission_ = exit_commission;
+Trade& Trade::SetExitFee(const double exit_fee) {
+  exit_fee_ = exit_fee;
+  return *this;
+}
+
+Trade& Trade::SetLiquidationFee(const double liquidation_fee) {
+  liquidation_fee_ = liquidation_fee;
   return *this;
 }
 
@@ -148,8 +154,9 @@ double Trade::GetExitSize() const { return exit_size_; }
 double Trade::GetEntryPrice() const { return entry_price_; }
 double Trade::GetExitPrice() const { return exit_price_; }
 int Trade::GetLeverage() const { return leverage_; }
-double Trade::GetEntryCommission() const { return entry_commission_; }
-double Trade::GetExitCommission() const { return exit_commission_; }
+double Trade::GetEntryFee() const { return entry_fee_; }
+double Trade::GetExitFee() const { return exit_fee_; }
+double Trade::GetLiquidationFee() const { return liquidation_fee_; }
 double Trade::GetProfitLoss() const { return profit_loss_; }
 double Trade::GetProfitLossPer() const { return profit_loss_per_; }
 double Trade::GetWalletBalance() const { return wallet_balance_; }

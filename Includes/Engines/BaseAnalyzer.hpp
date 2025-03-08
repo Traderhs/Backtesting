@@ -1,6 +1,7 @@
 #pragma once
 
 // 표준 라이브러리
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -8,9 +9,7 @@
 class Engine;
 class Trade;
 class Order;
-
-// 내부 헤더
-#include "Engines/Logger.hpp"
+class Logger;
 
 // 네임 스페이스
 using namespace std;

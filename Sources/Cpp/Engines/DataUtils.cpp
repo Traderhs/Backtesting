@@ -1,21 +1,21 @@
 ﻿// 표준 라이브러리
 #include <any>
+#include <cstdlib>
 #include <format>
 
 // 외부 라이브러리
-#include <arrow/io/file.h>
-#include <parquet/arrow/reader.h>
-#include <parquet/arrow/writer.h>
+#include "arrow/io/file.h"
+#include "arrow/scalar.h"
+#include "arrow/table.h"
+#include "nlohmann/json.hpp"
+#include "parquet/arrow/reader.h"
+#include "parquet/arrow/writer.h"
 
 // 파일 헤더
 #include "Engines/DataUtils.hpp"
 
 // 내부 헤더
 #include "Engines/Logger.hpp"
-#include "Engines/TimeUtils.hpp"
-
-// 네임 스페이스
-using namespace time_utils;
 
 namespace data_utils {
 size_t CountDecimalPlaces(const double value) {
@@ -54,7 +54,7 @@ shared_ptr<arrow::Table> ReadParquet(const string& file_path) {
 
     PARQUET_THROW_NOT_OK(result.status());
     const unique_ptr<parquet::arrow::FileReader> reader =
-        move(result).ValueOrDie();
+        std::move(result).ValueOrDie();
 
     // FileReader로 Table을 읽어옴
     shared_ptr<arrow::Table> table;
@@ -63,7 +63,7 @@ shared_ptr<arrow::Table> ReadParquet(const string& file_path) {
     return table;
   } catch (const parquet::ParquetException& e) {
     Logger::LogAndThrowError(
-        "테이블을 불러오는 데 실패했습니다.: " + string(e.what()), __FILE__,
+        "테이블을 불러오는 데 실패했습니다." + string(e.what()), __FILE__,
         __LINE__);
     return nullptr;
   }
@@ -138,6 +138,16 @@ void TableToParquet(const shared_ptr<arrow::Table>& table,
         __FILE__, __LINE__);
 }
 
+void JsonToFile(future<json> data, const string& file_path) {
+  if (ofstream file(file_path); file.is_open()) {
+    file << data.get().dump(4);  // 4는 들여쓰기를 위한 인자
+    file.close();
+  } else {
+    Logger::LogAndThrowError(format("{} 파일을 열 수 없습니다.", file_path),
+                             __FILE__, __LINE__);
+  }
+}
+
 pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>> SplitTable(
     const shared_ptr<arrow::Table>& table, const double split_ratio) {
   const int64_t num_rows = table->num_rows();
@@ -167,7 +177,10 @@ double RoundToTickSize(const double price, const double tick_size) {
         __FILE__, __LINE__);
   }
 
-  return round(price / tick_size) * tick_size;
+  const double result = round(price / tick_size) * tick_size;
+
+  // 부동 소수점 정밀도 보정
+  return round(result * 1e10) / 1e10;
 }
 
 string FormatDollar(const double price) {
@@ -175,6 +188,7 @@ string FormatDollar(const double price) {
   oss.imbue(global_locale);  // 천 단위 쉼표 추가
   oss << showpoint;          // 소수점 유지
   oss << fixed;              // 고정 소수점 형식
+  oss << setprecision(2);    // 소수점 두 자리까지
 
   if (IsLess(price, 0.0))
     oss << "-$" << -price;  // 음수일 때 -$
@@ -182,5 +196,24 @@ string FormatDollar(const double price) {
     oss << "$" << price;  // 양수일 때 $
 
   return oss.str();
+}
+
+string GetEnvVariable(const string& env_var) {
+  char* value = nullptr;
+  size_t len = 0;
+
+  if (const int result = _dupenv_s(&value, &len, env_var.c_str());
+      result == 0 && value != nullptr) {
+    string result_value(value);  // 가져온 값을 string으로 변환
+    free(value);                 // value 메모리 해제
+    return result_value;
+  }
+
+  // 환경 변수가 없을 경우 예외 처리
+  Logger::LogAndThrowError(
+      format("환경 변수 [{}]이(가) 존재하지 않습니다.", env_var), __FILE__,
+      __LINE__);
+
+  return {};  // 환경 변수가 없으면 빈 문자열 반환
 }
 }  // namespace data_utils

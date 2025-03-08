@@ -1,5 +1,6 @@
 #pragma once
 
+// 내부 헤더
 #include "Engines/Strategy.hpp"
 
 class TestStrategy final : public Strategy {

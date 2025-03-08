@@ -4,19 +4,17 @@
 #include <cfloat>
 #include <format>
 
+// 내부 헤더
+#include "Engines/Logger.hpp"
+#include "Engines/OrderHandler.hpp"  // 커스텀 전략에서 사용 편의성을 위해 직접 포함
+#include "Indicators/Indicators.hpp"
+
 // 전방 선언
 class BarHandler;
 class Engine;
-class Logger;
-
-// 내부 헤더
-#include "Engines/Order.hpp"
-#include "Engines/OrderHandler.hpp"
-#include "Indicators/Indicators.hpp"
 
 // 네임 스페이스
 using namespace std;
-using enum Direction;
 
 /// 백테스팅 전략을 생성하기 위한 팩토리 클래스
 class Strategy {
@@ -28,7 +26,7 @@ class Strategy {
     // AddStrategy 함수를 통할 때만 생성 카운터 증가
     creation_counter_++;
 
-    strategy_.push_back(
+    strategies_.push_back(
         std::make_shared<CustomStrategy>(name, std::forward<Args>(args)...));
 
     logger->Log(LogLevel::INFO_L,
@@ -52,10 +50,10 @@ class Strategy {
   static void SetTradingTimeframe(const string& trading_tf);
 
   /// 생성된 전략들의 벡터를 반환하는 함수
-  static vector<shared_ptr<Strategy>>& GetStrategies();
+  [[nodiscard]] static vector<shared_ptr<Strategy>>& GetStrategies();
 
   /// 해당 전략에서 사용하는 지표들을 반환하는 함수
-  vector<shared_ptr<Indicator>>& GetIndicators();
+  [[nodiscard]] vector<shared_ptr<Indicator>>& GetIndicators();
 
   /// 해당 전략의 이름을 반환하는 함수
   [[nodiscard]] string GetName() const;
@@ -70,7 +68,7 @@ class Strategy {
   // 전 생성 카운터
   static size_t pre_creation_counter_;
 
-  static vector<shared_ptr<Strategy>> strategy_;  // 생성한 전략들
+  static vector<shared_ptr<Strategy>> strategies_;  // 생성한 전략들
   vector<shared_ptr<Indicator>> indicators_;  // 해당 전략에서 사용하는 지표들
 
   string name_;  // 전략의 이름

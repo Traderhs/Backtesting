@@ -6,9 +6,7 @@
 
 // 내부 헤더
 #include "Engines/BarHandler.hpp"
-#include "Engines/BaseBarHandler.hpp"
 #include "Engines/Engine.hpp"
-#include "Engines/Logger.hpp"
 #include "Engines/OrderHandler.hpp"
 
 Strategy::Strategy(const string& name)
@@ -42,7 +40,7 @@ Strategy::Strategy(const string& name)
 }
 Strategy::~Strategy() = default;
 
-vector<shared_ptr<Strategy>> Strategy::strategy_;
+vector<shared_ptr<Strategy>> Strategy::strategies_;
 size_t Strategy::creation_counter_;
 size_t Strategy::pre_creation_counter_;
 
@@ -62,7 +60,7 @@ void Strategy::SetTradingTimeframe(const string& trading_tf) {
   trading_timeframe = trading_tf;
 }
 
-vector<shared_ptr<Strategy>>& Strategy::GetStrategies() { return strategy_; }
+vector<shared_ptr<Strategy>>& Strategy::GetStrategies() { return strategies_; }
 vector<shared_ptr<Indicator>>& Strategy::GetIndicators() { return indicators_; }
 string Strategy::GetName() const { return name_; }
 shared_ptr<OrderHandler> Strategy::GetOrderHandler() const { return order; }

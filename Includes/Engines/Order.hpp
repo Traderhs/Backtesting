@@ -19,14 +19,16 @@ class Order {
   Order();
   ~Order();
 
+  Order& SetMargin(double margin);
   Order& SetLeverage(int leverage);
-  Order& SetMarginCallPrice(double margin_call_price);
+  Order& SetLiquidationPrice(double liquidation_price);
+  Order& SetLiquidationFee(double liquidation_fee);
 
   // ===========================================================================
   Order& SetEntryName(const string& entry_name);
   Order& SetEntryOrderType(OrderType order_type);
   Order& SetEntryDirection(Direction entry_direction);
-  Order& SetEntryCommission(double commission);
+  Order& SetEntryFee(double entry_fee);
 
   Order& SetEntryTouchPrice(double touch_price);
   Order& SetEntryTouchDirection(Direction touch_direction);
@@ -34,18 +36,18 @@ class Order {
   Order& SetEntryTrailPoint(double trail_point);
 
   Order& SetEntryOrderTime(int64_t entry_order_time);
-  Order& SetEntryOrderSize(double entry_order_size);
   Order& SetEntryOrderPrice(double entry_order_price);
+  Order& SetEntryOrderSize(double entry_order_size);
 
   Order& SetEntryFilledTime(int64_t entry_filled_time);
-  Order& SetEntryFilledSize(double entry_filled_size);
   Order& SetEntryFilledPrice(double entry_filled_price);
+  Order& SetEntryFilledSize(double entry_filled_size);
 
   // ===========================================================================
   Order& SetExitName(const string& exit_name);
   Order& SetExitOrderType(OrderType order_type);
   Order& SetExitDirection(Direction exit_direction);
-  Order& SetExitCommission(double commission);
+  Order& SetExitFee(double exit_fee);
 
   Order& SetExitTouchPrice(double touch_price);
   Order& SetExitTouchDirection(Direction touch_direction);
@@ -53,25 +55,27 @@ class Order {
   Order& SetExitTrailPoint(double trail_point);
 
   Order& SetExitOrderTime(int64_t exit_order_time);
-  Order& SetExitOrderSize(double exit_order_size);
   Order& SetExitOrderPrice(double exit_order_price);
+  Order& SetExitOrderSize(double exit_order_size);
 
   Order& SetExitFilledTime(int64_t exit_filled_time);
-  Order& SetExitFilledSize(double exit_filled_size);
   Order& SetExitFilledPrice(double exit_filled_price);
+  Order& SetExitFilledSize(double exit_filled_size);
 
   // ===========================================================================
-  static string OrderTypeToString(OrderType order_type);
+  [[nodiscard]] static string OrderTypeToString(OrderType order_type);
 
   // ===========================================================================
+  [[nodiscard]] double GetMargin() const;
   [[nodiscard]] int GetLeverage() const;
-  [[nodiscard]] double GetMarginCallPrice() const;
+  [[nodiscard]] double GetLiquidationPrice() const;
+  [[nodiscard]] double GetLiquidationFee() const;
 
   // ===========================================================================
   [[nodiscard]] string GetEntryName() const;
   [[nodiscard]] OrderType GetEntryOrderType() const;
   [[nodiscard]] Direction GetEntryDirection() const;
-  [[nodiscard]] double GetEntryCommission() const;
+  [[nodiscard]] double GetEntryFee() const;
 
   [[nodiscard]] double GetEntryTouchPrice() const;
   [[nodiscard]] Direction GetEntryTouchDirection() const;
@@ -79,18 +83,18 @@ class Order {
   [[nodiscard]] double GetEntryTrailPoint() const;
 
   [[nodiscard]] int64_t GetEntryOrderTime() const;
-  [[nodiscard]] double GetEntryOrderSize() const;
   [[nodiscard]] double GetEntryOrderPrice() const;
+  [[nodiscard]] double GetEntryOrderSize() const;
 
   [[nodiscard]] int64_t GetEntryFilledTime() const;
-  [[nodiscard]] double GetEntryFilledSize() const;
   [[nodiscard]] double GetEntryFilledPrice() const;
+  [[nodiscard]] double GetEntryFilledSize() const;
 
   // ===========================================================================
   [[nodiscard]] string GetExitName() const;
   [[nodiscard]] OrderType GetExitOrderType() const;
   [[nodiscard]] Direction GetExitDirection() const;
-  [[nodiscard]] double GetExitCommission() const;
+  [[nodiscard]] double GetExitFee() const;
 
   [[nodiscard]] double GetExitTouchPrice() const;
   [[nodiscard]] Direction GetExitTouchDirection() const;
@@ -98,24 +102,26 @@ class Order {
   [[nodiscard]] double GetExitTrailPoint() const;
 
   [[nodiscard]] int64_t GetExitOrderTime() const;
-  [[nodiscard]] double GetExitOrderSize() const;
   [[nodiscard]] double GetExitOrderPrice() const;
+  [[nodiscard]] double GetExitOrderSize() const;
 
   [[nodiscard]] int64_t GetExitFilledTime() const;
-  [[nodiscard]] double GetExitFilledSize() const;
   [[nodiscard]] double GetExitFilledPrice() const;
+  [[nodiscard]] double GetExitFilledSize() const;
 
  private:
   // 통합 변수
+  double margin_;             // 진입 마진
   int leverage_;              // 레버리지 배수
-  double margin_call_price_;  // 마진콜 가격  // 수정 필요 @@@@@@@@@@@@@@@@@@@@@
+  double liquidation_price_;  // 강제 청산 가격
+  double liquidation_fee_;    // 강제 청산 수수료
 
   // ===========================================================================
   // 진입 변수
   string entry_name_;           // 진입 주문 이름
   OrderType entry_order_type_;  // 진입 주문 타입
   Direction entry_direction_;   // 진입 방향
-  double entry_commission_;     // 진입 수수료 금액
+  double entry_fee_;            // 진입 수수료 금액
 
   // MIT, LIT, Trailing 진입 대기 변수
   double entry_touch_price_;         // 진입 주문을 실행할 터치 가격
@@ -126,20 +132,20 @@ class Order {
 
   // 시장가, 지정가 진입 주문 시 업데이트
   int64_t entry_order_time_;  // 진입 주문 시간
-  double entry_order_size_;   // 진입 주문 수량
   double entry_order_price_;  // 진입 주문 가격
+  double entry_order_size_;   // 진입 주문 수량
 
   // 시장가, 지정가 진입 체결 시 업데이트
   int64_t entry_filled_time_;  // 진입 체결 시간
-  double entry_filled_size_;   // 진입 체결 수량
   double entry_filled_price_;  // 진입 체결 가격
+  double entry_filled_size_;   // 진입 체결 수량
 
   // ===========================================================================
   // 청산 변수
   string exit_name_;           // 청산 주문 이름
   OrderType exit_order_type_;  // 청산 주문 타입
   Direction exit_direction_;   // 청산 방향
-  double exit_commission_;     // 청산 수수료 금액
+  double exit_fee_;            // 청산 수수료 금액
 
   // MIT, LIT, Trailing 청산 대기 변수
   double exit_touch_price_;         // 청산 주문을 실행할 터치 가격
@@ -150,11 +156,11 @@ class Order {
 
   // 시장가, 지정가 청산 주문 시 업데이트
   int64_t exit_order_time_;  // 청산 주문 시간
-  double exit_order_size_;   // 청산 주문 수량
   double exit_order_price_;  // 청산 주문 가격
+  double exit_order_size_;   // 청산 주문 수량
 
   // 시장가, 지정가 청산 체결 시 업데이트
   int64_t exit_filled_time_;  // 청산 체결 시간
-  double exit_filled_size_;   // 청산 체결 수량
   double exit_filled_price_;  // 청산 체결 가격
+  double exit_filled_size_;   // 청산 체결 수량
 };
