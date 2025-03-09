@@ -17,11 +17,17 @@
 #include "Engines/TimeUtils.hpp"
 
 // 네임 스페이스
-using namespace data_utils;
-using namespace time_utils;
+namespace backtesting {
+using namespace bar;
+using namespace exception;
+using namespace logger;
+using namespace utils;
+}  // namespace backtesting
+
+namespace backtesting::bar {
 
 BarHandler::BarHandler()
-    : current_bar_type_(BarType::TRADING), current_symbol_index_(-1) {}
+    : current_bar_type_(TRADING), current_symbol_index_(-1) {}
 void BarHandler::Deleter::operator()(const BarHandler* p) const { delete p; }
 
 mutex BarHandler::mutex_;
@@ -40,24 +46,27 @@ shared_ptr<BarHandler>& BarHandler::GetBarHandler() {
 }
 
 void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
-                            const BarType bar_type,
-                            const vector<int>& columns) {
+                            const BarType bar_type, const int open_time_column,
+                            const int open_column, const int high_column,
+                            const int low_column, const int close_column,
+                            const int volume_column,
+                            const int close_time_column) {
   // 로그용 바 데이터 타입 문자열
   string bar_data_type_str;
   switch (bar_type) {
-    case BarType::TRADING: {
+    case TRADING: {
       bar_data_type_str = "트레이딩 및 참조";
       break;
     }
-    case BarType::MAGNIFIER: {
+    case MAGNIFIER: {
       bar_data_type_str = "돋보기";
       break;
     }
-    case BarType::REFERENCE: {
+    case REFERENCE: {
       bar_data_type_str = "참조";
       break;
     }
-    case BarType::MARK_PRICE: {
+    case MARK_PRICE: {
       bar_data_type_str = "마크 가격";
     }
   }
@@ -69,17 +78,19 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
     bar_data = ReadParquet(file_path);
 
     // 타임프레임 계산
-    bar_data_timeframe = CalculateTimeframe(bar_data, columns[0]);
+    bar_data_timeframe = CalculateTimeframe(bar_data, open_time_column);
 
     // 타임프레임 유효성 검증
     IsValidTimeframeBetweenBars(bar_data_timeframe, bar_type);
 
     // 데이터 추가
     switch (bar_type) {
-      case BarType::TRADING: {
+      case TRADING: {
         // 데이터 추가
         trading_bar_data_->SetBarData(symbol_name, bar_data_timeframe, bar_data,
-                                      columns);
+                                      open_time_column, open_column,
+                                      high_column, low_column, close_column,
+                                      volume_column, close_time_column);
 
         // 트레이딩 바를 지표 계산용으로도 사용하기 때문에
         // 참조 바 데이터로 추가
@@ -89,7 +100,9 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
           reference_bar_data_[bar_data_timeframe] = make_shared<BarData>();
         }
         reference_bar_data_[bar_data_timeframe]->SetBarData(
-            symbol_name, bar_data_timeframe, bar_data, columns);
+            symbol_name, bar_data_timeframe, bar_data, open_time_column,
+            open_column, high_column, low_column, close_column, volume_column,
+            close_time_column);
 
         // 인덱스 심볼 개수 추가
         trading_index_.push_back(0);
@@ -98,17 +111,19 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
         break;
       }
 
-      case BarType::MAGNIFIER: {
+      case MAGNIFIER: {
         // 데이터 추가
         magnifier_bar_data_->SetBarData(symbol_name, bar_data_timeframe,
-                                        bar_data, columns);
+                                        bar_data, open_time_column, open_column,
+                                        high_column, low_column, close_column,
+                                        volume_column, close_time_column);
 
         // 인덱스 심볼 개수 추가
         magnifier_index_.push_back(0);
         break;
       }
 
-      case BarType::REFERENCE: {
+      case REFERENCE: {
         // 데이터 추가
         if (const auto& timeframe_it =
                 reference_bar_data_.find(bar_data_timeframe);
@@ -116,17 +131,21 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
           reference_bar_data_[bar_data_timeframe] = make_shared<BarData>();
         }
         reference_bar_data_[bar_data_timeframe]->SetBarData(
-            symbol_name, bar_data_timeframe, bar_data, columns);
+            symbol_name, bar_data_timeframe, bar_data, open_time_column,
+            open_column, high_column, low_column, close_column, volume_column,
+            close_time_column);
 
         // 인덱스 심볼 개수 추가
         reference_index_[bar_data_timeframe].push_back(0);
         break;
       }
 
-      case BarType::MARK_PRICE: {
+      case MARK_PRICE: {
         // 데이터 추가
-        mark_price_bar_data_->SetBarData(symbol_name, bar_data_timeframe,
-                                         bar_data, columns);
+        mark_price_bar_data_->SetBarData(
+            symbol_name, bar_data_timeframe, bar_data, open_time_column,
+            open_column, high_column, low_column, close_column, volume_column,
+            close_time_column);
 
         // 인덱스 심볼 개수 추가
         mark_price_index_.push_back(0);
@@ -141,12 +160,12 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
   }
 
   logger_->Log(
-      LogLevel::INFO_L,
+      INFO_L,
       format("[{} - {}] 기간의 [{} {}]이(가) {} 바 데이터로 추가되었습니다.",
-             UtcTimestampToUtcDatetime(
-                 any_cast<int64_t>(GetCellValue(bar_data, columns[0], 0))),
              UtcTimestampToUtcDatetime(any_cast<int64_t>(
-                 GetCellValue(bar_data, columns[6], bar_data->num_rows() - 1))),
+                 GetCellValue(bar_data, open_time_column, 0))),
+             UtcTimestampToUtcDatetime(any_cast<int64_t>(GetCellValue(
+                 bar_data, close_time_column, bar_data->num_rows() - 1))),
              symbol_name, bar_data_timeframe, bar_data_type_str),
       __FILE__, __LINE__);
 }
@@ -203,7 +222,7 @@ void BarHandler::SetCurrentBarType(const BarType bar_type,
                                    const string& timeframe) {
   current_bar_type_ = bar_type;
 
-  if (bar_type == BarType::REFERENCE) {
+  if (bar_type == REFERENCE) {
     IsValidReferenceBarTimeframe(timeframe);
 
     current_reference_timeframe_ = timeframe;
@@ -216,23 +235,23 @@ void BarHandler::SetCurrentSymbolIndex(const int symbol_index) {
 
 void BarHandler::SetCurrentBarIndex(const size_t bar_index) {
   switch (current_bar_type_) {
-    case BarType::TRADING: {
+    case TRADING: {
       trading_index_[current_symbol_index_] = bar_index;
       return;
     }
 
-    case BarType::MAGNIFIER: {
+    case MAGNIFIER: {
       magnifier_index_[current_symbol_index_] = bar_index;
       return;
     }
 
-    case BarType::REFERENCE: {
+    case REFERENCE: {
       reference_index_[current_reference_timeframe_][current_symbol_index_] =
           bar_index;
       return;
     }
 
-    case BarType::MARK_PRICE: {
+    case MARK_PRICE: {
       Logger::LogAndThrowError(
           "마크 바 데이터의 바 인덱스 설정은 불가능합니다.", __FILE__,
           __LINE__);
@@ -245,19 +264,19 @@ size_t BarHandler::IncreaseBarIndex(const BarType bar_type,
                                     const string& timeframe,
                                     const int symbol_index) {
   switch (bar_type) {
-    case BarType::TRADING: {
+    case TRADING: {
       return ++trading_index_[symbol_index];
     }
 
-    case BarType::MAGNIFIER: {
+    case MAGNIFIER: {
       return ++magnifier_index_[symbol_index];
     }
 
-    case BarType::REFERENCE: {
+    case REFERENCE: {
       return ++reference_index_[timeframe][symbol_index];
     }
 
-    case BarType::MARK_PRICE: {
+    case MARK_PRICE: {
       return ++mark_price_index_[symbol_index];
     }
   }
@@ -275,20 +294,20 @@ int BarHandler::GetCurrentSymbolIndex() const { return current_symbol_index_; }
 
 size_t BarHandler::GetCurrentBarIndex() {
   switch (current_bar_type_) {
-    case BarType::TRADING: {
+    case TRADING: {
       return trading_index_[current_symbol_index_];
     }
 
-    case BarType::MAGNIFIER: {
+    case MAGNIFIER: {
       return magnifier_index_[current_symbol_index_];
     }
 
-    case BarType::REFERENCE: {
+    case REFERENCE: {
       return reference_index_[current_reference_timeframe_]
                              [current_symbol_index_];
     }
 
-    case BarType::MARK_PRICE: {
+    case MARK_PRICE: {
       return mark_price_index_[current_symbol_index_];
     }
   }
@@ -346,7 +365,7 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
   const auto parsed_bar_data_tf = ParseTimeframe(timeframe);
 
   switch (bar_type) {
-    case BarType::TRADING: {
+    case TRADING: {
       if (const string& magnifier_tf = magnifier_bar_data_->GetTimeframe();
           !magnifier_tf.empty()) {
         const auto parsed_magnifier_tf = ParseTimeframe(magnifier_tf);
@@ -396,7 +415,7 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
       return;
     }
 
-    case BarType::MAGNIFIER: {
+    case MAGNIFIER: {
       if (const string& trading_tf = trading_bar_data_->GetTimeframe();
           !trading_tf.empty()) {
         const auto parsed_trading_tf = ParseTimeframe(trading_tf);
@@ -434,7 +453,7 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
       return;
     }
 
-    case BarType::REFERENCE: {
+    case REFERENCE: {
       if (const auto& trading_tf = trading_bar_data_->GetTimeframe();
           !trading_tf.empty()) {
         const auto parsed_trading_tf = ParseTimeframe(trading_tf);
@@ -471,7 +490,7 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
       return;
     }
 
-    case BarType::MARK_PRICE: {
+    case MARK_PRICE: {
       // 바 데이터 추가 시점에는 돋보기 기능 사용 여부를 알 수 없으므로
       // 트레이딩 혹은 돋보기 타임프레임 중 하나만 같아도 일단 통과
       const auto& trading_tf = trading_bar_data_->GetTimeframe();
@@ -500,3 +519,5 @@ void BarHandler::IsValidReferenceBarTimeframe(const string& timeframe) {
         __FILE__, __LINE__);
   }
 }
+
+}  // namespace backtesting::bar

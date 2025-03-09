@@ -6,6 +6,8 @@
 // 네임 스페이스
 using namespace std;
 
+namespace backtesting::analyzer {
+
 /// 하나의 청산된 주문 정보를 저장하는 빌더 클래스
 class Trade final {
  public:
@@ -89,3 +91,5 @@ class Trade final {
   double max_drawdown_;        // 최고 드로우다운
   int symbol_count_;           // 보유 심볼 수
 };
+
+}  // namespace backtesting::analyzer

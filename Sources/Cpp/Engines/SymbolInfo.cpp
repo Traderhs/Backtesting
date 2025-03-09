@@ -4,6 +4,8 @@
 // 파일 헤더
 #include "Engines/SymbolInfo.hpp"
 
+namespace backtesting::order {
+
 SymbolInfo::SymbolInfo()
     : tick_size_(nan("")),
       limit_max_qty_(nan("")),
@@ -72,3 +74,5 @@ double SymbolInfo::GetLiquidationFee() const { return liquidation_fee_; }
 vector<LeverageBracket>& SymbolInfo::GetLeverageBracket() {
   return leverage_brackets_;
 }
+
+}  // namespace backtesting::order

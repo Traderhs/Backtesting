@@ -6,6 +6,8 @@
 // 네임 스페이스
 using namespace std;
 
+namespace backtesting::numeric {
+
 /// 부동소숫점 오류를 방지하기 위한 연산자를 지원하는 템플릿 숫자 클래스
 template <typename T>
 class Numeric final {
@@ -42,22 +44,22 @@ class Numeric final {
 
   // Numeric 간 비교 연산자
   bool operator==(const Numeric& other) const {
-    return data_utils::IsEqual(value_, other.value_);
+    return utils::IsEqual(value_, other.value_);
   }
   bool operator!=(const Numeric& other) const {
-    return !data_utils::IsEqual(value_, other.value_);
+    return !utils::IsEqual(value_, other.value_);
   }
   bool operator>(const Numeric& other) const {
-    return data_utils::IsGreater(value_, other.value_);
+    return utils::IsGreater(value_, other.value_);
   }
   bool operator>=(const Numeric& other) const {
-    return data_utils::IsGreaterOrEqual(value_, other.value_);
+    return utils::IsGreaterOrEqual(value_, other.value_);
   }
   bool operator<(const Numeric& other) const {
-    return data_utils::IsLess(value_, other.value_);
+    return utils::IsLess(value_, other.value_);
   }
   bool operator<=(const Numeric& other) const {
-    return data_utils::IsLessOrEqual(value_, other.value_);
+    return utils::IsLessOrEqual(value_, other.value_);
   }
 
   // Numeric + U (산술 연산자)
@@ -91,27 +93,27 @@ class Numeric final {
   // Numeric + U 비교 연산자
   template <typename U>
   bool operator==(U other) const {
-    return data_utils::IsEqual(value_, other);
+    return utils::IsEqual(value_, other);
   }
   template <typename U>
   bool operator!=(U other) const {
-    return !data_utils::IsEqual(value_, other);
+    return !utils::IsEqual(value_, other);
   }
   template <typename U>
   bool operator>(U other) const {
-    return data_utils::IsGreater(value_, other);
+    return utils::IsGreater(value_, other);
   }
   template <typename U>
   bool operator>=(U other) const {
-    return data_utils::IsGreaterOrEqual(value_, other);
+    return utils::IsGreaterOrEqual(value_, other);
   }
   template <typename U>
   bool operator<(U other) const {
-    return data_utils::IsLess(value_, other);
+    return utils::IsLess(value_, other);
   }
   template <typename U>
   bool operator<=(U other) const {
-    return data_utils::IsLessOrEqual(value_, other);
+    return utils::IsLessOrEqual(value_, other);
   }
 
   // U + Numeric 산술 연산자 (friend)
@@ -145,29 +147,31 @@ class Numeric final {
   // U + Numeric 비교 연산자 (friend)
   template <typename U>
   friend bool operator==(U lhs, const Numeric& rhs) {
-    return data_utils::IsEqual(lhs, rhs.value_);
+    return utils::IsEqual(lhs, rhs.value_);
   }
   template <typename U>
   friend bool operator!=(U lhs, const Numeric& rhs) {
-    return !data_utils::IsEqual(lhs, rhs.value_);
+    return !utils::IsEqual(lhs, rhs.value_);
   }
   template <typename U>
   friend bool operator>(U lhs, const Numeric& rhs) {
-    return data_utils::IsGreater(lhs, rhs.value_);
+    return utils::IsGreater(lhs, rhs.value_);
   }
   template <typename U>
   friend bool operator>=(U lhs, const Numeric& rhs) {
-    return data_utils::IsGreaterOrEqual(lhs, rhs.value_);
+    return utils::IsGreaterOrEqual(lhs, rhs.value_);
   }
   template <typename U>
   friend bool operator<(U lhs, const Numeric& rhs) {
-    return data_utils::IsLess(lhs, rhs.value_);
+    return utils::IsLess(lhs, rhs.value_);
   }
   template <typename U>
   friend bool operator<=(U lhs, const Numeric& rhs) {
-    return data_utils::IsLessOrEqual(lhs, rhs.value_);
+    return utils::IsLessOrEqual(lhs, rhs.value_);
   }
 
  private:
   T value_;
 };
+
+}  // namespace backtesting::numeric

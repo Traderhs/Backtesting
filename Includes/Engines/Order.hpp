@@ -7,11 +7,15 @@
 // 네임 스페이스
 using namespace std;
 
+namespace backtesting::order {
+
 /// 방향을 지정하는 열거형 클래스
-enum class Direction { NONE, LONG, SHORT };
+enum class Direction { DIRECTION_NONE, LONG, SHORT };
+using enum Direction;
 
 /// 주문 타입을 지정하는 열거형 클래스
-enum class OrderType { NONE, MARKET, LIMIT, MIT, LIT, TRAILING };
+enum class OrderType { ORDER_NONE, MARKET, LIMIT, MIT, LIT, TRAILING };
+using enum OrderType;
 
 /// 하나의 주문 정보를 담고 있는 빌더 클래스
 class Order {
@@ -164,3 +168,5 @@ class Order {
   double exit_filled_price_;  // 청산 체결 가격
   double exit_filled_size_;   // 청산 체결 수량
 };
+
+}  // namespace backtesting::order

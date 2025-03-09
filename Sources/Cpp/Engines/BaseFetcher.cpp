@@ -20,7 +20,9 @@
 
 // 네임 스페이스
 using namespace std;
-using namespace data_utils;
+using namespace backtesting::utils;
+
+namespace backtesting::fetcher {
 
 BaseFetcher::BaseFetcher() = default;
 BaseFetcher::~BaseFetcher() = default;
@@ -69,7 +71,7 @@ future<json> BaseFetcher::Fetch(
     curl_slist_free_all(headers);  // 헤더 메모리 해제
 
     if (response != CURLE_OK || response_code != 200) {
-      logger_->Log(LogLevel::ERROR_L, full_url, __FILE__, __LINE__);
+      logger_->Log(ERROR_L, full_url, __FILE__, __LINE__);
       throw runtime_error(format("[{}] | [{}] | HTTP 응답이 실패했습니다.: {}",
                                  response_header, response_code,
                                  response_string));
@@ -156,3 +158,5 @@ size_t BaseFetcher::HeaderCallback(void* ptr, const size_t size,
   data->append(static_cast<char*>(ptr), total_size);
   return total_size;
 }
+
+}  // namespace backtesting::fetcher

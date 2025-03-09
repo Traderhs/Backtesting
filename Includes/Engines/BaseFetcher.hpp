@@ -7,11 +7,16 @@
 #include "nlohmann/json_fwd.hpp"
 
 // 전방 선언
+namespace backtesting::logger {
 class Logger;
+}
 
 // 네임 스페이스
 using namespace std;
 using namespace nlohmann;
+using namespace backtesting::logger;
+
+namespace backtesting::fetcher {
 
 /**
  * 비동기와 HTTP를 사용하여 Fetch하는 함수를 제공하는 클래스
@@ -87,3 +92,5 @@ class BaseFetcher {
   static size_t HeaderCallback(void* ptr, size_t size, size_t nmemb,
                                string* data);
 };
+
+}  // namespace fetcher

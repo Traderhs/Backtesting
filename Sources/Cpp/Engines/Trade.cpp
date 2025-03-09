@@ -1,6 +1,8 @@
 // 파일 헤더
 #include "Engines/Trade.hpp"
 
+namespace backtesting::analyzer {
+
 Trade::Trade()
     : trade_number_(0),
       entry_size_(0.0),
@@ -164,3 +166,5 @@ double Trade::GetMaxWalletBalance() const { return max_wallet_balance_; }
 double Trade::GetDrawdown() const { return drawdown_; }
 double Trade::GetMaxDrawdown() const { return max_drawdown_; }
 int Trade::GetSymbolCount() const { return symbol_count_; }
+
+}  // namespace backtesting::analyzer

@@ -9,11 +9,13 @@
 
 // 네임 스페이스
 using namespace std;
+using namespace backtesting::logger;
 
 /**
  * 시간 핸들링을 위한 유틸리티 네임스페이스
  */
-namespace time_utils {
+namespace backtesting::utils {
+
 static shared_ptr<Logger>& logger = Logger::GetLogger();
 
 constexpr int64_t kSecond = 1000;
@@ -78,4 +80,5 @@ int64_t ParseTimeframe(const string& timeframe_str);
 
 /// 타임스탬프 차이를 보기 쉬운 시간으로 포맷하여 반환하는 함수
 [[nodiscard]] string FormatTimeDiff(int64_t diff_ms);
-}  // namespace time_utils
+
+}  // namespace backtesting::utils

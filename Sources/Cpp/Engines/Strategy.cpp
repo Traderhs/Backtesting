@@ -9,6 +9,8 @@
 #include "Engines/Engine.hpp"
 #include "Engines/OrderHandler.hpp"
 
+namespace backtesting::strategy {
+
 Strategy::Strategy(const string& name)
     : name_(name),
       order(OrderHandler::GetOrderHandler(name)),
@@ -20,7 +22,7 @@ Strategy::Strategy(const string& name)
   // 증가 카운터는 AddStrategy 함수로만 증가하는데 AddStrategy 없이 직접 생성자
   // 호출로 전 증가 카운터가 현재 증가 카운터와 같다면 오류 발생
   if (pre_creation_counter_ == creation_counter_) {
-    logger->Log(LogLevel::ERROR_L,
+    logger->Log(ERROR_L,
                 "전략의 추가는 AddStrategy 함수의 호출로만 가능합니다.",
                 __FILE__, __LINE__);
     Logger::LogAndThrowError(
@@ -32,8 +34,7 @@ Strategy::Strategy(const string& name)
   pre_creation_counter_ = creation_counter_;
 
   if (name.empty()) {
-    logger->Log(LogLevel::ERROR_L, "전략 이름이 비어있습니다.", __FILE__,
-                __LINE__);
+    logger->Log(ERROR_L, "전략 이름이 비어있습니다.", __FILE__, __LINE__);
     Logger::LogAndThrowError("전략 생성 중 오류가 발생했습니다.", __FILE__,
                              __LINE__);
   }
@@ -64,3 +65,5 @@ vector<shared_ptr<Strategy>>& Strategy::GetStrategies() { return strategies_; }
 vector<shared_ptr<Indicator>>& Strategy::GetIndicators() { return indicators_; }
 string Strategy::GetName() const { return name_; }
 shared_ptr<OrderHandler> Strategy::GetOrderHandler() const { return order; }
+
+}  // namespace backtesting::strategy

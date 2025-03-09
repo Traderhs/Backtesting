@@ -6,6 +6,8 @@
 // 네임 스페이스
 using namespace std;
 
+namespace backtesting::order {
+
 /// 하나의 레버리지 브라켓을 나타내는 구조
 struct LeverageBracket {
   double min_notional_value;       // 해당 구간의 최소 명목 가치
@@ -43,13 +45,15 @@ class SymbolInfo final {
   [[nodiscard]] vector<LeverageBracket>& GetLeverageBracket();
 
  private:
-  double tick_size_;       // 틱 사이즈                 // 완
-  double limit_max_qty_;   // 지정가 최대 수량       // 완
-  double limit_min_qty_;   // 지정가 최소 수량        // 완
-  double market_max_qty_;  // 시장가 최대 수량        // 완
-  double market_min_qty_;  // 시장가 최소 수량        // 완
-  double qty_step_;        // 수량 최소 단위          // 완
-  double min_notional_;    // 최소 약정 금액           // 완
+  double tick_size_;        // 틱 사이즈                 // 완
+  double limit_max_qty_;    // 지정가 최대 수량       // 완
+  double limit_min_qty_;    // 지정가 최소 수량        // 완
+  double market_max_qty_;   // 시장가 최대 수량        // 완
+  double market_min_qty_;   // 시장가 최소 수량        // 완
+  double qty_step_;         // 수량 최소 단위          // 완
+  double min_notional_;     // 최소 약정 금액           // 완
   double liquidation_fee_;  // 강제 청산 수수료         // 완
   vector<LeverageBracket> leverage_brackets_;  // 레버리지 브라켓
 };
+
+}  // namespace backtesting::order

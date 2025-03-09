@@ -21,8 +21,11 @@
 #include "Engines/TimeUtils.hpp"
 
 // 네임 스페이스
-using namespace data_utils;
-using namespace time_utils;
+namespace backtesting {
+using namespace utils;
+}  // namespace backtesting
+
+namespace backtesting::fetcher {
 
 BinanceFetcher::BinanceFetcher(string api_key_env_var,
                                string api_secret_env_var) {
@@ -107,7 +110,7 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
 
   if (filesystem::exists(save_path)) {
     logger_->Log(
-        LogLevel::WARNING_L,
+        WARNING_L,
         format("[{} {}] 연속 선물 캔들스틱 파일이 [{}] 경로에 이미 존재합니다.",
                symbol, timeframe_filename, ConvertBackslashToSlash(save_path)),
         __FILE__, __LINE__);
@@ -115,7 +118,7 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
     return;
   }
 
-  logger_->Log(LogLevel::INFO_L,
+  logger_->Log(INFO_L,
                format("[{} {}] 연속 선물 캔들스틱 파일 생성을 시작합니다.",
                       symbol, timeframe_filename),
                __FILE__, __LINE__);
@@ -128,8 +131,8 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
       {"limit", "1000"}};
 
   // 연속 선물 캔들스틱 데이터 Fetch
-  logger_->Log(LogLevel::INFO_L, "연속 선물 캔들스틱 데이터 요청을 시작합니다.",
-               __FILE__, __LINE__);
+  logger_->Log(INFO_L, "연속 선물 캔들스틱 데이터 요청을 시작합니다.", __FILE__,
+               __LINE__);
 
   const auto& futures_klines =
       FetchKlines(continuous_klines_url_, futures_params, true).get();
@@ -150,8 +153,8 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
                                                       {"limit", "1000"}};
 
   // 현물 캔들스틱 데이터 Fetch
-  logger_->Log(LogLevel::INFO_L, "현물 캔들스틱 데이터 요청을 시작합니다.",
-               __FILE__, __LINE__);
+  logger_->Log(INFO_L, "현물 캔들스틱 데이터 요청을 시작합니다.", __FILE__,
+               __LINE__);
 
   if (const auto& spot_klines =
           FetchKlines(spot_klines_url_, spot_params, false).get();
@@ -167,7 +170,7 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
     SaveKlines(spot_futures_klines, save_path);
 
     logger_->Log(
-        LogLevel::INFO_L,
+        INFO_L,
         format("[{} - {}] 기간의 [{} {}] 연속 선물 캔들스틱 파일이 [{}] 경로에 "
                "저장되었습니다.",
                UtcTimestampToUtcDatetime(spot_futures_klines.front().at(0)),
@@ -179,7 +182,7 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
     SaveKlines(transformed_futures_klines, save_path);
 
     logger_->Log(
-        LogLevel::INFO_L,
+        INFO_L,
         format(
             "[{} - {}] 기간의 [{} {}] 연속 선물 캔들스틱 파일이 [{}] 경로에 "
             "저장되었습니다.",
@@ -191,7 +194,7 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
 
   const auto& end = chrono::high_resolution_clock::now();
   logger_->Log(
-      LogLevel::INFO_L,
+      INFO_L,
       "소요 시간: " +
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
@@ -208,7 +211,7 @@ void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
                             filename_timeframe + ".parquet";
 
   if (!filesystem::exists(file_path)) {
-    logger_->Log(LogLevel::WARNING_L,
+    logger_->Log(WARNING_L,
                  format("[{} {}] 연속 선물 캔들스틱 파일이 존재하지 않아 "
                         "업데이트할 수 없습니다.",
                         symbol, filename_timeframe),
@@ -221,7 +224,7 @@ void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
   const auto& klines_file = ReadParquet(file_path);
 
   logger_->Log(
-      LogLevel::INFO_L,
+      INFO_L,
       format("[{} - {}] 기간의 [{} {}] 연속 선물 캔들스틱 파일이 존재합니다. "
              "최신 연속 선물 캔들스틱 데이터 업데이트를 시작합니다.",
              UtcTimestampToUtcDatetime(
@@ -266,7 +269,7 @@ void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
     TableToParquet(concatenated_tables_result.ValueOrDie(), file_path);
 
     logger_->Log(
-        LogLevel::INFO_L,
+        INFO_L,
         format(
             "[{} - {}] 기간의 [{} {}] 연속 선물 캔들스틱 파일이 "
             "업데이트되었습니다.",
@@ -276,7 +279,7 @@ void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
         __FILE__, __LINE__);
   } else {
     logger_->Log(
-        LogLevel::WARNING_L,
+        WARNING_L,
         format("[{} {}] 연속 선물 캔들스틱 파일이 이미 최신 버전입니다.",
                symbol, filename_timeframe),
         __FILE__, __LINE__);
@@ -284,7 +287,7 @@ void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
 
   const auto& end = chrono::high_resolution_clock::now();
   logger_->Log(
-      LogLevel::INFO_L,
+      INFO_L,
       "소요 시간: " +
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
@@ -304,7 +307,7 @@ void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
 
   if (filesystem::exists(save_path)) {
     logger_->Log(
-        LogLevel::WARNING_L,
+        WARNING_L,
         format("[{} {}] 마크 가격 캔들스틱 파일이 [{}] 경로에 이미 존재합니다.",
                symbol, timeframe_filename, ConvertBackslashToSlash(save_path)),
         __FILE__, __LINE__);
@@ -312,7 +315,7 @@ void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
     return;
   }
 
-  logger_->Log(LogLevel::INFO_L,
+  logger_->Log(INFO_L,
                format("[{} {}] 마크 가격 캔들스틱 파일 생성을 시작합니다.",
                       symbol, timeframe_filename),
                __FILE__, __LINE__);
@@ -324,8 +327,8 @@ void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
       {"limit", "1000"}};
 
   // 마크 가격 캔들스틱 데이터 Fetch
-  logger_->Log(LogLevel::INFO_L, "마크 가격 캔들스틱 데이터 요청을 시작합니다.",
-               __FILE__, __LINE__);
+  logger_->Log(INFO_L, "마크 가격 캔들스틱 데이터 요청을 시작합니다.", __FILE__,
+               __LINE__);
 
   const auto& mark_price_klines =
       FetchKlines(mark_price_klines_url_, mark_price_params, true).get();
@@ -338,7 +341,7 @@ void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
   SaveKlines(transformed_mark_price_klines, save_path);
 
   logger_->Log(
-      LogLevel::INFO_L,
+      INFO_L,
       format(
           "[{} - {}] 기간의 [{} {}] 마크 가격 캔들스틱 파일이 [{}] 경로에 "
           "저장되었습니다.",
@@ -350,7 +353,7 @@ void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
 
   const auto& end = chrono::high_resolution_clock::now();
   logger_->Log(
-      LogLevel::INFO_L,
+      INFO_L,
       "소요 시간: " +
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
@@ -367,7 +370,7 @@ void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
                             filename_timeframe + ".parquet";
 
   if (!filesystem::exists(file_path)) {
-    logger_->Log(LogLevel::WARNING_L,
+    logger_->Log(WARNING_L,
                  format("[{} {}] 마크 가격 캔들스틱 파일이 존재하지 않아 "
                         "업데이트할 수 없습니다.",
                         symbol, filename_timeframe),
@@ -380,7 +383,7 @@ void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
   const auto& klines_file = ReadParquet(file_path);
 
   logger_->Log(
-      LogLevel::INFO_L,
+      INFO_L,
       format("[{} - {}] 기간의 [{} {}] 마크 가격 캔들스틱 파일이 존재합니다. "
              "최신 마크 가격 캔들스틱 데이터 업데이트를 시작합니다.",
              UtcTimestampToUtcDatetime(
@@ -423,7 +426,7 @@ void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
     // 저장
     TableToParquet(concatenated_tables_result.ValueOrDie(), file_path);
 
-    logger_->Log(LogLevel::INFO_L,
+    logger_->Log(INFO_L,
                  format("[{} - {}] 기간의 [{} {}] 마크 가격 캔들스틱 파일이 "
                         "업데이트되었습니다.",
                         UtcTimestampToUtcDatetime(
@@ -434,7 +437,7 @@ void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
                  __FILE__, __LINE__);
   } else {
     logger_->Log(
-        LogLevel::WARNING_L,
+        WARNING_L,
         format("[{} {}] 마크 가격 캔들스틱 파일이 이미 최신 버전입니다.",
                symbol, filename_timeframe),
         __FILE__, __LINE__);
@@ -442,7 +445,7 @@ void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
 
   const auto& end = chrono::high_resolution_clock::now();
   logger_->Log(
-      LogLevel::INFO_L,
+      INFO_L,
       "소요 시간: " +
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
@@ -456,13 +459,13 @@ void BinanceFetcher::FetchExchangeInfo() const {
   try {
     JsonToFile(Fetch(exchange_info_url_), save_path);
   } catch (const exception& e) {
-    logger_->Log(LogLevel::ERROR_L, e.what(), __FILE__, __LINE__);
+    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
     Logger::LogAndThrowError(
         "바이낸스 거래소 정보 파일을 생성하는 데 실패했습니다.", __FILE__,
         __LINE__);
   }
 
-  logger_->Log(LogLevel::INFO_L,
+  logger_->Log(INFO_L,
                format("바이낸스 거래소 정보 파일이 [{}] 경로에 저장되었습니다.",
                       ConvertBackslashToSlash(save_path)),
                __FILE__, __LINE__);
@@ -477,14 +480,14 @@ void BinanceFetcher::FetchLeverageBracket() const {
                      header_, api_key_env_var_, api_secret_env_var_),
                save_path);
   } catch (const exception& e) {
-    logger_->Log(LogLevel::ERROR_L, e.what(), __FILE__, __LINE__);
+    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
     Logger::LogAndThrowError(
         "바이낸스 레버리지 구간 파일을 생성하는 데 실패했습니다.", __FILE__,
         __LINE__);
   }
 
   logger_->Log(
-      LogLevel::INFO_L,
+      INFO_L,
       format("바이낸스 레버리지 구간 파일이 [{}] 경로에 저장되었습니다.",
              ConvertBackslashToSlash(save_path)),
       __FILE__, __LINE__);
@@ -511,7 +514,7 @@ future<vector<json>> BinanceFetcher::FetchKlines(
           break;
         }
 
-        logger_->Log(LogLevel::INFO_L,
+        logger_->Log(INFO_L,
                      format("[{} - {}] 요청 완료",
                             UtcTimestampToUtcDatetime(
                                 fetched_klines.front().at(0).get<int64_t>()),
@@ -538,14 +541,14 @@ future<vector<json>> BinanceFetcher::FetchKlines(
           param["endTime"] = to_string(klines.front().at(0).get<int64_t>() - 1);
         }
       } catch (const exception& e) {
-        logger_->Log(LogLevel::ERROR_L, e.what(), __FILE__, __LINE__);
+        logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
         Logger::LogAndThrowError("데이터를 요청하는 중 에러가 발생했습니다.",
                                  __FILE__, __LINE__);
       }
     }
 
     logger_->Log(
-        LogLevel::INFO_L,
+        INFO_L,
         format("[{} - {}] 기간의 데이터가 요청 완료 되었습니다.",
                UtcTimestampToUtcDatetime(klines.front().at(0).get<int64_t>()),
                UtcTimestampToUtcDatetime(klines.back().at(6).get<int64_t>())),
@@ -566,8 +569,7 @@ string BinanceFetcher::GetFilenameWithTimeframe(const string& timeframe) {
 
 vector<json> BinanceFetcher::TransformKlines(const vector<json>& klines,
                                              const bool drop_latest) {
-  logger_->Log(LogLevel::INFO_L, "데이터 변환을 시작합니다.", __FILE__,
-               __LINE__);
+  logger_->Log(INFO_L, "데이터 변환을 시작합니다.", __FILE__, __LINE__);
 
   const size_t size = drop_latest ? klines.size() - 1 : klines.size();
   vector<json> transformed_klines(size);
@@ -598,7 +600,7 @@ vector<json> BinanceFetcher::TransformKlines(const vector<json>& klines,
       {
         const string& err =
             format("데이터 변환 중 에러가 발생했습니다: {}", e.what());
-        logger_->Log(LogLevel::WARNING_L, err, __FILE__, __LINE__);
+        logger_->Log(WARNING_L, err, __FILE__, __LINE__);
       }
 
       // 에러 발생 시 빈 JSON 객체 저장
@@ -656,8 +658,7 @@ vector<json> BinanceFetcher::ConcatKlines(const vector<json>& spot_klines,
 
 void BinanceFetcher::SaveKlines(const vector<json>& klines,
                                 const string& file_path) {
-  logger_->Log(LogLevel::INFO_L, "데이터 저장을 시작합니다.", __FILE__,
-               __LINE__);
+  logger_->Log(INFO_L, "데이터 저장을 시작합니다.", __FILE__, __LINE__);
 
   // column 추가
   const vector<string>& column_names{"Open Time", "Open",   "High",      "Low",
@@ -762,10 +763,12 @@ int64_t BinanceFetcher::GetServerTime() {
   try {
     return Fetch(server_time_url_).get()["serverTime"];
   } catch (const exception& e) {
-    logger_->Log(LogLevel::ERROR_L, e.what(), __FILE__, __LINE__);
+    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
     Logger::LogAndThrowError("서버 시간의 요청이 실패했습니다.", __FILE__,
                              __LINE__);
   }
 
   return 0;
 }
+
+}  // namespace backtesting::fetcher

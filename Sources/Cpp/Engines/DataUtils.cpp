@@ -17,7 +17,11 @@
 // 내부 헤더
 #include "Engines/Logger.hpp"
 
-namespace data_utils {
+// 네임 스페이스
+using namespace backtesting::logger;
+
+namespace backtesting::utils {
+
 size_t CountDecimalPlaces(const double value) {
   ostringstream oss;
   oss << value;
@@ -216,4 +220,5 @@ string GetEnvVariable(const string& env_var) {
 
   return {};  // 환경 변수가 없으면 빈 문자열 반환
 }
-}  // namespace data_utils
+
+}  // namespace backtesting::utils

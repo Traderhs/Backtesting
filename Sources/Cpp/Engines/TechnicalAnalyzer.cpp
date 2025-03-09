@@ -1,6 +1,8 @@
 // 파일 헤더
 #include "Engines/TechnicalAnalyzer.hpp"
 
+namespace backtesting::analyzer {
+
 TechnicalAnalyzer::TechnicalAnalyzer() = default;
 void TechnicalAnalyzer::Deleter::operator()(const TechnicalAnalyzer* p) const {
   delete p;
@@ -20,3 +22,5 @@ shared_ptr<TechnicalAnalyzer>& TechnicalAnalyzer::GetTechnicalAnalyzer() {
 
   return instance_;
 }
+
+}  // namespace backtesting::analyzer

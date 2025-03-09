@@ -7,19 +7,35 @@
 #include <vector>
 
 // 내부 헤더
-#include "Engines/BarData.hpp"
 #include "Engines/BaseEngine.hpp"
 
 // 전방 선언
+namespace backtesting::bar {
+class BarData;
 struct Bar;
+}
+
+namespace backtesting::strategy {
 class Strategy;
+}
+
+namespace backtesting::order {
 class SymbolInfo;
+}
 
 // 네임 스페이스
 using namespace std;
+namespace backtesting {
+using namespace bar;
+using namespace strategy;
+using namespace order;
+}  // namespace backtesting
+
+namespace backtesting::engine {
 
 // 가격 타입을 지정하는 열거형 클래스
-enum class PriceType { OPEN = 0, HIGH, LOW, CLOSE };
+enum class PriceType { OPEN, HIGH, LOW, CLOSE };
+using enum PriceType;
 
 // 각 가격의 정보를 담고 있는 구조체
 struct PriceData {
@@ -30,6 +46,7 @@ struct PriceData {
 
 // 전략 타입을 지정하는 열거형 클래스
 enum class StrategyType { ON_CLOSE, AFTER_ENTRY, AFTER_EXIT };
+using enum StrategyType;
 
 /**
  * 백테스팅 프로세스를 진행하는 클래스
@@ -200,3 +217,5 @@ class Engine final : public BaseEngine {
   void ExecuteStrategy(const shared_ptr<Strategy>& strategy,
                        StrategyType strategy_type, int symbol_index);
 };
+
+}  // namespace backtesting::engine

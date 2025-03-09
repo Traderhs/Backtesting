@@ -12,17 +12,30 @@
 #include "Engines/Exception.hpp"
 #include "Engines/Logger.hpp"
 
+// 네임 스페이스
+namespace backtesting {
+using namespace exception;
+using namespace logger;
+}  // namespace backtesting
+
+namespace backtesting::bar {
+
 BarData::BarData() : num_symbols_(0) {}
 BarData::~BarData() = default;
 
 void BarData::SetBarData(const string& symbol_name, const string& timeframe,
                          const shared_ptr<arrow::Table>& bar_data,
-                         const vector<int>& columns) {
+                         const int open_time_column, const int open_column,
+                         const int high_column, const int low_column,
+                         const int close_column, const int volume_column,
+                         const int close_time_column) {
   // 유효성 검사
-  IsValidSettings(symbol_name, timeframe, bar_data, columns);
+  IsValidSettings(symbol_name, timeframe, bar_data, open_time_column,
+                  open_column, high_column, low_column, close_column,
+                  volume_column, close_time_column);
 
-  const size_t total_rows = bar_data->num_rows();
-  const size_t symbol_idx = symbol_names_.size();  // 기존 마지막 인덱스 + 1
+  const auto total_rows = bar_data->num_rows();
+  const auto symbol_idx = symbol_names_.size();  // 기존 마지막 인덱스 + 1
 
   // 한번에 메모리 할당
   bar_data_.emplace_back();
@@ -36,19 +49,19 @@ void BarData::SetBarData(const string& symbol_name, const string& timeframe,
 
   // 컬럼 데이터를 미리 캐스팅하여 저장
   const auto& open_time_array = static_pointer_cast<arrow::Int64Array>(
-      bar_data->column(columns[0])->chunk(0));
+      bar_data->column(open_time_column)->chunk(0));
   const auto& open_array = static_pointer_cast<arrow::DoubleArray>(
-      bar_data->column(columns[1])->chunk(0));
+      bar_data->column(open_column)->chunk(0));
   const auto& high_array = static_pointer_cast<arrow::DoubleArray>(
-      bar_data->column(columns[2])->chunk(0));
+      bar_data->column(high_column)->chunk(0));
   const auto& low_array = static_pointer_cast<arrow::DoubleArray>(
-      bar_data->column(columns[3])->chunk(0));
+      bar_data->column(low_column)->chunk(0));
   const auto& close_array = static_pointer_cast<arrow::DoubleArray>(
-      bar_data->column(columns[4])->chunk(0));
+      bar_data->column(close_column)->chunk(0));
   const auto& volume_array = static_pointer_cast<arrow::DoubleArray>(
-      bar_data->column(columns[5])->chunk(0));
+      bar_data->column(volume_column)->chunk(0));
   const auto& close_time_array = static_pointer_cast<arrow::Int64Array>(
-      bar_data->column(columns[6])->chunk(0));
+      bar_data->column(close_time_column)->chunk(0));
 
   // raw 포인터로 직접 접근
   const int64_t* open_time_data = open_time_array->raw_values();
@@ -126,35 +139,35 @@ void BarData::IsValidSymbolIndex(int symbol_idx) const {
 void BarData::IsValidSettings(const string& symbol_name,
                               const string& timeframe,
                               const shared_ptr<arrow::Table>& bar_data,
-                              const vector<int>& columns) const {
+                              const int open_time_column, const int open_column,
+                              const int high_column, const int low_column,
+                              const int close_column, const int volume_column,
+                              const int close_time_column) const {
   if (symbol_name.empty()) {
     Logger::LogAndThrowError("심볼 이름이 비어있습니다.", __FILE__, __LINE__);
   }
 
   for (const auto& symbol : symbol_names_) {
     if (symbol == symbol_name) {
-      Logger::LogAndThrowError(symbol_name + "은(는) 이미 추가된 심볼입니다.",
-                               __FILE__, __LINE__);
+      Logger::LogAndThrowError(
+          format("[{}]은(는) 이미 추가된 심볼입니다.", symbol_name), __FILE__,
+          __LINE__);
       return;
     }
   }
 
   if (!timeframe_.empty() && timeframe != timeframe_) {
-    Logger::LogAndThrowError(format("주어진 타임프레임 {}은(는) 바 데이터로 "
-                                    "추가된 타임프레임 {}와 일치하지 않습니다.",
-                                    timeframe, timeframe_),
-                             __FILE__, __LINE__);
-  }
-
-  // 열 개수 조건 확인
-  if (columns.size() != 7) {
     Logger::LogAndThrowError(
-        format("지정된 열의 개수 {}이(가) 필요한 데이터 개수인 7이 아닙니다.",
-               to_string(columns.size())),
+        format("주어진 타임프레임 [{}]은(는) 바 데이터로 추가된 타임프레임 "
+               "[{}]와(과) 일치하지 않습니다.",
+               timeframe, timeframe_),
         __FILE__, __LINE__);
   }
 
-  // 열 인덱스가 0보다 작은지 검사
+  int columns[7] = {open_time_column, open_column,  high_column,
+                    low_column,       close_column, volume_column,
+                    close_time_column};
+
   if (ranges::any_of(columns, [&](const int column) { return column < 0; })) {
     Logger::LogAndThrowError("지정된 열 인덱스가 0보다 작습니다.", __FILE__,
                              __LINE__);
@@ -174,21 +187,22 @@ void BarData::IsValidSettings(const string& symbol_name,
   if (bar_data->schema()->field(columns[0])->type()->id() !=
       arrow::Type::INT64) {
     Logger::LogAndThrowError(
-        format("[Open Time] 데이터로 사용되는 첫 번째 열(인덱스 {})의 데이터 "
-               "타입이 Int64_t가 아닙니다. 현재 타입: {}",
+        format("[Open Time] 데이터로 사용되는 인덱스 {}의 데이터 타입이 "
+               "Int64_t가 아닙니다. 현재 타입: {}",
                columns[0],
                bar_data->schema()->field(columns[0])->type()->ToString()),
         __FILE__, __LINE__);
   }
 
-  vector<string> data_str = {"Open", "High", "Low", "Close", "Volume"};
+  string data_str[5] = {"Open", "High", "Low", "Close", "Volume"};
+
   for (int i = 1; i <= 5; ++i) {
     if (bar_data->schema()->field(columns[i])->type()->id() !=
         arrow::Type::DOUBLE) {
       Logger::LogAndThrowError(
-          format("[{}] 데이터로 사용되는 {}번째 열(인덱스 {})의 데이터 타입이 "
-                 "Double이 아닙니다. 현재 타입: {}",
-                 data_str[i - 1], i + 1, columns[i],
+          format("[{}] 데이터로 사용되는 인덱스 {}의 데이터 타입이 Double이 "
+                 "아닙니다. 현재 타입: {}",
+                 data_str[i - 1], columns[i],
                  bar_data->schema()->field(columns[i])->type()->ToString()),
           __FILE__, __LINE__);
     }
@@ -197,11 +211,12 @@ void BarData::IsValidSettings(const string& symbol_name,
   if (bar_data->schema()->field(columns[6])->type()->id() !=
       arrow::Type::INT64) {
     Logger::LogAndThrowError(
-        format(
-            "[Close Time] 데이터로 사용되는 일곱 번째 열(인덱스 {})의 데이터 "
-            "타입이 Int64_t가 아닙니다. 현재 타입: {}",
-            columns[6],
-            bar_data->schema()->field(columns[6])->type()->ToString()),
+        format("[Close Time] 데이터로 사용되는 인덱스 {}의 데이터 타입이 "
+               "Int64_t가 아닙니다. 현재 타입: {}",
+               columns[6],
+               bar_data->schema()->field(columns[6])->type()->ToString()),
         __FILE__, __LINE__);
   }
 }
+
+}  // namespace backtesting::bar

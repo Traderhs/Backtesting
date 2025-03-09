@@ -8,9 +8,11 @@
 #include "Engines/BaseOrderHandler.hpp"
 
 // 전방 선언
+namespace backtesting::bar {
 enum class BarType;
-enum class PriceType;
-struct PriceData;
+}
+
+namespace backtesting::order {
 
 /// 주문, 포지션 등과 관련된 세부적인 작업을 처리하는 클래스.
 /// 전략 이름에 따라 멀티톤으로 작동.
@@ -267,3 +269,5 @@ class OrderHandler final : public BaseOrderHandler {
   /// 분석기에 청산된 거래를 추가하는 함수
   void AddTrade(const shared_ptr<Order>& exit_order, double realized_pnl) const;
 };
+
+}  // namespace backtesting::order

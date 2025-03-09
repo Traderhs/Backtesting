@@ -5,14 +5,22 @@
 #include <optional>
 #include <string>
 
-// 내부 라이브러리
+// 내부 헤더
 #include "Engines/BaseEngine.hpp"
 
 // 전방 선언
+namespace backtesting::logger {
 class Logger;
+}
 
 // 네임 스페이스
 using namespace std;
+namespace backtesting {
+using namespace engine;
+using namespace logger;
+}
+
+namespace backtesting::config {
 
 /// 엔진의 사전 설정값을 담당하는 빌더 클래스
 class Config final {
@@ -96,3 +104,5 @@ class Config final {
   /// 결정하는 플래그.
   bool check_target_bar_data_duplication_;
 };
+
+}  // namespace backtesting::config

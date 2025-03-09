@@ -10,10 +10,16 @@
 namespace arrow {
 class Array;
 }
+
+namespace backtesting::logger {
 class Logger;
+}
 
 // 네임 스페이스
 using namespace std;
+using namespace backtesting::logger;
+
+namespace backtesting::fetcher {
 
 /// Binance 바 데이터의 Fetch와 Update를 담당하는 클래스
 class BinanceFetcher final : public BaseFetcher {
@@ -171,3 +177,5 @@ class BinanceFetcher final : public BaseFetcher {
   /// 바이낸스 선물 서버 시간을 Fetch하여 반환하는 함수
   static int64_t GetServerTime();
 };
+
+}  // namespace backtesting::fetcher

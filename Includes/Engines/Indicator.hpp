@@ -8,15 +8,40 @@
 #include "Engines/Numeric.hpp"
 
 // 전방 선언
+namespace backtesting::analyzer {
 class Analyzer;
+}
+
+namespace backtesting::bar {
 class BarData;
 class BarHandler;
+}  // namespace backtesting::bar
+
+namespace backtesting::engine {
 class Engine;
+}
+
+namespace backtesting::strategy {
 class Strategy;
+}
+
+namespace backtesting::logger {
 class Logger;
+}
 
 // 네임 스페이스
 using namespace std;
+using namespace backtesting;  // 커스텀 지표에서 필요
+namespace backtesting {
+using namespace analyzer;
+using namespace bar;
+using namespace engine;
+using namespace numeric;
+using namespace logger;
+using namespace numeric;
+}  // namespace backtesting
+
+namespace backtesting::indicator {
 
 /// 전략 구현 시 사용하는 지표를 생성하기 위한 추상 클래스
 class Indicator {
@@ -79,7 +104,7 @@ class Indicator {
   vector<vector<Numeric<double>>> output_;  /// 지표의 계산된 값: 심볼<값>
   bool is_calculated_;                 /// 지표가 계산되었는지 확인하는 플래그
   vector<size_t> reference_num_bars_;  /// 지표의 타임프레임에 해당되는
-                                       /// 참조 바 데이터의 심볼별 바 개수
+  /// 참조 바 데이터의 심볼별 바 개수
 
   // 지표가 현재 계산 중인지 확인하는 플래그
   // 지표 계산 시 사용하는 다른 지표가 계산하는 지표와 다른 타임프레임을 가질 수
@@ -90,5 +115,8 @@ class Indicator {
 
   /// 지표 생성 카운터를 증가시키는 함수
   static void IncreaseCreationCounter();
-  friend class Strategy;
+  friend class strategy::Strategy;
 };
+
+}  // namespace backtesting::indicator
+using namespace backtesting::indicator;

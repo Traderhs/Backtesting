@@ -14,7 +14,9 @@
 #include "Engines/TimeUtils.hpp"
 
 // 네임 스페이스
-using namespace time_utils;
+using namespace backtesting::utils;
+
+namespace backtesting::logger {
 
 Logger::Logger(const string& log_directory, const string& debug_log_name,
                const string& info_log_name, const string& warning_log_name,
@@ -62,28 +64,28 @@ void Logger::Log(const LogLevel& log_level, const string& message,
       filesystem::path(file).filename().string(), to_string(line), message);
 
   switch (log_level) {
-    case LogLevel::DEBUG_L:
+    case DEBUG_L:
       ConsoleLog("DEBUG_L", log_message);
       WriteToFile(debug_file_, log_message);
       break;
 
-    case LogLevel::INFO_L:
+    case INFO_L:
       ConsoleLog("INFO_L", log_message);
       WriteToFile(info_file_, log_message);
       break;
 
-    case LogLevel::ORDER_L:
+    case ORDER_L:
       ConsoleLog("ORDER_L", log_message);
       // 주문 로그는 info 파일에 기록
       WriteToFile(info_file_, log_message);
       break;
 
-    case LogLevel::WARNING_L:
+    case WARNING_L:
       ConsoleLog("WARNING_L", log_message);
       WriteToFile(warning_file_, log_message);
       break;
 
-    case LogLevel::ERROR_L:
+    case ERROR_L:
       ConsoleLog("ERROR_L", log_message);
       WriteToFile(error_file_, log_message);
       break;
@@ -112,6 +114,8 @@ void Logger::WriteToFile(ofstream& file, const string& message) {
 
 void Logger::LogAndThrowError(const string& message, const string& file,
                               const int line) {
-  instance_->Log(LogLevel::ERROR_L, message, file, line);
+  instance_->Log(ERROR_L, message, file, line);
   throw runtime_error(message);
 }
+
+}  // namespace backtesting::logger

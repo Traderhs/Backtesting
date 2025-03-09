@@ -7,6 +7,8 @@
 // 내부 헤더
 #include "BaseAnalyzer.hpp"
 
+namespace backtesting::analyzer {
+
 /// 파이썬 함수를 사용하여 세부적인 분석을 하는 분석기 클래스
 class Analyzer final : public BaseAnalyzer {
  public:
@@ -23,3 +25,5 @@ class Analyzer final : public BaseAnalyzer {
   static mutex mutex_;
   static shared_ptr<Analyzer> instance_;
 };
+
+}  // namespace backtesting::analyzer
