@@ -6,6 +6,8 @@
 // 내부 헤더
 #include "Engines/BaseBarHandler.hpp"
 
+namespace backtesting::bar {
+
 /// 바 데이터를 추가하고 세부 관리 및 처리를 하는 클래스
 class BarHandler final : public BaseBarHandler {
  public:
@@ -16,18 +18,23 @@ class BarHandler final : public BaseBarHandler {
   /// BarHandler의 싱글톤 인스턴스를 반환하는 함수
   static shared_ptr<BarHandler>& GetBarHandler();
 
-  /**
-   * 주어진 파일 경로에서 Parquet 데이터를 읽고
-   * 지정된 바 타입으로 처리하여 핸들러에 추가하는 함수
-   *
-   * @param symbol_name 심볼 이름
-   * @param file_path Parquet 파일의 경로
-   * @param bar_type 추가할 데이터의 바 타입
-   * @param columns 파일에서 데이터를 추출할 컬럼의 인덱스를 다음 순서로 지정
-   *                [Open Time, Open, High, Low, Close, Volume, Close Time]
-   */
+  /// 주어진 파일 경로에서 Parquet 데이터를 읽고
+  /// 지정된 바 타입으로 처리하여 핸들러에 추가하는 함수
+  ///
+  /// @param symbol_name 심볼 이름
+  /// @param file_path Parquet 파일의 경로
+  /// @param bar_type 추가할 데이터의 바 타입
+  /// @param open_time_column Open Time 컬럼 인덱스
+  /// @param open_column Open 컬럼 인덱스
+  /// @param high_column High 컬럼 인덱스
+  /// @param low_column Low 컬럼 인덱스
+  /// @param close_column Close 컬럼 인덱스
+  /// @param volume_column Volume 컬럼 인덱스
+  /// @param close_time_column Close Time 컬럼 인덱스
   void AddBarData(const string& symbol_name, const string& file_path,
-                  BarType bar_type, const vector<int>& columns);
+                  BarType bar_type, int open_time_column, int open_column,
+                  int high_column, int low_column, int close_column,
+                  int volume_column, int close_time_column);
 
   // ===========================================================================
   /// 지정된 바 데이터 및 심볼에 해당되는 인덱스를 target_close_time 시점의
@@ -110,3 +117,5 @@ class BarHandler final : public BaseBarHandler {
   /// 지정된 타임프레임이 레퍼런스 바에 존재하는지 검증하는 함수
   void IsValidReferenceBarTimeframe(const string& timeframe);
 };
+
+}  // namespace backtesting::bar

@@ -18,11 +18,12 @@
 #include "Engines/Trade.hpp"
 
 // 네임 스페이스
-using namespace data_utils;
-using namespace time_utils;
-using enum PriceType;
-using enum LogLevel;
-using enum OrderType;
+namespace backtesting {
+using namespace exception;
+using namespace utils;
+}  // namespace backtesting
+
+namespace backtesting::order {
 
 OrderHandler::OrderHandler() = default;
 void OrderHandler::Deleter::operator()(const OrderHandler* p) const {
@@ -60,8 +61,8 @@ void OrderHandler::CheckLiquidation(const double price,
     // 매수 진입 -> 현재 가격이 강제 청산 가격과 같거나 밑일 때
     // 매도 진입 -> 현재 가격이 강제 청산 가격과 같거나 위일 때
     if (const auto entry_direction = filled_entry->GetEntryDirection();
-        (entry_direction == Direction::LONG && price <= liquidation_price) ||
-        (entry_direction == Direction::SHORT && price >= liquidation_price)) {
+        (entry_direction == LONG && price <= liquidation_price) ||
+        (entry_direction == SHORT && price >= liquidation_price)) {
       // 실제 시장 가격 찾기
       const auto market_bar_data = bar_->GetBarData(market_bar_type, "NONE");
       double order_price = 0;
@@ -142,7 +143,7 @@ void OrderHandler::CheckPendingEntries(const double price,
         continue;
       }
 
-      case NONE: {
+      case ORDER_NONE: {
         // NONE 타입은 에러
         LogFormattedInfo(WARNING_L, "진입 대기 주문에 NONE 주문이 존재합니다.",
                          __FILE__, __LINE__);
@@ -198,7 +199,7 @@ void OrderHandler::CheckPendingExits(const double price,
         break;
       }
 
-      case NONE: {
+      case ORDER_NONE: {
         // NONE 타입은 에러
         LogFormattedInfo(WARNING_L, "대기 주문에 NONE 주문이 존재합니다.",
                          __FILE__, __LINE__);
@@ -443,9 +444,8 @@ void OrderHandler::MitEntry(const string& entry_name,
         .SetEntryOrderType(MIT)
         .SetEntryDirection(entry_direction)
         .SetEntryTouchPrice(touch_price)
-        .SetEntryTouchDirection(IsGreaterOrEqual(touch_price, base_price)
-                                    ? Direction::LONG
-                                    : Direction::SHORT)
+        .SetEntryTouchDirection(
+            IsGreaterOrEqual(touch_price, base_price) ? LONG : SHORT)
         .SetEntryOrderSize(entry_size);
 
     // 유효성 검사
@@ -524,9 +524,8 @@ void OrderHandler::LitEntry(const string& entry_name,
         .SetEntryOrderType(LIT)
         .SetEntryDirection(entry_direction)
         .SetEntryTouchPrice(touch_price)
-        .SetEntryTouchDirection(IsGreaterOrEqual(touch_price, base_price)
-                                    ? Direction::LONG
-                                    : Direction::SHORT)
+        .SetEntryTouchDirection(
+            IsGreaterOrEqual(touch_price, base_price) ? LONG : SHORT)
         .SetEntryOrderSize(entry_size)
         .SetEntryOrderPrice(order_price);
 
@@ -607,9 +606,8 @@ void OrderHandler::TrailingEntry(const string& entry_name,
         .SetEntryOrderType(TRAILING)
         .SetEntryDirection(entry_direction)
         .SetEntryTouchPrice(touch_price)
-        .SetEntryTouchDirection(IsGreaterOrEqual(touch_price, base_price)
-                                    ? Direction::LONG
-                                    : Direction::SHORT)
+        .SetEntryTouchDirection(
+            IsGreaterOrEqual(touch_price, base_price) ? LONG : SHORT)
         .SetEntryTrailPoint(trail_point)
         .SetEntryOrderSize(entry_size);
 
@@ -633,8 +631,8 @@ void OrderHandler::TrailingEntry(const string& entry_name,
       }
 
       const double target_price =  // 가장 불리한 진입가로 검사
-          entry_direction == Direction::LONG ? start_price + trail_point
-                                             : start_price - trail_point;
+          entry_direction == LONG ? start_price + trail_point
+                                  : start_price - trail_point;
 
       IsValidNotionalValue(target_price, entry_size);
       IsValidLeverage(target_price, entry_size);
@@ -726,9 +724,8 @@ void OrderHandler::MarketExit(const string& exit_name,
     const auto market_exit = make_shared<Order>(*entry_order);
     market_exit->SetExitName(exit_name)
         .SetExitOrderType(MARKET)
-        .SetExitDirection(market_exit->GetEntryDirection() == Direction::LONG
-                              ? Direction::SHORT
-                              : Direction::LONG)
+        .SetExitDirection(market_exit->GetEntryDirection() == LONG ? SHORT
+                                                                   : LONG)
         .SetExitOrderTime(order_time)
         .SetExitOrderSize(exit_size)
         .SetExitOrderPrice(order_price)
@@ -851,9 +848,8 @@ void OrderHandler::LimitExit(const string& exit_name,
     const auto limit_exit = make_shared<Order>(*entry_order);
     limit_exit->SetExitName(exit_name)
         .SetExitOrderType(LIMIT)
-        .SetExitDirection(limit_exit->GetEntryDirection() == Direction::LONG
-                              ? Direction::SHORT
-                              : Direction::LONG)
+        .SetExitDirection(limit_exit->GetEntryDirection() == LONG ? SHORT
+                                                                  : LONG)
         .SetExitOrderTime(order_time)
         .SetExitOrderSize(exit_size)
         .SetExitOrderPrice(order_price);
@@ -941,13 +937,10 @@ void OrderHandler::MitExit(const string& exit_name,
     const auto mit_exit = make_shared<Order>(*entry_order);
     mit_exit->SetExitName(exit_name)
         .SetExitOrderType(MIT)
-        .SetExitDirection(mit_exit->GetEntryDirection() == Direction::LONG
-                              ? Direction::SHORT
-                              : Direction::LONG)
+        .SetExitDirection(mit_exit->GetEntryDirection() == LONG ? SHORT : LONG)
         .SetExitTouchPrice(touch_price)
-        .SetExitTouchDirection(IsGreaterOrEqual(touch_price, base_price)
-                                   ? Direction::LONG
-                                   : Direction::SHORT)
+        .SetExitTouchDirection(
+            IsGreaterOrEqual(touch_price, base_price) ? LONG : SHORT)
         .SetExitOrderSize(exit_size);
 
     // 유효성 검사
@@ -1032,13 +1025,10 @@ void OrderHandler::LitExit(const string& exit_name,
     const auto lit_exit = make_shared<Order>(*entry_order);
     lit_exit->SetExitName(exit_name)
         .SetExitOrderType(LIT)
-        .SetExitDirection(lit_exit->GetEntryDirection() == Direction::LONG
-                              ? Direction::SHORT
-                              : Direction::LONG)
+        .SetExitDirection(lit_exit->GetEntryDirection() == LONG ? SHORT : LONG)
         .SetExitTouchPrice(touch_price)
-        .SetExitTouchDirection(IsGreaterOrEqual(touch_price, base_price)
-                                   ? Direction::LONG
-                                   : Direction::SHORT)
+        .SetExitTouchDirection(
+            IsGreaterOrEqual(touch_price, base_price) ? LONG : SHORT)
         .SetExitOrderSize(exit_size)
         .SetExitOrderPrice(order_price);
 
@@ -1127,13 +1117,11 @@ void OrderHandler::TrailingExit(const string& exit_name,
     const auto trailing_exit = make_shared<Order>(*entry_order);
     trailing_exit->SetExitName(exit_name)
         .SetExitOrderType(TRAILING)
-        .SetExitDirection(trailing_exit->GetEntryDirection() == Direction::LONG
-                              ? Direction::SHORT
-                              : Direction::LONG)
+        .SetExitDirection(trailing_exit->GetEntryDirection() == LONG ? SHORT
+                                                                     : LONG)
         .SetExitTouchPrice(touch_price)
-        .SetExitTouchDirection(IsGreaterOrEqual(touch_price, base_price)
-                                   ? Direction::LONG
-                                   : Direction::SHORT)
+        .SetExitTouchDirection(
+            IsGreaterOrEqual(touch_price, base_price) ? LONG : SHORT)
         .SetExitTrailPoint(trail_point)
         .SetExitOrderSize(exit_size);
 
@@ -1156,9 +1144,8 @@ void OrderHandler::TrailingExit(const string& exit_name,
       }
 
       IsValidNotionalValue(  // 가장 불리한 청산가로 검사
-          trailing_exit->GetExitDirection() == Direction::LONG
-              ? start_price + trail_point
-              : start_price - trail_point,
+          trailing_exit->GetExitDirection() == LONG ? start_price + trail_point
+                                                    : start_price - trail_point,
           exit_size);
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
@@ -1239,9 +1226,8 @@ void OrderHandler::ExecuteLiquidation(const int symbol_idx, const int order_idx,
                          liquidation_exit->GetExitFilledSize();
   liquidation_exit->SetExitName("강제 청산")
       .SetExitOrderType(MARKET)
-      .SetExitDirection(liquidation_exit->GetEntryDirection() == Direction::LONG
-                            ? Direction::SHORT
-                            : Direction::LONG)
+      .SetExitDirection(liquidation_exit->GetEntryDirection() == LONG ? SHORT
+                                                                      : LONG)
       .SetExitOrderTime(current_open_time)
       .SetExitOrderSize(exit_size)
       .SetExitOrderPrice(order_price)
@@ -1348,12 +1334,11 @@ void OrderHandler::ExitOppositeFilledEntries(const Direction direction) {
 
     if (const auto entry_direction = filled_entry->GetEntryDirection();
         direction != entry_direction) {
-      MarketExit(
-          entry_direction == Direction::LONG ? "리버스 매도" : "리버스 매수",
-          filled_entry->GetEntryName(),
-          // 분할 청산했을 수도 있으므로 잔량만 청산
-          filled_entry->GetEntryFilledSize() -
-              filled_entry->GetExitFilledSize());
+      MarketExit(entry_direction == LONG ? "리버스 매도" : "리버스 매수",
+                 filled_entry->GetEntryName(),
+                 // 분할 청산했을 수도 있으므로 잔량만 청산
+                 filled_entry->GetEntryFilledSize() -
+                     filled_entry->GetExitFilledSize());
     }
   }
 }
@@ -1503,7 +1488,7 @@ void OrderHandler::CheckPendingTrailingEntries(const int symbol_idx,
       const auto entry_direction = trailing_entry->GetEntryDirection();
       const auto trail_point = trailing_entry->GetEntryTrailPoint();
 
-      if (entry_direction == Direction::LONG) {
+      if (entry_direction == LONG) {
         // 진입 방향이 매수인 경우, 최저가를 추적
         if (IsLess(price, extreme_price)) {
           trailing_entry->SetEntryExtremePrice(price);
@@ -1518,7 +1503,7 @@ void OrderHandler::CheckPendingTrailingEntries(const int symbol_idx,
                                  price_type == OPEN ? price : trail_price,
                                  price_type);
         }
-      } else if (entry_direction == Direction::SHORT) {
+      } else if (entry_direction == SHORT) {
         // 진입 방향이 매도인 경우, 최고가를 추적
         if (IsGreater(price, extreme_price)) {
           trailing_entry->SetEntryExtremePrice(price);
@@ -1826,7 +1811,7 @@ int OrderHandler::CheckPendingTrailingExits(const int symbol_idx,
       const auto exit_direction = trailing_exit->GetExitDirection();
       const auto trail_point = trailing_exit->GetExitTrailPoint();
 
-      if (exit_direction == Direction::LONG) {
+      if (exit_direction == LONG) {
         // 청산 방향이 매수인 경우, 최저가를 추적
         if (IsLess(price, extreme_price)) {
           trailing_exit->SetExitExtremePrice(price);
@@ -1840,7 +1825,7 @@ int OrderHandler::CheckPendingTrailingExits(const int symbol_idx,
           return FillPendingExitOrder(symbol_idx, order_idx,
                                       price_type == OPEN ? price : trail_price);
         }
-      } else if (exit_direction == Direction::SHORT) {
+      } else if (exit_direction == SHORT) {
         // 청산 방향이 매도인 경우, 최고가를 추적
         if (IsGreater(price, extreme_price)) {
           trailing_exit->SetExitExtremePrice(price);
@@ -2017,14 +2002,13 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
   // 거래 목록에 거래 추가
   analyzer_->AddTrade(
       Trade()
-          .SetSymbolName(bar_->GetBarData(BarType::TRADING, "NONE")
+          .SetSymbolName(bar_->GetBarData(TRADING, "NONE")
                              ->GetSymbolName(bar_->GetCurrentSymbolIndex()))
           .SetStrategyName(engine_->GetCurrentStrategyName())
           .SetEntryName(exit_order->GetEntryName())
           .SetExitName(exit_order->GetExitName())
-          .SetEntryDirection(exit_order->GetEntryDirection() == Direction::LONG
-                                 ? "매수"
-                                 : "매도")
+          .SetEntryDirection(exit_order->GetEntryDirection() == LONG ? "매수"
+                                                                     : "매도")
           .SetEntryTime(UtcTimestampToUtcDatetime(entry_time))
           .SetExitTime(UtcTimestampToUtcDatetime(exit_time))
           .SetHoldingTime(FormatTimeDiff(exit_time - entry_time))
@@ -2043,3 +2027,5 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
           .SetMaxDrawdown(engine_->GetMaxDrawdown())
           .SetSymbolCount(symbol_count));
 }
+
+}  // namespace backtesting::order

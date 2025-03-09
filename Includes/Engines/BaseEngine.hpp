@@ -8,34 +8,66 @@
 #include "nlohmann/json_fwd.hpp"
 
 // 전방 선언
+namespace backtesting::analyzer {
 class Analyzer;
+}
+
+namespace backtesting::bar {
 class BarHandler;
-class Config;
-class Strategy;
-class Indicator;
-class Logger;
 enum class BarType;
+}  // namespace backtesting::bar
+
+namespace backtesting::config {
+class Config;
+}
+
+namespace backtesting::logger {
+class Logger;
+}
+
+namespace backtesting::strategy {
+class Strategy;
+}
+
+namespace backtesting::indicator {
+class Indicator;
+}
 
 // 네임 스페이스
 using namespace std;
 using namespace nlohmann;
+namespace backtesting {
+using namespace bar;
+using namespace analyzer;
+using namespace config;
+using namespace logger;
+using namespace indicator;
+using namespace strategy;
+}  // namespace backtesting
+
+namespace backtesting::engine {
 
 /// 엔진의 기본적인 설정, 초기화를 담당하는 클래스
 class BaseEngine {
  public:
-  /**
-   * 주어진 파일 경로에서 Parquet 데이터를 읽고
-   * 지정된 바 타입으로 처리하여 바 핸들러에 추가하는 함수
-   *
-   * @param symbol_name 심볼 이름
-   * @param file_path Parquet 파일의 경로
-   * @param bar_type 추가할 데이터의 바 타입
-   * @param columns 파일에서 데이터를 추출할 컬럼의 인덱스를 다음 순서로 지정.
-   *                [Open Time, Open, High, Low, Close, Volume, Close Time]
-   */
+  /// 주어진 파일 경로에서 Parquet 데이터를 읽고
+  /// 지정된 바 타입으로 처리하여 바 핸들러에 추가하는 함수
+  ///
+  /// @param symbol_name 심볼 이름
+  /// @param file_path Parquet 파일의 경로
+  /// @param bar_type 추가할 데이터의 바 타입
+  /// @param open_time_column Open Time 컬럼 인덱스
+  /// @param open_column Open 컬럼 인덱스
+  /// @param high_column High 컬럼 인덱스
+  /// @param low_column Low 컬럼 인덱스
+  /// @param close_column Close 컬럼 인덱스
+  /// @param volume_column Volume 컬럼 인덱스
+  /// @param close_time_column Close Time 컬럼 인덱스
   static void AddBarData(const string& symbol_name, const string& file_path,
-                         BarType bar_type,
-                         const vector<int>& columns = {0, 1, 2, 3, 4, 5, 6});
+                         BarType bar_type, int open_time_column = 0,
+                         int open_column = 1, int high_column = 2,
+                         int low_column = 3, int close_column = 4,
+                         int volume_column = 5, int close_time_column = 6);
 
   /// 거래소 정보를 엔진에 추가하는 함수.
   static void AddExchangeInfo(const string& exchange_info_path);
@@ -147,3 +179,5 @@ class BaseEngine {
   /// =로 콘솔창을 분리하는 출력을 발생시키는 함수
   static void PrintSeparator();
 };
+
+}  // namespace backtesting::engine

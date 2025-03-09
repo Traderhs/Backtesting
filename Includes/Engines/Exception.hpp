@@ -7,6 +7,8 @@
 // 네임 스페이스
 using namespace std;
 
+namespace backtesting::exception {
+
 /// 유효하지 않은 값일 때 발생하는 에러
 class InvalidValue final : public runtime_error {
  public:
@@ -43,3 +45,5 @@ class Bankruptcy final : public runtime_error {
  public:
   explicit Bankruptcy(const string& message) : runtime_error(message) {}
 };
+
+}  // namespace backtesting::exception

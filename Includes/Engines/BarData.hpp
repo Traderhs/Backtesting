@@ -14,8 +14,23 @@ class Table;
 // 네임 스페이스
 using namespace std;
 
+namespace backtesting::bar {
+
 /// 하나의 바 구조를 지정하는 구조체
 struct Bar {
+  Bar() = default;
+  Bar(const int64_t open_time, const double open, const double high,
+      const double low, const double close, const double volume,
+      const int64_t close_time) {
+    this->open_time = open_time;
+    this->open = open;
+    this->high = high;
+    this->low = low;
+    this->close = close;
+    this->volume = volume;
+    this->close_time = close_time;
+  }
+
   int64_t open_time;
   double open;
   double high;
@@ -35,11 +50,18 @@ class BarData final {
   /// @param symbol_name 심볼 이름
   /// @param timeframe 심볼 타임프레임
   /// @param bar_data 테이블에 저장된 바 데이터
-  /// @param columns 테이블 내 컬럼의 인덱스를 다음 순서로 지정
-  ///                [Open Time, Open, High, Low, Close, Volume, Close Time]
+  /// @param open_time_column Open Time 컬럼 인덱스
+  /// @param open_column Open 컬럼 인덱스
+  /// @param high_column High 컬럼 인덱스
+  /// @param low_column Low 컬럼 인덱스
+  /// @param close_column Close 컬럼 인덱스
+  /// @param volume_column Volume 컬럼 인덱스
+  /// @param close_time_column Close Time 컬럼 인덱스
   void SetBarData(const string& symbol_name, const string& timeframe,
                   const shared_ptr<arrow::Table>& bar_data,
-                  const vector<int>& columns);
+                  int open_time_column, int open_column, int high_column,
+                  int low_column, int close_column, int volume_column,
+                  int close_time_column);
 
   /// 심볼과 바 인덱스의 범위 검사 후 해당되는 바를 반환하는 함수.
   [[nodiscard]] Bar& SafeGetBar(int symbol_idx, size_t bar_idx);
@@ -77,5 +99,9 @@ class BarData final {
   // 심볼 설정의 유효성 검사
   void IsValidSettings(const string& symbol_name, const string& timeframe,
                        const shared_ptr<arrow::Table>& bar_data,
-                       const vector<int>& columns) const;
+                       int open_time_column, int open_column, int high_column,
+                       int low_column, int close_column, int volume_column,
+                       int close_time_column) const;
 };
+
+}  // namespace backtesting::bar

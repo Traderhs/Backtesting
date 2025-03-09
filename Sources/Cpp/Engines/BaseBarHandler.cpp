@@ -8,8 +8,7 @@
 #include "Engines/BarData.hpp"
 #include "Engines/TimeUtils.hpp"
 
-// 네임 스페이스
-using namespace time_utils;
+namespace backtesting::bar {
 
 BaseBarHandler::BaseBarHandler()
     : trading_bar_data_(make_shared<BarData>()),
@@ -19,18 +18,18 @@ BaseBarHandler::~BaseBarHandler() = default;
 
 shared_ptr<Logger>& BaseBarHandler::logger_ = Logger::GetLogger();
 
-shared_ptr<BarData> BaseBarHandler::GetBarData(const BarType bar_type,
-                                               const string& timeframe) {
+shared_ptr<BarData> BaseBarHandler::GetBarData(
+    const BarType bar_type, const string& timeframe) {
   switch (bar_type) {
-    case BarType::TRADING: {
+    case TRADING: {
       return trading_bar_data_;
     }
 
-    case BarType::MAGNIFIER: {
+    case MAGNIFIER: {
       return magnifier_bar_data_;
     }
 
-    case BarType::REFERENCE: {
+    case REFERENCE: {
       const auto& timeframe_it = reference_bar_data_.find(timeframe);
       if (timeframe_it == reference_bar_data_.end()) {
         throw runtime_error(
@@ -41,7 +40,7 @@ shared_ptr<BarData> BaseBarHandler::GetBarData(const BarType bar_type,
       return timeframe_it->second;
     }
 
-    case BarType::MARK_PRICE: {
+    case MARK_PRICE: {
       return mark_price_bar_data_;
     }
 
@@ -55,15 +54,15 @@ shared_ptr<BarData> BaseBarHandler::GetBarData(const BarType bar_type,
 vector<size_t>& BaseBarHandler::GetBarIndices(const BarType bar_type,
                                               const string& timeframe) {
   switch (bar_type) {
-    case BarType::TRADING: {
+    case TRADING: {
       return trading_index_;
     }
 
-    case BarType::MAGNIFIER: {
+    case MAGNIFIER: {
       return magnifier_index_;
     }
 
-    case BarType::REFERENCE: {
+    case REFERENCE: {
       const auto& timeframe_it = reference_index_.find(timeframe);
       if (timeframe_it == reference_index_.end()) {
         Logger::LogAndThrowError(
@@ -75,7 +74,7 @@ vector<size_t>& BaseBarHandler::GetBarIndices(const BarType bar_type,
       return timeframe_it->second;
     }
 
-    case BarType::MARK_PRICE: {
+    case MARK_PRICE: {
       return mark_price_index_;
     }
 
@@ -90,3 +89,5 @@ unordered_map<string, shared_ptr<BarData>>
 BaseBarHandler::GetAllReferenceBarData() {
   return reference_bar_data_;
 }
+
+}  // namespace backtesting::bar

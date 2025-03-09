@@ -9,8 +9,11 @@
 // 네임 스페이스
 using namespace std;
 
-// 로그 레벨을 지정하는 열거형 클래스
+namespace backtesting::logger {
+
+/// 로그 레벨을 지정하는 열거형 클래스
 enum class LogLevel { DEBUG_L, INFO_L, ORDER_L, WARNING_L, ERROR_L };
+using enum LogLevel;
 
 /// 시스템 로깅을 담당하는 클래스
 class Logger final {
@@ -97,3 +100,5 @@ class Logger final {
   // 에러 종료 핸들러
   static void CustomTerminate();
 };
+
+}  // namespace backtesting::logger

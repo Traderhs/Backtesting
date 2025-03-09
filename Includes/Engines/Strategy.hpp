@@ -6,15 +6,18 @@
 
 // 내부 헤더
 #include "Engines/Logger.hpp"
+#include "Engines/Order.hpp"
 #include "Engines/OrderHandler.hpp"  // 커스텀 전략에서 사용 편의성을 위해 직접 포함
 #include "Indicators/Indicators.hpp"
 
-// 전방 선언
-class BarHandler;
-class Engine;
-
 // 네임 스페이스
 using namespace std;
+namespace backtesting {
+using namespace order;
+using enum Direction;
+}  // namespace backtesting
+
+namespace backtesting::strategy {
 
 /// 백테스팅 전략을 생성하기 위한 팩토리 클래스
 class Strategy {
@@ -29,9 +32,8 @@ class Strategy {
     strategies_.push_back(
         std::make_shared<CustomStrategy>(name, std::forward<Args>(args)...));
 
-    logger->Log(LogLevel::INFO_L,
-                format("[{}] 전략이 엔진에 추가되었습니다.", name), __FILE__,
-                __LINE__);
+    logger->Log(INFO_L, format("[{}] 전략이 엔진에 추가되었습니다.", name),
+                __FILE__, __LINE__);
   }
 
   /// 전략 실행 전 초기화를 통해 값을 미리 계산하기 위한 함수.
@@ -130,3 +132,6 @@ class Strategy {
   /// double 최대값으로 사용
   const double entry_size = DBL_MAX;
 };
+
+}  // namespace backtesting::strategy
+using namespace strategy;

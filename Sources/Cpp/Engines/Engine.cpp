@@ -27,12 +27,12 @@
 #include "Engines/TimeUtils.hpp"
 
 // 네임 스페이스
-using namespace data_utils;
-using namespace time_utils;
-using namespace std;
-using enum BarType;
-using enum PriceType;
-using enum LogLevel;
+namespace backtesting {
+using namespace exception;
+using namespace utils;
+}  // namespace backtesting
+
+namespace backtesting::engine {
 
 Engine::Engine()
     : use_bar_magnifier_(false),
@@ -684,7 +684,7 @@ void Engine::IsValidIndicators() {
         const string& timeframe = indicator->GetTimeframe();
         try {
           ParseTimeframe(timeframe);
-        } catch ([[maybe_unused]] const exception& e) {
+        } catch ([[maybe_unused]] const std::exception& e) {
           // 지표에서 trading_timeframe을 변수를 사용하면 아직 초기화 전이기
           // 때문에 TRADING_TIMEFRAME으로 지정되어 있는데 이 경우는 유효한
           // 타임프레임이기 때문에 넘어감
@@ -740,8 +740,8 @@ void Engine::CreateDirectories() {
       filesystem::create_directories(main_directory + "/Indicators/" +
                                      strategy->GetName());
     }
-  } catch (const exception& e) {
-    logger->Log(ERROR_L, e.what(), __FILE__, __LINE__);
+  } catch (const std::exception& e) {
+    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
     Logger::LogAndThrowError("폴더 생성 중 에러가 발생했습니다.", __FILE__,
                              __LINE__);
   }
@@ -817,7 +817,7 @@ void Engine::InitializeEngine() {
   analyzer_->Initialize(initial_balance);
 
   engine_initialized_ = true;
-  logger->Log(INFO_L, "엔진 초기화가 완료되었습니다.", __FILE__, __LINE__);
+  logger_->Log(INFO_L, "엔진 초기화가 완료되었습니다.", __FILE__, __LINE__);
 }
 
 void Engine::InitializeSymbolInfo() {
@@ -887,7 +887,7 @@ void Engine::InitializeSymbolInfo() {
                    "객체가 존재하지 않습니다.",
                    symbol_name));
       }
-    } catch (const exception& e) {
+    } catch (const std::exception& e) {
       logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
       Logger::LogAndThrowError(
           format(
@@ -934,7 +934,7 @@ void Engine::InitializeSymbolInfo() {
             format("레버리지 구간에 [symbol: {}]인 객체가 존재하지 않습니다.",
                    symbol_name));
       }
-    } catch (const exception& e) {
+    } catch (const std::exception& e) {
       logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
       Logger::LogAndThrowError(
           format("[{}] 레버리지 구간을 초기화하는 중 오류가 발생했습니다.",
@@ -966,7 +966,7 @@ double Engine::GetDoubleFromJson(const json& data, const string& key) {
 
     // 그 외의 경우에는 오류 처리
     logger_->Log(ERROR_L, "유효하지 않은 값이 존재합니다.", __FILE__, __LINE__);
-  } catch ([[maybe_unused]] const exception& e) {
+  } catch ([[maybe_unused]] const std::exception& e) {
     logger_->Log(ERROR_L, format("[{}] 키에서 오류가 발생했습니다.", key),
                  __FILE__, __LINE__);
     throw;
@@ -984,7 +984,7 @@ void Engine::InitializeStrategies() const {
 
   Strategy::SetTradingTimeframe(trading_bar_timeframe_);
 
-  logger->Log(INFO_L, "전략 초기화가 완료되었습니다.", __FILE__, __LINE__);
+  logger_->Log(INFO_L, "전략 초기화가 완료되었습니다.", __FILE__, __LINE__);
 }
 
 void Engine::InitializeIndicators() const {
@@ -1012,7 +1012,7 @@ void Engine::InitializeIndicators() const {
     }
   }
 
-  logger->Log(INFO_L, "지표 초기화가 완료되었습니다.", __FILE__, __LINE__);
+  logger_->Log(INFO_L, "지표 초기화가 완료되었습니다.", __FILE__, __LINE__);
 }
 
 void Engine::BacktestingMain() {
@@ -1414,8 +1414,8 @@ pair<vector<PriceData>, vector<PriceData>> Engine::GetPriceQueue(
 
   PriceData mark_price_data{};
   PriceData market_price_data{};
-  auto mark_bar_data = bar_->GetBarData(MARK_PRICE, "NONE");
-  auto market_bar_data = bar_->GetBarData(market_bar_type, "NONE");
+  const auto mark_bar_data = bar_->GetBarData(MARK_PRICE, "NONE");
+  const auto market_bar_data = bar_->GetBarData(market_bar_type, "NONE");
 
   // 활성화된 심볼 순회
   for (const int symbol_idx : symbol_indices) {
@@ -1582,3 +1582,5 @@ void Engine::ExecuteStrategy(const shared_ptr<Strategy>& strategy,
   // 원본 설정을 복원
   bar_->SetCurrentBarType(original_bar_type, "NONE");
 }
+
+}  // namespace backtesting::engine

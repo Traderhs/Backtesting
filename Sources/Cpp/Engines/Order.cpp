@@ -5,18 +5,22 @@
 // 파일 헤더
 #include "Engines/Order.hpp"
 
+using enum backtesting::order::Direction;
+
+namespace backtesting::order {
+
 Order::Order()
     : margin_(0),
       leverage_(-1),
       liquidation_price_(nan("")),
       liquidation_fee_(nan("")),
 
-      entry_order_type_(OrderType::NONE),
-      entry_direction_(Direction::NONE),
+      entry_order_type_(ORDER_NONE),
+      entry_direction_(DIRECTION_NONE),
       entry_fee_(nan("")),
 
       entry_touch_price_(nan("")),
-      entry_touch_direction_(Direction::NONE),
+      entry_touch_direction_(DIRECTION_NONE),
       entry_extreme_price_(nan("")),
       entry_trail_point_(nan("")),
 
@@ -28,12 +32,12 @@ Order::Order()
       entry_filled_price_(nan("")),
       entry_filled_size_(0),
 
-      exit_order_type_(OrderType::NONE),
-      exit_direction_(Direction::NONE),
+      exit_order_type_(ORDER_NONE),
+      exit_direction_(DIRECTION_NONE),
       exit_fee_(nan("")),
 
       exit_touch_price_(nan("")),
-      exit_touch_direction_(Direction::NONE),
+      exit_touch_direction_(DIRECTION_NONE),
       exit_extreme_price_(nan("")),
       exit_trail_point_(nan("")),
 
@@ -211,19 +215,19 @@ Order& Order::SetExitFilledSize(const double exit_filled_size) {
 
 // ===========================================================================
 string Order::OrderTypeToString(const OrderType order_type) {
-  if (order_type == OrderType::MARKET) {
+  if (order_type == MARKET) {
     return "시장가";
   }
-  if (order_type == OrderType::LIMIT) {
+  if (order_type == LIMIT) {
     return "지정가";
   }
-  if (order_type == OrderType::MIT) {
+  if (order_type == MIT) {
     return "MIT";
   }
-  if (order_type == OrderType::LIT) {
+  if (order_type == LIT) {
     return "LIT";
   }
-  if (order_type == OrderType::TRAILING) {
+  if (order_type == TRAILING) {
     return "트레일링";
   }
 
@@ -275,3 +279,5 @@ double Order::GetExitOrderSize() const { return exit_order_size_; }
 int64_t Order::GetExitFilledTime() const { return exit_filled_time_; }
 double Order::GetExitFilledPrice() const { return exit_filled_price_; }
 double Order::GetExitFilledSize() const { return exit_filled_size_; }
+
+}  // namespace backtesting::order

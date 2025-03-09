@@ -21,7 +21,8 @@ using namespace std;
 using namespace nlohmann;
 
 /// 데이터 핸들링을 위한 유틸리티 네임스페이스
-namespace data_utils {
+namespace backtesting::utils {
+
 /**
  * 주어진 값의 소수점 자릿수를 계산하는 함수
  *
@@ -118,6 +119,9 @@ static locale global_locale("en_US.UTF-8");
 /// 금액을 천 단위 쉼표와 달러 표기로 포맷하여 반환하는 함수
 [[nodiscard]] string FormatDollar(double price);
 
+/// 환경 변수 값을 가져오는 함수
+[[nodiscard]] string GetEnvVariable(const string& env_var);
+
 /// 부동소숫점 같은 값 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값과 같으면 true를 반환함.
 template <typename T, typename U>
@@ -162,16 +166,14 @@ template <typename T, typename U>
 /// 왼쪽 값이 오른쪽 값보다 작으면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsLess(T a, U b) {
-  return !data_utils::IsGreaterOrEqual(a, b);
+  return !utils::IsGreaterOrEqual(a, b);
 }
 
 /// 부동소숫점 크기 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값보다 작거나 같으면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsLessOrEqual(T a, U b) {
-  return !data_utils::IsGreater(a, b);
+  return !utils::IsGreater(a, b);
 }
 
-/// 환경 변수 값을 가져오는 함수
-[[nodiscard]] string GetEnvVariable(const string& env_var);
-}  // namespace data_utils
+}  // namespace backtesting::utils

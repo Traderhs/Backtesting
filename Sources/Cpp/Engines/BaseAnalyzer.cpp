@@ -11,7 +11,13 @@
 #include "Engines/Trade.hpp"
 
 // 네임 스페이스
-using namespace data_utils;
+namespace backtesting {
+using namespace analyzer;
+using namespace logger;
+using namespace utils;
+}  // namespace backtesting
+
+namespace backtesting::analyzer {
 
 BaseAnalyzer::BaseAnalyzer() : trade_num_(1) {}
 BaseAnalyzer::~BaseAnalyzer() = default;
@@ -87,7 +93,9 @@ void BaseAnalyzer::TradingListToCsv(const string& file_path) const {
 
   file.close();
 
-  logger_->Log(LogLevel::INFO_L,
+  logger_->Log(INFO_L,
                format("거래 목록이 {} 경로에 저장되었습니다.", file_path),
                __FILE__, __LINE__);
 }
+
+}  // namespace backtesting::analyzer

@@ -6,21 +6,44 @@
 #include <vector>
 
 // 전방 선언
+namespace backtesting::analyzer {
 class Analyzer;
-class BarHandler;
-class Engine;
 class TechnicalAnalyzer;
+}
+
+namespace backtesting::bar {
+class Bar;
+class BarHandler;
+}
+
+namespace backtesting::engine {
+class Engine;
+enum class PriceType;
+}
+
+namespace backtesting::logger {
 class Logger;
-class Order;
+enum class LogLevel;
+}
+
+namespace backtesting::order {
 class SymbolInfo;
+class Order;
 enum class Direction;
 enum class OrderType;
-enum class PriceType;
-enum class LogLevel;
 struct LeverageBracket;
+}
 
 // 네임 스페이스
 using namespace std;
+namespace backtesting {
+using namespace analyzer;
+using namespace bar;
+using namespace engine;
+using namespace logger;
+}
+
+namespace backtesting::order {
 
 /// 주문, 포지션 등과 관련된 기본적인 작업을 처리하는 클래스
 class BaseOrderHandler {
@@ -231,3 +254,5 @@ class BaseOrderHandler {
   /// 진입 주문 취소 시 자금 관련 처리를 하는 함수
   static void ExecuteCancelEntry(const shared_ptr<Order>& cancel_order);
 };
+
+}  // namespace backtesting::order

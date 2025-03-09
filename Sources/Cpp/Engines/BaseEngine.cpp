@@ -12,13 +12,17 @@
 // 내부 헤더
 #include "Engines/Analyzer.hpp"
 #include "Engines/BarHandler.hpp"
-#include "Engines/Config.hpp"
 #include "Engines/DataUtils.hpp"
 #include "Engines/Exception.hpp"
+#include "Engines/Logger.hpp"
 
 // 네임 스페이스
 using namespace std;
-using namespace data_utils;
+namespace backtesting {
+using namespace utils;
+}  // namespace backtesting
+
+namespace backtesting::engine {
 
 BaseEngine::BaseEngine()
     : engine_initialized_(false),
@@ -41,9 +45,14 @@ json BaseEngine::leverage_bracket_;
 shared_ptr<Config> BaseEngine::config_;
 
 void BaseEngine::AddBarData(const string& symbol_name, const string& file_path,
-                            const BarType bar_type,
-                            const vector<int>& columns) {
-  bar_->AddBarData(symbol_name, file_path, bar_type, columns);
+                            const BarType bar_type, const int open_time_column,
+                            const int open_column, const int high_column,
+                            const int low_column, const int close_column,
+                            const int volume_column,
+                            const int close_time_column) {
+  bar_->AddBarData(symbol_name, file_path, bar_type, open_time_column,
+                   open_column, high_column, low_column, close_column,
+                   volume_column, close_time_column);
 }
 
 void BaseEngine::AddExchangeInfo(const string& exchange_info_path) {
@@ -66,7 +75,7 @@ void BaseEngine::AddExchangeInfo(const string& exchange_info_path) {
   } catch (const json::parse_error& e) {
     // JSON 파싱 오류 처리
     logger_->Log(
-        LogLevel::ERROR_L,
+        ERROR_L,
         format("거래소 정보 파일 [{}]의 Json 형식이 유효하지 않습니다.",
                exchange_info_path),
         __FILE__, __LINE__);
@@ -75,8 +84,8 @@ void BaseEngine::AddExchangeInfo(const string& exchange_info_path) {
 
   file.close();
 
-  logger_->Log(LogLevel::INFO_L, "거래소 정보가 엔진에 추가되었습니다.",
-               __FILE__, __LINE__);
+  logger_->Log(INFO_L, "거래소 정보가 엔진에 추가되었습니다.", __FILE__,
+               __LINE__);
 }
 
 void BaseEngine::AddLeverageBracket(const string& leverage_bracket_path) {
@@ -100,7 +109,7 @@ void BaseEngine::AddLeverageBracket(const string& leverage_bracket_path) {
   } catch (const json::parse_error& e) {
     // JSON 파싱 오류 처리
     logger_->Log(
-        LogLevel::ERROR_L,
+        ERROR_L,
         format("레버리지 구간 파일 [{}]의 Json 형식이 유효하지 않습니다.",
                leverage_bracket_path),
         __FILE__, __LINE__);
@@ -109,8 +118,8 @@ void BaseEngine::AddLeverageBracket(const string& leverage_bracket_path) {
 
   file.close();
 
-  logger_->Log(LogLevel::INFO_L, "레버리지 구간이 엔진에 추가되었습니다.",
-               __FILE__, __LINE__);
+  logger_->Log(INFO_L, "레버리지 구간이 엔진에 추가되었습니다.", __FILE__,
+               __LINE__);
 }
 
 bool BaseEngine::IsEngineInitialized() const { return engine_initialized_; }
@@ -118,7 +127,7 @@ bool BaseEngine::IsEngineInitialized() const { return engine_initialized_; }
 void BaseEngine::IncreaseWalletBalance(const double increase_balance) {
   if (IsLess(increase_balance, 0.0)) {
     logger_->Log(
-        LogLevel::ERROR_L,
+        ERROR_L,
         format(
             "현재 자금 증가를 위해 주어진 [{}]는 0보다 크거나 같아야 합니다.",
             FormatDollar(increase_balance)),
@@ -132,7 +141,7 @@ void BaseEngine::IncreaseWalletBalance(const double increase_balance) {
 void BaseEngine::DecreaseWalletBalance(const double decrease_balance) {
   if (IsLess(decrease_balance, 0.0)) {
     logger_->Log(
-        LogLevel::ERROR_L,
+        ERROR_L,
         format(
             "지갑 자금 감소를 위해 주어진 [{}]는 0보다 크거나 같아야 합니다.",
             FormatDollar(decrease_balance)),
@@ -142,12 +151,12 @@ void BaseEngine::DecreaseWalletBalance(const double decrease_balance) {
 
   if (IsGreater(decrease_balance, wallet_balance_)) {
     logger_->Log(
-        LogLevel::ERROR_L,
+        ERROR_L,
         format("지갑 자금 감소를 위해 주어진 [{}]는 지갑 자금 [{}]를 초과할 수 "
                "없습니다.",
                FormatDollar(decrease_balance), FormatDollar(wallet_balance_)),
         __FILE__, __LINE__);
-    throw Bankruptcy("지갑 자금 감소 실패");
+    throw exception::Bankruptcy("지갑 자금 감소 실패");
   }
 
   wallet_balance_ -= decrease_balance;
@@ -156,7 +165,7 @@ void BaseEngine::DecreaseWalletBalance(const double decrease_balance) {
 void BaseEngine::IncreaseUsedMargin(const double increase_margin) {
   if (IsLessOrEqual(increase_margin, 0.0)) {
     logger_->Log(
-        LogLevel::ERROR_L,
+        ERROR_L,
         format("사용한 마진 증가를 위해 주어진 [{}]는 양수로 지정해야 합니다.",
                FormatDollar(increase_margin)),
         __FILE__, __LINE__);
@@ -166,7 +175,7 @@ void BaseEngine::IncreaseUsedMargin(const double increase_margin) {
   if (const double sum_used_margin = used_margin_ + increase_margin;
       IsGreater(sum_used_margin, wallet_balance_)) {
     logger_->Log(
-        LogLevel::ERROR_L,
+        ERROR_L,
         format("사용한 마진 [{}]와 증가할 마진 [{}]의 합 [{}]는 "
                "지갑 자금 [{}]를 초과할 수 없습니다.",
                FormatDollar(used_margin_), FormatDollar(increase_margin),
@@ -181,7 +190,7 @@ void BaseEngine::IncreaseUsedMargin(const double increase_margin) {
 void BaseEngine::DecreaseUsedMargin(const double decrease_margin) {
   if (IsLessOrEqual(decrease_margin, 0.0)) {
     logger_->Log(
-        LogLevel::ERROR_L,
+        ERROR_L,
         format("사용한 마진 감소를 위해 주어진 [{}]는 양수로 지정해야 합니다.",
                FormatDollar(decrease_margin)),
         __FILE__, __LINE__);
@@ -190,7 +199,7 @@ void BaseEngine::DecreaseUsedMargin(const double decrease_margin) {
 
   if (IsGreater(decrease_margin, used_margin_)) {
     logger_->Log(
-        LogLevel::ERROR_L,
+        ERROR_L,
         format("사용한 마진 감소를 위해 주어진 [{}]는 사용한 마진 [{}]를 "
                "초과할 수 없습니다.",
                FormatDollar(decrease_margin), FormatDollar(used_margin_)),
@@ -227,3 +236,5 @@ void BaseEngine::UpdateStatistics() {
 }
 
 void BaseEngine::PrintSeparator() { cout << string(217, '=') << endl; }
+
+}  // namespace backtesting::engine

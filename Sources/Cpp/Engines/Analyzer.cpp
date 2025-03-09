@@ -1,6 +1,8 @@
 // 파일 헤더
 #include "Engines/Analyzer.hpp"
 
+namespace backtesting::analyzer {
+
 Analyzer::Analyzer() = default;
 void Analyzer::Deleter::operator()(const Analyzer* p) const { delete p; }
 
@@ -18,3 +20,5 @@ shared_ptr<Analyzer>& Analyzer::GetAnalyzer() {
 
   return instance_;
 }
+
+}  // namespace backtesting::analyzer

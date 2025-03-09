@@ -12,7 +12,8 @@
 // 네임 스페이스
 using namespace chrono;
 
-namespace time_utils {
+namespace backtesting::utils {
+
 int64_t GetCurrentLocalTimestamp() { return time(nullptr) * 1000; }
 
 int64_t GetCurrentUtcTimestamp() {
@@ -177,4 +178,5 @@ string FormatTimeDiff(const int64_t diff_ms) {
            to_string((diff_ms % kMinute) / kSecond) + "초";
   return to_string(diff_ms / kSecond) + "초";
 }
-}  // namespace time_utils
+
+}  // namespace backtesting::utils

@@ -52,26 +52,10 @@
 // 파일 헤더
 #include "Backtesting.hpp"
 
-// 내부 헤더
-#include "Engines/BaseBarHandler.hpp"
-#include "Engines/BinanceFetcher.hpp"
-#include "Engines/Config.hpp"
-#include "Engines/Engine.hpp"
-#include "Engines/Logger.hpp"
-#include "Strategies/TestStrategy.hpp"
-
-// 네임 스페이스
-using enum BarType;
-
-auto& engine = Engine::GetEngine();
-auto& logger = Logger::GetLogger();
-auto fetcher =
-    make_shared<BinanceFetcher>("BINANCE_API_KEY", "BINANCE_API_SECRET");
-
 int main() {
   // 거래소 정책은 계속 변화하므로 매번 저장
-  fetcher->FetchExchangeInfo();
-  fetcher->FetchLeverageBracket();
+  fetch->FetchExchangeInfo();
+  fetch->FetchLeverageBracket();
 
   Engine::AddBarData(
       "BTCUSDT",

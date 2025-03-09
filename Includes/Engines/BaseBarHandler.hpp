@@ -5,12 +5,23 @@
 #include <string>
 #include <unordered_map>
 
-// 내부 헤더
-#include "Engines/BarData.hpp"
-#include "Engines/Logger.hpp"
+// 전방 선언
+namespace backtesting::bar {
+class BarData;
+}
+
+namespace backtesting::logger {
+class Logger;
+}
 
 // 네임 스페이스
 using namespace std;
+namespace backtesting {
+  using namespace bar;
+  using namespace logger;
+}
+
+namespace backtesting::bar {
 
 /// 바 데이터 타입을 지정하는 열거형 클래스
 ///
@@ -23,13 +34,14 @@ using namespace std;
 ///
 /// MARK_PRICE: 여러 거래소의 시장 평균 가격을 나타내는 바 데이터
 enum class BarType { TRADING, MAGNIFIER, REFERENCE, MARK_PRICE };
+using enum BarType;
 
 /// 타입별 바 데이터를 저장하고 기본적인 관리를 하는 클래스
 class BaseBarHandler {
  public:
   /// 지정된 바 타입의 바 데이터를 반환하는 함수
-  [[nodiscard]] shared_ptr<BarData> GetBarData(BarType bar_type,
-                                               const string& timeframe = "");
+  [[nodiscard]] shared_ptr<BarData> GetBarData(
+      BarType bar_type, const string& timeframe = "");
 
   /// 지정된 바 타입의 모든 심볼이 포함된 인덱스 벡터를 반환하는 함수
   [[nodiscard]] vector<size_t>& GetBarIndices(BarType bar_type,
@@ -70,3 +82,5 @@ class BaseBarHandler {
   vector<size_t>
       mark_price_index_;  // 마크 가격 바 데이터의 각 심볼별 진행 인덱스
 };
+
+}  // namespace backtesting::bar

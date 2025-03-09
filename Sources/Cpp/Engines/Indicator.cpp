@@ -16,8 +16,9 @@
 #include "Engines/TimeUtils.hpp"
 
 // 네임 스페이스
-using namespace data_utils;
-using namespace time_utils;
+using namespace backtesting::utils;
+
+namespace backtesting::indicator {
 
 Indicator::Indicator(const string& name, const string& timeframe)
     : is_calculated_(false) {
@@ -42,9 +43,9 @@ Indicator::Indicator(const string& name, const string& timeframe)
   // 증가 카운터는 AddIndicator 함수로만 증가하는데 AddIndicator 없이 직접
   // 생성자 호출로 전 증가 카운터가 현재 증가 카운터와 같다면 오류 발생
   if (pre_creation_counter_ == creation_counter_) {
-    logger->Log(LogLevel::ERROR_L,
-                "지표의 추가는 AddIndicator 함수의 호출로만 가능합니다.",
-                __FILE__, __LINE__);
+    logger_->Log(ERROR_L,
+                 "지표의 추가는 AddIndicator 함수의 호출로만 가능합니다.",
+                 __FILE__, __LINE__);
     Logger::LogAndThrowError(
         format("[{} {}] 지표를 추가하는 중 에러가 발생했습니다.", name,
                timeframe),
@@ -84,7 +85,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
   const auto& original_reference_tf = bar_->GetCurrentReferenceTimeframe();
 
   // 지표 참조를 위해 데이터 환경 설정
-  bar_->SetCurrentBarType(BarType::REFERENCE, timeframe_);
+  bar_->SetCurrentBarType(REFERENCE, timeframe_);
 
   // 필요한 인덱스 로딩
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
@@ -115,7 +116,7 @@ void Indicator::CalculateIndicator(const string& strategy_name) {
     // ===========================================================================
     // 사전 설정
     const auto& indicator_reference_bar =
-        bar_->GetBarData(BarType::REFERENCE, timeframe_);
+        bar_->GetBarData(REFERENCE, timeframe_);
     is_calculating_ = true;
     calculating_name_ = name_;
     calculating_timeframe_ = timeframe_;
@@ -127,12 +128,12 @@ void Indicator::CalculateIndicator(const string& strategy_name) {
     // 전체 트레이딩 심볼들을 순회하며 지표 계산
     for (int symbol_idx = 0; symbol_idx < output_.size(); symbol_idx++) {
       this->Initialize();
-      bar_->SetCurrentBarType(BarType::REFERENCE, timeframe_);
+      bar_->SetCurrentBarType(REFERENCE, timeframe_);
       bar_->SetCurrentSymbolIndex(symbol_idx);
 
       // 해당 심볼의 모든 바를 순회
-      const auto num_bars = bar_->GetBarData(BarType::REFERENCE, timeframe_)
-                                ->GetNumBars(symbol_idx);
+      const auto num_bars =
+          bar_->GetBarData(REFERENCE, timeframe_)->GetNumBars(symbol_idx);
       output_[symbol_idx].resize(num_bars);
       reference_num_bars_[symbol_idx] = num_bars;
 
@@ -151,12 +152,12 @@ void Indicator::CalculateIndicator(const string& strategy_name) {
 
     is_calculated_ = true;
     is_calculating_ = false;
-    logger_->Log(LogLevel::INFO_L,
+    logger_->Log(INFO_L,
                  format("[{}] 전략의 [{} {}] 지표 계산이 완료되었습니다.",
                         strategy_name, name_, timeframe_),
                  __FILE__, __LINE__);
   } catch (const exception& e) {
-    logger_->Log(LogLevel::ERROR_L, e.what(), __FILE__, __LINE__);
+    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
     Logger::LogAndThrowError(
         format("[{} {}] 지표 계산 중 오류가 발생했습니다.", name_, timeframe_),
         __FILE__, __LINE__);
@@ -165,7 +166,7 @@ void Indicator::CalculateIndicator(const string& strategy_name) {
 
 void Indicator::SaveIndicator(const string& file_path,
                               const string& strategy_name) const {
-  const auto& bar_data = bar_->GetBarData(BarType::REFERENCE, timeframe_);
+  const auto& bar_data = bar_->GetBarData(REFERENCE, timeframe_);
 
   try {
     if (!is_calculated_) {
@@ -221,14 +222,14 @@ void Indicator::SaveIndicator(const string& file_path,
     // 파일 닫기
     file.close();
   } catch (const exception& e) {
-    logger_->Log(LogLevel::ERROR_L, e.what(), __FILE__, __LINE__);
+    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
     Logger::LogAndThrowError(
         format("[{} {}] 지표를 {} 경로에 저장하는 중 에러가 발생했습니다.",
                name_, timeframe_, file_path),
         __FILE__, __LINE__);
   }
 
-  logger_->Log(LogLevel::INFO_L,
+  logger_->Log(INFO_L,
                format("[{}] 전략의 [{} {}] 지표가 저장되었습니다.",
                       strategy_name, name_, timeframe_),
                __FILE__, __LINE__);
@@ -250,3 +251,5 @@ string Indicator::GetName() const { return name_; }
 string Indicator::GetTimeframe() const { return timeframe_; }
 
 void Indicator::IncreaseCreationCounter() { creation_counter_++; }
+
+}  // namespace backtesting::indicator
