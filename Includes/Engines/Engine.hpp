@@ -164,18 +164,11 @@ class Engine final : public BaseEngine {
   /// 전략에서 사용하는 지표의 유효성을 검증하는 함수
   void IsValidIndicators();
 
-  /// 저장에 필요한 폴더들을 생성하는 함수
-  void CreateDirectories();
-
   /// 엔진의 변수들을 초기화하는 함수
   void InitializeEngine();
 
   /// 거래소 정보에 따라 심볼 정보를 초기화하는 함수
   void InitializeSymbolInfo();
-
-  /// 주어진 Json에서 주어진 키를 찾고 Double로 반환하는 함수
-  [[nodiscard]] static double GetDoubleFromJson(const json& data,
-                                                const string& key);
 
   /// 전략들을 초기화하는 함수
   void InitializeStrategies() const;

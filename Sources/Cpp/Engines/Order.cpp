@@ -13,7 +13,7 @@ Order::Order()
     : margin_(0),
       leverage_(-1),
       liquidation_price_(nan("")),
-      liquidation_fee_(nan("")),
+      liquidation_fee_(0),
 
       entry_order_type_(ORDER_NONE),
       entry_direction_(DIRECTION_NONE),

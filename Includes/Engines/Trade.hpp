@@ -27,6 +27,7 @@ class Trade final {
   Trade& SetExitSize(double exit_size);
   Trade& SetEntryPrice(double entry_price);
   Trade& SetExitPrice(double exit_price);
+  Trade& SetLiquidationPrice(double liquidation_price);
   Trade& SetLeverage(int leverage);
   Trade& SetEntryFee(double entry_fee);
   Trade& SetExitFee(double exit_fee);
@@ -52,6 +53,7 @@ class Trade final {
   [[nodiscard]] double GetExitSize() const;
   [[nodiscard]] double GetEntryPrice() const;
   [[nodiscard]] double GetExitPrice() const;
+  [[nodiscard]] double GetLiquidationPrice() const;
   [[nodiscard]] int GetLeverage() const;
   [[nodiscard]] double GetEntryFee() const;
   [[nodiscard]] double GetExitFee() const;
@@ -79,6 +81,7 @@ class Trade final {
   double exit_size_;           // 청산 수량
   double entry_price_;         // 진입 가격
   double exit_price_;          // 청산 가격
+  double liquidation_price_;   // 강제 청산 가격
   int leverage_;               // 레버리지
   double entry_fee_;           // 진입 수수료
   double exit_fee_;            // 청산 수수료

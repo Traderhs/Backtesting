@@ -518,7 +518,7 @@ LeverageBracket BaseOrderHandler::GetLeverageBracket(
 
   throw InvalidValue(
       format("명목 가치 [{}]에 해당되는 레버리지 구간이 존재하지 않습니다.",
-             FormatDollar(notional_value)));
+             FormatDollar(notional_value, true)));
 }
 
 double BaseOrderHandler::CalculateMargin(const double order_price,
@@ -631,9 +631,8 @@ void BaseOrderHandler::IsValidNotionalValue(const double order_price,
     throw InvalidValue(
         format("주어진 주문 가격 [{}]과 포지션 크기 [{}]의 곱인 명목 가치 "
                "[{}]는 최소 명목 가치 [{}]보다 커야 합니다.",
-               order_price, position_size,
-               FormatDollar(RoundToDecimalPlaces(notional, 2)),
-               FormatDollar(RoundToDecimalPlaces(min_notional, 2))));
+               order_price, position_size, FormatDollar(notional, true),
+               FormatDollar(min_notional, true)));
   }
 }
 
@@ -649,7 +648,7 @@ void BaseOrderHandler::IsValidLeverage(const double order_price,
     throw InvalidValue(format(
         "현재 레버리지 [{}]은(는) 명목 가치 [{}]에 해당되는 레버리지 "
         "구간의 최대 레버리지 [{}]을(를) 초과하기 때문에 주문할 수 없습니다.",
-        current_leverage, FormatDollar(order_price * position_size),
+        current_leverage, FormatDollar(order_price * position_size, true),
         max_leverage));
   }
 }
@@ -723,8 +722,8 @@ void BaseOrderHandler::HasEnoughBalance(const double balance,
   if (IsLess(balance, needed_balance)) {
     throw InsufficientBalance(
         format("자금이 부족합니다. | {} 자금: {} | {}: {}", balance_type_msg,
-               FormatDollar(RoundToDecimalPlaces(balance, 2)), purpose_msg,
-               FormatDollar(RoundToDecimalPlaces(needed_balance, 2))));
+               FormatDollar(balance, true), purpose_msg,
+               FormatDollar(needed_balance, true)));
   }
 }
 

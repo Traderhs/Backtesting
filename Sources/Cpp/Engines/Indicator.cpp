@@ -164,8 +164,7 @@ void Indicator::CalculateIndicator(const string& strategy_name) {
   }
 }
 
-void Indicator::SaveIndicator(const string& file_path,
-                              const string& strategy_name) const {
+void Indicator::SaveIndicator(const string& file_path) const {
   const auto& bar_data = bar_->GetBarData(REFERENCE, timeframe_);
 
   try {
@@ -228,11 +227,6 @@ void Indicator::SaveIndicator(const string& file_path,
                name_, timeframe_, file_path),
         __FILE__, __LINE__);
   }
-
-  logger_->Log(INFO_L,
-               format("[{}] 전략의 [{} {}] 지표가 저장되었습니다.",
-                      strategy_name, name_, timeframe_),
-               __FILE__, __LINE__);
 }
 
 void Indicator::SetTimeframe(const string& timeframe) {

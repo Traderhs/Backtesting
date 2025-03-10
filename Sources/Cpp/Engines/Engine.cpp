@@ -39,7 +39,7 @@ Engine::Engine()
       trading_bar_num_symbols_(0),
       trading_bar_time_diff_(0),
       magnifier_bar_time_diff_(0),
-      current_strategy_type_(StrategyType::ON_CLOSE),
+      current_strategy_type_(ON_CLOSE),
       begin_open_time_(INT64_MAX),
       end_open_time_(0),
       current_open_time_(0),
@@ -80,8 +80,6 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
                  __LINE__);
   }
 
-  // 설정, 지표값 등 저장 필요@@@@@@@@@@@@@@@@@@@@@@@@@
-
   PrintSeparator();
   logger_->Log(INFO_L, "백테스팅이 완료되었습니다.", __FILE__, __LINE__);
 
@@ -92,6 +90,27 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
       __FILE__, __LINE__);
+
+  // 폴더 생성
+  const string& main_directory = CreateDirectories();
+
+  // 로그 저장
+  logger_->SaveBacktestingLog(main_directory + "/backtesting.log");
+
+  // 지표 저장
+  for (int strategy_idx = 0; strategy_idx < strategies_.size();
+       strategy_idx++) {
+    for (const auto& indicator : indicators_[strategy_idx]) {
+      indicator->SaveIndicator(
+          std::format("{}/Indicators/{}/{} {}.csv", main_directory,
+                      strategies_[strategy_idx]->GetName(),
+                      indicator->GetName(), indicator->GetTimeframe()));
+    }
+  }
+
+  // 매매 목록 저장
+  analyzer_->SaveTradingList(main_directory +
+                             "/Trading Lists/trading list.csv");
 }
 
 double Engine::UpdateAvailableBalance() {
@@ -119,9 +138,6 @@ void Engine::Initialize(const string& start_time, const string& end_time,
   IsValidDateRange(start_time, end_time, format);
   IsValidStrategies();
   IsValidIndicators();
-
-  // 폴더 생성
-  CreateDirectories();
 
   // 초기화
   PrintSeparator();
@@ -207,7 +223,7 @@ void Engine::IsValidConfig() {
     if (initial_balance <= 0) {
       Logger::LogAndThrowError(
           format("지정된 초기 자금 [{}]는 0보다 커야 합니다.",
-                 FormatDollar(initial_balance)),
+                 FormatDollar(initial_balance, true)),
           __FILE__, __LINE__);
     }
 
@@ -710,43 +726,6 @@ void Engine::IsValidIndicators() {
   }
 }
 
-void Engine::CreateDirectories() {
-  try {
-    // 전략 이름들을 이어붙인 이름 + 현재 시간이 이번 백테스팅의 메인 폴더
-    string main_directory = config_->GetRootDirectory() + "/Results/";
-
-    for (const auto& strategy : strategies_) {
-      main_directory += strategy->GetName() + "_";
-    }
-
-    main_directory += GetCurrentLocalDatetime();
-
-    // 시간 구분 문자 제거 및 공백 언더 스코어화
-    // (3부터 시작하는 이유는 드라이브 경로의 ':' 제외)
-    main_directory.erase(
-        std::remove(main_directory.begin() + 3, main_directory.end(), ':'),
-        main_directory.end());
-    main_directory.erase(
-        std::remove(main_directory.begin() + 3, main_directory.end(), '-'),
-        main_directory.end());
-    replace(main_directory.begin() + 3, main_directory.end(), ' ', '_');
-
-    // 메인 폴더 생성
-    filesystem::create_directory(main_directory);
-    main_directory_ = main_directory;
-
-    // 지표 저장 폴더 생성
-    for (const auto& strategy : strategies_) {
-      filesystem::create_directories(main_directory + "/Indicators/" +
-                                     strategy->GetName());
-    }
-  } catch (const std::exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
-    Logger::LogAndThrowError("폴더 생성 중 에러가 발생했습니다.", __FILE__,
-                             __LINE__);
-  }
-}
-
 void Engine::InitializeEngine() {
   // 자금 설정
   const auto initial_balance = config_->GetInitialBalance();
@@ -950,31 +929,6 @@ void Engine::InitializeSymbolInfo() {
                __LINE__);
 }
 
-double Engine::GetDoubleFromJson(const json& data, const string& key) {
-  try {
-    const auto& value = data.at(key);
-
-    // String이면 Double로 변환 후 반환
-    if (value.is_string()) {
-      return stod(value.get<string>());
-    }
-
-    // 숫자형이면 Double로 반환
-    if (value.is_number()) {
-      return value.get<double>();
-    }
-
-    // 그 외의 경우에는 오류 처리
-    logger_->Log(ERROR_L, "유효하지 않은 값이 존재합니다.", __FILE__, __LINE__);
-  } catch ([[maybe_unused]] const std::exception& e) {
-    logger_->Log(ERROR_L, format("[{}] 키에서 오류가 발생했습니다.", key),
-                 __FILE__, __LINE__);
-    throw;
-  }
-
-  return nan("");
-}
-
 void Engine::InitializeStrategies() const {
   // 전략별 주문 핸들러 및 전략 초기화
   for (const auto& strategy : strategies_) {
@@ -1001,14 +955,6 @@ void Engine::InitializeIndicators() const {
 
       // 지표 계산
       indicator->CalculateIndicator(strategy_name);
-    }
-
-    // 지표 저장
-    for (const auto& indicator : indicators_[strategy_idx]) {
-      indicator->SaveIndicator(
-          format("{}/Indicators/{}/{} {}.csv", main_directory_, strategy_name,
-                 indicator->GetName(), indicator->GetTimeframe()),
-          strategy_name);
     }
   }
 
@@ -1101,7 +1047,7 @@ void Engine::BacktestingMain() {
       for (const auto& strategy : strategies_) {
         const auto& order_handler = strategy->GetOrderHandler();
 
-        ExecuteStrategy(strategy, StrategyType::ON_CLOSE, symbol_idx);
+        ExecuteStrategy(strategy, ON_CLOSE, symbol_idx);
 
         // On Close 전략 실행 후 진입/청산이 있었을 경우
         // After Entry, After Exit 전략 실행
@@ -1112,12 +1058,12 @@ void Engine::BacktestingMain() {
         do {
           if (just_entered) {
             order_handler->InitializeJustEntered();
-            ExecuteStrategy(strategy, StrategyType::AFTER_ENTRY, symbol_idx);
+            ExecuteStrategy(strategy, AFTER_ENTRY, symbol_idx);
           }
 
           if (just_exited) {
             order_handler->InitializeJustExited();
-            ExecuteStrategy(strategy, StrategyType::AFTER_EXIT, symbol_idx);
+            ExecuteStrategy(strategy, AFTER_EXIT, symbol_idx);
           }
 
           // After Entry, After Exit 전략 실행 시 추가 진입 혹은 추가 청산
@@ -1366,8 +1312,7 @@ void Engine::ProcessOhlc(const BarType bar_type,
 
         if (order_handler->GetJustEntered()) {
           order_handler->InitializeJustEntered();
-          ExecuteStrategy(strategy, StrategyType::AFTER_ENTRY,
-                          market_price_symbol_idx);
+          ExecuteStrategy(strategy, AFTER_ENTRY, market_price_symbol_idx);
         }
 
         // 청산 대기 주문의 체결 확인 후 체결이 존재할 시 After Exit 전략 실행
@@ -1376,8 +1321,7 @@ void Engine::ProcessOhlc(const BarType bar_type,
 
         if (order_handler->GetJustExited()) {
           order_handler->InitializeJustExited();
-          ExecuteStrategy(strategy, StrategyType::AFTER_EXIT,
-                          market_price_symbol_idx);
+          ExecuteStrategy(strategy, AFTER_EXIT, market_price_symbol_idx);
         }
 
         // 진입 및 청산 체결이 없는 경우 체결 확인 및 전략 실행 종료
@@ -1567,11 +1511,11 @@ void Engine::ExecuteStrategy(const shared_ptr<Strategy>& strategy,
   try {
     current_strategy_type_ = strategy_type;
 
-    if (strategy_type == StrategyType::ON_CLOSE) {
+    if (strategy_type == ON_CLOSE) {
       strategy->ExecuteOnClose();
-    } else if (strategy_type == StrategyType::AFTER_ENTRY) {
+    } else if (strategy_type == AFTER_ENTRY) {
       strategy->ExecuteAfterEntry();
-    } else if (strategy_type == StrategyType::AFTER_EXIT) {
+    } else if (strategy_type == AFTER_EXIT) {
       strategy->ExecuteAfterExit();
     }
   } catch ([[maybe_unused]] const Bankruptcy& e) {

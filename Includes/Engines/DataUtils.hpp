@@ -86,6 +86,9 @@ namespace backtesting::utils {
  */
 [[nodiscard]] any GetScalarValue(const shared_ptr<arrow::Scalar>& scalar);
 
+/// 주어진 Json에서 주어진 키를 찾고 Double로 반환하는 함수
+[[nodiscard]] double GetDoubleFromJson(const json& data, const string& key);
+
 /**
  * 주어진 테이블을 Parquet 파일 형식으로 지정된 파일 경로에 저장하는 함수
  *
@@ -117,7 +120,7 @@ SplitTable(const shared_ptr<arrow::Table>& table, double split_ratio);
 static locale global_locale("en_US.UTF-8");
 
 /// 금액을 천 단위 쉼표와 달러 표기로 포맷하여 반환하는 함수
-[[nodiscard]] string FormatDollar(double price);
+[[nodiscard]] string FormatDollar(double price, bool use_rounding);
 
 /// 환경 변수 값을 가져오는 함수
 [[nodiscard]] string GetEnvVariable(const string& env_var);

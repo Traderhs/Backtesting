@@ -54,36 +54,36 @@
 
 int main() {
   // 거래소 정책은 계속 변화하므로 매번 저장
-  fetch->FetchExchangeInfo();
-  fetch->FetchLeverageBracket();
+  Backtesting::FetchExchangeInfo();
+  Backtesting::FetchLeverageBracket();
 
-  Engine::AddBarData(
+  Backtesting::AddBarData(
       "BTCUSDT",
       "D:/Programming/Backtesting/Data/Continuous Klines/BTCUSDT/1h.parquet",
       TRADING);
 
-  Engine::AddBarData(
+  Backtesting::AddBarData(
       "XRPUSDT",
       "D:/Programming/Backtesting/Data/Continuous Klines/XRPUSDT/1h.parquet",
       TRADING);
 
-  Engine::AddBarData(
+  Backtesting::AddBarData(
       "BTCUSDT",
       "D:/Programming/Backtesting/Data/Mark Price Klines/BTCUSDT/1h.parquet",
       MARK_PRICE);
 
-  Engine::AddBarData(
+  Backtesting::AddBarData(
       "XRPUSDT",
       "D:/Programming/Backtesting/Data/Mark Price Klines/XRPUSDT/1h.parquet",
       MARK_PRICE);
 
-  Engine::AddExchangeInfo("D:/Programming/Backtesting/Data/exchange_info.json");
-  Engine::AddLeverageBracket(
+  Backtesting::AddExchangeInfo("D:/Programming/Backtesting/Data/exchange_info.json");
+  Backtesting::AddLeverageBracket(
       "D:/Programming/Backtesting/Data/leverage_bracket.json");
 
-  Strategy::AddStrategy<TestStrategy>("Test Strategy");
+  Backtesting::AddStrategy<TestStrategy>("Test Strategy");
 
-  Config::SetConfig()
+  Backtesting::SetConfig()
       .SetRootDirectory("D:/Programming/Backtesting")
       .SetUseBarMagnifier(false)
       .SetInitialBalance(10000)
@@ -92,5 +92,5 @@ int main() {
       .SetTakerSlippage(0.1)
       .SetMakerSlippage(0);
 
-  engine->Backtesting();
+  Backtesting::Run();
 }

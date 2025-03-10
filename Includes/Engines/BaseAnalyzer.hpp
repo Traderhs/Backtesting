@@ -37,7 +37,7 @@ class BaseAnalyzer {
   void AddTrade(analyzer::Trade& trade);
 
   /// 거래 목록을 csv 파일로 저장하는 함수
-  void TradingListToCsv(const string& file_path) const;
+  void SaveTradingList(const string& file_path) const;
 
  protected:
   BaseAnalyzer();

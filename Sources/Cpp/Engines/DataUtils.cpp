@@ -122,9 +122,35 @@ any GetScalarValue(const shared_ptr<arrow::Scalar>& scalar) {
   }
 }
 
+double GetDoubleFromJson(const json& data, const string& key) {
+  try {
+    const auto& value = data.at(key);
+
+    // String이면 Double로 변환 후 반환
+    if (value.is_string()) {
+      return stod(value.get<string>());
+    }
+
+    // 숫자형이면 Double로 반환
+    if (value.is_number()) {
+      return value.get<double>();
+    }
+
+    // 그 외의 경우에는 오류 처리
+    Logger::LogAndThrowError("유효하지 않은 값이 존재합니다.", __FILE__,
+                             __LINE__);
+  } catch ([[maybe_unused]] const std::exception& e) {
+    Logger::LogAndThrowError(format("[{}] 키에서 오류가 발생했습니다.", key),
+                             __FILE__, __LINE__);
+    throw;
+  }
+
+  return nan("");
+}
+
 void TableToParquet(const shared_ptr<arrow::Table>& table,
                     const string& file_path) {
-  static shared_ptr<arrow::io::FileOutputStream> outfile;
+  // 1) 파일 열기
   auto result = arrow::io::FileOutputStream::Open(file_path);
   if (!result.ok()) {
     Logger::LogAndThrowError(
@@ -132,14 +158,24 @@ void TableToParquet(const shared_ptr<arrow::Table>& table,
         __LINE__);
   }
 
-  outfile = result.ValueOrDie();
+  // 2) outfile를 지역 변수로 보관
+  const auto& outfile = result.ValueOrDie();
 
+  // 3) Parquet로 테이블 쓰기
   const auto write_result = parquet::arrow::WriteTable(
       *table, arrow::default_memory_pool(), outfile, table->num_rows());
-  if (!write_result.ok())
+  if (!write_result.ok()) {
     Logger::LogAndThrowError(
         "테이블을 저장하는 데 실패했습니다.: " + write_result.ToString(),
         __FILE__, __LINE__);
+  }
+
+  // 4) 파일 스트림 닫기
+  if (const auto close_status = outfile->Close(); !close_status.ok()) {
+    Logger::LogAndThrowError(
+        "파일을 닫는 데 실패했습니다.: " + close_status.ToString(), __FILE__,
+        __LINE__);
+  }
 }
 
 void JsonToFile(future<json> data, const string& file_path) {
@@ -187,12 +223,15 @@ double RoundToTickSize(const double price, const double tick_size) {
   return round(result * 1e10) / 1e10;
 }
 
-string FormatDollar(const double price) {
+string FormatDollar(const double price, const bool use_rounding) {
   ostringstream oss;
   oss.imbue(global_locale);  // 천 단위 쉼표 추가
   oss << showpoint;          // 소수점 유지
   oss << fixed;              // 고정 소수점 형식
-  oss << setprecision(2);    // 소수점 두 자리까지
+
+  if (use_rounding) {
+    oss << setprecision(2);  // 소수점 두 자리까지
+  }
 
   if (IsLess(price, 0.0))
     oss << "-$" << -price;  // 음수일 때 -$

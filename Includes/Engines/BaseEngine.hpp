@@ -39,7 +39,6 @@ using namespace nlohmann;
 namespace backtesting {
 using namespace bar;
 using namespace analyzer;
-using namespace config;
 using namespace logger;
 using namespace indicator;
 using namespace strategy;
@@ -64,10 +63,10 @@ class BaseEngine {
   /// @param volume_column Volume 컬럼 인덱스
   /// @param close_time_column Close Time 컬럼 인덱스
   static void AddBarData(const string& symbol_name, const string& file_path,
-                         BarType bar_type, int open_time_column = 0,
-                         int open_column = 1, int high_column = 2,
-                         int low_column = 3, int close_column = 4,
-                         int volume_column = 5, int close_time_column = 6);
+                         BarType bar_type, int open_time_column,
+                         int open_column, int high_column, int low_column,
+                         int close_column, int volume_column,
+                         int close_time_column);
 
   /// 거래소 정보를 엔진에 추가하는 함수.
   static void AddExchangeInfo(const string& exchange_info_path);
@@ -97,11 +96,8 @@ class BaseEngine {
   /// 강제 청산 횟수를 증가시키는 함수
   void IncreaseLiquidationCount();
 
-  /// 메인 디렉토리를 반환하는 함수
-  [[nodiscard]] string GetMainDirectory() const;
-
   /// 엔진 설정값을 반환하는 함수
-  [[nodiscard]] static shared_ptr<Config> GetConfig();
+  [[nodiscard]] static shared_ptr<config::Config> GetConfig();
 
   /// 지갑 자금을 반환하는 함수
   [[nodiscard]] double GetWalletBalance() const;
@@ -136,11 +132,8 @@ class BaseEngine {
   static json leverage_bracket_;
 
   /// 엔진의 사전 설정 항목
-  static shared_ptr<Config> config_;
-  friend class Config;
-
-  /// 한 회의 백테스팅에서 사용할 메인 디렉토리
-  string main_directory_;
+  static shared_ptr<config::Config> config_;
+  friend class config::Config;
 
   /// 엔진에 추가된 전략
   vector<shared_ptr<Strategy>> strategies_;
@@ -171,13 +164,13 @@ class BaseEngine {
   double drawdown_;            /// 현재 드로우다운
   double max_drawdown_;        /// 최고 드로우다운
   int liquidation_count_;      /// 강제 청산 횟수
-  // @@@@@@@@@@@@@@@@ 마진콜 X ->
-  // 유지 증거금 계산 메커니즘 도입 -> 진입 금액에 따라 진입 레버리지 제한 ->
-  // api로 받아와야함 유지 증거금 -> 강제 청산 가격 계산 강제 청산시 보험 기금
-  // 감소됨 -> 이것도 만들기
 
   /// =로 콘솔창을 분리하는 출력을 발생시키는 함수
   static void PrintSeparator();
+
+  /// 저장에 필요한 폴더들을 생성하고 이번 백테스팅의
+  /// 메인 폴더 경로를 반환하는 함수
+  [[nodiscard]] string CreateDirectories() const;
 };
 
 }  // namespace backtesting::engine
