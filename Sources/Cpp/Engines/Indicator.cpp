@@ -2,6 +2,7 @@
 #include <cmath>
 #include <format>
 #include <iomanip>
+#include <sstream>
 
 // 파일 헤더
 #include "Engines/Indicator.hpp"
@@ -172,53 +173,42 @@ void Indicator::SaveIndicator(const string& file_path) const {
       throw runtime_error("지표 계산 전 저장할 수 없습니다.");
     }
 
-    // 파일 출력 스트림 열기
-    ofstream file(file_path, ios::trunc);  // trunc 옵션으로 파일 내용 초기화
-
-    // 파일 열기 실패 시 에러 출력
-    if (!file.is_open()) {
-      throw runtime_error(file_path + " 파일을 열지 못했습니다.");
-    }
-
-    // 최대 10자리 소수점 저장
-    file << fixed << setprecision(10);
+    ostringstream oss;
+    oss << fixed << setprecision(10);
 
     size_t max_num_bars = 0;
-    for (int symbol_idx = 0; symbol_idx < output_.size(); symbol_idx++) {
-      // 심볼 이름들로 파일 헤더를 추가
-      file << bar_data->GetSymbolName(symbol_idx);
-
+    // 헤더 작성: 심볼 이름 기록 및 최대 바 인덱스 계산
+    for (int symbol_idx = 0; symbol_idx < output_.size(); ++symbol_idx) {
+      oss << bar_data->GetSymbolName(symbol_idx);
       if (symbol_idx != output_.size() - 1) {
-        file << ',';  // 마지막 symbol_name 뒤에는 쉼표를 추가하지 않음
+        oss << ',';
       }
-
-      // 심볼 중 최대 바 인덱스 크기 계산
-      if (const auto num_bars = bar_data->GetNumBars(symbol_idx);
+      if (const size_t num_bars = bar_data->GetNumBars(symbol_idx);
           num_bars > max_num_bars) {
         max_num_bars = num_bars;
       }
     }
+    oss << '\n';
 
-    file << '\n';  // 헤더 끝난 후 한 줄 개행
-
-    // 각 심볼의 지표값을 한 줄씩 쓰기
-    for (size_t bar_idx = 0; bar_idx < max_num_bars; bar_idx++) {
-      for (const auto& output : output_) {
-        try {
-          // 예외를 발생시키기 위해 at을 사용
-          file << output.at(bar_idx);
-        } catch ([[maybe_unused]] const exception& e) {
-          // 심볼별로 바 개수가 다르므로 최대 개수에 도달하면 저장하지 않음
+    // 각 바 인덱스별 데이터를 CSV 형식으로 버퍼에 작성
+    for (size_t bar_idx = 0; bar_idx < max_num_bars; ++bar_idx) {
+      for (size_t symbol_idx = 0; symbol_idx < output_.size(); ++symbol_idx) {
+        if (bar_idx < output_[symbol_idx].size()) {
+          oss << output_[symbol_idx][bar_idx];
         }
-
-        file << ',';  // 값 사이에 쉼표 추가
+        if (symbol_idx != output_.size() - 1) {
+          oss << ',';
+        }
       }
-
-      // 하나의 바 인덱스 기록이 완료되었으면 개행
-      file << '\n';
+      oss << '\n';
     }
 
-    // 파일 닫기
+    // 파일 출력 스트림을 열고, 버퍼링된 문자열을 한 번에 기록
+    ofstream file(file_path, ios::trunc);
+    if (!file.is_open()) {
+      throw runtime_error(file_path + " 파일을 열지 못했습니다.");
+    }
+    file << oss.str();
     file.close();
   } catch (const exception& e) {
     logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);

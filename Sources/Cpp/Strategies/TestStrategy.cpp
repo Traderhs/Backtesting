@@ -1,10 +1,8 @@
 // 파일 헤더
 #include "Strategies/TestStrategy.hpp"
 
-#include <Engines/BarHandler.hpp>
-
 TestStrategy::TestStrategy(const string& name)
-    : Strategy(name),
+    : Strategy(name, __FILE__),
       sma1(AddIndicator<SimpleMovingAverage>("sma1", trading_timeframe, close,
                                              20)),
       sma2(AddIndicator<SimpleMovingAverage>("sma2", trading_timeframe, close,

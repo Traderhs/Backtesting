@@ -40,9 +40,10 @@
 //                 ◆ 시간은 UTC+0 기준
 //                 ◆ 돋보기 -> 트레이딩 -> 참조 바 데이터의
 //                   타임프레임은 배수 관계
-//                ◆ 각 바의 움직임은 봉 가정을 따름 -> GetPriceQueue 함수 참조
-//                ◆ 각 진입은 격리로 작동하며 단일 방향으로만 진입 가능
+//                ◆ 각 바의 움직임은 봉 가정을 따름 → GetPriceQueue 함수 참조
+//                ◆ 각 진입은 격리로 작동하며 단일 방향으로만 동시 진입 가능
 //                ◆ 레버리지는 해당 심볼에 체결된 포지션이 없을 때만 변경 가능
+//                  → SetLeverage 함수 참조
 //                ◆ 진입 및 청산 작동 구조는 OrderHandler 헤더 파일 참조
 //                ◆ 미실현 손익 계산, 강제 청산 확인은 Mark Price를 사용하지만,
 //                  데이터가 누락된 경우 시장 가격을 사용함
@@ -59,35 +60,26 @@ int main() {
 
   Backtesting::AddBarData(
       "BTCUSDT",
-      "D:/Programming/Backtesting/Data/Continuous Klines/BTCUSDT/1h.parquet",
+      "D:/Programming/Backtesting/Data/Continuous Klines/BTCUSDT/1m.parquet",
       TRADING);
 
   Backtesting::AddBarData(
       "XRPUSDT",
-      "D:/Programming/Backtesting/Data/Continuous Klines/XRPUSDT/1h.parquet",
+      "D:/Programming/Backtesting/Data/Continuous Klines/XRPUSDT/1m.parquet",
       TRADING);
 
   Backtesting::AddBarData(
       "BTCUSDT",
-      "D:/Programming/Backtesting/Data/Mark Price Klines/BTCUSDT/1h.parquet",
+      "D:/Programming/Backtesting/Data/Mark Price Klines/BTCUSDT/1m.parquet",
       MARK_PRICE);
 
   Backtesting::AddBarData(
       "XRPUSDT",
-      "D:/Programming/Backtesting/Data/Mark Price Klines/XRPUSDT/1h.parquet",
+      "D:/Programming/Backtesting/Data/Mark Price Klines/XRPUSDT/1m.parquet",
       MARK_PRICE);
 
-  Backtesting::AddBarData(
-    "BTCUSDT",
-    "D:/Programming/Backtesting/Data/Continuous Klines/BTCUSDT/1d.parquet",
-    REFERENCE);
-
-  Backtesting::AddBarData(
-      "XRPUSDT",
-      "D:/Programming/Backtesting/Data/Continuous Klines/XRPUSDT/1d.parquet",
-      REFERENCE);
-
-  Backtesting::AddExchangeInfo("D:/Programming/Backtesting/Data/exchange_info.json");
+  Backtesting::AddExchangeInfo(
+      "D:/Programming/Backtesting/Data/exchange_info.json");
   Backtesting::AddLeverageBracket(
       "D:/Programming/Backtesting/Data/leverage_bracket.json");
 

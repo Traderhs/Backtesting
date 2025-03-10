@@ -269,6 +269,9 @@ string BaseEngine::CreateDirectories() const {
     // 메인 폴더 생성
     filesystem::create_directory(main_directory);
 
+    // 전략 소스 저장 폴더 생성
+    filesystem::create_directories(main_directory + "/Sources");
+
     // 지표 저장 폴더 생성
     for (const auto& strategy : strategies_) {
       filesystem::create_directories(main_directory + "/Indicators/" +
@@ -359,14 +362,13 @@ void BaseEngine::SaveConfig(const string& file_path) const {
 
   // 전략 값 배열에 각 전략의 객체를 push
   auto& strategy_json = config["전략"];
-  for (int strategy_idx = 0; strategy_idx < strategies_.size();
-       strategy_idx++) {
+  for (const auto& strategy : strategies_) {
     ordered_json local_strategy_json;
 
-    local_strategy_json["전략명"] = strategies_[strategy_idx]->GetName();
+    local_strategy_json["전략명"] = strategy->GetName();
 
     // 해당 전략에서 사용하는 지표들을 저장
-    for (const auto& indicator : strategies_[strategy_idx]->GetIndicators()) {
+    for (const auto& indicator : strategy->GetIndicators()) {
       ordered_json local_indicator_json;
       local_indicator_json["지표명"] = indicator->GetName();
       local_indicator_json["타임프레임"] = indicator->GetTimeframe();
@@ -380,7 +382,8 @@ void BaseEngine::SaveConfig(const string& file_path) const {
   // 설정 값 배열에 각 설정의 객체를 push
   auto& config_json = config["설정"];
   config_json["루트 폴더"] = config_->GetRootDirectory();
-  config_json["바 돋보기"] = config_->GetUseBarMagnifier() ? "사용" : "미사용";
+  config_json["바 돋보기"] =
+      config_->GetUseBarMagnifier() ? "활성화" : "비활성화";
   config_json["초기 자금"] = FormatDollar(config_->GetInitialBalance(), true);
 
   ostringstream taker_fee_percentage, maker_fee_percentage,
@@ -402,12 +405,12 @@ void BaseEngine::SaveConfig(const string& file_path) const {
   string bar_type_str[4] = {"트레이딩 바", "돋보기 바", "참조 바",
                             "마크 가격 바"};
   for (int i = 0; i < 4; i++) {
-    config_json["심볼 간 바 데이터 중복 검사"][bar_type_str[i]] =
-        config_->GetCheckBarDataDuplication()[i] ? "사용" : "미사용";
+    config_json["심볼 간 동일한 바 데이터 검사"][bar_type_str[i]] =
+        config_->GetCheckSameBarData()[i] ? "활성화" : "비활성화";
   }
 
-  config_json["마크 가격의 목표 바 데이터 중복 검사"] =
-      config_->GetCheckTargetBarDataDuplication() ? "사용" : "미사용";
+  config_json["마크 가격과 동일한 목표 바 데이터 검사"] =
+      config_->GetCheckSameTargetBarData() ? "활성화" : "비활성화";
 
   // 파일로 저장
   ofstream config_file(file_path);
