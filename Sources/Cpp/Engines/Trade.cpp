@@ -9,6 +9,7 @@ Trade::Trade()
       exit_size_(0.0),
       entry_price_(0.0),
       exit_price_(0.0),
+      liquidation_price_(0.0),
       leverage_(0),
       entry_fee_(0.0),
       exit_fee_(0.0),
@@ -87,6 +88,11 @@ Trade& Trade::SetExitPrice(const double exit_price) {
   return *this;
 }
 
+Trade& Trade::SetLiquidationPrice(const double liquidation_price) {
+  liquidation_price_ = liquidation_price;
+  return *this;
+}
+
 Trade& Trade::SetLeverage(const int leverage) {
   leverage_ = leverage;
   return *this;
@@ -155,6 +161,7 @@ double Trade::GetEntrySize() const { return entry_size_; }
 double Trade::GetExitSize() const { return exit_size_; }
 double Trade::GetEntryPrice() const { return entry_price_; }
 double Trade::GetExitPrice() const { return exit_price_; }
+double Trade::GetLiquidationPrice() const { return liquidation_price_; }
 int Trade::GetLeverage() const { return leverage_; }
 double Trade::GetEntryFee() const { return entry_fee_; }
 double Trade::GetExitFee() const { return exit_fee_; }

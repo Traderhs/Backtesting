@@ -58,11 +58,8 @@ class Indicator {
   /// 모든 심볼의 모든 바에 해당되는 지표 값을 계산하는 함수.
   void CalculateIndicator(const string& strategy_name);
 
-  /// 계산된 지표값을 지정된 경로에 csv로 저장하는 함수
-  ///
-  /// strategy_name은 로그용
-  void SaveIndicator(const string& file_path,
-                     const string& strategy_name) const;
+  /// 계산된 지표값을 지정된 경로에 csv 파일로 저장하는 함수
+  void SaveIndicator(const string& file_path) const;
 
   /// 지표의 타임프레임을 설정하는 함수
   void SetTimeframe(const string& timeframe);

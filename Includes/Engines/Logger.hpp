@@ -31,6 +31,7 @@ class Logger final {
    * @param info_log_name 정보 수준 로그를 저장할 파일 이름
    * @param warning_log_name 경고 수준 로그를 저장할 파일 이름
    * @param error_log_name 오류 수준 로그를 저장할 파일 이름
+   * @param backtesting_log_name 각 백테스팅 폴더에 로그를 저장할 파일 이름
    * @return 싱글톤 Logger 인스턴스에 대한 참조
    */
   static shared_ptr<Logger>& GetLogger(
@@ -38,10 +39,11 @@ class Logger final {
       const string& debug_log_name = "debug.log",
       const string& info_log_name = "info.log",
       const string& warning_log_name = "warning.log",
-      const string& error_log_name = "error.log");
+      const string& error_log_name = "error.log",
+      const string& backtesting_log_name = "backtesting.log");
 
   /**
-   * 지정된 로그 레벨, 파일, 및 라인 정보를 사용하여 메시지를 기록하는 함수
+   * 지정된 로그 레벨과 파일 및 라인 정보를 사용하여 메시지를 기록하는 함수
    *
    * @param log_level 로그 메시지의 레벨
    * @param message 기록할 로그 메시지
@@ -50,6 +52,9 @@ class Logger final {
    */
   void Log(const LogLevel& log_level, const string& message, const string& file,
            int line);
+
+  /// 포맷 없이 로그를 기록하는 함수
+  void LogNoFormat(const LogLevel& log_level, const string& message);
 
   /**
    * 에러를 로깅하고 Throw하는 함수
@@ -61,11 +66,14 @@ class Logger final {
   static void LogAndThrowError(const string& message, const string& file,
                                int line);
 
+  /// 이번 백테스팅의 로그를 지정된 폴더에 저장하는 함수
+  void SaveBacktestingLog(const string& backtesting_log_path);
+
  private:
   // 싱글톤 인스턴스 관리
   Logger(const string& log_directory, const string& debug_log_name,
          const string& info_log_name, const string& warning_log_name,
-         const string& error_log_name);
+         const string& error_log_name, const string& backtesting_log_name);
   class Deleter {
    public:
     void operator()(Logger* p) const;
@@ -75,10 +83,14 @@ class Logger final {
   static shared_ptr<Logger> instance_;
 
   // 로그 파일
-  ofstream debug_file_;
-  ofstream info_file_;
-  ofstream warning_file_;
-  ofstream error_file_;
+  ofstream debug_log_;
+  ofstream info_log_;
+  ofstream warning_log_;
+  ofstream error_log_;
+  ofstream backtesting_log_;  // 각 백테스팅별 저장되는 로그
+
+  // 각 백테스팅의 로그가 임시로 저장되는 경로
+  string backtesting_log_temp_path_;
 
   /**
    * 콘솔에 로그 메시지를 출력하는 함수
@@ -95,7 +107,7 @@ class Logger final {
    * @param file 메시지를 기록할 출력 파일 스트림
    * @param message 파일에 기록할 로그 메시지
    */
-  static void WriteToFile(ofstream& file, const string& message);
+  void WriteToFile(ofstream& file, const string& message);
 
   // 에러 종료 핸들러
   static void CustomTerminate();

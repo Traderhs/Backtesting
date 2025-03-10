@@ -1,7 +1,6 @@
 // 표준 라이브러리
 #include <cmath>
 #include <format>
-#include <iostream>
 
 // 외부 라이브러리
 #include "nlohmann/json.hpp"
@@ -12,13 +11,17 @@
 // 내부 헤더
 #include "Engines/Analyzer.hpp"
 #include "Engines/BarHandler.hpp"
+#include "Engines/Config.hpp"
 #include "Engines/DataUtils.hpp"
 #include "Engines/Exception.hpp"
 #include "Engines/Logger.hpp"
+#include "Engines/Strategy.hpp"
+#include "Engines/TimeUtils.hpp"
 
 // 네임 스페이스
 using namespace std;
 namespace backtesting {
+using namespace config;
 using namespace utils;
 }  // namespace backtesting
 
@@ -130,7 +133,7 @@ void BaseEngine::IncreaseWalletBalance(const double increase_balance) {
         ERROR_L,
         format(
             "현재 자금 증가를 위해 주어진 [{}]는 0보다 크거나 같아야 합니다.",
-            FormatDollar(increase_balance)),
+            FormatDollar(increase_balance, true)),
         __FILE__, __LINE__);
     throw runtime_error("지갑 자금 증가 실패");
   }
@@ -144,7 +147,7 @@ void BaseEngine::DecreaseWalletBalance(const double decrease_balance) {
         ERROR_L,
         format(
             "지갑 자금 감소를 위해 주어진 [{}]는 0보다 크거나 같아야 합니다.",
-            FormatDollar(decrease_balance)),
+            FormatDollar(decrease_balance, true)),
         __FILE__, __LINE__);
     throw runtime_error("지갑 자금 감소 실패");
   }
@@ -154,7 +157,8 @@ void BaseEngine::DecreaseWalletBalance(const double decrease_balance) {
         ERROR_L,
         format("지갑 자금 감소를 위해 주어진 [{}]는 지갑 자금 [{}]를 초과할 수 "
                "없습니다.",
-               FormatDollar(decrease_balance), FormatDollar(wallet_balance_)),
+               FormatDollar(decrease_balance, true),
+               FormatDollar(wallet_balance_, true)),
         __FILE__, __LINE__);
     throw exception::Bankruptcy("지갑 자금 감소 실패");
   }
@@ -167,20 +171,21 @@ void BaseEngine::IncreaseUsedMargin(const double increase_margin) {
     logger_->Log(
         ERROR_L,
         format("사용한 마진 증가를 위해 주어진 [{}]는 양수로 지정해야 합니다.",
-               FormatDollar(increase_margin)),
+               FormatDollar(increase_margin, true)),
         __FILE__, __LINE__);
     throw runtime_error("사용한 마진 증가 실패");
   }
 
   if (const double sum_used_margin = used_margin_ + increase_margin;
       IsGreater(sum_used_margin, wallet_balance_)) {
-    logger_->Log(
-        ERROR_L,
-        format("사용한 마진 [{}]와 증가할 마진 [{}]의 합 [{}]는 "
-               "지갑 자금 [{}]를 초과할 수 없습니다.",
-               FormatDollar(used_margin_), FormatDollar(increase_margin),
-               FormatDollar(sum_used_margin), FormatDollar(wallet_balance_)),
-        __FILE__, __LINE__);
+    logger_->Log(ERROR_L,
+                 format("사용한 마진 [{}]와 증가할 마진 [{}]의 합 [{}]는 "
+                        "지갑 자금 [{}]를 초과할 수 없습니다.",
+                        FormatDollar(used_margin_, true),
+                        FormatDollar(increase_margin, true),
+                        FormatDollar(sum_used_margin, true),
+                        FormatDollar(wallet_balance_, true)),
+                 __FILE__, __LINE__);
     throw runtime_error("사용한 마진 증가 실패");
   }
 
@@ -192,7 +197,7 @@ void BaseEngine::DecreaseUsedMargin(const double decrease_margin) {
     logger_->Log(
         ERROR_L,
         format("사용한 마진 감소를 위해 주어진 [{}]는 양수로 지정해야 합니다.",
-               FormatDollar(decrease_margin)),
+               FormatDollar(decrease_margin, true)),
         __FILE__, __LINE__);
     throw runtime_error("사용한 마진 감소 실패");
   }
@@ -202,7 +207,8 @@ void BaseEngine::DecreaseUsedMargin(const double decrease_margin) {
         ERROR_L,
         format("사용한 마진 감소를 위해 주어진 [{}]는 사용한 마진 [{}]를 "
                "초과할 수 없습니다.",
-               FormatDollar(decrease_margin), FormatDollar(used_margin_)),
+               FormatDollar(decrease_margin, true),
+               FormatDollar(used_margin_, true)),
         __FILE__, __LINE__);
     throw runtime_error("사용한 마진 감소 실패");
   }
@@ -213,8 +219,6 @@ void BaseEngine::DecreaseUsedMargin(const double decrease_margin) {
 void BaseEngine::SetBankruptcy() { is_bankruptcy_ = true; }
 
 void BaseEngine::IncreaseLiquidationCount() { liquidation_count_++; }
-
-string BaseEngine::GetMainDirectory() const { return main_directory_; }
 
 shared_ptr<Config> BaseEngine::GetConfig() { return config_; }
 
@@ -235,6 +239,49 @@ void BaseEngine::UpdateStatistics() {
       IsGreater(drawdown_, max_drawdown_) ? drawdown_ : max_drawdown_;
 }
 
-void BaseEngine::PrintSeparator() { cout << string(217, '=') << endl; }
+void BaseEngine::PrintSeparator() {
+  logger_->LogNoFormat(INFO_L, string(217, '='));
+}
+
+string BaseEngine::CreateDirectories() const {
+  // 전략 이름들을 이어붙인 이름 + 현재 시간이 이번 백테스팅의 메인 폴더
+  string main_directory = config_->GetRootDirectory() + "/Results/";
+
+  try {
+    for (const auto& strategy : strategies_) {
+      main_directory += strategy->GetName() + "_";
+    }
+
+    main_directory += GetCurrentLocalDatetime();
+
+    // 시간 구분 문자 제거 및 공백 언더 스코어화
+    // (3부터 시작하는 이유는 드라이브 경로의 ':' 제외)
+    main_directory.erase(
+        std::remove(main_directory.begin() + 3, main_directory.end(), ':'),
+        main_directory.end());
+    main_directory.erase(
+        std::remove(main_directory.begin() + 3, main_directory.end(), '-'),
+        main_directory.end());
+    replace(main_directory.begin() + 3, main_directory.end(), ' ', '_');
+
+    // 메인 폴더 생성
+    filesystem::create_directory(main_directory);
+
+    // 지표 저장 폴더 생성
+    for (const auto& strategy : strategies_) {
+      filesystem::create_directories(main_directory + "/Indicators/" +
+                                     strategy->GetName());
+    }
+
+    // 매매 목록 저장 폴더 생성
+    filesystem::create_directories(main_directory + "/Trading Lists");
+  } catch (const std::exception& e) {
+    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
+    Logger::LogAndThrowError("폴더 생성 중 에러가 발생했습니다.", __FILE__,
+                             __LINE__);
+  }
+
+  return main_directory;
+}
 
 }  // namespace backtesting::engine

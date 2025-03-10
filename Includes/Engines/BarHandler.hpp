@@ -6,6 +6,11 @@
 // 내부 헤더
 #include "Engines/BaseBarHandler.hpp"
 
+// 전방 선언
+namespace arrow {
+class Table;
+}
+
 namespace backtesting::bar {
 
 /// 바 데이터를 추가하고 세부 관리 및 처리를 하는 클래스

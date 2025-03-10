@@ -225,7 +225,7 @@ void OrderHandler::MarketEntry(const string& entry_name,
     try {
       // On Close 전략일 시 주문 시간과 주문 가격은 다음 봉의 Open Time과 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == StrategyType::ON_CLOSE) {
+          strategy_type == ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 ->SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1);
@@ -237,9 +237,9 @@ void OrderHandler::MarketEntry(const string& entry_name,
 
         order_time = engine_->GetCurrentOpenTime();
 
-        if (strategy_type == StrategyType::AFTER_ENTRY) {
+        if (strategy_type == AFTER_ENTRY) {
           order_price = LastEntryPrice();
-        } else if (strategy_type == StrategyType::AFTER_EXIT) {
+        } else if (strategy_type == AFTER_EXIT) {
           order_price = LastExitPrice();
         }
       }
@@ -313,7 +313,7 @@ void OrderHandler::LimitEntry(const string& entry_name,
     try {
       // On Close 전략일 시 주문 시간과 기준 가격은 다음 봉의 Open Time과 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == StrategyType::ON_CLOSE) {
+          strategy_type == ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 ->SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1);
@@ -325,9 +325,9 @@ void OrderHandler::LimitEntry(const string& entry_name,
 
         order_time = engine_->GetCurrentOpenTime();
 
-        if (strategy_type == StrategyType::AFTER_ENTRY) {
+        if (strategy_type == AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == StrategyType::AFTER_EXIT) {
+        } else if (strategy_type == AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -411,7 +411,7 @@ void OrderHandler::MitEntry(const string& entry_name,
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == StrategyType::ON_CLOSE) {
+          strategy_type == ON_CLOSE) {
         base_price =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 ->SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1)
@@ -419,9 +419,9 @@ void OrderHandler::MitEntry(const string& entry_name,
       } else {
         // After Entry 혹은 After Exit 전략일 시
         // 기준 가격은 마지막 진입 가격 혹은 마지막 청산 가격
-        if (strategy_type == StrategyType::AFTER_ENTRY) {
+        if (strategy_type == AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == StrategyType::AFTER_EXIT) {
+        } else if (strategy_type == AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -490,7 +490,7 @@ void OrderHandler::LitEntry(const string& entry_name,
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == StrategyType::ON_CLOSE) {
+          strategy_type == ON_CLOSE) {
         base_price =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 ->SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1)
@@ -498,9 +498,9 @@ void OrderHandler::LitEntry(const string& entry_name,
       } else {
         // After Entry 혹은 After Exit 전략일 시
         // 기준 가격은 마지막 진입 가격 혹은 마지막 청산 가격
-        if (strategy_type == StrategyType::AFTER_ENTRY) {
+        if (strategy_type == AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == StrategyType::AFTER_EXIT) {
+        } else if (strategy_type == AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -573,7 +573,7 @@ void OrderHandler::TrailingEntry(const string& entry_name,
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == StrategyType::ON_CLOSE) {
+          strategy_type == ON_CLOSE) {
         base_price =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 ->SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1)
@@ -581,9 +581,9 @@ void OrderHandler::TrailingEntry(const string& entry_name,
       } else {
         // After Entry 혹은 After Exit 전략일 시
         // 기준 가격은 마지막 진입 가격 혹은 마지막 청산 가격
-        if (strategy_type == StrategyType::AFTER_ENTRY) {
+        if (strategy_type == AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == StrategyType::AFTER_EXIT) {
+        } else if (strategy_type == AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -676,7 +676,7 @@ void OrderHandler::MarketExit(const string& exit_name,
     try {
       // On Close 전략일 시 주문 시간과 주문 가격은 다음 봉의 Open Time과 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == StrategyType::ON_CLOSE) {
+          strategy_type == ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 ->SafeGetBar(bar_->GetCurrentSymbolIndex(),
@@ -689,9 +689,9 @@ void OrderHandler::MarketExit(const string& exit_name,
 
         order_time = engine_->GetCurrentOpenTime();
 
-        if (strategy_type == StrategyType::AFTER_ENTRY) {
+        if (strategy_type == AFTER_ENTRY) {
           order_price = LastEntryPrice();
-        } else if (strategy_type == StrategyType::AFTER_EXIT) {
+        } else if (strategy_type == AFTER_EXIT) {
           order_price = LastExitPrice();
         }
       }
@@ -802,7 +802,7 @@ void OrderHandler::LimitExit(const string& exit_name,
     try {
       // On Close 전략일 시 주문 시간과 기준 가격은 다음 봉의 Open Time과 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == StrategyType::ON_CLOSE) {
+          strategy_type == ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 ->SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1);
@@ -814,9 +814,9 @@ void OrderHandler::LimitExit(const string& exit_name,
 
         order_time = engine_->GetCurrentOpenTime();
 
-        if (strategy_type == StrategyType::AFTER_ENTRY) {
+        if (strategy_type == AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == StrategyType::AFTER_EXIT) {
+        } else if (strategy_type == AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -894,7 +894,7 @@ void OrderHandler::MitExit(const string& exit_name,
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == StrategyType::ON_CLOSE) {
+          strategy_type == ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 ->SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1);
@@ -903,9 +903,9 @@ void OrderHandler::MitExit(const string& exit_name,
         // After Entry 혹은 After Exit 전략일 시
         // 기준 가격은 마지막 진입 가격 혹은 마지막 청산 가격
 
-        if (strategy_type == StrategyType::AFTER_ENTRY) {
+        if (strategy_type == AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == StrategyType::AFTER_EXIT) {
+        } else if (strategy_type == AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -981,7 +981,7 @@ void OrderHandler::LitExit(const string& exit_name,
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == StrategyType::ON_CLOSE) {
+          strategy_type == ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 ->SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1);
@@ -990,9 +990,9 @@ void OrderHandler::LitExit(const string& exit_name,
         // After Entry 혹은 After Exit 전략일 시
         // 기준 가격은 마지막 진입 가격 혹은 마지막 청산 가격
 
-        if (strategy_type == StrategyType::AFTER_ENTRY) {
+        if (strategy_type == AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == StrategyType::AFTER_EXIT) {
+        } else if (strategy_type == AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -1074,7 +1074,7 @@ void OrderHandler::TrailingExit(const string& exit_name,
     try {
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-          strategy_type == StrategyType::ON_CLOSE) {
+          strategy_type == ON_CLOSE) {
         const auto& next_bar =
             bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                 ->SafeGetBar(symbol_idx, bar_->GetCurrentBarIndex() + 1);
@@ -1083,9 +1083,9 @@ void OrderHandler::TrailingExit(const string& exit_name,
         // After Entry 혹은 After Exit 전략일 시
         // 기준 가격은 마지막 진입 가격 혹은 마지막 청산 가격
 
-        if (strategy_type == StrategyType::AFTER_ENTRY) {
+        if (strategy_type == AFTER_ENTRY) {
           base_price = LastEntryPrice();
-        } else if (strategy_type == StrategyType::AFTER_EXIT) {
+        } else if (strategy_type == AFTER_EXIT) {
           base_price = LastExitPrice();
         }
       }
@@ -1194,7 +1194,7 @@ void OrderHandler::CancelAll() {
 
 void OrderHandler::CloseAll() {
   const auto original_strategy_type = engine_->GetCurrentStrategyType();
-  engine_->SetCurrentStrategyType(StrategyType::ON_CLOSE);
+  engine_->SetCurrentStrategyType(ON_CLOSE);
 
   // 루프 중간에 주문이 삭제되므로 역순으로 순회
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
@@ -2016,6 +2016,7 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
           .SetExitSize(exit_order->GetExitFilledSize())
           .SetEntryPrice(exit_order->GetEntryFilledPrice())
           .SetExitPrice(exit_order->GetExitFilledPrice())
+          .SetLiquidationPrice(exit_order->GetLiquidationPrice())
           .SetLeverage(exit_order->GetLeverage())
           .SetEntryFee(exit_order->GetEntryFee())
           .SetExitFee(exit_order->GetExitFee())
