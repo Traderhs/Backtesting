@@ -18,7 +18,7 @@ using namespace std;
 namespace backtesting {
 using namespace engine;
 using namespace logger;
-}
+}  // namespace backtesting
 
 namespace backtesting::config {
 
@@ -46,20 +46,20 @@ class Config final {
   Config& SetRootDirectory(const string& root_directory);
   Config& SetUseBarMagnifier(bool use_bar_magnifier);
   Config& SetInitialBalance(double initial_balance);
-  Config& SetTakerFee(double market_commission);
-  Config& SetMakerFee(double limit_commission);
-  Config& SetTakerSlippage(double market_slippage);
-  Config& SetMakerSlippage(double limit_slippage);
+  Config& SetTakerFeePercentage(double taker_fee_percentage);
+  Config& SetMakerFeePercentage(double maker_fee_percentage);
+  Config& SetTakerSlippagePercentage(double taker_slippage_percentage);
+  Config& SetMakerSlippagePercentage(double maker_slippage_percentage);
   Config& DisableBarDataDuplicationCheck(BarType bar_type);
   Config& DisableTargetBarDataDuplicationCheck();
 
   [[nodiscard]] string GetRootDirectory() const;
   [[nodiscard]] bool GetUseBarMagnifier() const;
   [[nodiscard]] double GetInitialBalance() const;
-  [[nodiscard]] double GetTakerFee() const;
-  [[nodiscard]] double GetMakerFee() const;
-  [[nodiscard]] double GetTakerSlippage() const;
-  [[nodiscard]] double GetMakerSlippage() const;
+  [[nodiscard]] double GetTakerFeePercentage() const;
+  [[nodiscard]] double GetMakerFeePercentage() const;
+  [[nodiscard]] double GetTakerSlippagePercentage() const;
+  [[nodiscard]] double GetMakerSlippagePercentage() const;
   [[nodiscard]] vector<bool> GetCheckBarDataDuplication() const;
   [[nodiscard]] bool GetCheckTargetBarDataDuplication() const;
 
@@ -83,19 +83,27 @@ class Config final {
   /// 초기 자금
   double initial_balance_;
 
-  /// 테이커(시장가) 수수료: 퍼센트로 지정 시 100 곱한 값 (5% -> 5)
-  double taker_fee_;
+  /// 테이커(시장가) 수수료 퍼센트
+  ///
+  /// 백분율로 지정 시 100 곱한 값 (5%면 5로 지정)
+  double taker_fee_percentage_;
 
-  /// 메이커(지정가) 수수료: 퍼센트로 지정 시 100 곱한 값 (5% -> 5)
-  double maker_fee_;
+  /// 메이커(지정가) 수수료 퍼센트
+  ///
+  /// 백분율로 지정 시 100 곱한 값 (5%면 5로 지정)
+  double maker_fee_percentage_;
 
-  /// 시장가 슬리피지: 퍼센트로 지정 시 100 곱한 값 (5% -> 5)
-  double taker_slippage_;
+  /// 시장가 슬리피지 퍼센트
+  ///
+  /// 백분율로 지정 시 100 곱한 값 (5%면 5로 지정)
+  double taker_slippage_percentage_;
 
-  /// 지정가 슬리피지: 퍼센트로 지정 시 100 곱한 값 (5% -> 5)
-  double maker_slippage_;
+  /// 지정가 슬리피지 퍼센트
+  ///
+  /// 백분율로 지정 시 100 곱한 값 (5%면 5로 지정)
+  double maker_slippage_percentage_;
 
-  /// 심볼간 중복된 바 데이터 검사를 하는지 여부를 결정하는 플래그.
+  /// 심볼 간 중복된 바 데이터 검사를 하는지 여부를 결정하는 플래그.
   ///
   /// 바 타입마다 분리하여 작동.
   vector<bool> check_bar_data_duplication_;

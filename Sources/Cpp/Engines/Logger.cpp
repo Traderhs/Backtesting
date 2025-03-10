@@ -136,11 +136,11 @@ void Logger::LogAndThrowError(const string& message, const string& file,
   throw runtime_error(message);
 }
 
-void Logger::SaveBacktestingLog(const string& backtesting_log_path) {
+void Logger::SaveBacktestingLog(const string& file_path) {
   try {
     backtesting_log_.close();
 
-    filesystem::rename(backtesting_log_temp_path_, backtesting_log_path);
+    filesystem::rename(backtesting_log_temp_path_, file_path);
   } catch (const exception& e) {
     LogAndThrowError("백테스팅 로그 파일을 저장하는 데 오류가 발생했습니다.: " +
                          string(e.what()),

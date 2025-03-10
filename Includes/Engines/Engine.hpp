@@ -13,7 +13,7 @@
 namespace backtesting::bar {
 class BarData;
 struct Bar;
-}
+}  // namespace backtesting::bar
 
 namespace backtesting::strategy {
 class Strategy;
@@ -60,10 +60,7 @@ class Engine final : public BaseEngine {
   /// Engine의 싱글톤 인스턴스를 반환하는 함수
   static shared_ptr<Engine>& GetEngine();
 
-  // @@@@@@@@@@@ 펀딩피 fetch하고 추가/감소되는 매커니즘 필요
-  //
-  //  // @@@@@@@@@ 매개변수 등의 전체 설정 저장은 백테스팅별로 나눠서 txt 파일에
-  // 설정값 적도록 하자 (전략 코드도 함께)
+  // @@@@@@@@@@@@@@@@@ 펀딩피 fetch하고 추가/감소되는 매커니즘 필요
 
   /**
    * 백테스팅을 실행하는 함수

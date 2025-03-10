@@ -97,6 +97,11 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
   // 로그 저장
   logger_->SaveBacktestingLog(main_directory + "/backtesting.log");
 
+  // 설정 저장
+  SaveConfig(main_directory + "/config.json");
+
+  // 전략 코드 저장
+
   // 지표 저장
   for (int strategy_idx = 0; strategy_idx < strategies_.size();
        strategy_idx++) {
@@ -158,10 +163,12 @@ void Engine::IsValidConfig() {
 
     const auto& root_directory = config_->GetRootDirectory();
     const auto initial_balance = config_->GetInitialBalance();
-    const auto market_commission = config_->GetTakerFee();
-    const auto limit_commission = config_->GetMakerFee();
-    const auto market_slippage = config_->GetTakerSlippage();
-    const auto limit_slippage = config_->GetMakerSlippage();
+    const auto taker_fee_percentage = config_->GetTakerFeePercentage();
+    const auto maker_fee_percentage = config_->GetMakerFeePercentage();
+    const auto taker_slippage_percentage =
+        config_->GetTakerSlippagePercentage();
+    const auto maker_slippage_percentage =
+        config_->GetMakerSlippagePercentage();
 
     // 각 항목에 대해 초기화되지 않았을 경우 예외를 던짐
     if (root_directory.empty()) {
@@ -185,31 +192,31 @@ void Engine::IsValidConfig() {
           __FILE__, __LINE__);
     }
 
-    if (isnan(market_commission)) {
+    if (isnan(taker_fee_percentage)) {
       Logger::LogAndThrowError(
-          "시장가 수수료율이 초기화되지 않았습니다. "
-          "SetMarketCommission 함수를 호출해 주세요.",
+          "테이커 수수료 퍼센트가 초기화되지 않았습니다. "
+          "SetTakerFeePercentage 함수를 호출해 주세요.",
           __FILE__, __LINE__);
     }
 
-    if (isnan(limit_commission)) {
+    if (isnan(maker_fee_percentage)) {
       Logger::LogAndThrowError(
-          "지정가 수수료율이 초기화되지 않았습니다. "
-          "SetLimitCommission 함수를 호출해 주세요.",
+          "메이커 수수료 퍼센트가 초기화되지 않았습니다. "
+          "SetMakerFeePercentage 함수를 호출해 주세요.",
           __FILE__, __LINE__);
     }
 
-    if (isnan(market_slippage)) {
+    if (isnan(taker_slippage_percentage)) {
       Logger::LogAndThrowError(
-          "시장가 슬리피지율이 초기화되지 않았습니다. "
-          "SetMarketSlippage 함수를 호출해 주세요.",
+          "테이커 슬리피지 퍼센트가 초기화되지 않았습니다. "
+          "SetTakerSlippagePercentage 함수를 호출해 주세요.",
           __FILE__, __LINE__);
     }
 
-    if (isnan(limit_slippage)) {
+    if (isnan(maker_slippage_percentage)) {
       Logger::LogAndThrowError(
-          "지정가 슬리피지율이 초기화되지 않았습니다. "
-          "SetLimitSlippage 함수를 호출해 주세요.",
+          "메이커 슬리피지 퍼센트가 초기화되지 않았습니다. "
+          "SetMakerSlippagePercentage 함수를 호출해 주세요.",
           __FILE__, __LINE__);
     }
 
@@ -227,35 +234,39 @@ void Engine::IsValidConfig() {
           __FILE__, __LINE__);
     }
 
-    if (IsGreater(market_commission, 100.0) || IsLess(market_commission, 0.0)) {
+    if (IsGreater(taker_fee_percentage, 100.0) ||
+        IsLess(taker_fee_percentage, 0.0)) {
       Logger::LogAndThrowError(
-          format("지정된 시장가 수수료율 [{}%]는 100% 초과 혹은 "
+          format("지정된 테이커 수수료 퍼센트 [{}%]는 100% 초과 혹은 "
                  "0% 미만으로 설정할 수 없습니다.",
-                 market_commission),
+                 taker_fee_percentage),
           __FILE__, __LINE__);
     }
 
-    if (IsGreater(limit_commission, 100.0) || IsLess(limit_commission, 0.0)) {
+    if (IsGreater(maker_fee_percentage, 100.0) ||
+        IsLess(maker_fee_percentage, 0.0)) {
       Logger::LogAndThrowError(
-          format("지정된 지정가 수수료율 [{}%]는 100% 초과 혹은 "
+          format("지정된 메이커 수수료 퍼센트 [{}%]는 100% 초과 혹은 "
                  "0% 미만으로 설정할 수 없습니다.",
-                 limit_commission),
+                 maker_fee_percentage),
           __FILE__, __LINE__);
     }
 
-    if (IsGreater(market_slippage, 100.0) || IsLess(market_slippage, 0.0)) {
+    if (IsGreater(taker_slippage_percentage, 100.0) ||
+        IsLess(taker_slippage_percentage, 0.0)) {
       Logger::LogAndThrowError(
-          format("지정된 시장가 슬리피지율 [{}%]는 100% 초과 혹은 "
+          format("지정된 테이커 슬리피지 퍼센트 [{}%]는 100% 초과 혹은 "
                  "0% 미만으로 설정할 수 없습니다.",
-                 market_slippage),
+                 taker_slippage_percentage),
           __FILE__, __LINE__);
     }
 
-    if (IsGreater(limit_slippage, 100.0) || IsLess(limit_slippage, 0.0)) {
+    if (IsGreater(maker_slippage_percentage, 100.0) ||
+        IsLess(maker_slippage_percentage, 0.0)) {
       Logger::LogAndThrowError(
-          format("지정된 지정가 슬리피지율 [{}%]는 100% 초과 혹은 "
+          format("지정된 메이커 슬리피지 퍼센트 [{}%]는 100% 초과 혹은 "
                  "0% 미만으로 설정할 수 없습니다.",
-                 limit_slippage),
+                 maker_slippage_percentage),
           __FILE__, __LINE__);
     }
 

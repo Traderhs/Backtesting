@@ -77,6 +77,16 @@ int main() {
       "D:/Programming/Backtesting/Data/Mark Price Klines/XRPUSDT/1h.parquet",
       MARK_PRICE);
 
+  Backtesting::AddBarData(
+    "BTCUSDT",
+    "D:/Programming/Backtesting/Data/Continuous Klines/BTCUSDT/1d.parquet",
+    REFERENCE);
+
+  Backtesting::AddBarData(
+      "XRPUSDT",
+      "D:/Programming/Backtesting/Data/Continuous Klines/XRPUSDT/1d.parquet",
+      REFERENCE);
+
   Backtesting::AddExchangeInfo("D:/Programming/Backtesting/Data/exchange_info.json");
   Backtesting::AddLeverageBracket(
       "D:/Programming/Backtesting/Data/leverage_bracket.json");
@@ -87,10 +97,10 @@ int main() {
       .SetRootDirectory("D:/Programming/Backtesting")
       .SetUseBarMagnifier(false)
       .SetInitialBalance(10000)
-      .SetTakerFee(0.045)
-      .SetMakerFee(0.018)
-      .SetTakerSlippage(0.1)
-      .SetMakerSlippage(0);
+      .SetTakerFeePercentage(0.045)
+      .SetMakerFeePercentage(0.018)
+      .SetTakerSlippagePercentage(0.1)
+      .SetMakerSlippagePercentage(0);
 
   Backtesting::Run();
 }

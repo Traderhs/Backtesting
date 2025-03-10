@@ -171,6 +171,9 @@ class BaseEngine {
   /// 저장에 필요한 폴더들을 생성하고 이번 백테스팅의
   /// 메인 폴더 경로를 반환하는 함수
   [[nodiscard]] string CreateDirectories() const;
+
+  /// 각 백테스팅의 심볼, 바, 전략, 설정 정보를 파일로 저장하는 함수
+  void SaveConfig(const string& file_path) const;
 };
 
 }  // namespace backtesting::engine
