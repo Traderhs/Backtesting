@@ -1,6 +1,8 @@
 // 파일 헤더
 #include "Strategies/TestStrategy.hpp"
 
+#include <Engines/BarHandler.hpp>
+
 TestStrategy::TestStrategy(const string& name)
     : Strategy(name),
       sma1(AddIndicator<SimpleMovingAverage>("sma1", trading_timeframe, close,

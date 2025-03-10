@@ -67,7 +67,7 @@ class Logger final {
                                int line);
 
   /// 이번 백테스팅의 로그를 지정된 폴더에 저장하는 함수
-  void SaveBacktestingLog(const string& backtesting_log_path);
+  void SaveBacktestingLog(const string& file_path);
 
  private:
   // 싱글톤 인스턴스 관리

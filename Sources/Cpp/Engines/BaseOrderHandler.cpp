@@ -28,10 +28,10 @@ namespace backtesting::order {
 
 BaseOrderHandler::BaseOrderHandler()
     : current_position_size(0),
-      taker_fee_(nan("")),
-      maker_fee_(nan("")),
-      taker_slippage_(nan("")),
-      maker_slippage_(nan("")),
+      taker_fee_percentage_(nan("")),
+      maker_fee_percentage_(nan("")),
+      taker_slippage_percentage_(nan("")),
+      maker_slippage_percentage_(nan("")),
       just_entered_(false),
       just_exited_(false) {}
 BaseOrderHandler::~BaseOrderHandler() = default;
@@ -47,10 +47,10 @@ vector<SymbolInfo> BaseOrderHandler::symbol_info_;
 void BaseOrderHandler::Initialize(const int num_symbols) {
   // 엔진 설정 받아오기
   const auto& config = Engine::GetConfig();
-  taker_fee_ = config->GetTakerFee();
-  maker_fee_ = config->GetMakerFee();
-  taker_slippage_ = config->GetTakerSlippage();
-  maker_slippage_ = config->GetMakerSlippage();
+  taker_fee_percentage_ = config->GetTakerFeePercentage();
+  maker_fee_percentage_ = config->GetMakerFeePercentage();
+  taker_slippage_percentage_ = config->GetTakerSlippagePercentage();
+  maker_slippage_percentage_ = config->GetMakerSlippagePercentage();
 
   // 주문들을 심볼 개수로 초기화
   pending_entries_.resize(num_symbols);
@@ -414,7 +414,7 @@ double BaseOrderHandler::CalculateSlippagePrice(
       [[fallthrough]];
     case TRAILING: {
       // 테이커 슬리피지 포인트 계산
-      slippage_points = order_price * taker_slippage_ / 100;
+      slippage_points = order_price * taker_slippage_percentage_ / 100;
       break;
     }
 
@@ -422,7 +422,7 @@ double BaseOrderHandler::CalculateSlippagePrice(
       [[fallthrough]];
     case LIT: {
       // 메이커 슬리피지 포인트 계산
-      slippage_points = order_price * maker_slippage_ / 100;
+      slippage_points = order_price * maker_slippage_percentage_ / 100;
       break;
     }
 
@@ -462,13 +462,13 @@ double BaseOrderHandler::CalculateTradingFee(const OrderType order_type,
     case MIT:
       [[fallthrough]];
     case TRAILING: {
-      return filled_price * filled_size * (taker_fee_ / 100);
+      return filled_price * filled_size * (taker_fee_percentage_ / 100);
     }
 
     case LIMIT:
       [[fallthrough]];
     case LIT: {
-      return filled_price * filled_size * (maker_fee_ / 100);
+      return filled_price * filled_size * (maker_fee_percentage_ / 100);
     }
 
     default: {

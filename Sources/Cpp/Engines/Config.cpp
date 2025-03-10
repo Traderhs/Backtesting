@@ -11,10 +11,10 @@ namespace backtesting::config {
 
 Config::Config()
     : initial_balance_(nan("")),
-      taker_fee_(nan("")),
-      maker_fee_(nan("")),
-      taker_slippage_(nan("")),
-      maker_slippage_(nan("")),
+      taker_fee_percentage_(nan("")),
+      maker_fee_percentage_(nan("")),
+      taker_slippage_percentage_(nan("")),
+      maker_slippage_percentage_(nan("")),
       check_bar_data_duplication_(4, true),
       check_target_bar_data_duplication_(true) {
   // 증가 카운터는 SetConfig 함수로만 증가하는데 SetConfig 없이 직접 생성자
@@ -51,23 +51,25 @@ Config& Config::SetInitialBalance(const double initial_balance) {
   return *this;
 }
 
-Config& Config::SetTakerFee(const double market_commission) {
-  taker_fee_ = market_commission;
+Config& Config::SetTakerFeePercentage(const double taker_fee_percentage) {
+  taker_fee_percentage_ = taker_fee_percentage;
   return *this;
 }
 
-Config& Config::SetMakerFee(const double limit_commission) {
-  maker_fee_ = limit_commission;
+Config& Config::SetMakerFeePercentage(const double maker_fee_percentage) {
+  maker_fee_percentage_ = maker_fee_percentage;
   return *this;
 }
 
-Config& Config::SetTakerSlippage(const double market_slippage) {
-  taker_slippage_ = market_slippage;
+Config& Config::SetTakerSlippagePercentage(
+    const double taker_slippage_percentage) {
+  taker_slippage_percentage_ = taker_slippage_percentage;
   return *this;
 }
 
-Config& Config::SetMakerSlippage(const double limit_slippage) {
-  maker_slippage_ = limit_slippage;
+Config& Config::SetMakerSlippagePercentage(
+    const double maker_slippage_percentage) {
+  maker_slippage_percentage_ = maker_slippage_percentage;
   return *this;
 }
 
@@ -84,10 +86,14 @@ Config& Config::DisableTargetBarDataDuplicationCheck() {
 string Config::GetRootDirectory() const { return root_directory_; }
 bool Config::GetUseBarMagnifier() const { return use_bar_magnifier_.value(); }
 double Config::GetInitialBalance() const { return initial_balance_; }
-double Config::GetTakerFee() const { return taker_fee_; }
-double Config::GetMakerFee() const { return maker_fee_; }
-double Config::GetTakerSlippage() const { return taker_slippage_; }
-double Config::GetMakerSlippage() const { return maker_slippage_; }
+double Config::GetTakerFeePercentage() const { return taker_fee_percentage_; }
+double Config::GetMakerFeePercentage() const { return maker_fee_percentage_; }
+double Config::GetTakerSlippagePercentage() const {
+  return taker_slippage_percentage_;
+}
+double Config::GetMakerSlippagePercentage() const {
+  return maker_slippage_percentage_;
+}
 vector<bool> Config::GetCheckBarDataDuplication() const {
   return check_bar_data_duplication_;
 }

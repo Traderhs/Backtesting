@@ -9,22 +9,22 @@
 namespace backtesting::analyzer {
 class Analyzer;
 class TechnicalAnalyzer;
-}
+}  // namespace backtesting::analyzer
 
 namespace backtesting::bar {
 class Bar;
 class BarHandler;
-}
+}  // namespace backtesting::bar
 
 namespace backtesting::engine {
 class Engine;
 enum class PriceType;
-}
+}  // namespace backtesting::engine
 
 namespace backtesting::logger {
 class Logger;
 enum class LogLevel;
-}
+}  // namespace backtesting::logger
 
 namespace backtesting::order {
 class SymbolInfo;
@@ -32,7 +32,7 @@ class Order;
 enum class Direction;
 enum class OrderType;
 struct LeverageBracket;
-}
+}  // namespace backtesting::order
 
 // 네임 스페이스
 using namespace std;
@@ -41,7 +41,7 @@ using namespace analyzer;
 using namespace bar;
 using namespace engine;
 using namespace logger;
-}
+}  // namespace backtesting
 
 namespace backtesting::order {
 
@@ -124,10 +124,10 @@ class BaseOrderHandler {
   static vector<SymbolInfo> symbol_info_;
 
   // 수수료 및 슬리피지 엔진 설정
-  double taker_fee_;
-  double maker_fee_;
-  double taker_slippage_;
-  double maker_slippage_;
+  double taker_fee_percentage_;
+  double maker_fee_percentage_;
+  double taker_slippage_percentage_;
+  double maker_slippage_percentage_;
 
   // 진입 및 청산 주문: 심볼 인덱스<주문>
   vector<deque<shared_ptr<Order>>> pending_entries_;  // 대기 중인 진입 주문

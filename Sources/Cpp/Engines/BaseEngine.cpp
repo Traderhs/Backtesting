@@ -9,6 +9,8 @@
 #include "Engines/BaseEngine.hpp"
 
 // 내부 헤더
+#include <Engines/BarData.hpp>
+
 #include "Engines/Analyzer.hpp"
 #include "Engines/BarHandler.hpp"
 #include "Engines/Config.hpp"
@@ -282,6 +284,135 @@ string BaseEngine::CreateDirectories() const {
   }
 
   return main_directory;
+}
+
+void BaseEngine::SaveConfig(const string& file_path) const {
+  ordered_json config;
+
+  const auto& trading_bar = bar_->GetBarData(TRADING);
+  const auto& magnifier_bar = bar_->GetBarData(MAGNIFIER);
+  const auto& reference_bar = bar_->GetAllReferenceBarData();
+  const auto& mark_price_bar = bar_->GetBarData(MARK_PRICE);
+
+  // 심볼 값 배열에 각 심볼의 객체를 push
+  auto& symbol_json = config["심볼"];
+  for (int symbol_idx = 0; symbol_idx < trading_bar->GetNumSymbols();
+       symbol_idx++) {
+    // 각 심볼의 배열
+    ordered_json local_symbol_json;
+    local_symbol_json["심볼명"] = trading_bar->GetSymbolName(symbol_idx);
+
+    // 트레이딩 바 정보 저장
+    const auto trading_num_bars = trading_bar->GetNumBars(symbol_idx);
+    local_symbol_json["트레이딩 바"]["기간"]["시작"] =
+        UtcTimestampToUtcDatetime(trading_bar->GetBar(symbol_idx, 0).open_time);
+    local_symbol_json["트레이딩 바"]["기간"]["끝"] = UtcTimestampToUtcDatetime(
+        trading_bar->GetBar(symbol_idx, trading_num_bars - 1).close_time);
+    local_symbol_json["트레이딩 바"]["타임프레임"] =
+        trading_bar->GetTimeframe();
+    local_symbol_json["트레이딩 바"]["바 개수"] = trading_num_bars;
+
+    // 돋보기 기능 사용 시 돋보기 바 정보 저장
+    if (config_->GetUseBarMagnifier()) {
+      const auto magnifier_num_bars = magnifier_bar->GetNumBars(symbol_idx);
+      local_symbol_json["돋보기 바"]["기간"]["시작"] =
+          UtcTimestampToUtcDatetime(
+              magnifier_bar->GetBar(symbol_idx, 0).open_time);
+      local_symbol_json["돋보기 바"]["기간"]["끝"] = UtcTimestampToUtcDatetime(
+          magnifier_bar->GetBar(symbol_idx, magnifier_num_bars - 1).close_time);
+      local_symbol_json["돋보기 바"]["타임프레임"] =
+          magnifier_bar->GetTimeframe();
+      local_symbol_json["돋보기 바"]["바 개수"] = magnifier_num_bars;
+    } else {
+      local_symbol_json["돋보기 바"] = json::array();
+    }
+
+    // 각 참조 바 정보 저장
+    for (const auto& [timeframe, bar_data] : reference_bar) {
+      ordered_json local_reference_bar_json;
+
+      const auto reference_num_bars = bar_data->GetNumBars(symbol_idx);
+      local_reference_bar_json["기간"]["시작"] =
+          UtcTimestampToUtcDatetime(bar_data->GetBar(symbol_idx, 0).open_time);
+      local_reference_bar_json["기간"]["끝"] = UtcTimestampToUtcDatetime(
+          bar_data->GetBar(symbol_idx, reference_num_bars - 1).close_time);
+      local_reference_bar_json["타임프레임"] = timeframe;
+      local_reference_bar_json["바 개수"] = reference_num_bars;
+
+      local_symbol_json["참조 바"].push_back(local_reference_bar_json);
+    }
+
+    // 마크 가격 바 정보 저장
+    const auto mark_price_num_bars = mark_price_bar->GetNumBars(symbol_idx);
+    local_symbol_json["마크 가격 바"]["기간"]["시작"] =
+        UtcTimestampToUtcDatetime(
+            mark_price_bar->GetBar(symbol_idx, 0).open_time);
+    local_symbol_json["마크 가격 바"]["기간"]["끝"] = UtcTimestampToUtcDatetime(
+        mark_price_bar->GetBar(symbol_idx, mark_price_num_bars - 1).close_time);
+    local_symbol_json["마크 가격 바"]["타임프레임"] =
+        mark_price_bar->GetTimeframe();
+    local_symbol_json["마크 가격 바"]["바 개수"] = mark_price_num_bars;
+
+    // 한 심볼의 정보저장
+    symbol_json.push_back(local_symbol_json);
+  }
+
+  // 전략 값 배열에 각 전략의 객체를 push
+  auto& strategy_json = config["전략"];
+  for (int strategy_idx = 0; strategy_idx < strategies_.size();
+       strategy_idx++) {
+    ordered_json local_strategy_json;
+
+    local_strategy_json["전략명"] = strategies_[strategy_idx]->GetName();
+
+    // 해당 전략에서 사용하는 지표들을 저장
+    for (const auto& indicator : strategies_[strategy_idx]->GetIndicators()) {
+      ordered_json local_indicator_json;
+      local_indicator_json["지표명"] = indicator->GetName();
+      local_indicator_json["타임프레임"] = indicator->GetTimeframe();
+
+      local_strategy_json["지표"].push_back(local_indicator_json);
+    }
+
+    strategy_json.push_back(local_strategy_json);
+  }
+
+  // 설정 값 배열에 각 설정의 객체를 push
+  auto& config_json = config["설정"];
+  config_json["루트 폴더"] = config_->GetRootDirectory();
+  config_json["바 돋보기"] = config_->GetUseBarMagnifier() ? "사용" : "미사용";
+  config_json["초기 자금"] = FormatDollar(config_->GetInitialBalance(), true);
+
+  ostringstream taker_fee_percentage, maker_fee_percentage,
+      taker_slippage_percentage, maker_slippage_percentage;
+  taker_fee_percentage << fixed << setprecision(4)
+                       << config_->GetTakerFeePercentage();
+  maker_fee_percentage << fixed << setprecision(4)
+                       << config_->GetMakerFeePercentage();
+  taker_slippage_percentage << fixed << setprecision(4)
+                            << config_->GetTakerSlippagePercentage();
+  maker_slippage_percentage << fixed << setprecision(4)
+                            << config_->GetMakerSlippagePercentage();
+
+  config_json["테이커 수수료 퍼센트"] = taker_fee_percentage.str() + "%";
+  config_json["메이커 수수료 퍼센트"] = maker_fee_percentage.str() + "%";
+  config_json["테이커 슬리피지 퍼센트"] = taker_slippage_percentage.str() + "%";
+  config_json["메이커 슬리피지 퍼센트"] = maker_slippage_percentage.str() + "%";
+
+  string bar_type_str[4] = {"트레이딩 바", "돋보기 바", "참조 바",
+                            "마크 가격 바"};
+  for (int i = 0; i < 4; i++) {
+    config_json["심볼 간 바 데이터 중복 검사"][bar_type_str[i]] =
+        config_->GetCheckBarDataDuplication()[i] ? "사용" : "미사용";
+  }
+
+  config_json["마크 가격의 목표 바 데이터 중복 검사"] =
+      config_->GetCheckTargetBarDataDuplication() ? "사용" : "미사용";
+
+  // 파일로 저장
+  ofstream config_file(file_path);
+  config_file << setw(4) << config << endl;
+  config_file.close();
 }
 
 }  // namespace backtesting::engine
