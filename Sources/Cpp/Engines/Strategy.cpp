@@ -11,7 +11,7 @@
 
 namespace backtesting::strategy {
 
-Strategy::Strategy(const string& name)
+Strategy::Strategy(const string& name, const string& file_path)
     : name_(name),
       order(OrderHandler::GetOrderHandler(name)),
       open(AddIndicator<Open>("Open", trading_timeframe)),
@@ -38,6 +38,9 @@ Strategy::Strategy(const string& name)
     Logger::LogAndThrowError("전략 생성 중 오류가 발생했습니다.", __FILE__,
                              __LINE__);
   }
+
+  // 자식 파일 경로를 저장 -> 백테스팅 종료 후 저장 목적
+  child_file_path_ = file_path;
 }
 Strategy::~Strategy() = default;
 
@@ -64,6 +67,7 @@ void Strategy::SetTradingTimeframe(const string& trading_tf) {
 vector<shared_ptr<Strategy>>& Strategy::GetStrategies() { return strategies_; }
 vector<shared_ptr<Indicator>>& Strategy::GetIndicators() { return indicators_; }
 string Strategy::GetName() const { return name_; }
+string Strategy::GetSourcePath() { return child_file_path_; }
 shared_ptr<OrderHandler> Strategy::GetOrderHandler() const { return order; }
 
 }  // namespace backtesting::strategy

@@ -50,8 +50,8 @@ class Config final {
   Config& SetMakerFeePercentage(double maker_fee_percentage);
   Config& SetTakerSlippagePercentage(double taker_slippage_percentage);
   Config& SetMakerSlippagePercentage(double maker_slippage_percentage);
-  Config& DisableBarDataDuplicationCheck(BarType bar_type);
-  Config& DisableTargetBarDataDuplicationCheck();
+  Config& DisableSameBarDataCheck(BarType bar_type);
+  Config& DisableSameTargetBarDataCheck();
 
   [[nodiscard]] string GetRootDirectory() const;
   [[nodiscard]] bool GetUseBarMagnifier() const;
@@ -60,8 +60,8 @@ class Config final {
   [[nodiscard]] double GetMakerFeePercentage() const;
   [[nodiscard]] double GetTakerSlippagePercentage() const;
   [[nodiscard]] double GetMakerSlippagePercentage() const;
-  [[nodiscard]] vector<bool> GetCheckBarDataDuplication() const;
-  [[nodiscard]] bool GetCheckTargetBarDataDuplication() const;
+  [[nodiscard]] vector<bool> GetCheckSameBarData() const;
+  [[nodiscard]] bool GetCheckSameTargetBarData() const;
 
   [[nodiscard]] bool UseBarMagnifierHasValue() const;
 
@@ -103,14 +103,14 @@ class Config final {
   /// 백분율로 지정 시 100 곱한 값 (5%면 5로 지정)
   double maker_slippage_percentage_;
 
-  /// 심볼 간 중복된 바 데이터 검사를 하는지 여부를 결정하는 플래그.
+  /// 심볼 간 동일한 바 데이터 검사를 하는지 여부를 결정하는 플래그.
   ///
   /// 바 타입마다 분리하여 작동.
-  vector<bool> check_bar_data_duplication_;
+  vector<bool> check_same_bar_data_;
 
-  /// 마크 가격에서 목표 바 데이터와의 중복된 바 데이터 검사를 하는지 여부를
+  /// 마크 가격에서 목표 바 데이터와의 동일한 바 데이터 검사를 하는지 여부를
   /// 결정하는 플래그.
-  bool check_target_bar_data_duplication_;
+  bool check_same_target_bar_data_;
 };
 
 }  // namespace backtesting::config

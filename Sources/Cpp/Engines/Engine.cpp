@@ -101,6 +101,11 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
   SaveConfig(main_directory + "/config.json");
 
   // 전략 코드 저장
+  for (const auto& strategy : strategies_) {
+    filesystem::copy(
+        strategy->GetSourcePath(),
+        main_directory + "/Sources/" + strategy->GetName() + ".cpp");
+  }
 
   // 지표 저장
   for (int strategy_idx = 0; strategy_idx < strategies_.size();
@@ -127,11 +132,15 @@ double Engine::UpdateAvailableBalance() {
 void Engine::SetCurrentStrategyType(const StrategyType strategy_type) {
   current_strategy_type_ = strategy_type;
 }
+
 string Engine::GetCurrentStrategyName() const { return current_strategy_name_; }
+
 StrategyType Engine::GetCurrentStrategyType() const {
   return current_strategy_type_;
 }
+
 int64_t Engine::GetCurrentOpenTime() const { return current_open_time_; }
+
 int64_t Engine::GetCurrentCloseTime() const { return current_close_time_; }
 
 void Engine::Initialize(const string& start_time, const string& end_time,
@@ -157,7 +166,7 @@ void Engine::IsValidConfig() {
     if (config_ == nullptr) {
       Logger::LogAndThrowError(
           "엔진에 설정값이 추가되지 않았습니다. "
-          "Config::SetConfig 함수를 호출해 주세요.",
+          "Backtesting::SetConfig 함수를 호출해 주세요.",
           __FILE__, __LINE__);
     }
 
@@ -174,49 +183,53 @@ void Engine::IsValidConfig() {
     if (root_directory.empty()) {
       Logger::LogAndThrowError(
           "루트 폴더가 초기화되지 않았습니다. "
-          "SetRootDirectory 함수를 호출해 주세요.",
+          "Backtesting::SetConfig().SetRootDirectory 함수를 호출해 주세요.",
           __FILE__, __LINE__);
     }
 
     if (!config_->UseBarMagnifierHasValue()) {
       Logger::LogAndThrowError(
           "바 돋보기 사용 여부가 초기화되지 않았습니다. "
-          "SetUseBarMagnifier 함수를 호출해 주세요.",
+          "Backtesting::SetConfig().SetUseBarMagnifier 함수를 호출해 주세요.",
           __FILE__, __LINE__);
     }
 
     if (isnan(initial_balance)) {
       Logger::LogAndThrowError(
           "초기 자금이 초기화되지 않았습니다. "
-          "SetInitialBalance 함수를 호출해 주세요.",
+          "Backtesting::SetConfig().SetInitialBalance 함수를 호출해 주세요.",
           __FILE__, __LINE__);
     }
 
     if (isnan(taker_fee_percentage)) {
       Logger::LogAndThrowError(
           "테이커 수수료 퍼센트가 초기화되지 않았습니다. "
-          "SetTakerFeePercentage 함수를 호출해 주세요.",
+          "Backtesting::SetConfig().SetTakerFeePercentage 함수를 호출해 "
+          "주세요.",
           __FILE__, __LINE__);
     }
 
     if (isnan(maker_fee_percentage)) {
       Logger::LogAndThrowError(
           "메이커 수수료 퍼센트가 초기화되지 않았습니다. "
-          "SetMakerFeePercentage 함수를 호출해 주세요.",
+          "Backtesting::SetConfig().SetMakerFeePercentage 함수를 호출해 "
+          "주세요.",
           __FILE__, __LINE__);
     }
 
     if (isnan(taker_slippage_percentage)) {
       Logger::LogAndThrowError(
           "테이커 슬리피지 퍼센트가 초기화되지 않았습니다. "
-          "SetTakerSlippagePercentage 함수를 호출해 주세요.",
+          "Backtesting::SetConfig().SetTakerSlippagePercentage 함수를 호출해 "
+          "주세요.",
           __FILE__, __LINE__);
     }
 
     if (isnan(maker_slippage_percentage)) {
       Logger::LogAndThrowError(
           "메이커 슬리피지 퍼센트가 초기화되지 않았습니다. "
-          "SetMakerSlippagePercentage 함수를 호출해 주세요.",
+          "Backtesting::SetConfig().SetMakerSlippagePercentage 함수를 호출해 "
+          "주세요.",
           __FILE__, __LINE__);
     }
 
@@ -283,14 +296,14 @@ void Engine::IsValidSymbolInfo() {
     if (exchange_info_.empty()) {
       Logger::LogAndThrowError(
           "엔진에 거래소 정보가 추가되지 않았습니다. "
-          "Engine::AddExchangeInfo 함수를 호출해 주세요.",
+          "Backtesting::AddExchangeInfo 함수를 호출해 주세요.",
           __FILE__, __LINE__);
     }
 
     if (leverage_bracket_.empty()) {
       Logger::LogAndThrowError(
           "엔진에 레버리지 구간이 추가되지 않았습니다. "
-          "Engine::AddLeverageBracket 함수를 호출해 주세요.",
+          "Backtesting::AddLeverageBracket 함수를 호출해 주세요.",
           __FILE__, __LINE__);
     }
 
@@ -309,13 +322,15 @@ void Engine::IsValidBarData() {
 
     // 1.1. 트레이딩 바 데이터가 비었는지 검증
     if (!trading_num_symbols)
-      Logger::LogAndThrowError("트레이딩 바 데이터가 추가되지 않았습니다.",
-                               __FILE__, __LINE__);
+      Logger::LogAndThrowError(
+          "트레이딩 바 데이터가 추가되지 않았습니다. "
+          "Backtesting::AddBarData 함수를 호출해 주세요.",
+          __FILE__, __LINE__);
 
     // 1.2. 트레이딩 바 데이터의 중복 가능성 검증
     // set은 중복 불가능하므로 set에 추가한 open 개수가 심볼 개수와 다르다면
     // 중복 추가 가능성 높음
-    if (config_->GetCheckBarDataDuplication()[0]) {
+    if (config_->GetCheckSameBarData()[0]) {
       set<double> trading_bar_open;
       for (int symbol_idx = 0; symbol_idx < trading_num_symbols; symbol_idx++) {
         trading_bar_open.insert(trading_bar_data->GetBar(symbol_idx, 0).open);
@@ -324,12 +339,12 @@ void Engine::IsValidBarData() {
       if (trading_bar_open.size() != trading_num_symbols) {
         logger_->Log(
             ERROR_L,
-            "트레이딩 바 데이터에 중복된 데이터가 다른 심볼로 추가되었을 "
+            "트레이딩 바 데이터에 동일한 데이터가 다른 심볼로 추가되었을 "
             "가능성이 있습니다.",
             __FILE__, __LINE__);
         Logger::LogAndThrowError(
-            "중복된 데이터가 없는 것이 확실하다면 "
-            "Config::SetConfig().DisableBarDataDuplicationCheck 함수를 "
+            "이 검사를 비활성화하고 싶다면 "
+            "Backtesting::SetConfig().DisableSameBarDataCheck 함수를 "
             "호출해 주세요.",
             __FILE__, __LINE__);
       }
@@ -369,7 +384,7 @@ void Engine::IsValidBarData() {
       // 2.3. 돋보기 바 데이터의 중복 가능성 검증
       // set은 중복 불가능하므로 set에 추가한 open 개수가 심볼 개수와 다르다면
       // 중복 추가 가능성 높음
-      if (config_->GetCheckBarDataDuplication()[1]) {
+      if (config_->GetCheckSameBarData()[1]) {
         set<double> magnifier_open;
         for (int symbol_idx = 0; symbol_idx < magnifier_num_symbols;
              symbol_idx++) {
@@ -379,12 +394,12 @@ void Engine::IsValidBarData() {
         if (magnifier_open.size() != magnifier_num_symbols) {
           logger_->Log(
               ERROR_L,
-              "돋보기 바 데이터에 중복된 데이터가 다른 심볼로 추가되었을 "
+              "돋보기 바 데이터에 동일한 데이터가 다른 심볼로 추가되었을 "
               "가능성이 있습니다.",
               __FILE__, __LINE__);
           Logger::LogAndThrowError(
-              "중복된 데이터가 없는 것이 확실하다면 "
-              "Config::SetConfig().DisableBarDataDuplicationCheck 함수를 "
+              "이 검사를 비활성화하고 싶다면 "
+              "Backtesting::SetConfig().DisableSameBarDataCheck 함수를 "
               "호출해 주세요.",
               __FILE__, __LINE__);
         }
@@ -436,7 +451,7 @@ void Engine::IsValidBarData() {
       // 3.3. 참조 바 데이터의 중복 가능성 검증
       // set은 중복 불가능하므로 set에 추가한 open 개수가 심볼 개수와 다르다면
       // 중복 추가 가능성 높음
-      if (config_->GetCheckBarDataDuplication()[2]) {
+      if (config_->GetCheckSameBarData()[2]) {
         set<double> reference_open;
         for (int symbol_idx = 0; symbol_idx < reference_num_symbols;
              symbol_idx++) {
@@ -445,13 +460,13 @@ void Engine::IsValidBarData() {
 
         if (reference_open.size() != reference_num_symbols) {
           logger_->Log(ERROR_L,
-                       format("참조 바 데이터 [{}]에 중복된 데이터가 다른 "
+                       format("참조 바 데이터 [{}]에 동일한 데이터가 다른 "
                               "심볼로 추가되었을 가능성이 있습니다.",
                               reference_timeframe),
                        __FILE__, __LINE__);
           Logger::LogAndThrowError(
-              "중복된 데이터가 없는 것이 확실하다면 "
-              "Config::SetConfig().DisableBarDataDuplicationCheck 함수를 "
+              "이 검사를 비활성화하고 싶다면 "
+              "Backtesting::SetConfig().DisableSameBarDataCheck 함수를 "
               "호출해 주세요.",
               __FILE__, __LINE__);
         }
@@ -510,7 +525,7 @@ void Engine::IsValidBarData() {
     // 4.4. 마크 가격 바 데이터의 중복 가능성 검증
     // set은 중복 불가능하므로 set에 추가한 open 개수가 심볼 개수와 다르다면
     // 중복 추가 가능성 높음
-    if (config_->GetCheckBarDataDuplication()[3]) {
+    if (config_->GetCheckSameBarData()[3]) {
       set<double> mark_price_open;
       for (int symbol_idx = 0; symbol_idx < mark_price_num_symbols;
            symbol_idx++) {
@@ -520,40 +535,51 @@ void Engine::IsValidBarData() {
       if (mark_price_open.size() != mark_price_num_symbols) {
         logger_->Log(
             ERROR_L,
-            "마크 가격 바 데이터에 중복된 데이터가 다른 심볼로 추가되었을 "
+            "마크 가격 바 데이터에 동일한 데이터가 다른 심볼로 추가되었을 "
             "가능성이 있습니다.",
             __FILE__, __LINE__);
         Logger::LogAndThrowError(
-            "중복된 데이터가 없는 것이 확실하다면 "
-            "Config::SetConfig().DisableBarDataDuplicationCheck 함수를 "
+            "이 검사를 비활성화하고 싶다면 "
+            "Backtesting::SetConfig().DisableSameBarDataCheck 함수를 "
             "호출해 주세요.",
             __FILE__, __LINE__);
       }
     }
 
     // 4.5. 마크 가격 바 데이터와 타켓 바 데이터의 중복 가능성 검증
-    if (config_->GetCheckTargetBarDataDuplication()) {
-      for (int symbol_idx = 0; symbol_idx < mark_price_num_symbols;
-           symbol_idx++) {
-        const auto target_max_idx = target_bar_data->GetNumBars(symbol_idx) - 1;
-        const auto mark_price_max_idx =
-            mark_price_bar_data->GetNumBars(symbol_idx) - 1;
+    if (config_->GetCheckSameTargetBarData()) {
+      // 모든 마크 가격 바 데이터 순회
+      for (int mark_price_symbol_idx = 0;
+           mark_price_symbol_idx < mark_price_num_symbols;
+           mark_price_symbol_idx++) {
+        const auto mark_max_idx =
+            mark_price_bar_data->GetNumBars(mark_price_symbol_idx) - 1;
 
-        if (target_bar_data->GetBar(symbol_idx, target_max_idx).open ==
-            mark_price_bar_data->GetBar(symbol_idx, mark_price_max_idx).open) {
-          logger_->Log(
-              ERROR_L,
-              format(
-                  "마크 가격 바 데이터와 {} 바 데이터가 [{}] 심볼에서 동일한 "
-                  "데이터일 가능성이 있습니다.",
-                  use_bar_magnifier ? "돋보기" : "트레이딩",
-                  mark_price_bar_data->GetSymbolName(symbol_idx)),
-              __FILE__, __LINE__);
-          Logger::LogAndThrowError(
-              "중복된 데이터가 없는 것이 확실하다면 "
-              "Config::SetConfig().DisableTargetBarDataDuplicationCheck 함수를 "
-              "호출해 주세요.",
-              __FILE__, __LINE__);
+        // 한 마크 가격 바 데이터에 대해 모든 타켓 바 데이터를 순회
+        for (int target_symbol_idx = 0; target_symbol_idx < target_num_symbols;
+             target_symbol_idx++) {
+          const auto target_max_idx =
+              target_bar_data->GetNumBars(target_symbol_idx) - 1;
+
+          // 마지막 Open 가격이 같으면 동일한 데이터일 가능성 존재
+          if (target_bar_data->GetBar(target_symbol_idx, target_max_idx).open ==
+              mark_price_bar_data->GetBar(mark_price_symbol_idx, mark_max_idx)
+                  .open) {
+            logger_->Log(
+                ERROR_L,
+                format(
+                    "마크 가격 바 데이터의 심볼 [{}]와(과) {} 바 데이터의 심볼 "
+                    "[{}]이(가) 동일한 데이터일 가능성이 있습니다.",
+                    mark_price_bar_data->GetSymbolName(mark_price_symbol_idx),
+                    use_bar_magnifier ? "돋보기" : "트레이딩",
+                    target_bar_data->GetSymbolName(target_symbol_idx)),
+                __FILE__, __LINE__);
+            Logger::LogAndThrowError(
+                "이 검사를 비활성화하고 싶다면 "
+                "Backtesting::SetConfig().DisableSameTargetBarDataCheck "
+                "함수를 호출해 주세요.",
+                __FILE__, __LINE__);
+          }
         }
       }
     }
@@ -663,7 +689,7 @@ void Engine::IsValidStrategies() {
     if (strategies_.empty()) {
       Logger::LogAndThrowError(
           "엔진에 전략이 추가되지 않았습니다. "
-          "Strategy::AddStrategy 함수를 호출해 주세요.",
+          "Backtesting::AddStrategy 함수를 호출해 주세요.",
           __FILE__, __LINE__);
     }
 

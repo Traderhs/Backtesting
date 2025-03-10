@@ -69,6 +69,9 @@ class Logger final {
   /// 이번 백테스팅의 로그를 지정된 폴더에 저장하는 함수
   void SaveBacktestingLog(const string& file_path);
 
+ /// 임시 저장된 백테스팅 로그를 삭제하는 함수
+ void DeleteTempBacktestingLog();
+
  private:
   // 싱글톤 인스턴스 관리
   Logger(const string& log_directory, const string& debug_log_name,

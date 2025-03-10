@@ -148,6 +148,19 @@ void Logger::SaveBacktestingLog(const string& file_path) {
   }
 }
 
+void Logger::DeleteTempBacktestingLog() {
+  if (backtesting_log_.is_open()) {
+    backtesting_log_.close();
+  }
+
+  if (filesystem::exists(backtesting_log_temp_path_)) {
+    filesystem::remove(backtesting_log_temp_path_);
+  }
+
+  // 오류 방지를 위해 프로그램 즉시 종료
+  exit(EXIT_FAILURE);
+}
+
 void Logger::ConsoleLog(const string& level, const string& message) {
   if (level == "DEBUG_L") {
     cout << "\033[90m" << message << "\033[0m" << endl;  // Gray

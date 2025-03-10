@@ -1,5 +1,8 @@
 #pragma once
 
+// 표준 라이브러리
+#include <filesystem>
+
 // 내부 헤더
 #include "Engines/BaseBarHandler.hpp"
 #include "Engines/BinanceFetcher.hpp"
@@ -26,7 +29,13 @@ class Backtesting {
    */
   static void Run(const string& start_time = "", const string& end_time = "",
                   const string& format = "%Y-%m-%d %H:%M:%S") {
-    Engine::GetEngine()->Backtesting(start_time, end_time, format);
+    try {
+      Engine::GetEngine()->Backtesting(start_time, end_time, format);
+    } catch (...) {
+      // 오류로 비정상 종료되면 백테스팅 로그 삭제
+      // 삭제하지 않으면 전 백테스팅 로그가 중첩됨
+      Logger::GetLogger()->DeleteTempBacktestingLog();
+    }
   }
 
   /**

@@ -15,8 +15,8 @@ Config::Config()
       maker_fee_percentage_(nan("")),
       taker_slippage_percentage_(nan("")),
       maker_slippage_percentage_(nan("")),
-      check_bar_data_duplication_(4, true),
-      check_target_bar_data_duplication_(true) {
+      check_same_bar_data_(4, true),
+      check_same_target_bar_data_(true) {
   // 증가 카운터는 SetConfig 함수로만 증가하는데 SetConfig 없이 직접 생성자
   // 호출로 전 증가 카운터가 현재 증가 카운터와 같다면 오류 발생
   if (pre_creation_counter_ == creation_counter_) {
@@ -73,13 +73,13 @@ Config& Config::SetMakerSlippagePercentage(
   return *this;
 }
 
-Config& Config::DisableBarDataDuplicationCheck(BarType bar_type) {
-  check_bar_data_duplication_[static_cast<size_t>(bar_type)] = false;
+Config& Config::DisableSameBarDataCheck(BarType bar_type) {
+  check_same_bar_data_[static_cast<size_t>(bar_type)] = false;
   return *this;
 }
 
-Config& Config::DisableTargetBarDataDuplicationCheck() {
-  check_target_bar_data_duplication_ = false;
+Config& Config::DisableSameTargetBarDataCheck() {
+  check_same_target_bar_data_ = false;
   return *this;
 }
 
@@ -94,11 +94,11 @@ double Config::GetTakerSlippagePercentage() const {
 double Config::GetMakerSlippagePercentage() const {
   return maker_slippage_percentage_;
 }
-vector<bool> Config::GetCheckBarDataDuplication() const {
-  return check_bar_data_duplication_;
+vector<bool> Config::GetCheckSameBarData() const {
+  return check_same_bar_data_;
 }
-bool Config::GetCheckTargetBarDataDuplication() const {
-  return check_target_bar_data_duplication_;
+bool Config::GetCheckSameTargetBarData() const {
+  return check_same_target_bar_data_;
 }
 
 bool Config::UseBarMagnifierHasValue() const {

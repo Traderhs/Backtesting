@@ -60,6 +60,9 @@ class Strategy {
   /// 해당 전략의 이름을 반환하는 함수
   [[nodiscard]] string GetName() const;
 
+  /// 해당 전략의 소스 파일 경로를 반환하는 함수
+  string GetSourcePath();
+
   /// 해당 전략의 주문 핸들러를 반환하는 함수
   [[nodiscard]] shared_ptr<OrderHandler> GetOrderHandler() const;
 
@@ -76,7 +79,7 @@ class Strategy {
   string name_;  // 전략의 이름
 
  protected:
-  explicit Strategy(const string& name);
+  explicit Strategy(const string& name, const string& file_path);
   virtual ~Strategy();
 
   /// 전략에 지표를 추가하는 함수
@@ -137,6 +140,8 @@ class Strategy {
   const double entry_size = DBL_MAX;
   // ===========================================================================
   // ===========================================================================
+ private:
+  string child_file_path_;
 };
 
 }  // namespace backtesting::strategy
