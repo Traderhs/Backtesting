@@ -65,14 +65,13 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
                          const string& format) {
   const auto& start = chrono::high_resolution_clock::now();
 
-  PrintSeparator();
+  LogSeparator();
   Initialize(start_time, end_time, format);
 
-  PrintSeparator();
+  LogSeparator();
   logger_->Log(INFO_L, std::format("백테스팅을 시작합니다."), __FILE__,
                __LINE__);
 
-  PrintSeparator();
   try {
     BacktestingMain();
   } catch ([[maybe_unused]] const Bankruptcy& e) {
@@ -80,7 +79,7 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
                  __LINE__);
   }
 
-  PrintSeparator();
+  LogSeparator();
   logger_->Log(INFO_L, "백테스팅이 완료되었습니다.", __FILE__, __LINE__);
 
   const auto& end = chrono::high_resolution_clock::now();
@@ -123,12 +122,6 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
                              "/Trading Lists/trading list.csv");
 }
 
-double Engine::UpdateAvailableBalance() {
-  available_balance_ = wallet_balance_ - used_margin_;
-
-  return available_balance_;
-}
-
 void Engine::SetCurrentStrategyType(const StrategyType strategy_type) {
   current_strategy_type_ = strategy_type;
 }
@@ -154,7 +147,7 @@ void Engine::Initialize(const string& start_time, const string& end_time,
   IsValidIndicators();
 
   // 초기화
-  PrintSeparator();
+  LogSeparator();
   InitializeEngine();
   InitializeSymbolInfo();
   InitializeStrategies();
@@ -1009,6 +1002,7 @@ void Engine::BacktestingMain() {
       return;
     }
 
+    LogSeparator();
     logger_->Log(
         INFO_L,
         format("진행 시간: {}", UtcTimestampToUtcDatetime(current_open_time_)),
@@ -1198,7 +1192,7 @@ void Engine::ExecuteTradingEnd(const int symbol_idx) {
     order_handler->InitializeJustExited();
   }
 
-  logger_->Log(ORDER_L,
+  logger_->Log(INFO_L,
                format("[{}] 심볼의 트레이딩 바 데이터가 끝나 해당 심볼의 "
                       "백테스팅을 종료합니다.",
                       trading_bar_data_->GetSymbolName(symbol_idx)),

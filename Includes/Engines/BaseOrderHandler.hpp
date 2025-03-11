@@ -90,7 +90,7 @@ class BaseOrderHandler {
   /// 현재 심볼의 레버리지를 변경하는 함수
   ///
   /// 현재 심볼에 체결된 주문이 없는 경우에만 변경 가능
-  void SetLeverage(int leverage);
+  void AdjustLeverage(int leverage);
 
   /// 현재 심볼 마지막 진입으로부터 몇 개의 트레이딩 바가 지났는지 계산하여
   /// 반환하는 함수
@@ -146,6 +146,9 @@ class BaseOrderHandler {
   vector<double> last_entry_prices_;
   vector<double> last_exit_prices_;
 
+  /// 리버스 청산을 진행할 때 시장가 최대 주문 수량 검사를 피하기 위한 플래그
+  bool is_reverse_exit_;
+
   /// 전략 이름과 심볼 이름으로 포맷된 로그를 발생시키는 함수
   static void LogFormattedInfo(LogLevel log_level,
                                const string& formatted_message,
@@ -177,7 +180,7 @@ class BaseOrderHandler {
   /// 진입 마진을 계산하여 반환하는 함수
   ///
   /// price_type은 미실현 손실을 계산하는 가격 기준을 지정
-  [[nodiscard]] double CalculateMargin(double order_price, double entry_size,
+  [[nodiscard]] double CalculateMargin(double price, double entry_size,
                                        PriceType price_type) const;
 
   /// 진입 정보에 따라 PnL을 계산하는 함수
@@ -193,7 +196,7 @@ class BaseOrderHandler {
   static void IsValidPrice(double price);
 
   // 포지션 크기가 유효한 값인지 확인하는 함수
-  static void IsValidPositionSize(double position_size, OrderType order_type);
+  void IsValidPositionSize(double position_size, OrderType order_type) const;
 
   // 명목 가치(가격 * 포지션 크기)가 최소 기준을 통과하여
   // 유효한 값인지 확인하는 함수
