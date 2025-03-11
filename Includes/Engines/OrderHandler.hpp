@@ -62,39 +62,39 @@ class OrderHandler final : public BaseOrderHandler {
   ///
   /// @param entry_name 진입 이름
   /// @param entry_direction 진입 방향
-  /// @param entry_size 진입 수량
+  /// @param order_size 진입 수량
   void MarketEntry(const string& entry_name, Direction entry_direction,
-                   double entry_size);
+                   double order_size);
 
   /// 지정가 진입 주문을 위해 사용하는 함수
   ///
   /// @param entry_name 진입 이름
   /// @param entry_direction 진입 방향
-  /// @param entry_size 진입 수량
   /// @param order_price 지정가 진입 주문 가격
+  /// @param order_size 진입 수량
   void LimitEntry(const string& entry_name, Direction entry_direction,
-                  double entry_size, double order_price);
+                  double order_price, double order_size);
 
   /// Market if Touched 진입 주문을 위해 사용하는 함수.
   /// touch_price에 닿으면 시장가 진입 주문 접수.
   ///
   /// @param entry_name 진입 이름
   /// @param entry_direction 진입 방향
-  /// @param entry_size 진입 수량
   /// @param touch_price 시장가 주문을 접수할 시점의 가격
+  /// @param order_size 진입 수량
   void MitEntry(const string& entry_name, Direction entry_direction,
-                double entry_size, double touch_price);
+                double touch_price, double order_size);
 
   /// Limit if Touched 진입 주문을 위해 사용하는 함수.
   /// touch_price에 닿으면 order_price에 지정가 진입 주문 접수.
   ///
   /// @param entry_name 진입 이름
   /// @param entry_direction 진입 방향
-  /// @param entry_size 진입 수량
   /// @param touch_price 지정가 주문을 접수할 시점의 가격
   /// @param order_price 지정가 진입 주문 가격
+  /// @param order_size 진입 수량
   void LitEntry(const string& entry_name, Direction entry_direction,
-                double entry_size, double touch_price, double order_price);
+                double touch_price, double order_price, double order_size);
 
   /// 트레일링 진입 주문을 위해 사용하는 함수.
   /// touch_price에 닿으면 진입 방향에 따라 최고저가를 추적하며, 최고저가 대비
@@ -102,66 +102,66 @@ class OrderHandler final : public BaseOrderHandler {
   ///
   /// @param entry_name 진입 이름
   /// @param entry_direction 진입 방향
-  /// @param entry_size 진입 수량
   /// @param touch_price 최고저가 추적을 시작할 시점의 가격.
   ///                    0으로 지정할 시 바로 추적을 시작
   /// @param trail_point 최고저가로부터 어느정도 움직였을 때 진입할지 결정하는
   ///                    포인트
+  /// @param order_size 진입 수량
   void TrailingEntry(const string& entry_name, Direction entry_direction,
-                     double entry_size, double touch_price, double trail_point);
+                     double touch_price, double trail_point, double order_size);
 
   // ===========================================================================
   /// 시장가 청산 주문을 위해 사용하는 함수.
   ///
   /// @param exit_name 청산 이름
-  /// @param target_entry_name 청산할 진입 이름
-  /// @param exit_size 청산 수량
-  void MarketExit(const string& exit_name, const string& target_entry_name,
-                  double exit_size);
+  /// @param target_name 청산할 진입 이름
+  /// @param order_size 청산 수량
+  void MarketExit(const string& exit_name, const string& target_name,
+                  double order_size);
 
   /// 지정가 청산 주문을 위해 사용하는 함수.
   ///
   /// @param exit_name 청산 이름
-  /// @param target_entry_name 청산할 진입 이름
-  /// @param exit_size 청산 수량
+  /// @param target_name 청산할 진입 이름
   /// @param order_price 지정가 청산 주문 가격
-  void LimitExit(const string& exit_name, const string& target_entry_name,
-                 double exit_size, double order_price);
+  /// @param order_size 청산 수량
+  void LimitExit(const string& exit_name, const string& target_name,
+                 double order_price, double order_size);
 
   /// Market if Touched 청산 주문을 위해 사용하는 함수.
   /// touch_price에 닿으면 시장가 청산 주문 접수.
   ///
   /// @param exit_name 청산 이름
-  /// @param target_entry_name 청산할 진입 이름
-  /// @param exit_size 청산 수량
+  /// @param target_name 청산할 진입 이름
   /// @param touch_price 시장가 주문을 접수할 시점의 가격
-  void MitExit(const string& exit_name, const string& target_entry_name,
-               double exit_size, double touch_price);
+  /// @param order_size 청산 수량
+  void MitExit(const string& exit_name, const string& target_name,
+               double touch_price, double order_size);
 
   /// Limit if Touched 청산 주문을 위해 사용하는 함수.
   /// touch_price에 닿으면 order_price에 지정가 청산 주문 접수.
   ///
   /// @param exit_name 청산 이름
-  /// @param target_entry_name 청산할 진입 이름
-  /// @param exit_size 청산 수량
+  /// @param target_name 청산할 진입 이름
   /// @param touch_price 지정가 주문을 접수할 시점의 가격
   /// @param order_price 지정가 청산 주문 가격
-  void LitExit(const string& exit_name, const string& target_entry_name,
-               double exit_size, double touch_price, double order_price);
+  /// @param order_size 청산 수량
+  void LitExit(const string& exit_name, const string& target_name,
+               double touch_price, double order_price, double order_size);
 
   /// 트레일링 청산 주문을 위해 사용하는 함수.
   /// touch_price에 닿으면 청산 방향에 따라 최고저가를 추적하며, 최고저가 대비
   /// trail_point가 움직이면 시장가 청산 주문 접수.
   ///
   /// @param exit_name 청산 이름
-  /// @param target_entry_name 청산할 진입 이름
-  /// @param exit_size 청산 수량
+  /// @param target_name 청산할 진입 이름
   /// @param touch_price 최고저가 추적을 시작할 시점의 가격.
   ///                    0으로 지정할 시 바로 추적을 시작
   /// @param trail_point 최고저가로부터 어느정도 움직였을 때 청산할지 결정하는
   ///                    포인트
-  void TrailingExit(const string& exit_name, const string& target_entry_name,
-                    double exit_size, double touch_price, double trail_point);
+  /// @param order_size 청산 수량
+  void TrailingExit(const string& exit_name, const string& target_name,
+                    double touch_price, double trail_point, double order_size);
 
   // ===========================================================================
   /// 현재 사용 중인 심볼 인덱스의 모든 진입 및 청산 대기 주문을 취소하는 함수
@@ -257,13 +257,14 @@ class OrderHandler final : public BaseOrderHandler {
                                          double current_price);
 
   // ===========================================================================
-  /// 체결된 진입 주문에서 Target Entry Name과 같은 주문을 찾아 주문 인덱스와
+  /// 체결된 진입 주문에서 Target Name과 같은 주문을 찾아 주문 인덱스와
   /// 함께 반환하는 함수
-  [[nodiscard]] pair<shared_ptr<Order>, int> FindMatchingEntryOrder(
-      const string& target_entry_name) const;
+  [[nodiscard]] pair<shared_ptr<Order>, int> FindEntryOrder(
+      const string& target_name) const;
 
-  /// 청산 체결 크기가 진입 체결 크기를 넘지 않도록 조정하여 반환하는 함수
-  [[nodiscard]] static double GetAdjustedExitFilledSize(
+  /// 청산 주문 크기와 이미 체결된 청산 크기의 합이 진입 체결 크기를 넘지 않도록
+  /// 조정하여 반환하는 함수
+  [[nodiscard]] static double GetAdjustedExitSize(
       double exit_size, const shared_ptr<Order>& entry_order);
 
   /// 분석기에 청산된 거래를 추가하는 함수
