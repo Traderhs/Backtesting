@@ -5,6 +5,8 @@
 #include <memory>
 #include <vector>
 
+#include "Config.hpp"
+
 // 전방 선언
 namespace backtesting::analyzer {
 class Analyzer;
@@ -17,6 +19,7 @@ class BarHandler;
 }  // namespace backtesting::bar
 
 namespace backtesting::engine {
+class Config;
 class Engine;
 enum class PriceType;
 }  // namespace backtesting::engine
@@ -120,14 +123,11 @@ class BaseOrderHandler {
   static shared_ptr<Logger>& logger_;
   static shared_ptr<TechnicalAnalyzer>& ta_;
 
+  // 엔진 설정
+  static shared_ptr<Config> config_;
+
   // 심볼 정보
   static vector<SymbolInfo> symbol_info_;
-
-  // 수수료 및 슬리피지 엔진 설정
-  double taker_fee_percentage_;
-  double maker_fee_percentage_;
-  double taker_slippage_percentage_;
-  double maker_slippage_percentage_;
 
   // 진입 및 청산 주문: 심볼 인덱스<주문>
   vector<deque<shared_ptr<Order>>> pending_entries_;  // 대기 중인 진입 주문
@@ -158,14 +158,14 @@ class BaseOrderHandler {
   [[nodiscard]] int GetLeverage(int symbol_idx) const;
 
   /// 주문 정보에 따라 슬리피지를 반영한 체결 가격을 반환하는 함수.
-  [[nodiscard]] double CalculateSlippagePrice(OrderType order_type,
-                                              Direction direction,
-                                              double order_price) const;
+  [[nodiscard]] static double CalculateSlippagePrice(OrderType order_type,
+                                                     Direction direction,
+                                                     double order_price);
 
   /// 주문 정보에 따라 수수료 금액을 계산하여 반환하는 함수
-  [[nodiscard]] double CalculateTradingFee(OrderType order_type,
-                                           double filled_price,
-                                           double filled_size) const;
+  [[nodiscard]] static double CalculateTradingFee(OrderType order_type,
+                                                  double filled_price,
+                                                  double filled_size);
 
   /// 주문 정보에 따라 강제 청산 가격을 계산하여 반환하는 함수
   [[nodiscard]] static double CalculateLiquidationPrice(

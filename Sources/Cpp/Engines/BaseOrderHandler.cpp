@@ -28,10 +28,6 @@ namespace backtesting::order {
 
 BaseOrderHandler::BaseOrderHandler()
     : current_position_size(0),
-      taker_fee_percentage_(nan("")),
-      maker_fee_percentage_(nan("")),
-      taker_slippage_percentage_(nan("")),
-      maker_slippage_percentage_(nan("")),
       just_entered_(false),
       just_exited_(false),
       is_reverse_exit_(false) {}
@@ -43,15 +39,14 @@ shared_ptr<Engine>& BaseOrderHandler::engine_ = Engine::GetEngine();
 shared_ptr<Logger>& BaseOrderHandler::logger_ = Logger::GetLogger();
 shared_ptr<TechnicalAnalyzer>& BaseOrderHandler::ta_ =
     TechnicalAnalyzer::GetTechnicalAnalyzer();
+shared_ptr<Config> BaseOrderHandler::config_;
 vector<SymbolInfo> BaseOrderHandler::symbol_info_;
 
 void BaseOrderHandler::Initialize(const int num_symbols) {
   // 엔진 설정 받아오기
-  const auto& config = Engine::GetConfig();
-  taker_fee_percentage_ = config->GetTakerFeePercentage();
-  maker_fee_percentage_ = config->GetMakerFeePercentage();
-  taker_slippage_percentage_ = config->GetTakerSlippagePercentage();
-  maker_slippage_percentage_ = config->GetMakerSlippagePercentage();
+  if (config_ == nullptr) {
+    config_ = Engine::GetConfig();
+  }
 
   // 주문들을 심볼 개수로 초기화
   pending_entries_.resize(num_symbols);
@@ -315,7 +310,7 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
     }
 
     // Limit 또는 LIT 주문으로 예약 증거금이 잡혀있으면 재설정
-    if (const auto entry_margin = pending_entry->GetMargin();
+    if (const auto entry_margin = pending_entry->GetEntryMargin();
         entry_margin != 0) {
       // 새로운 마진 계산
       // ON_CLOSE, AFTER 전략 모두에서 이 함수가 실행될 수 있으므로
@@ -326,7 +321,8 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
 
       // 마진 재설정 후 진입 가능 자금과 재비교
       engine_->DecreaseUsedMargin(entry_margin);
-      pending_entry->SetMargin(updated_margin);
+      pending_entry->SetEntryMargin(updated_margin)
+          .SetLeftMargin(updated_margin);
 
       const auto& order_type_str =
           Order::OrderTypeToString(pending_entry->GetEntryOrderType());
@@ -337,7 +333,7 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
         LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
 
         // Cancel 내부적으로 사용한 마진을 감소시키므로 중복 감소 방지
-        pending_entry->SetMargin(0);
+        pending_entry->SetEntryMargin(0);
 
         // 새로운 마진을 충당할 수 없으면 주문 취소
         Cancel(pending_entry->GetEntryName());
@@ -403,9 +399,9 @@ int BaseOrderHandler::GetLeverage(const int symbol_idx) const {
   return leverages_[symbol_idx];
 }
 
-double BaseOrderHandler::CalculateSlippagePrice(
-    const OrderType order_type, const Direction direction,
-    const double order_price) const {
+double BaseOrderHandler::CalculateSlippagePrice(const OrderType order_type,
+                                                const Direction direction,
+                                                const double order_price) {
   double slippage_points = 0;
 
   // 시장가, 지정가에 따라 슬리피지가 달라짐
@@ -416,7 +412,8 @@ double BaseOrderHandler::CalculateSlippagePrice(
       [[fallthrough]];
     case TRAILING: {
       // 테이커 슬리피지 포인트 계산
-      slippage_points = order_price * taker_slippage_percentage_ / 100;
+      slippage_points =
+          order_price * config_->GetTakerSlippagePercentage() / 100;
       break;
     }
 
@@ -424,7 +421,8 @@ double BaseOrderHandler::CalculateSlippagePrice(
       [[fallthrough]];
     case LIT: {
       // 메이커 슬리피지 포인트 계산
-      slippage_points = order_price * maker_slippage_percentage_ / 100;
+      slippage_points =
+          order_price * config_->GetMakerSlippagePercentage() / 100;
       break;
     }
 
@@ -456,7 +454,7 @@ double BaseOrderHandler::CalculateSlippagePrice(
 
 double BaseOrderHandler::CalculateTradingFee(const OrderType order_type,
                                              const double filled_price,
-                                             const double filled_size) const {
+                                             const double filled_size) {
   // 테이커, 메이커에 따라 수수료가 달라짐
   switch (order_type) {
     case MARKET:
@@ -464,13 +462,15 @@ double BaseOrderHandler::CalculateTradingFee(const OrderType order_type,
     case MIT:
       [[fallthrough]];
     case TRAILING: {
-      return filled_price * filled_size * (taker_fee_percentage_ / 100);
+      return filled_price * filled_size *
+             (config_->GetTakerFeePercentage() / 100);
     }
 
     case LIMIT:
       [[fallthrough]];
     case LIT: {
-      return filled_price * filled_size * (maker_fee_percentage_ / 100);
+      return filled_price * filled_size *
+             (config_->GetMakerFeePercentage() / 100);
     }
 
     default: {
@@ -758,7 +758,7 @@ void BaseOrderHandler::ExecuteCancelEntry(
 
     case LIMIT: {
       // 사용한 자금에서 예약 증거금 감소
-      if (const auto entry_margin = cancel_order->GetMargin();
+      if (const auto entry_margin = cancel_order->GetEntryMargin();
           entry_margin != 0) {
         engine_->DecreaseUsedMargin(entry_margin);
       }
@@ -776,7 +776,7 @@ void BaseOrderHandler::ExecuteCancelEntry(
         /* Entry Order Time이 설정되었다는 것은 Touch 했다는 의미이며,
            Touch 이후에는 지정가로 예약 증거금을 사용하므로 사용한 자금에서 예약
            증거금을 감소시켜야 함 */
-        if (const auto entry_margin = cancel_order->GetMargin();
+        if (const auto entry_margin = cancel_order->GetEntryMargin();
             entry_margin != 0) {
           engine_->DecreaseUsedMargin(entry_margin);
         }
