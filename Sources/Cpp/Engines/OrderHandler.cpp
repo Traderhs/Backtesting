@@ -359,7 +359,7 @@ void OrderHandler::LimitEntry(const string& entry_name,
 
     // 예약 증거금 계산
     const double entry_margin = CalculateMargin(order_price, order_size, CLOSE);
-    limit_entry->SetMargin(entry_margin);
+    limit_entry->SetEntryMargin(entry_margin).SetLeftMargin(entry_margin);
 
     // 주문 가능 여부 체크
     try {
@@ -1255,8 +1255,7 @@ void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry,
   // 시장가 진입 마진 계산
   const double entry_margin =
       CalculateMargin(entry_filled_price, entry_filled_size, price_type);
-
-  market_entry->SetMargin(entry_margin);
+  market_entry->SetEntryMargin(entry_margin).SetLeftMargin(entry_margin);
 
   // 강제 청산 가격 계산
   market_entry->SetLiquidationPrice(CalculateLiquidationPrice(
@@ -1328,12 +1327,12 @@ void OrderHandler::ExitOppositeFilledEntries(const Direction direction) {
 void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
   // 주문 정보 로딩
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
-  const auto entry_margin = exit_order->GetMargin();
   const auto entry_direction = exit_order->GetEntryDirection();
   const auto& entry_name = exit_order->GetEntryName();
   const auto entry_filled_price = exit_order->GetEntryFilledPrice();
   const auto entry_filled_size = exit_order->GetEntryFilledSize();
   const auto exit_filled_price = exit_order->GetExitFilledPrice();
+  const auto entry_margin = exit_order->GetEntryMargin();
   const auto& order_type_str =
       Order::OrderTypeToString(exit_order->GetExitOrderType());
   const auto& exit_name = exit_order->GetExitName();
@@ -1360,20 +1359,20 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
     engine_->DecreaseUsedMargin(exit_margin);
 
     // 진입 마진이 감소했으므로 원본 진입과 원본 진입을 목표로 하는
-    // 청산 대기 주문들의 진입 마진과 강제 청산 가격 수정
-    // 진입 주문으로 체결량을 로딩한 이유는, 원본 진입의 체결량이
-    // 총 체결량이기 때문에 정확한 진입 잔량을 구할 수 있기 때문
-    const auto adjusted_margin = entry_margin - exit_margin;
+    // 청산 대기 주문들의 잔여 마진과 강제 청산 가격 수정
+    // 진입 주문으로 체결량을 로딩한 이유는, 원본 진입의 청산 체결량이
+    // 총 청산 체결량이기 때문에 정확한 진입 잔량을 구할 수 있기 때문
+    const auto adjusted_margin = exit_order->GetLeftMargin() - exit_margin;
     const auto adjusted_liquidation_price = CalculateLiquidationPrice(
         entry_direction, entry_filled_price,
         entry_filled_size - entry_order->GetExitFilledSize(), adjusted_margin);
 
-    entry_order->SetMargin(adjusted_margin);
+    entry_order->SetLeftMargin(adjusted_margin);
     entry_order->SetLiquidationPrice(adjusted_liquidation_price);
 
     for (const auto& pending_exit : pending_exits_[symbol_idx]) {
       if (pending_exit->GetEntryName() == entry_name) {
-        pending_exit->SetMargin(adjusted_margin);
+        pending_exit->SetLeftMargin(adjusted_margin);
         pending_exit->SetLiquidationPrice(adjusted_liquidation_price);
       }
     }
@@ -1382,8 +1381,8 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
     // 명목 가치가 감소할수록 최대 레버리지가 증가하기 때문에 진입 레버리지를
     // 조정할 필요가 없음
   } catch ([[maybe_unused]] const EntryOrderNotFound& e) {
-    // 전량 청산이라면 진입 마진의 크기만큼 사용한 마진 감소
-    engine_->DecreaseUsedMargin(entry_margin);
+    // 전량 청산이라면 잔여 마진만큼 사용한 마진 감소
+    engine_->DecreaseUsedMargin(exit_order->GetLeftMargin());
   }
 
   // 실현 손익 계산
@@ -1397,7 +1396,7 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
   if (IsGreaterOrEqual(realized_pnl, 0)) {
     engine_->IncreaseWalletBalance(realized_pnl);
   } else {
-    // 실현 손실이 진입 마진과 같거나 크다면 파산 포지션으로,
+    // 실현 손실이 최초 진입 마진과 같거나 크다면 파산 포지션으로,
     // 추가 손실은 보험 기금으로 충당됨.
     // 즉, 최대 손실은 진입 마진
     if (IsGreaterOrEqual(unsigned_realized_pnl, entry_margin)) {
@@ -1432,13 +1431,14 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
       real_liquidation_fee = liquidation_fee;
     }
 
+    exit_order->SetLiquidationFee(real_liquidation_fee);
     engine_->DecreaseWalletBalance(real_liquidation_fee);
 
     logger_->Log(ERROR_L,
-                 format("시장가 [강제 청산] 수수료 차감 (잔여 진입 마진 {} | "
-                        "수수료 {} | 차감액 {})",
-                        FormatDollar(left_margin, true),
+                 format("시장가 [강제 청산] 수수료 차감 (강제 청산 수수료 {} | "
+                        "청산 후 잔여 마진 {} | 최종 차감 수수료 {})",
                         FormatDollar(liquidation_fee, true),
+                        FormatDollar(left_margin, true),
                         FormatDollar(real_liquidation_fee, true)),
                  __FILE__, __LINE__);
     engine_->LogBalance();
@@ -1469,8 +1469,8 @@ void OrderHandler::CheckPendingLimitEntries(const int symbol_idx,
                             price_type == OPEN ? price : order_price,
                             price_type);
     } catch ([[maybe_unused]] const OrderFailed& e) {
-      // 체결 실패 시 사용한 마진 감소
-      engine_->DecreaseUsedMargin(limit_entry->GetMargin());
+      // 체결 실패 시 사용한 마진(예약 증거금) 감소
+      engine_->DecreaseUsedMargin(limit_entry->GetEntryMargin());
 
       LogFormattedInfo(
           WARNING_L,
@@ -1540,8 +1540,8 @@ void OrderHandler::CheckPendingLitEntries(const int symbol_idx,
         const auto before_used_margin = engine_->GetUsedMargin();
         const auto before_available_balance = engine_->GetAvailableBalance();
 
-        // 체결 실패 시 사용한 마진 감소
-        engine_->DecreaseUsedMargin(lit_entry->GetMargin());
+        // 체결 실패 시 사용한 마진(예약 증거금) 감소
+        engine_->DecreaseUsedMargin(lit_entry->GetEntryMargin());
 
         LogFormattedInfo(
             WARNING_L,
@@ -1711,8 +1711,9 @@ void OrderHandler::FillPendingLimitEntry(const int symbol_idx,
       entry_direction, slippage_filled_price, entry_filled_size, entry_margin));
 
   // 마진 재설정 후 진입 가능 자금과 재비교
-  engine_->DecreaseUsedMargin(limit_entry->GetMargin());
-  limit_entry->SetMargin(entry_margin);
+  engine_->DecreaseUsedMargin(limit_entry->GetEntryMargin());
+  limit_entry->SetEntryMargin(entry_margin).SetLeftMargin(entry_margin);
+
   try {
     HasEnoughBalance(engine_->GetAvailableBalance(), entry_margin, "사용 가능",
                      format("{} 진입 마진", order_type_str));
@@ -1769,7 +1770,7 @@ void OrderHandler::OrderPendingLitEntry(const int symbol_idx,
   const double entry_margin =
       CalculateMargin(order_price, order_size, price_type);
 
-  lit_entry->SetMargin(entry_margin);
+  lit_entry->SetEntryMargin(entry_margin).SetLeftMargin(entry_margin);
 
   // 주문 가능 여부 체크
   try {
@@ -2068,7 +2069,7 @@ double OrderHandler::GetAdjustedExitSize(const double exit_size,
 
 void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
                             const double realized_pnl) const {
-  // 보유 심볼 개수 카운트
+  // 동시 보유 심볼 개수 카운트
   int symbol_count = 0;
 
   // 모든 심볼의 체결된 진입 순회
@@ -2079,9 +2080,17 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
     }
   }
 
-  // 진입 및 청산 체결 시간
+  // 중복 사용 변수 로딩
   const int64_t entry_time = exit_order->GetEntryFilledTime();
   const int64_t exit_time = exit_order->GetExitFilledTime();
+  const auto entry_fee = exit_order->GetEntryFee();
+  const auto exit_fee = exit_order->GetExitFee();
+  const auto liquidation_fee = exit_order->GetLiquidationFee();
+  const auto realized_pnl_net =  // 수수료를 제외한 순손익
+      realized_pnl - entry_fee - exit_fee - liquidation_fee;
+  const auto current_wallet_balance = engine_->GetWalletBalance();
+  const auto initial_balance = config_->GetInitialBalance();
+  const auto cum_pnl = current_wallet_balance - initial_balance;
 
   // 거래 목록에 거래 추가
   analyzer_->AddTrade(
@@ -2096,20 +2105,27 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
           .SetEntryTime(UtcTimestampToUtcDatetime(entry_time))
           .SetExitTime(UtcTimestampToUtcDatetime(exit_time))
           .SetHoldingTime(FormatTimeDiff(exit_time - entry_time))
-          .SetEntrySize(exit_order->GetEntryFilledSize())
-          .SetExitSize(exit_order->GetExitFilledSize())
-          .SetEntryPrice(exit_order->GetEntryFilledPrice())
-          .SetExitPrice(exit_order->GetExitFilledPrice())
-          .SetLiquidationPrice(exit_order->GetLiquidationPrice())
           .SetLeverage(exit_order->GetLeverage())
-          .SetEntryFee(exit_order->GetEntryFee())
-          .SetExitFee(exit_order->GetExitFee())
-          .SetLiquidationFee(exit_order->GetLiquidationFee())
-          .SetProfitLoss(realized_pnl)
-          .SetWalletBalance(engine_->GetWalletBalance())
+          .SetEntryPrice(exit_order->GetEntryFilledPrice())
+          .SetEntrySize(exit_order->GetEntryFilledSize())
+          .SetExitPrice(exit_order->GetExitFilledPrice())
+          .SetExitSize(exit_order->GetExitFilledSize())
+          .SetLiquidationPrice(exit_order->GetLiquidationPrice())
+          .SetEntryFee(entry_fee)
+          .SetExitFee(exit_fee)
+          .SetLiquidationFee(liquidation_fee)
+          .SetPnl(realized_pnl)
+          .SetPnlNet(realized_pnl_net)
+          .SetIndividualPnlPer(realized_pnl_net / exit_order->GetEntryMargin() *
+                               100)
+          .SetTotalPnlPer(realized_pnl_net /
+                          analyzer_->GetLastTradeWalletBalance() * 100)
+          .SetWalletBalance(current_wallet_balance)
           .SetMaxWalletBalance(engine_->GetMaxWalletBalance())
           .SetDrawdown(engine_->GetDrawdown())
           .SetMaxDrawdown(engine_->GetMaxDrawdown())
+          .SetCumPnl(cum_pnl)
+          .SetCumPnlPer(cum_pnl / initial_balance * 100)
           .SetSymbolCount(symbol_count));
 }
 

@@ -5,13 +5,12 @@
 // 파일 헤더
 #include "Engines/Order.hpp"
 
-using enum backtesting::order::Direction;
-
 namespace backtesting::order {
 
 Order::Order()
-    : margin_(0),
-      leverage_(-1),
+    : leverage_(-1),
+      entry_margin_(0),
+      left_margin_(0),
       liquidation_price_(nan("")),
       liquidation_fee_(0),
 
@@ -51,13 +50,18 @@ Order::Order()
 Order::~Order() = default;
 
 // ===========================================================================
-Order& Order::SetMargin(const double margin) {
-  margin_ = margin;
+Order& Order::SetLeverage(const int leverage) {
+  leverage_ = leverage;
   return *this;
 }
 
-Order& Order::SetLeverage(const int leverage) {
-  leverage_ = leverage;
+Order& Order::SetEntryMargin(const double entry_margin) {
+  entry_margin_ = entry_margin;
+  return *this;
+}
+
+Order& Order::SetLeftMargin(const double left_margin) {
+  left_margin_ = left_margin;
   return *this;
 }
 
@@ -235,8 +239,9 @@ string Order::OrderTypeToString(const OrderType order_type) {
 }
 
 // ===========================================================================
-double Order::GetMargin() const { return margin_; }
 int Order::GetLeverage() const { return leverage_; }
+double Order::GetEntryMargin() const { return entry_margin_; }
+double Order::GetLeftMargin() const { return left_margin_; }
 double Order::GetLiquidationPrice() const { return liquidation_price_; }
 double Order::GetLiquidationFee() const { return liquidation_fee_; }
 

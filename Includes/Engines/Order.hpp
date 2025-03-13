@@ -23,8 +23,9 @@ class Order {
   Order();
   ~Order();
 
-  Order& SetMargin(double margin);
   Order& SetLeverage(int leverage);
+  Order& SetEntryMargin(double entry_margin);
+  Order& SetLeftMargin(double left_margin);
   Order& SetLiquidationPrice(double liquidation_price);
   Order& SetLiquidationFee(double liquidation_fee);
 
@@ -70,8 +71,9 @@ class Order {
   [[nodiscard]] static string OrderTypeToString(OrderType order_type);
 
   // ===========================================================================
-  [[nodiscard]] double GetMargin() const;
   [[nodiscard]] int GetLeverage() const;
+  [[nodiscard]] double GetEntryMargin() const;
+  [[nodiscard]] double GetLeftMargin() const;
   [[nodiscard]] double GetLiquidationPrice() const;
   [[nodiscard]] double GetLiquidationFee() const;
 
@@ -115,8 +117,9 @@ class Order {
 
  private:
   // 통합 변수
-  double margin_;             // 진입 마진
   int leverage_;              // 레버리지 배수
+  double entry_margin_;       // 최초 진입 마진
+  double left_margin_;        // 청산 후 잔여 마진
   double liquidation_price_;  // 강제 청산 가격
   double liquidation_fee_;    // 강제 청산 수수료
 
@@ -149,6 +152,7 @@ class Order {
   string exit_name_;           // 청산 주문 이름
   OrderType exit_order_type_;  // 청산 주문 타입
   Direction exit_direction_;   // 청산 방향
+                               // (원본 진입의 경우 총 청산 마진이 누적됨)
   double exit_fee_;            // 청산 수수료 금액
 
   // MIT, LIT, Trailing 청산 대기 변수
@@ -167,6 +171,7 @@ class Order {
   int64_t exit_filled_time_;  // 청산 체결 시간
   double exit_filled_price_;  // 청산 체결 가격
   double exit_filled_size_;   // 청산 체결 수량
+                              // (원본 진입의 경우 총 청산 수량이 누적됨)
 };
 
 }  // namespace backtesting::order

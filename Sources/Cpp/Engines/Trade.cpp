@@ -5,21 +5,25 @@ namespace backtesting::analyzer {
 
 Trade::Trade()
     : trade_number_(0),
-      entry_size_(0.0),
-      exit_size_(0.0),
-      entry_price_(0.0),
-      exit_price_(0.0),
-      liquidation_price_(0.0),
       leverage_(0),
-      entry_fee_(0.0),
-      exit_fee_(0.0),
-      liquidation_fee_(0.0),
-      profit_loss_(0.0),
-      profit_loss_per_(0.0),
-      wallet_balance_(0.0),
-      max_wallet_balance_(0.0),
-      drawdown_(0.0),
-      max_drawdown_(0.0),
+      entry_price_(0),
+      entry_size_(0),
+      exit_price_(0),
+      exit_size_(0),
+      liquidation_price_(0),
+      entry_fee_(0),
+      exit_fee_(0),
+      liquidation_fee_(0),
+      pnl_(0),
+      pnl_net_(0),
+      individual_pnl_per_(0),
+      total_pnl_per_(0),
+      wallet_balance_(0),
+      max_wallet_balance_(0),
+      drawdown_(0),
+      max_drawdown_(0),
+      cum_pnl_(0),
+      cum_pnl_per_(0),
       symbol_count_(0) {}
 Trade::~Trade() = default;
 
@@ -68,13 +72,8 @@ Trade& Trade::SetHoldingTime(const string& holding_time) {
   return *this;
 }
 
-Trade& Trade::SetEntrySize(const double entry_size) {
-  entry_size_ = entry_size;
-  return *this;
-}
-
-Trade& Trade::SetExitSize(const double exit_size) {
-  exit_size_ = exit_size;
+Trade& Trade::SetLeverage(const int leverage) {
+  leverage_ = leverage;
   return *this;
 }
 
@@ -83,18 +82,23 @@ Trade& Trade::SetEntryPrice(const double entry_price) {
   return *this;
 }
 
+Trade& Trade::SetEntrySize(const double entry_size) {
+  entry_size_ = entry_size;
+  return *this;
+}
+
 Trade& Trade::SetExitPrice(const double exit_price) {
   exit_price_ = exit_price;
   return *this;
 }
 
-Trade& Trade::SetLiquidationPrice(const double liquidation_price) {
-  liquidation_price_ = liquidation_price;
+Trade& Trade::SetExitSize(const double exit_size) {
+  exit_size_ = exit_size;
   return *this;
 }
 
-Trade& Trade::SetLeverage(const int leverage) {
-  leverage_ = leverage;
+Trade& Trade::SetLiquidationPrice(const double liquidation_price) {
+  liquidation_price_ = liquidation_price;
   return *this;
 }
 
@@ -113,13 +117,23 @@ Trade& Trade::SetLiquidationFee(const double liquidation_fee) {
   return *this;
 }
 
-Trade& Trade::SetProfitLoss(const double profit_loss) {
-  profit_loss_ = profit_loss;
+Trade& Trade::SetPnl(const double pnl) {
+  pnl_ = pnl;
   return *this;
 }
 
-Trade& Trade::SetProfitLossPer(const double profit_loss_per) {
-  profit_loss_per_ = profit_loss_per;
+Trade& Trade::SetPnlNet(const double pnl_net) {
+  pnl_net_ = pnl_net;
+  return *this;
+}
+
+Trade& Trade::SetIndividualPnlPer(const double individual_pnl_per) {
+  individual_pnl_per_ = individual_pnl_per;
+  return *this;
+}
+
+Trade& Trade::SetTotalPnlPer(const double total_pnl_per) {
+  total_pnl_per_ = total_pnl_per;
   return *this;
 }
 
@@ -148,30 +162,49 @@ Trade& Trade::SetSymbolCount(const int symbol_count) {
   return *this;
 }
 
+Trade& Trade::SetCumPnl(const double cum_pnl) {
+  cum_pnl_ = cum_pnl;
+  return *this;
+}
+
+Trade& Trade::SetCumPnlPer(const double cum_pnl_per) {
+  cum_pnl_per_ = cum_pnl_per;
+  return *this;
+}
+
 int Trade::GetTradeNumber() const { return trade_number_; }
 string Trade::GetStrategyName() const { return strategy_name_; }
 string Trade::GetSymbolName() const { return symbol_name_; }
 string Trade::GetEntryName() const { return entry_name_; }
 string Trade::GetExitName() const { return exit_name_; }
 string Trade::GetEntryDirection() const { return entry_direction_; }
+
 string Trade::GetEntryTime() const { return entry_time_; }
 string Trade::GetExitTime() const { return exit_time_; }
 string Trade::GetHoldingTime() const { return holding_time_; }
-double Trade::GetEntrySize() const { return entry_size_; }
-double Trade::GetExitSize() const { return exit_size_; }
-double Trade::GetEntryPrice() const { return entry_price_; }
-double Trade::GetExitPrice() const { return exit_price_; }
-double Trade::GetLiquidationPrice() const { return liquidation_price_; }
+
 int Trade::GetLeverage() const { return leverage_; }
+double Trade::GetEntryPrice() const { return entry_price_; }
+double Trade::GetEntrySize() const { return entry_size_; }
+
+double Trade::GetExitPrice() const { return exit_price_; }
+double Trade::GetExitSize() const { return exit_size_; }
+double Trade::GetLiquidationPrice() const { return liquidation_price_; }
+
 double Trade::GetEntryFee() const { return entry_fee_; }
 double Trade::GetExitFee() const { return exit_fee_; }
 double Trade::GetLiquidationFee() const { return liquidation_fee_; }
-double Trade::GetProfitLoss() const { return profit_loss_; }
-double Trade::GetProfitLossPer() const { return profit_loss_per_; }
+double Trade::GetPnl() const { return pnl_; }
+double Trade::GetPnlNet() const { return pnl_net_; }
+double Trade::GetIndividualPnlPer() const { return individual_pnl_per_; }
+double Trade::GetTotalPnlPer() const { return total_pnl_per_; }
 double Trade::GetWalletBalance() const { return wallet_balance_; }
 double Trade::GetMaxWalletBalance() const { return max_wallet_balance_; }
 double Trade::GetDrawdown() const { return drawdown_; }
 double Trade::GetMaxDrawdown() const { return max_drawdown_; }
+double Trade::GetCumPnl() const { return cum_pnl_; }
+double Trade::GetCumPnlPer() const { return cum_pnl_per_; }
+
 int Trade::GetSymbolCount() const { return symbol_count_; }
 
 }  // namespace backtesting::analyzer
