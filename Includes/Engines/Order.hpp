@@ -28,6 +28,8 @@ class Order {
   Order& SetLeftMargin(double left_margin);
   Order& SetLiquidationPrice(double liquidation_price);
   Order& SetLiquidationFee(double liquidation_fee);
+  Order& SetWbWhenEntryOrder(double wb_when_entry_order);
+  Order& AddExitCount();
 
   // ===========================================================================
   Order& SetEntryName(const string& entry_name);
@@ -76,6 +78,8 @@ class Order {
   [[nodiscard]] double GetLeftMargin() const;
   [[nodiscard]] double GetLiquidationPrice() const;
   [[nodiscard]] double GetLiquidationFee() const;
+  [[nodiscard]] double GetWnWhenEntryOrder() const;
+  [[nodiscard]] int GetExitCount() const;
 
   // ===========================================================================
   [[nodiscard]] string GetEntryName() const;
@@ -117,11 +121,13 @@ class Order {
 
  private:
   // 통합 변수
-  int leverage_;              // 레버리지 배수
-  double entry_margin_;       // 최초 진입 마진
-  double left_margin_;        // 청산 후 잔여 마진
-  double liquidation_price_;  // 강제 청산 가격
-  double liquidation_fee_;    // 강제 청산 수수료
+  int leverage_;                // 레버리지 배수
+  double entry_margin_;         // 최초 진입 마진
+  double left_margin_;          // 청산 후 잔여 마진
+  double liquidation_price_;    // 강제 청산 가격
+  double liquidation_fee_;      // 강제 청산 수수료
+  double wb_when_entry_order_;  // 진입 주문 시점의 지갑 자금
+  int exit_count_;              // 원본 진입의 청산 횟수
 
   // ===========================================================================
   // 진입 변수
