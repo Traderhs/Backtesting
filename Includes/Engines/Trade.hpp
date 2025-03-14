@@ -127,8 +127,8 @@ class Trade final {
   double liquidation_fee_;     // 강제 청산 수수료
   double pnl_;                 // 손익
   double pnl_net_;             // 순 손익
-  double individual_pnl_per_;  // 진입 마진 대비 손익률 (수수료 포함)
-  double total_pnl_per_;       // 지갑 자금 대비 손익률 (수수료 포함)
+  double individual_pnl_per_;  // 진입 마진 대비 순손익률
+  double total_pnl_per_;       // 진입 주문 시점의 지갑 자금 대비 순손익률
   double wallet_balance_;      // 현재 자금
   double max_wallet_balance_;  // 최고 자금
   double drawdown_;            // 드로우다운

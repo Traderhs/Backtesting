@@ -34,10 +34,10 @@ class BaseAnalyzer {
   void Initialize(double initial_balance);
 
   /// 거래 목록에 거래를 추가하는 함수
-  void AddTrade(analyzer::Trade& trade);
+  void AddTrade(Trade& new_trade, int exit_count);
 
   /// 거래 목록을 csv 파일로 저장하는 함수
-  void SaveTradingList(const string& file_path) const;
+  void SaveTradeList(const string& file_path) const;
 
  protected:
   BaseAnalyzer();
@@ -47,9 +47,9 @@ class BaseAnalyzer {
 
  private:
   /// 거래 목록
-  vector<Trade> trading_list_;
+  vector<Trade> trade_list_;
 
-  /// 현재 거래 번호
+  /// 마지막 거래 번호
   int trade_num_;
 };
 

@@ -265,6 +265,7 @@ void OrderHandler::MarketEntry(const string& entry_name,
     // 주문 생성
     const auto market_entry = make_shared<Order>();
     market_entry->SetLeverage(GetLeverage(symbol_idx))
+        .SetWbWhenEntryOrder(engine_->GetWalletBalance())
         .SetEntryName(entry_name)
         .SetEntryOrderType(MARKET)
         .SetEntryDirection(entry_direction)
@@ -337,6 +338,7 @@ void OrderHandler::LimitEntry(const string& entry_name,
     // 주문 생성
     const auto limit_entry = make_shared<Order>();
     limit_entry->SetLeverage(GetLeverage(symbol_idx))
+        .SetWbWhenEntryOrder(engine_->GetWalletBalance())
         .SetEntryName(entry_name)
         .SetEntryOrderType(LIMIT)
         .SetEntryDirection(entry_direction)
@@ -428,6 +430,7 @@ void OrderHandler::MitEntry(const string& entry_name,
     // 주문 생성
     const auto mit_entry = make_shared<Order>();
     mit_entry->SetLeverage(GetLeverage(symbol_idx))
+        .SetWbWhenEntryOrder(engine_->GetWalletBalance())
         .SetEntryName(entry_name)
         .SetEntryOrderType(MIT)
         .SetEntryDirection(entry_direction)
@@ -503,6 +506,7 @@ void OrderHandler::LitEntry(const string& entry_name,
     // 주문 생성
     const auto lit_entry = make_shared<Order>();
     lit_entry->SetLeverage(GetLeverage(symbol_idx))
+        .SetWbWhenEntryOrder(engine_->GetWalletBalance())
         .SetEntryName(entry_name)
         .SetEntryOrderType(LIT)
         .SetEntryDirection(entry_direction)
@@ -582,6 +586,7 @@ void OrderHandler::TrailingEntry(const string& entry_name,
     // 주문 생성
     const auto trailing_entry = make_shared<Order>();
     trailing_entry->SetLeverage(GetLeverage(symbol_idx))
+        .SetWbWhenEntryOrder(engine_->GetWalletBalance())
         .SetEntryName(entry_name)
         .SetEntryOrderType(TRAILING)
         .SetEntryDirection(entry_direction)
@@ -1332,10 +1337,13 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
   const auto entry_filled_price = exit_order->GetEntryFilledPrice();
   const auto entry_filled_size = exit_order->GetEntryFilledSize();
   const auto exit_filled_price = exit_order->GetExitFilledPrice();
-  const auto entry_margin = exit_order->GetEntryMargin();
+  const auto left_margin = exit_order->GetLeftMargin();
   const auto& order_type_str =
       Order::OrderTypeToString(exit_order->GetExitOrderType());
   const auto& exit_name = exit_order->GetExitName();
+
+  // 청산 횟수 추가
+  exit_order->AddExitCount();
 
   // 지갑 자금에서 청산 수수료 차감
   const auto exit_fee = exit_order->GetExitFee();
@@ -1362,18 +1370,20 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
     // 청산 대기 주문들의 잔여 마진과 강제 청산 가격 수정
     // 진입 주문으로 체결량을 로딩한 이유는, 원본 진입의 청산 체결량이
     // 총 청산 체결량이기 때문에 정확한 진입 잔량을 구할 수 있기 때문
-    const auto adjusted_margin = exit_order->GetLeftMargin() - exit_margin;
+    const auto adjusted_margin = left_margin - exit_margin;
     const auto adjusted_liquidation_price = CalculateLiquidationPrice(
         entry_direction, entry_filled_price,
         entry_filled_size - entry_order->GetExitFilledSize(), adjusted_margin);
 
     entry_order->SetLeftMargin(adjusted_margin);
     entry_order->SetLiquidationPrice(adjusted_liquidation_price);
+    entry_order->AddExitCount();
 
     for (const auto& pending_exit : pending_exits_[symbol_idx]) {
       if (pending_exit->GetEntryName() == entry_name) {
         pending_exit->SetLeftMargin(adjusted_margin);
         pending_exit->SetLiquidationPrice(adjusted_liquidation_price);
+        pending_exit->AddExitCount();
       }
     }
 
@@ -1382,7 +1392,7 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
     // 조정할 필요가 없음
   } catch ([[maybe_unused]] const EntryOrderNotFound& e) {
     // 전량 청산이라면 잔여 마진만큼 사용한 마진 감소
-    engine_->DecreaseUsedMargin(exit_order->GetLeftMargin());
+    engine_->DecreaseUsedMargin(left_margin);
   }
 
   // 실현 손익 계산
@@ -1390,58 +1400,69 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
       CalculatePnl(entry_direction, exit_filled_price, entry_filled_price,
                    exit_order->GetExitFilledSize());
   const double unsigned_realized_pnl = abs(realized_pnl);
+  double real_pnl = realized_pnl;
   bool is_bankruptcy_position = false;
 
   // 지갑 자금에 실현 손익 계산
   if (IsGreaterOrEqual(realized_pnl, 0)) {
     engine_->IncreaseWalletBalance(realized_pnl);
   } else {
-    // 실현 손실이 최초 진입 마진과 같거나 크다면 파산 포지션으로,
+    // 실현 손실이 청산 시 잔여 마진과 같거나 크다면 파산 포지션으로,
     // 추가 손실은 보험 기금으로 충당됨.
-    // 즉, 최대 손실은 진입 마진
-    if (IsGreaterOrEqual(unsigned_realized_pnl, entry_margin)) {
-      engine_->DecreaseWalletBalance(entry_margin);
+    // 즉, 최대 손실은 잔여 마진
+    if (IsGreaterOrEqual(unsigned_realized_pnl, left_margin)) {
+      real_pnl = -left_margin;
       is_bankruptcy_position = true;
     } else {
-      engine_->DecreaseWalletBalance(unsigned_realized_pnl);
+      real_pnl = -unsigned_realized_pnl;
     }
+
+    engine_->DecreaseWalletBalance(abs(real_pnl));
   }
 
   LogFormattedInfo(
       exit_order->GetLiquidationFee() == 0 ? INFO_L : ERROR_L,
-      format("{} [{}] 체결 ({} [{}] | 체결가 {} | 체결량 {} | 손익 {})",
+      format("{} [{}] 체결 ({} [{}] | 체결가 {} | 체결량 {} | 마진 {} | "
+             "손익 {} | 실손익 {})",
              order_type_str, exit_name,
              Order::OrderTypeToString(exit_order->GetEntryOrderType()),
-             entry_name, exit_filled_price, exit_order->GetExitFilledSize(),
-             FormatDollar(realized_pnl, true)),
+             entry_name, exit_filled_price,
+             RoundToTickSize(exit_order->GetExitFilledSize(),
+                             symbol_info_[symbol_idx].GetQtyStep()),
+             FormatDollar(left_margin, true), FormatDollar(realized_pnl, true),
+             FormatDollar(real_pnl, true)),
       __FILE__, __LINE__);
   engine_->LogBalance();
 
-  // 강제 청산이고 파산 포지션이 아니라면 강제 청산 수수료 부과
-  // 강제 청산 수수료는 진입 마진에서 실현 손실을 뺀 잔여 마진까지만 부과
+  // 강제 청산이고 파산 포지션이 아니라면 강제 청산 수수료 부과.
+  // 수수료는 청산 시 잔여 마진에서 실현 손실을 뺀 잔여 마진까지만 부과
   if (const auto liquidation_fee = exit_order->GetLiquidationFee();
-      liquidation_fee != 0 && !is_bankruptcy_position) {
-    double left_margin;
-    double real_liquidation_fee;
+      liquidation_fee != 0) {
+    if (!is_bankruptcy_position) {
+      double left_margin_after_exit;
+      double real_liquidation_fee;
 
-    if (left_margin = entry_margin - unsigned_realized_pnl;
-        IsGreaterOrEqual(liquidation_fee, left_margin)) {
-      real_liquidation_fee = left_margin;
+      if (left_margin_after_exit = left_margin - unsigned_realized_pnl;
+          IsGreaterOrEqual(liquidation_fee, left_margin_after_exit)) {
+        real_liquidation_fee = left_margin_after_exit;
+      } else {
+        real_liquidation_fee = liquidation_fee;
+      }
+
+      exit_order->SetLiquidationFee(real_liquidation_fee);
+      engine_->DecreaseWalletBalance(real_liquidation_fee);
+
+      logger_->Log(ERROR_L,
+                   format("강제 청산 수수료 차감 (강제 청산 수수료 {} | "
+                          "청산 후 잔여 마진 {} | 최종 차감 수수료 {})",
+                          FormatDollar(liquidation_fee, true),
+                          FormatDollar(left_margin_after_exit, true),
+                          FormatDollar(real_liquidation_fee, true)),
+                   __FILE__, __LINE__);
+      engine_->LogBalance();
     } else {
-      real_liquidation_fee = liquidation_fee;
+      exit_order->SetLiquidationFee(0);
     }
-
-    exit_order->SetLiquidationFee(real_liquidation_fee);
-    engine_->DecreaseWalletBalance(real_liquidation_fee);
-
-    logger_->Log(ERROR_L,
-                 format("시장가 [강제 청산] 수수료 차감 (강제 청산 수수료 {} | "
-                        "청산 후 잔여 마진 {} | 최종 차감 수수료 {})",
-                        FormatDollar(liquidation_fee, true),
-                        FormatDollar(left_margin, true),
-                        FormatDollar(real_liquidation_fee, true)),
-                 __FILE__, __LINE__);
-    engine_->LogBalance();
   }
 
   // 전역 항목들 업데이트
@@ -1451,7 +1472,7 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
   just_exited_ = true;
 
   // 분석기에 청산된 거래 추가
-  AddTrade(exit_order, realized_pnl);
+  AddTrade(exit_order, real_pnl);
 }
 
 void OrderHandler::CheckPendingLimitEntries(const int symbol_idx,
@@ -1469,12 +1490,9 @@ void OrderHandler::CheckPendingLimitEntries(const int symbol_idx,
                             price_type == OPEN ? price : order_price,
                             price_type);
     } catch ([[maybe_unused]] const OrderFailed& e) {
-      // 체결 실패 시 사용한 마진(예약 증거금) 감소
-      engine_->DecreaseUsedMargin(limit_entry->GetEntryMargin());
-
       LogFormattedInfo(
           WARNING_L,
-          format("지정가 [{}] 주문 취소", limit_entry->GetEntryName()),
+          format("지정가 [{}] 체결 실패", limit_entry->GetEntryName()),
           __FILE__, __LINE__);
       engine_->LogBalance();
     }
@@ -1496,7 +1514,7 @@ void OrderHandler::CheckPendingMitEntries(const int symbol_idx,
                              price_type);
     } catch ([[maybe_unused]] const OrderFailed& e) {
       LogFormattedInfo(WARNING_L,
-                       format("MIT [{}] 주문 취소", mit_entry->GetEntryName()),
+                       format("MIT [{}] 체결 실패", mit_entry->GetEntryName()),
                        __FILE__, __LINE__);
     }
   }
@@ -1537,22 +1555,10 @@ void OrderHandler::CheckPendingLitEntries(const int symbol_idx,
                               price_type == OPEN ? price : order_price,
                               price_type);
       } catch ([[maybe_unused]] const OrderFailed& e) {
-        const auto before_used_margin = engine_->GetUsedMargin();
-        const auto before_available_balance = engine_->GetAvailableBalance();
-
-        // 체결 실패 시 사용한 마진(예약 증거금) 감소
-        engine_->DecreaseUsedMargin(lit_entry->GetEntryMargin());
-
         LogFormattedInfo(
-            WARNING_L,
-            format("LIT [{}] 주문 취소 (사용한 마진 [{}] → [{}] "
-                   "| 사용 가능 자금 [{}] → [{}])",
-                   lit_entry->GetEntryName(),
-                   FormatDollar(before_used_margin, true),
-                   FormatDollar(engine_->GetUsedMargin(), true),
-                   FormatDollar(before_available_balance, true),
-                   FormatDollar(engine_->GetAvailableBalance(), true)),
+            WARNING_L, format("LIT [{}] 체결 실패", lit_entry->GetEntryName()),
             __FILE__, __LINE__);
+        engine_->LogBalance();
       }
     }
   }
@@ -1616,7 +1622,7 @@ void OrderHandler::CheckPendingTrailingEntries(const int symbol_idx,
   } catch ([[maybe_unused]] const OrderFailed& e) {
     LogFormattedInfo(
         WARNING_L,
-        format("트레일링 [{}] 주문 취소", trailing_entry->GetEntryName()),
+        format("트레일링 [{}] 체결 실패", trailing_entry->GetEntryName()),
         __FILE__, __LINE__);
   }
 }
@@ -1678,6 +1684,9 @@ void OrderHandler::FillPendingLimitEntry(const int symbol_idx,
   try {
     IsValidEntryName(entry_name);
   } catch (const InvalidValue& e) {
+    // 유효성 검증 실패 시 사용한 마진(예약 증거금) 감소
+    engine_->DecreaseUsedMargin(limit_entry->GetEntryMargin());
+
     LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
     throw OrderFailed("지정가 대기 주문 체결 실패");
   }
@@ -1808,9 +1817,11 @@ int OrderHandler::CheckPendingLimitExits(const int symbol_idx,
       return FillPendingExitOrder(symbol_idx, order_idx,
                                   price_type == OPEN ? price : order_price);
     } catch ([[maybe_unused]] const OrderFailed& e) {
+      // 청산 주문은 파산이 아닌 이상 체결되므로 엔진 오류
       LogFormattedInfo(
-          WARNING_L, format("지정가 [{}] 주문 취소", limit_exit->GetExitName()),
+          ERROR_L, format("지정가 [{}] 체결 실패", limit_exit->GetExitName()),
           __FILE__, __LINE__);
+      throw;
     }
   }
 
@@ -1829,9 +1840,11 @@ int OrderHandler::CheckPendingMitExits(const int symbol_idx,
       return FillPendingExitOrder(symbol_idx, order_idx,
                                   price_type == OPEN ? price : touch_price);
     } catch ([[maybe_unused]] const OrderFailed& e) {
-      LogFormattedInfo(WARNING_L,
-                       format("MIT [{}] 주문 취소", mit_exit->GetExitName()),
+      // 청산 주문은 파산이 아닌 이상 체결되므로 엔진 오류
+      LogFormattedInfo(ERROR_L,
+                       format("MIT [{}] 체결 실패", mit_exit->GetExitName()),
                        __FILE__, __LINE__);
+      throw;
     }
   }
 
@@ -1870,9 +1883,11 @@ int OrderHandler::CheckPendingLitExits(const int symbol_idx,
         return FillPendingExitOrder(symbol_idx, order_idx,
                                     price_type == OPEN ? price : order_price);
       } catch ([[maybe_unused]] const OrderFailed& e) {
-        LogFormattedInfo(WARNING_L,
-                         format("LIT [{}] 주문 취소", lit_exit->GetExitName()),
+        // 청산 주문은 파산이 아닌 이상 체결되므로 엔진 오류
+        LogFormattedInfo(ERROR_L,
+                         format("LIT [{}] 체결 실패", lit_exit->GetExitName()),
                          __FILE__, __LINE__);
+        throw;
       }
     }
   }
@@ -1934,10 +1949,12 @@ int OrderHandler::CheckPendingTrailingExits(const int symbol_idx,
       }
     }
   } catch ([[maybe_unused]] const OrderFailed& e) {
+    // 청산 주문은 파산이 아닌 이상 체결되므로 엔진 오류
     LogFormattedInfo(
         WARNING_L,
-        format("트레일링 [{}] 주문 취소", trailing_exit->GetExitName()),
+        format("트레일링 [{}] 체결 실패", trailing_exit->GetExitName()),
         __FILE__, __LINE__);
+    throw;
   }
 
   return 0;
@@ -2083,11 +2100,22 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
   // 중복 사용 변수 로딩
   const int64_t entry_time = exit_order->GetEntryFilledTime();
   const int64_t exit_time = exit_order->GetExitFilledTime();
+  const auto leverage = exit_order->GetLeverage();
+  const auto entry_price = exit_order->GetEntryFilledPrice();
+  const auto exit_size = exit_order->GetExitFilledSize();
   const auto entry_fee = exit_order->GetEntryFee();
   const auto exit_fee = exit_order->GetExitFee();
   const auto liquidation_fee = exit_order->GetLiquidationFee();
-  const auto realized_pnl_net =  // 수수료를 제외한 순손익
-      realized_pnl - entry_fee - exit_fee - liquidation_fee;
+
+  double realized_pnl_net;  // 수수료를 제외한 순손익
+  const auto exit_count = exit_order->GetExitCount();
+  if (exit_count == 1) {
+    // 한 번에 전량 청산한 진입 객체거나 첫 분할 청산에만 진입 수수료 포함
+    realized_pnl_net = realized_pnl - entry_fee - exit_fee - liquidation_fee;
+  } else {
+    realized_pnl_net = realized_pnl - exit_fee - liquidation_fee;
+  }
+
   const auto current_wallet_balance = engine_->GetWalletBalance();
   const auto initial_balance = config_->GetInitialBalance();
   const auto cum_pnl = current_wallet_balance - initial_balance;
@@ -2105,11 +2133,11 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
           .SetEntryTime(UtcTimestampToUtcDatetime(entry_time))
           .SetExitTime(UtcTimestampToUtcDatetime(exit_time))
           .SetHoldingTime(FormatTimeDiff(exit_time - entry_time))
-          .SetLeverage(exit_order->GetLeverage())
-          .SetEntryPrice(exit_order->GetEntryFilledPrice())
+          .SetLeverage(leverage)
+          .SetEntryPrice(entry_price)
           .SetEntrySize(exit_order->GetEntryFilledSize())
           .SetExitPrice(exit_order->GetExitFilledPrice())
-          .SetExitSize(exit_order->GetExitFilledSize())
+          .SetExitSize(exit_size)
           .SetLiquidationPrice(exit_order->GetLiquidationPrice())
           .SetEntryFee(entry_fee)
           .SetExitFee(exit_fee)
@@ -2118,15 +2146,16 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
           .SetPnlNet(realized_pnl_net)
           .SetIndividualPnlPer(realized_pnl_net / exit_order->GetEntryMargin() *
                                100)
-          .SetTotalPnlPer(realized_pnl_net /
-                          analyzer_->GetLastTradeWalletBalance() * 100)
+          .SetTotalPnlPer(realized_pnl_net / exit_order->GetWnWhenEntryOrder() *
+                          100)
           .SetWalletBalance(current_wallet_balance)
           .SetMaxWalletBalance(engine_->GetMaxWalletBalance())
           .SetDrawdown(engine_->GetDrawdown())
           .SetMaxDrawdown(engine_->GetMaxDrawdown())
           .SetCumPnl(cum_pnl)
           .SetCumPnlPer(cum_pnl / initial_balance * 100)
-          .SetSymbolCount(symbol_count));
+          .SetSymbolCount(symbol_count),
+      exit_count);
 }
 
 }  // namespace backtesting::order
