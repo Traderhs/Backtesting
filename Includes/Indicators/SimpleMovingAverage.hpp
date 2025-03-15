@@ -6,6 +6,8 @@
 class SimpleMovingAverage final : public Indicator {
  public:
   explicit SimpleMovingAverage(const string& name, const string& timeframe,
+                               bool overlay, PlotStyle plot_style,
+                               const Color& color, unsigned char line_width,
                                Indicator& source, double period);
 
  private:

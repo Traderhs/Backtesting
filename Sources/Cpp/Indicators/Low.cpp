@@ -6,11 +6,13 @@
 #include "Engines/BarHandler.hpp"
 #include "Engines/BaseBarHandler.hpp"
 
-Low::Low(const string& name, const string& timeframe)
-    : Indicator(name, timeframe) {}
+Low::Low(const string& name, const string& timeframe, const bool overlay,
+         const PlotStyle plot_style, const Color& color,
+         const unsigned char line_width)
+    : Indicator(name, timeframe, overlay, plot_style, color, line_width) {}
 
 void Low::Initialize() {
-  reference_bar_ = bar_->GetBarData(BarType::REFERENCE, this->GetTimeframe());
+  reference_bar_ = bar_->GetBarData(REFERENCE, this->GetTimeframe());
 }
 
 Numeric<double> Low::Calculate() {
