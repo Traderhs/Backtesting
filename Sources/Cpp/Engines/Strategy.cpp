@@ -14,11 +14,17 @@ namespace backtesting::strategy {
 Strategy::Strategy(const string& name, const string& file_path)
     : name_(name),
       order(OrderHandler::GetOrderHandler(name)),
-      open(AddIndicator<Open>("Open", trading_timeframe)),
-      high(AddIndicator<High>("High", trading_timeframe)),
-      low(AddIndicator<Low>("Low", trading_timeframe)),
-      close(AddIndicator<Close>("Close", trading_timeframe)),
-      volume(AddIndicator<Volume>("Volume", trading_timeframe)) {
+      // OHLC는 플롯 설정과 관련없이 하나의 캔들로 플롯됨
+      open(AddIndicator<Open>("Open", trading_timeframe, true, BAR,
+                              Color::green, 1)),
+      high(AddIndicator<High>("High", trading_timeframe, true, BAR,
+                              Color::green, 1)),
+      low(AddIndicator<Low>("Low", trading_timeframe, true, BAR, Color::green,
+                            1)),
+      close(AddIndicator<Close>("Close", trading_timeframe, true, BAR,
+                                Color::green, 1)),
+      volume(AddIndicator<Volume>("Volume", trading_timeframe, true, HISTOGRAM,
+                                  Color::green, 2)) {
   // 증가 카운터는 AddStrategy 함수로만 증가하는데 AddStrategy 없이 직접 생성자
   // 호출로 전 증가 카운터가 현재 증가 카운터와 같다면 오류 발생
   if (pre_creation_counter_ == creation_counter_) {

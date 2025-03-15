@@ -24,13 +24,12 @@ class Strategy {
  public:
   // Factory 메서드 추가
   // 전략을 팩토리로 우회하여 생성하고 strategy_에 추가하고 반환하는 함수
-  template <typename CustomStrategy, typename... Args>
-  static void AddStrategy(const string& name, Args&&... args) {
+  template <typename CustomStrategy>
+  static void AddStrategy(const string& name) {
     // AddStrategy 함수를 통할 때만 생성 카운터 증가
     creation_counter_++;
 
-    strategies_.push_back(
-        std::make_shared<CustomStrategy>(name, std::forward<Args>(args)...));
+    strategies_.push_back(std::make_shared<CustomStrategy>(name));
 
     logger->Log(INFO_L, format("[{}] 전략이 엔진에 추가되었습니다.", name),
                 __FILE__, __LINE__);
@@ -83,14 +82,26 @@ class Strategy {
   virtual ~Strategy();
 
   /// 전략에 지표를 추가하는 함수
+  ///
+  /// @param name 커스텀 전략에 추가할 지표의 이름
+  /// @param timeframe 커스텀 전략에 추가할 지표의 타임프레임
+  /// @param overlay 플롯 시 차트 위에 덮어씌울지 여부 (true: 메인 차트에 표시,
+  ///                                        false: 별도 패널)
+  /// @param plot_style 플롯 스타일 (PlotStyle 열거형 사용)
+  /// @param color 지표의 색상 (Color 구조체 사용)
+  /// @param line_width 지표의 굵기 (1 ~ 5 범위)
+  /// @param args 해당 지표의 추가적인 매개변수
   template <typename CustomIndicator, typename... Args>
   CustomIndicator& AddIndicator(const string& name, const string& timeframe,
+                                bool overlay, PlotStyle plot_style,
+                                const Color& color, unsigned char line_width,
                                 Args&&... args) {
     // AddIndicator 함수를 통할 때만 생성 카운터 증가
     Indicator::IncreaseCreationCounter();
 
     const auto& indicator = std::make_shared<CustomIndicator>(
-        name, timeframe, std::forward<Args>(args)...);
+        name, timeframe, overlay, plot_style, color, line_width,
+        std::forward<Args>(args)...);
     indicators_.push_back(indicator);
 
     return *indicator;

@@ -21,8 +21,10 @@ using namespace backtesting::utils;
 
 namespace backtesting::indicator {
 
-Indicator::Indicator(const string& name, const string& timeframe)
-    : is_calculated_(false) {
+Indicator::Indicator(const string& name, const string& timeframe,
+                     const bool overlay, const PlotStyle plot_style,
+                     const Color& color, const int line_width)
+    : is_calculated_(false), color_(color) {
   try {
     if (name.empty()) {
       Logger::LogAndThrowError("지표 이름이 비어있습니다.", __FILE__, __LINE__);
@@ -34,8 +36,19 @@ Indicator::Indicator(const string& name, const string& timeframe)
           __LINE__);
     }
 
+    if (line_width < 1 || line_width > 4) {
+      Logger::LogAndThrowError(
+          format(
+              "지정된 지표의 굵기 [{}]은(는) [1 - 5] 사이로 지정해야 합니다.",
+              line_width),
+          __FILE__, __LINE__);
+    }
+
     name_ = name;
     timeframe_ = timeframe;
+    overlay_ = overlay;
+    plot_style_ = plot_style;
+    line_width_ = line_width;
   } catch ([[maybe_unused]] const exception& e) {
     Logger::LogAndThrowError("지표를 생성하는 중 오류가 발생했습니다.",
                              __FILE__, __LINE__);
@@ -154,8 +167,8 @@ void Indicator::CalculateIndicator(const string& strategy_name) {
     is_calculated_ = true;
     is_calculating_ = false;
     logger_->Log(INFO_L,
-                 format("[{}] 전략의 [{} {}] 지표 계산이 완료되었습니다.",
-                        strategy_name, name_, timeframe_),
+                 format("[{}] | [{} {}] 지표 계산 완료", strategy_name, name_,
+                        timeframe_),
                  __FILE__, __LINE__);
   } catch (const exception& e) {
     logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);

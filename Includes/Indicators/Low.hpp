@@ -6,7 +6,9 @@
 /// 전략 작성 편의성용 트레이딩 바의 저가 데이터 지표화
 class Low final : public Indicator {
  public:
-  explicit Low(const string& name, const string& timeframe);
+  explicit Low(const string& name, const string& timeframe, bool overlay,
+               PlotStyle plot_style, const Color& color,
+               unsigned char line_width);
 
  private:
   shared_ptr<BarData> reference_bar_;

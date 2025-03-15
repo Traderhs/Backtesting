@@ -6,7 +6,9 @@
 /// 전략 작성 편의성용 거래량 데이터 지표화
 class Volume final : public Indicator {
  public:
-  explicit Volume(const string& name, const string& timeframe);
+  explicit Volume(const string& name, const string& timeframe, bool overlay,
+                  PlotStyle plot_style, const Color& color,
+                  unsigned char line_width);
 
  private:
   shared_ptr<BarData> reference_bar_;
