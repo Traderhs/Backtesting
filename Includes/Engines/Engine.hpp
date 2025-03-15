@@ -72,9 +72,6 @@ class Engine final : public BaseEngine {
   void Backtesting(const string& start_time = "", const string& end_time = "",
                    const string& format = "%Y-%m-%d %H:%M:%S");
 
-  /// 사용 가능 자금을 업데이트하고 반환하는 함수
-  double UpdateAvailableBalance();
-
   /// 현재 사용 중인 전략의 실행 타입을 설정하는 함수
   void SetCurrentStrategyType(StrategyType strategy_type);
 
@@ -115,6 +112,8 @@ class Engine final : public BaseEngine {
   string trading_bar_timeframe_;     // 트레이딩 바 타임프레임
   int64_t trading_bar_time_diff_;    // 트레이딩 바 사이의 타임스탬프 차이
   int64_t magnifier_bar_time_diff_;  // 돋보기 바 사이의 타임스탬프 차이
+  unordered_map<string, int64_t>
+      reference_bar_time_diff_;  // 참조 바 사이의 타임스탬프 차이
 
   // ===========================================================================
   vector<SymbolInfo> symbol_info_;  // 심볼 정보
@@ -186,7 +185,7 @@ class Engine final : public BaseEngine {
   void UpdateTradingStatus();
 
   /// 트레이딩이 끝난 심볼의 상태 변화와 체결 진입 청산을 하는 함수
-  void ExecuteTradingEnd(int symbol_idx);
+  void ExecuteTradingEnd(int symbol_idx, const string& bar_type_str);
 
   /// UpdateTradingStatus 함수에서 활성화된 심볼 인덱스에 추가할 때,
   /// 참조 바가 사용 가능한지 확인하고, 사용 가능하면 조건에 따라 트레이딩

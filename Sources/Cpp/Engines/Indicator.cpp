@@ -178,57 +178,47 @@ void Indicator::CalculateIndicator(const string& strategy_name) {
   }
 }
 
-void Indicator::SaveIndicator(const string& file_path) const {
+void Indicator::SaveIndicator(const string& indicators_strategy_path) const {
+  // 계산 여부를 미리 체크하여 반복 검사 줄이기
+  if (!is_calculated_) {
+    throw runtime_error("지표 계산 전 저장할 수 없습니다.");
+  }
+
   const auto& bar_data = bar_->GetBarData(REFERENCE, timeframe_);
 
-  try {
-    if (!is_calculated_) {
-      throw runtime_error("지표 계산 전 저장할 수 없습니다.");
-    }
+  // 심볼마다 개별 파일에 직접 기록
+  for (size_t symbol_idx = 0; symbol_idx < output_.size(); ++symbol_idx) {
+    const auto& symbol_name = bar_data->GetSymbolName(symbol_idx);
+    const auto& output = output_[symbol_idx];
 
-    ostringstream oss;
-    oss << fixed << setprecision(10);
+    // 파일 경로 구성 (경로 구성 과정에서 불필요한 문자열 연결 연산 줄임)
+    const string file_path = indicators_strategy_path + "/" + symbol_name +
+                             "/" + name_ + " " + timeframe_ + ".csv";
 
-    size_t max_num_bars = 0;
-    // 헤더 작성: 심볼 이름 기록 및 최대 바 인덱스 계산
-    for (int symbol_idx = 0; symbol_idx < output_.size(); ++symbol_idx) {
-      oss << bar_data->GetSymbolName(symbol_idx);
-      if (symbol_idx != output_.size() - 1) {
-        oss << ',';
-      }
-      if (const size_t num_bars = bar_data->GetNumBars(symbol_idx);
-          num_bars > max_num_bars) {
-        max_num_bars = num_bars;
-      }
-    }
-    oss << '\n';
-
-    // 각 바 인덱스별 데이터를 CSV 형식으로 버퍼에 작성
-    for (size_t bar_idx = 0; bar_idx < max_num_bars; ++bar_idx) {
-      for (size_t symbol_idx = 0; symbol_idx < output_.size(); ++symbol_idx) {
-        if (bar_idx < output_[symbol_idx].size()) {
-          oss << output_[symbol_idx][bar_idx];
-        }
-        if (symbol_idx != output_.size() - 1) {
-          oss << ',';
-        }
-      }
-      oss << '\n';
-    }
-
-    // 파일 출력 스트림을 열고, 버퍼링된 문자열을 한 번에 기록
     ofstream file(file_path, ios::trunc);
     if (!file.is_open()) {
-      throw runtime_error(file_path + " 파일을 열지 못했습니다.");
+      const string error_msg = file_path + " 파일을 열지 못했습니다.";
+      logger_->Log(ERROR_L, error_msg.c_str(), __FILE__, __LINE__);
+      Logger::LogAndThrowError(
+          format("[{}] [{} {}] 지표를 저장하는 중 오류가 발생했습니다.",
+                 symbol_name, name_, timeframe_),
+          __FILE__, __LINE__);
     }
-    file << oss.str();
+
+    // 헤더 작성 (직접 파일 스트림에 기록)
+    file << "Open Time," << name_ << "\n";
+
+    // 고정 소수점 및 소수점 10자리 포맷 지정 (숫자 출력 형식 설정은 한 번만)
+    file << fixed << setprecision(10);
+    for (size_t bar_idx = 0; bar_idx < output.size(); ++bar_idx) {
+      // 각 행을 직접 스트림에 기록 (문자열 연결 대신 연속 << 사용)
+      file << UtcTimestampToUtcDatetime(
+                  bar_data->GetBar(symbol_idx, bar_idx).open_time)
+           << "," << output[bar_idx] << "\n";
+    }
+    // ofstream은 소멸 시 자동 close되지만, 명시적으로 close를 호출해도
+    // 좋습니다.
     file.close();
-  } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
-    Logger::LogAndThrowError(
-        format("[{} {}] 지표를 {} 경로에 저장하는 중 에러가 발생했습니다.",
-               name_, timeframe_, file_path),
-        __FILE__, __LINE__);
   }
 }
 

@@ -80,15 +80,7 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
   }
 
   LogSeparator();
-  logger_->Log(INFO_L, "백테스팅이 완료되었습니다.", __FILE__, __LINE__);
-
-  const auto& end = chrono::high_resolution_clock::now();
-  logger_->Log(
-      INFO_L,
-      "소요 시간: " +
-          FormatTimeDiff(
-              duration_cast<chrono::milliseconds>(end - start).count()),
-      __FILE__, __LINE__);
+  logger_->Log(INFO_L, "백테스팅 결과 저장을 시작합니다.", __FILE__, __LINE__);
 
   // 폴더 생성
   const string& main_directory = CreateDirectories();
@@ -101,25 +93,52 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
 
   // 전략 코드 저장
   for (const auto& strategy : strategies_) {
-    filesystem::copy(
-        strategy->GetSourcePath(),
-        main_directory + "/Sources/" + strategy->GetName() + ".cpp");
+    const auto& strategy_name = strategy->GetName();
+
+    filesystem::copy(strategy->GetSourcePath(),
+                     main_directory + "/Sources/" + strategy_name + ".cpp");
+
+    logger_->Log(
+        INFO_L,
+        std::format("[{}] 전략의 소스 코드가 저장되었습니다.", strategy_name),
+        __FILE__, __LINE__);
   }
 
   // 지표 저장
   for (int strategy_idx = 0; strategy_idx < strategies_.size();
        strategy_idx++) {
+    const auto& strategy_name = strategies_[strategy_idx]->GetName();
+
     for (const auto& indicator : indicators_[strategy_idx]) {
+      const auto& indicator_name = indicator->GetName();
+      const auto& indicator_timeframe = indicator->GetTimeframe();
+
       indicator->SaveIndicator(
-          std::format("{}/Indicators/{}/{} {}.csv", main_directory,
-                      strategies_[strategy_idx]->GetName(),
-                      indicator->GetName(), indicator->GetTimeframe()));
+          std::format("{}/Indicators/{}", main_directory, strategy_name));
+
+      logger_->Log(
+          INFO_L,
+          std::format("[{}] 전략의 [{} {}] 지표가 저장되었습니다.",
+                      strategy_name, indicator_name, indicator_timeframe),
+          __FILE__, __LINE__);
     }
   }
 
   // 매매 목록 저장
-  analyzer_->SaveTradingList(main_directory +
-                             "/Trading Lists/trading list.csv");
+  analyzer_->SaveTradeList(main_directory + "/Trade Lists/trade list.csv");
+
+  logger_->Log(INFO_L, "매매 목록이 저장되었습니다.", __FILE__, __LINE__);
+
+  LogSeparator();
+  logger_->Log(INFO_L, "백테스팅이 완료되었습니다.", __FILE__, __LINE__);
+
+  const auto& end = chrono::high_resolution_clock::now();
+  logger_->Log(
+      INFO_L,
+      "소요 시간: " +
+          FormatTimeDiff(
+              duration_cast<chrono::milliseconds>(end - start).count()),
+      __FILE__, __LINE__);
 }
 
 void Engine::SetCurrentStrategyType(const StrategyType strategy_type) {
@@ -742,7 +761,7 @@ void Engine::IsValidIndicators() {
               format("[{}] 전략에서 사용하는 [{}] 지표의 타임프레임 "
                      "[{}]이(가) 유효하지 않습니다.",
                      strategies_[strategy_idx]->GetName(), indicator->GetName(),
-                     indicator->GetTimeframe()),
+                     timeframe),
               __FILE__, __LINE__);
         }
       }
@@ -777,10 +796,14 @@ void Engine::InitializeEngine() {
   // 바 데이터 정보 초기화
   trading_bar_num_symbols_ = trading_bar_data_->GetNumSymbols();
   trading_bar_timeframe_ = trading_bar_data_->GetTimeframe();
+
   trading_bar_time_diff_ = ParseTimeframe(trading_bar_data_->GetTimeframe());
   if (use_bar_magnifier_) {
     magnifier_bar_time_diff_ =
         ParseTimeframe(magnifier_bar_data_->GetTimeframe());
+  }
+  for (const auto& timeframe : reference_bar_data_ | views::keys) {
+    reference_bar_time_diff_[timeframe] = ParseTimeframe(timeframe);
   }
 
   // 심볼 정보 크기 초기화
@@ -816,11 +839,11 @@ void Engine::InitializeEngine() {
   }
 
   // 활성화된 심볼들 초기화
-  activated_symbol_indices_.resize(trading_bar_num_symbols_);
+  activated_symbol_indices_.resize(trading_bar_num_symbols_, -1);
   if (use_bar_magnifier_) {
-    activated_magnifier_symbol_indices_.resize(trading_bar_num_symbols_);
+    activated_magnifier_symbol_indices_.resize(trading_bar_num_symbols_, -1);
   }
-  activated_trading_symbol_indices_.resize(trading_bar_num_symbols_);
+  activated_trading_symbol_indices_.resize(trading_bar_num_symbols_, -1);
 
   // 분석기 초기화
   analyzer_->Initialize(initial_balance);
@@ -1073,7 +1096,7 @@ void Engine::BacktestingMain() {
     // =======================================================================
     // 활성화된 심볼들의 트레이딩 바에서 전략 실행
     // 순서: 한 심볼 내에서 모든 전략 실행 후 다음 심볼로 이동
-    // ProcessOhlc 함수 내에서의 순서와 일치
+    //       ProcessOhlc 함수 내에서의 순서와 일치
     for (const auto symbol_idx : activated_symbol_indices_) {
       for (const auto& strategy : strategies_) {
         const auto& order_handler = strategy->GetOrderHandler();
@@ -1147,7 +1170,7 @@ void Engine::UpdateTradingStatus() {
         trading_bar_data_->IsValidIndex(symbol_idx, bar_idx);
       } catch ([[maybe_unused]] const IndexOutOfRange& e) {
         // 해당 심볼의 데이터의 끝까지 진행했다면 해당 심볼은 트레이딩 종료
-        ExecuteTradingEnd(symbol_idx);
+        ExecuteTradingEnd(symbol_idx, "트레이딩");
         continue;
       }
 
@@ -1172,7 +1195,8 @@ void Engine::UpdateTradingStatus() {
   }
 }
 
-void Engine::ExecuteTradingEnd(const int symbol_idx) {
+void Engine::ExecuteTradingEnd(const int symbol_idx,
+                               const string& bar_type_str) {
   trading_ended_[symbol_idx] = true;
 
   // 진입 및 청산 대기 주문을 취소하고 체결된 진입 주문 잔량을 종가에 청산
@@ -1192,11 +1216,12 @@ void Engine::ExecuteTradingEnd(const int symbol_idx) {
     order_handler->InitializeJustExited();
   }
 
-  logger_->Log(INFO_L,
-               format("[{}] 심볼의 트레이딩 바 데이터가 끝나 해당 심볼의 "
-                      "백테스팅을 종료합니다.",
-                      trading_bar_data_->GetSymbolName(symbol_idx)),
-               __FILE__, __LINE__);
+  logger_->Log(
+      INFO_L,
+      format("[{}] 심볼의 {} 바 데이터가 끝나 해당 심볼의 "
+             "백테스팅을 종료합니다.",
+             trading_bar_data_->GetSymbolName(symbol_idx), bar_type_str),
+      __FILE__, __LINE__);
 }
 
 void Engine::DetermineActivation(const int symbol_idx) {
@@ -1208,32 +1233,56 @@ void Engine::DetermineActivation(const int symbol_idx) {
      1. 트레이딩 바의 타임프레임과 참조 바의 타임프레임이 같으면 바 인덱스를
         무조건 일치
      2. 참조 바의 타임프레임이 더 크다면 트레이딩 바의 Close Time이
-        참조 바의 Close Time을 지난 다음 바부터
-        해당 참조 바 인덱스를 참조 가능
+        참조 바의 Close Time을 지난 다음 바부터 해당 참조 바 인덱스를 참조 가능
      2.1. 트레이딩 전 바 Close Time보다 참조 바의 Close Time이 작으면
-          트레이딩 전 바 Close Time까지 최대한 증가 후 사용 가능.
-     2.2. 트레이딩 전 바 Close Time과 참조 바의 Close Time이 같으면
-          사용 가능
-     2.3. 트레이딩 전 바 Close Time보다 참조 바의 Close Time이 같거나 크면
-          아직 사용 불가능하므로 트레이딩 불가                         */
-  for (const auto& [timeframe, reference_bar] : reference_bar_data_) {
+          트레이딩 전 바 Close Time까지 최대한 증가 후 조건에 따라 사용 가능
+     2.2. 트레이딩 전 바 Close Time과 참조 바의 Close Time이
+          같으면 조건에 따라 사용 가능
+     2.3. 트레이딩 전 바 Close Time보다 참조 바의 Close Time이
+          같거나 크면 아직 사용 불가능하므로 트레이딩 불가
+
+     Note. 트레이딩 전 바의 Close Time으로 일치시키기 때문에 트레이딩 첫 바부터
+           사용하기 위해서는 돋보기 바 데이터의 첫 데이터가 트레이딩 전 바의
+           Close Time부터 존재해야 함 */
+  for (const auto& [timeframe, bar_data] : reference_bar_data_) {
     bar_->SetCurrentBarType(REFERENCE, timeframe);
 
     if (timeframe == trading_bar_timeframe_) {
       bar_->ProcessBarIndex(REFERENCE, timeframe, symbol_idx,
                             current_close_time_);
     } else {
-      if (reference_bar->GetBar(symbol_idx, bar_->GetCurrentBarIndex())
-              .close_time <= prev_close_time) {
-        bar_->ProcessBarIndex(REFERENCE, timeframe, symbol_idx,
-                              prev_close_time);
-      } else {
-        // 트레이딩 전 바 Close Time보다 참조 바의 Close Time이 크면
-        // 참조 불가능하므로 트레이딩 불가
-        //
-        // 하지만 트레이딩 바는 인덱스를 맞추어 흘러가야
-        // Open Time, Close Time이 동기화 되므로 인덱스 증가
-        // * 원래 트레이딩 바 인덱스는 활성화된 심볼에서만 증가함
+      bar_->ProcessBarIndex(REFERENCE, timeframe, symbol_idx, prev_close_time);
+      const auto moved_bar_idx = bar_->GetCurrentBarIndex();
+      const auto moved_close_time =
+          bar_data->GetBar(symbol_idx, moved_bar_idx).close_time;
+
+      bool can_use_reference = true;
+
+      // 데이터가 아직 시작되지 않았으면 트레이딩 불가
+      if (moved_close_time > prev_close_time) {
+        can_use_reference = false;
+      }
+
+      // 참조 바 데이터는 바 데이터의 Close Time에서 타임프레임을 더한
+      // 시간까지 사용 가능
+      // 즉, 데이터가 누락됐거나 마지막 바를 지났으면 트레이딩 불가
+      if (can_use_reference &&
+          current_close_time_ >
+              moved_close_time + reference_bar_time_diff_[timeframe]) {
+        can_use_reference = false;
+
+        // 마지막 참조 바였다면 해당 심볼의 트레이딩 종료
+        if (moved_bar_idx == bar_data->GetNumBars(symbol_idx) - 1) {
+          ExecuteTradingEnd(symbol_idx, "참조");
+          return;
+        }
+      }
+
+      if (!can_use_reference) {
+        /* 참조 바 데이터가 사용 불가능하면 트레이딩은 불가능하지만,
+           트레이딩 바 인덱스는 맞추어 흘러가야 Open Time, Close Time이 동기화
+           되므로 인덱스 증가
+           ※ 원래 트레이딩 바 인덱스는 활성화된 심볼에서만 증가함 */
         bar_->IncreaseBarIndex(TRADING, "NONE", symbol_idx);
         return;
       }
@@ -1242,8 +1291,7 @@ void Engine::DetermineActivation(const int symbol_idx) {
 
   if (use_bar_magnifier_) {
     bar_->SetCurrentBarType(MAGNIFIER, "NONE");
-
-    int64_t magnifier_close_time =
+    auto magnifier_close_time =
         magnifier_bar_data_->GetBar(symbol_idx, bar_->GetCurrentBarIndex())
             .close_time;
 
@@ -1253,13 +1301,15 @@ void Engine::DetermineActivation(const int symbol_idx) {
        2. 트레이딩 전 바 Close Time과 돋보기 바의 Close Time이 같으면
           사용 가능
        3. 트레이딩 전 바 Close Time보다 돋보기 바의 Close Time이 크면
-          아직 사용 불가능하므로 트레이딩 바를 사용하여 진행             */
+          아직 사용 불가능하므로 트레이딩 바를 사용하여 진행 */
     if (magnifier_close_time <= prev_close_time) {
       bool can_use_magnifier = true;
 
       if (magnifier_close_time < prev_close_time) {
-        if (!bar_->ProcessBarIndex(MAGNIFIER, "NONE", symbol_idx,
-                                   prev_close_time)) {
+        bar_->ProcessBarIndex(MAGNIFIER, "NONE", symbol_idx, prev_close_time);
+
+        if (magnifier_bar_data_->GetBar(symbol_idx, bar_->GetCurrentBarIndex())
+                .close_time != prev_close_time) {
           // 돋보기 바의 최대 인덱스에 도달하여 트레이딩 전 바 Close
           // Time까지 이동시키지 못하면 돋보기 사용 불가
           can_use_magnifier = false;
@@ -1281,8 +1331,8 @@ void Engine::DetermineActivation(const int symbol_idx) {
                     .close_time;
           } while (magnifier_close_time < current_close_time_);
         } catch ([[maybe_unused]] const IndexOutOfRange& e) {
-          // 돋보기 바 데이터가 현재 트레이딩 바의 Close Time까지 유효하지
-          // 않으면 돋보기 사용 불가
+          // 돋보기 바 데이터가 데이터 누락으로 현재 트레이딩 바의
+          // Close Time까지 유효하지 않으면 돋보기 사용 불가
           can_use_magnifier = false;
         }
       }
