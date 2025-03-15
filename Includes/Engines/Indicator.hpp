@@ -59,12 +59,15 @@ class Indicator {
   /// 지표의 계산된 값을 반환하는 연산자 오버로딩.
   /// 사용법: 지표 클래스 객체[n개 바 전 인덱스]
   [[nodiscard]] Numeric<double> operator[](size_t index);
- 
+
   /// 모든 심볼의 모든 바에 해당되는 지표 값을 계산하는 함수
   void CalculateIndicator(const string& strategy_name);
 
-  /// 계산된 지표값을 지정된 경로에 csv 파일로 저장하는 함수
-  void SaveIndicator(const string& file_path) const;
+  /// 계산된 지표값을 지정된 경로의 심볼 폴더에 csv 파일로 저장하는 함수
+  ///
+  /// 전략별로 저장된 지표가 다르고, 심볼별로 지표의 Open Time 누락 정도가
+  /// 다르며, 지표별로 타임프레임이 다르므로 모두 따로 나누어저장
+  void SaveIndicator(const string& indicators_strategy_path) const;
 
   /// 지표의 타임프레임을 설정하는 함수
   void SetTimeframe(const string& timeframe);
