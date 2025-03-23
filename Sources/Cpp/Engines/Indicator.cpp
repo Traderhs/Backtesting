@@ -1,8 +1,7 @@
 // 표준 라이브러리
 #include <cmath>
 #include <format>
-#include <iomanip>
-#include <sstream>
+#include <regex>
 
 // 파일 헤더
 #include "Engines/Indicator.hpp"
@@ -22,9 +21,8 @@ using namespace backtesting::utils;
 namespace backtesting::indicator {
 
 Indicator::Indicator(const string& name, const string& timeframe,
-                     const bool overlay, const PlotStyle plot_style,
-                     const Color& color, const int line_width)
-    : is_calculated_(false), color_(color) {
+                     const Plot& plot)
+    : is_calculated_(false) {
   try {
     if (name.empty()) {
       Logger::LogAndThrowError("지표 이름이 비어있습니다.", __FILE__, __LINE__);
@@ -35,22 +33,8 @@ Indicator::Indicator(const string& name, const string& timeframe,
           format("[{}] 지표의 타임프레임이 비어있습니다.", name), __FILE__,
           __LINE__);
     }
-
-    if (line_width < 1 || line_width > 4) {
-      Logger::LogAndThrowError(
-          format(
-              "지정된 지표의 굵기 [{}]은(는) [1 - 5] 사이로 지정해야 합니다.",
-              line_width),
-          __FILE__, __LINE__);
-    }
-
-    name_ = name;
-    timeframe_ = timeframe;
-    overlay_ = overlay;
-    plot_style_ = plot_style;
-    line_width_ = line_width;
   } catch ([[maybe_unused]] const exception& e) {
-    Logger::LogAndThrowError("지표를 생성하는 중 오류가 발생했습니다.",
+    Logger::LogAndThrowError("지표를 추가하는 중 오류가 발생했습니다.",
                              __FILE__, __LINE__);
   }
 
@@ -68,6 +52,16 @@ Indicator::Indicator(const string& name, const string& timeframe,
 
   // 정상적으로 AddIndicator 함수를 통했다면 전 증가 가운터에 현재 카운터를 대입
   pre_creation_counter_ = creation_counter_;
+
+  // 클래스 변수 설정
+  name_ = name;
+  timeframe_ = timeframe;
+
+  // typeid(plot).name()은 class backtesting::plot::Line과 같은 형식이므로
+  // 클래스 이름만 얻기 위함
+  const regex pattern(".*::");
+  plot_type_ = regex_replace(typeid(plot).name(), pattern, "");
+  plot_ = plot.MakeShared();
 }
 Indicator::~Indicator() = default;
 
@@ -175,50 +169,6 @@ void Indicator::CalculateIndicator(const string& strategy_name) {
     Logger::LogAndThrowError(
         format("[{} {}] 지표 계산 중 오류가 발생했습니다.", name_, timeframe_),
         __FILE__, __LINE__);
-  }
-}
-
-void Indicator::SaveIndicator(const string& indicators_strategy_path) const {
-  // 계산 여부를 미리 체크하여 반복 검사 줄이기
-  if (!is_calculated_) {
-    throw runtime_error("지표 계산 전 저장할 수 없습니다.");
-  }
-
-  const auto& bar_data = bar_->GetBarData(REFERENCE, timeframe_);
-
-  // 심볼마다 개별 파일에 직접 기록
-  for (size_t symbol_idx = 0; symbol_idx < output_.size(); ++symbol_idx) {
-    const auto& symbol_name = bar_data->GetSymbolName(symbol_idx);
-    const auto& output = output_[symbol_idx];
-
-    // 파일 경로 구성 (경로 구성 과정에서 불필요한 문자열 연결 연산 줄임)
-    const string file_path = indicators_strategy_path + "/" + symbol_name +
-                             "/" + name_ + " " + timeframe_ + ".csv";
-
-    ofstream file(file_path, ios::trunc);
-    if (!file.is_open()) {
-      const string error_msg = file_path + " 파일을 열지 못했습니다.";
-      logger_->Log(ERROR_L, error_msg.c_str(), __FILE__, __LINE__);
-      Logger::LogAndThrowError(
-          format("[{}] [{} {}] 지표를 저장하는 중 오류가 발생했습니다.",
-                 symbol_name, name_, timeframe_),
-          __FILE__, __LINE__);
-    }
-
-    // 헤더 작성 (직접 파일 스트림에 기록)
-    file << "Open Time," << name_ << "\n";
-
-    // 고정 소수점 및 소수점 10자리 포맷 지정 (숫자 출력 형식 설정은 한 번만)
-    file << fixed << setprecision(10);
-    for (size_t bar_idx = 0; bar_idx < output.size(); ++bar_idx) {
-      // 각 행을 직접 스트림에 기록 (문자열 연결 대신 연속 << 사용)
-      file << UtcTimestampToUtcDatetime(
-                  bar_data->GetBar(symbol_idx, bar_idx).open_time)
-           << "," << output[bar_idx] << "\n";
-    }
-    // ofstream은 소멸 시 자동 close되지만, 명시적으로 close를 호출해도
-    // 좋습니다.
-    file.close();
   }
 }
 
