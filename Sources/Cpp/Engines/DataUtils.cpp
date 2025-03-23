@@ -15,10 +15,17 @@
 #include "Engines/DataUtils.hpp"
 
 // 내부 헤더
+#include <iostream>
+
+#include "Engines/Config.hpp"
+#include "Engines/Engine.hpp"
 #include "Engines/Logger.hpp"
 
 // 네임 스페이스
-using namespace backtesting::logger;
+namespace backtesting {
+using namespace engine;
+using namespace logger;
+}  // namespace backtesting
 
 namespace backtesting::utils {
 
@@ -225,18 +232,27 @@ double RoundToTickSize(const double price, const double tick_size) {
 
 string FormatDollar(const double price, const bool use_rounding) {
   ostringstream oss;
-  oss.imbue(global_locale);  // 천 단위 쉼표 추가
-  oss << showpoint;          // 소수점 유지
-  oss << fixed;              // 고정 소수점 형식
+  oss.imbue(global_locale);   // 천 단위 쉼표 추가
+  oss << showpoint << fixed;  // 소수점 항상 표시, 고정 소수점 형식
 
   if (use_rounding) {
-    oss << setprecision(2);  // 소수점 두 자리까지
+    int precision = 2;
+
+    // 기본 2자리 반올림 시, 가격이 0이 아닌데 0.00으로 보이면
+    // 최대 10자리까지 확장하면서 0이 아닌 반올림 결과가 나오도록 함
+    if (price != 0.0 && std::round(std::abs(price) * 100) == 0) {
+      while (precision < 10 &&
+             std::round(std::abs(price) * std::pow(10, precision)) == 0) {
+        precision++;
+      }
+    }
+    oss << setprecision(precision);
   }
 
   if (IsLess(price, 0.0))
-    oss << "-$" << -price;  // 음수일 때 -$
+    oss << "-$" << -price;
   else
-    oss << "$" << price;  // 양수일 때 $
+    oss << "$" << price;
 
   return oss.str();
 }
@@ -258,6 +274,51 @@ string GetEnvVariable(const string& env_var) {
       __LINE__);
 
   return {};  // 환경 변수가 없으면 빈 문자열 반환
+}
+
+void RunPythonScript(const std::string& script_path,
+                     const std::vector<std::string>& args) {
+  const string& python_exe = Engine::GetConfig()->GetRootDirectory() +
+                             "/Sources/py/Anaconda/python.exe";
+
+  // 경로 확인
+  if (!filesystem::exists(script_path)) {
+    Logger::LogAndThrowError(
+        format("파이썬 스크립트 [{}]을(를) 찾을 수 없습니다.", script_path),
+        __FILE__, __LINE__);
+  }
+  if (!filesystem::exists(python_exe)) {
+    Logger::LogAndThrowError(
+        format("파이썬 인터프리터 [{}]을(를) 찾을 수 없습니다.", python_exe),
+        __FILE__, __LINE__);
+  }
+
+  ostringstream command;
+  command << "cmd /c \"\"" << python_exe << "\" \"" << script_path << "\"";
+
+  for (const auto& arg : args) {
+    command << " \"" << arg << "\"";
+  }
+  command << "\"";  // 마지막 닫는 따옴표
+
+  if (const int ret = system(command.str().c_str()); ret != 0) {
+    Logger::LogAndThrowError(format("파이썬 스크립트 [{}]을(를) 실행하는 중 "
+                                    "오류가 발생했습니다. 반환 코드 [{}]",
+                                    script_path, ret),
+                             __FILE__, __LINE__);
+  }
+}
+
+string OpenHtml(const string& html_path) {
+  ifstream html(html_path);
+
+  if (!html.is_open()) {
+    throw runtime_error(format("[{}]이(가) 존재하지 않습니다.", html_path));
+  }
+
+  string html_str((istreambuf_iterator(html)), istreambuf_iterator<char>());
+
+  return html_str;
 }
 
 }  // namespace backtesting::utils

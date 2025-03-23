@@ -125,6 +125,13 @@ static locale global_locale("en_US.UTF-8");
 /// 환경 변수 값을 가져오는 함수
 [[nodiscard]] string GetEnvVariable(const string& env_var);
 
+/// 파이썬 스크립트를 실행하는 함수
+void RunPythonScript(const string& script_path,
+                     const vector<string>& args = {});
+
+/// 지정된 경로에서 Html 파일을 열고 String으로 반환하는 함수
+[[nodiscard]] string OpenHtml(const string& html_path);
+
 /// 부동소숫점 같은 값 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값과 같으면 true를 반환함.
 template <typename T, typename U>
@@ -133,7 +140,7 @@ template <typename T, typename U>
 
   const CommonType diff =
       std::fabs(static_cast<CommonType>(a) - static_cast<CommonType>(b));
-  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
+  constexpr CommonType tolerance = 1e-8;  // 소수점 10자리까지 비교
 
   return diff <= tolerance;
 }
@@ -146,7 +153,7 @@ template <typename T, typename U>
 
   const CommonType diff =
       static_cast<CommonType>(a) - static_cast<CommonType>(b);
-  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
+  constexpr CommonType tolerance = 1e-8;  // 소수점 8자리까지 비교
 
   return diff > tolerance;  // 차이가 tolerance보다 크면 a가 더 큼
 }
@@ -159,7 +166,7 @@ template <typename T, typename U>
 
   const CommonType diff =
       static_cast<CommonType>(a) - static_cast<CommonType>(b);
-  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
+  constexpr CommonType tolerance = 1e-8;  // 소수점 10자리까지 비교
 
   return diff >=
          -tolerance;  // 차이가 tolerance보다 크거나 같으면 a가 크거나 같음

@@ -18,8 +18,8 @@ BaseBarHandler::~BaseBarHandler() = default;
 
 shared_ptr<Logger>& BaseBarHandler::logger_ = Logger::GetLogger();
 
-shared_ptr<BarData> BaseBarHandler::GetBarData(
-    const BarType bar_type, const string& timeframe) {
+shared_ptr<BarData> BaseBarHandler::GetBarData(const BarType bar_type,
+                                               const string& timeframe) {
   switch (bar_type) {
     case TRADING: {
       return trading_bar_data_;
@@ -65,10 +65,10 @@ vector<size_t>& BaseBarHandler::GetBarIndices(const BarType bar_type,
     case REFERENCE: {
       const auto& timeframe_it = reference_index_.find(timeframe);
       if (timeframe_it == reference_index_.end()) {
-        Logger::LogAndThrowError(
-            "타임프레임 " + timeframe +
-                "은(는) 참조 바 데이터 인덱스에 존재하지 않습니다.",
-            __FILE__, __LINE__);
+        Logger::LogAndThrowError(format("타임프레임 [{}]은(는) 참조 바 데이터 "
+                                        "인덱스에 존재하지 않습니다.",
+                                        timeframe),
+                                 __FILE__, __LINE__);
       }
 
       return timeframe_it->second;

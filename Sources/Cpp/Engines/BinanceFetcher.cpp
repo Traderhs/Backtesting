@@ -459,7 +459,7 @@ void BinanceFetcher::FetchExchangeInfo() const {
   try {
     JsonToFile(Fetch(exchange_info_url_), save_path);
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
+    logger_->Log(ERROR_L, "\n" + string(e.what()), __FILE__, __LINE__);
     Logger::LogAndThrowError(
         "바이낸스 거래소 정보 파일을 생성하는 데 실패했습니다.", __FILE__,
         __LINE__);
@@ -480,7 +480,7 @@ void BinanceFetcher::FetchLeverageBracket() const {
                      header_, api_key_env_var_, api_secret_env_var_),
                save_path);
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
+    logger_->Log(ERROR_L, "\n" + string(e.what()), __FILE__, __LINE__);
     Logger::LogAndThrowError(
         "바이낸스 레버리지 구간 파일을 생성하는 데 실패했습니다.", __FILE__,
         __LINE__);
@@ -541,18 +541,22 @@ future<vector<json>> BinanceFetcher::FetchKlines(
           param["endTime"] = to_string(klines.front().at(0).get<int64_t>() - 1);
         }
       } catch (const exception& e) {
-        logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
+        logger_->Log(ERROR_L, "\n" + string(e.what()), __FILE__, __LINE__);
         Logger::LogAndThrowError("데이터를 요청하는 중 에러가 발생했습니다.",
                                  __FILE__, __LINE__);
       }
     }
 
-    logger_->Log(
-        INFO_L,
-        format("[{} - {}] 기간의 데이터가 요청 완료 되었습니다.",
-               UtcTimestampToUtcDatetime(klines.front().at(0).get<int64_t>()),
-               UtcTimestampToUtcDatetime(klines.back().at(6).get<int64_t>())),
-        __FILE__, __LINE__);
+    if (!klines.empty()) {
+      logger_->Log(
+          INFO_L,
+          format("[{} - {}] 기간의 데이터가 요청 완료 되었습니다.",
+                 UtcTimestampToUtcDatetime(klines.front().at(0).get<int64_t>()),
+                 UtcTimestampToUtcDatetime(klines.back().at(6).get<int64_t>())),
+          __FILE__, __LINE__);
+    } else {
+      logger_->Log(INFO_L, "요청한 데이터가 비어있습니다.", __FILE__, __LINE__);
+    }
 
     return vector(klines.begin(), klines.end());
   });
@@ -763,7 +767,7 @@ int64_t BinanceFetcher::GetServerTime() {
   try {
     return Fetch(server_time_url_).get()["serverTime"];
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
+    logger_->Log(ERROR_L, "\n" + string(e.what()), __FILE__, __LINE__);
     Logger::LogAndThrowError("서버 시간의 요청이 실패했습니다.", __FILE__,
                              __LINE__);
   }

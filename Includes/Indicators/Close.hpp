@@ -6,9 +6,7 @@
 /// 전략 작성 편의성용 트레이딩 바의 종가 데이터 지표화
 class Close final : public Indicator {
  public:
-  explicit Close(const string& name, const string& timeframe, bool overlay,
-                 PlotStyle plot_style, const Color& color,
-                 unsigned char line_width);
+  explicit Close(const string& name, const string& timeframe, const Plot& plot);
 
  private:
   shared_ptr<BarData> reference_bar_;

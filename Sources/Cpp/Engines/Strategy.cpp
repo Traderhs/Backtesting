@@ -11,20 +11,15 @@
 
 namespace backtesting::strategy {
 
-Strategy::Strategy(const string& name, const string& file_path)
+Strategy::Strategy(const string& name, const string& child_file_path)
     : name_(name),
+      child_file_path_(child_file_path),
       order(OrderHandler::GetOrderHandler(name)),
-      // OHLC는 플롯 설정과 관련없이 하나의 캔들로 플롯됨
-      open(AddIndicator<Open>("Open", trading_timeframe, true, BAR,
-                              Color::green, 1)),
-      high(AddIndicator<High>("High", trading_timeframe, true, BAR,
-                              Color::green, 1)),
-      low(AddIndicator<Low>("Low", trading_timeframe, true, BAR, Color::green,
-                            1)),
-      close(AddIndicator<Close>("Close", trading_timeframe, true, BAR,
-                                Color::green, 1)),
-      volume(AddIndicator<Volume>("Volume", trading_timeframe, true, HISTOGRAM,
-                                  Color::green, 2)) {
+      open(AddIndicator<Open>("Open", trading_timeframe)),
+      high(AddIndicator<High>("High", trading_timeframe)),
+      low(AddIndicator<Low>("Low", trading_timeframe)),
+      close(AddIndicator<Close>("Close", trading_timeframe)),
+      volume(AddIndicator<Volume>("Volume", trading_timeframe)) {
   // 증가 카운터는 AddStrategy 함수로만 증가하는데 AddStrategy 없이 직접 생성자
   // 호출로 전 증가 카운터가 현재 증가 카운터와 같다면 오류 발생
   if (pre_creation_counter_ == creation_counter_) {
@@ -45,8 +40,12 @@ Strategy::Strategy(const string& name, const string& file_path)
                              __LINE__);
   }
 
-  // 자식 파일 경로를 저장 -> 백테스팅 종료 후 저장 목적
-  child_file_path_ = file_path;
+  if (!filesystem::exists(child_file_path)) {
+    Logger::LogAndThrowError(
+        format("[{}] 전략의 파일 경로 [{}]이(가) 존재하지 않습니다.", name,
+               child_file_path),
+        __FILE__, __LINE__);
+  }
 }
 Strategy::~Strategy() = default;
 

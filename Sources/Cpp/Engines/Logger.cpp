@@ -30,9 +30,10 @@ Logger::Logger(const string& log_directory, const string& debug_log_name,
   warning_log_.open(log_directory + "/" + warning_log_name, ios::app);
   error_log_.open(log_directory + "/" + error_log_name, ios::app);
 
+  // 전 백테스팅 로그가 오류로 남아있을 수도 있으므로 초기화 모드로 열기
   const string& backtesting_log_path =
       log_directory + "/" + backtesting_log_name;
-  backtesting_log_.open(backtesting_log_path, ios::app);
+  backtesting_log_.open(backtesting_log_path, ios::out | ios::trunc);
   backtesting_log_temp_path_ = backtesting_log_path;
 }
 
@@ -82,12 +83,6 @@ void Logger::Log(const LogLevel& log_level, const string& message,
       WriteToFile(info_log_, log_message);
       break;
 
-    case ORDER_L:
-      ConsoleLog("ORDER_L", log_message);
-      // 주문 로그는 info 파일에 기록
-      WriteToFile(info_log_, log_message);
-      break;
-
     case WARNING_L:
       ConsoleLog("WARNING_L", log_message);
       WriteToFile(warning_log_, log_message);
@@ -109,12 +104,6 @@ void Logger::LogNoFormat(const LogLevel& log_level, const string& message) {
 
     case INFO_L:
       ConsoleLog("INFO_L", message);
-      WriteToFile(info_log_, message);
-      break;
-
-    case ORDER_L:
-      ConsoleLog("ORDER_L", message);
-      // 주문 로그는 info 파일에 기록
       WriteToFile(info_log_, message);
       break;
 
@@ -148,26 +137,11 @@ void Logger::SaveBacktestingLog(const string& file_path) {
   }
 }
 
-void Logger::DeleteTempBacktestingLog() {
-  if (backtesting_log_.is_open()) {
-    backtesting_log_.close();
-  }
-
-  if (filesystem::exists(backtesting_log_temp_path_)) {
-    filesystem::remove(backtesting_log_temp_path_);
-  }
-
-  // 오류 방지를 위해 프로그램 즉시 종료
-  exit(EXIT_FAILURE);
-}
-
 void Logger::ConsoleLog(const string& level, const string& message) {
   if (level == "DEBUG_L") {
     cout << "\033[90m" << message << "\033[0m" << endl;  // Gray
   } else if (level == "INFO_L") {
     cout << "\033[38;2;200;200;200m" << message << "\033[0m" << endl;  // White
-  } else if (level == "ORDER_L") {
-    cout << "\033[32m" << message << "\033[0m" << endl;  // Green
   } else if (level == "WARNING_L") {
     cout << "\033[33m" << message << "\033[0m" << endl;  // Yellow
   } else if (level == "ERROR_L") {

@@ -24,7 +24,8 @@ find_package(CURL CONFIG REQUIRED)
 find_package(GTest CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Parquet CONFIG REQUIRED)
-find_package(OpenSSL REQUIRED)
+find_package(OpenSSL CONFIG REQUIRED)
+find_package(inja CONFIG REQUIRED)
 
 # ======================================================================================================================
 # Backtesting 설정
@@ -49,7 +50,8 @@ target_link_libraries(Backtesting PRIVATE # Backtesting 타겟에 외부 라이�
         nlohmann_json::nlohmann_json
         parquet_shared
         OpenSSL::SSL
-        OpenSSL::Crypto)
+        OpenSSL::Crypto
+        pantor::inja)
 
 # MSVC 프로파일링 링크
 # target_link_options(Backtesting PRIVATE $<$<CONFIG:Release>:/PROFILE>)
@@ -80,7 +82,8 @@ target_link_libraries(Tests PRIVATE # Tests 타겟에 외부 라이브러리 연
         nlohmann_json::nlohmann_json
         parquet_shared
         OpenSSL::SSL
-        OpenSSL::Crypto)
+        OpenSSL::Crypto
+        pantor::inja)
 
 # Google Test
 enable_testing()

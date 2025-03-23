@@ -81,4 +81,7 @@ int64_t ParseTimeframe(const string& timeframe_str);
 /// 타임스탬프 차이를 보기 쉬운 시간으로 포맷하여 반환하는 함수
 [[nodiscard]] string FormatTimeDiff(int64_t diff_ms);
 
+/// 타임스탬프 값이 ms 단위인지 검사하는 함수
+[[nodiscard]] bool IsTimestampMs(int64_t timestamp);
+
 }  // namespace backtesting::utils

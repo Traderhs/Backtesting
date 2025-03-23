@@ -559,15 +559,15 @@ void BaseOrderHandler::IsValidDirection(const Direction direction) {
 
 void BaseOrderHandler::IsValidPrice(const double price) {
   if (IsLessOrEqual(price, 0.0) || isnan(price)) {
-    throw InvalidValue(format("가격 [{}] 오류 (조건: 0 초과)", price));
+    throw InvalidValue(format("가격 미달 (가격 [{}] | 조건: 0 초과)", price));
   }
 }
 
 void BaseOrderHandler::IsValidPositionSize(const double position_size,
                                            const OrderType order_type) const {
   if (IsLessOrEqual(position_size, 0.0)) {
-    throw InvalidValue(
-        format("포지션 크기 [{}] 오류 (조건: 0 초과)", position_size));
+    throw InvalidValue(format(
+        "포지션 크기 미달 (포지션 크기 [{}] | 조건: 0 초과)", position_size));
   }
 
   const auto& symbol_info = symbol_info_[bar_->GetCurrentSymbolIndex()];
@@ -576,7 +576,8 @@ void BaseOrderHandler::IsValidPositionSize(const double position_size,
   if (const auto qty_step = symbol_info.GetQtyStep();
       round(position_size / qty_step) * qty_step != position_size) {
     throw InvalidValue(
-        format("포지션 크기 [{}] 오류 (조건: 수량 단위 [{}]의 배수)",
+        format("포지션 크기 지정 오류 (포지션 크기 [{}] | "
+               "조건: 수량 단위 [{}]의 배수)",
                position_size, qty_step));
   }
 
@@ -594,8 +595,9 @@ void BaseOrderHandler::IsValidPositionSize(const double position_size,
             IsGreater(position_size, max_qty) ||
             IsLess(position_size, min_qty)) {
           throw InvalidValue(
-              format("포지션 크기 [{}] 오류 (조건: 시장가 최대 수량 "
-                     "[{}] 이하 및 최소 수량 [{}] 이상)",
+              format("포지션 크기 지정 오류 "
+                     "(포지션 크기 [{}] | 조건: 시장가 최대 수량 [{}] 이하 및 "
+                     "최소 수량 [{}] 이상)",
                      position_size, max_qty, min_qty));
         }
         break;
@@ -609,8 +611,9 @@ void BaseOrderHandler::IsValidPositionSize(const double position_size,
             IsGreater(position_size, max_qty) ||
             IsLess(position_size, min_qty)) {
           throw InvalidValue(
-              format("포지션 크기 [{}] 오류 (조건: 지정가 최대 수량 "
-                     "[{}] 이하 및 최소 수량 [{}] 이상)",
+              format("포지션 크기 지정 오류 "
+                     "(포지션 크기 [{}] | 조건: 지정가 최대 수량 [{}] 이하 및 "
+                     "최소 수량 [{}] 이상)",
                      position_size, max_qty, min_qty));
         }
         break;
@@ -631,7 +634,8 @@ void BaseOrderHandler::IsValidNotionalValue(const double order_price,
           symbol_info_[bar_->GetCurrentSymbolIndex()].GetMinNotional();
       IsLess(notional, min_notional)) {
     throw InvalidValue(
-        format("명목 가치 [{}] 오류 (조건: 심볼의 최소 명목 가치 [{}] 이상)",
+        format("명목 가치 부족 (명목 가치 [{}] | "
+               "조건: 심볼의 최소 명목 가치 [{}] 이상)",
                FormatDollar(notional, true), FormatDollar(min_notional, true)));
   }
 }
@@ -646,8 +650,8 @@ void BaseOrderHandler::IsValidLeverage(const double order_price,
               .max_leverage;
       IsGreater(current_leverage, max_leverage)) {
     throw InvalidValue(
-        format("레버리지 [{}] 오류 (조건: 명목 가치 [{}] 레버리지 구간의 최대 "
-               "레버리지 [{}] 이하)",
+        format("레버리지 미달 (레버리지 [{}] | 조건: 명목 가치 [{}] 레버리지 "
+               "구간의 최대 레버리지 [{}] 이하)",
                current_leverage,
                FormatDollar(order_price * position_size, true), max_leverage));
   }
@@ -673,28 +677,30 @@ void BaseOrderHandler::IsValidLimitOrderPrice(const double limit_price,
                                               const Direction direction) {
   if (direction == LONG && IsGreater(limit_price, base_price)) {
     throw InvalidValue(
-        format("지정가 오류 (지정가 [{}] | 조건: 기준가 [{}] 이하", limit_price,
+        format("지정가 초과 (지정가 [{}] | 조건: 기준가 [{}] 이하", limit_price,
                base_price));
   }
 
   if (direction == SHORT && IsLess(limit_price, base_price)) {
     throw InvalidValue(
-        format("지정가 오류 (지정가 [{}] | 조건: 기준가 [{}] 이상", limit_price,
+        format("지정가 미달 (지정가 [{}] | 조건: 기준가 [{}] 이상", limit_price,
                base_price));
   }
 }
 
 void BaseOrderHandler::IsValidTrailingTouchPrice(const double touch_price) {
   if (IsLess(touch_price, 0.0)) {
-    throw InvalidValue(
-        format("트레일링 터치 가격 [{}] 오류 (조건: 0 이상)", touch_price));
+    throw InvalidValue(format(
+        "트레일링 터치 가격 미달 (트레일링 터치 가격 [{}] | 조건: 0 이상)",
+        touch_price));
   }
 }
 
 void BaseOrderHandler::IsValidTrailPoint(double trail_point) {
   if (IsLessOrEqual(trail_point, 0.0)) {
     throw InvalidValue(
-        format("트레일링 포인트 [{}] 오류 (조건: 0 초과)", trail_point));
+        format("트레일링 포인트 미달 (트레일링 포인트 [{}] | 조건: 0 초과)",
+               trail_point));
   }
 }
 

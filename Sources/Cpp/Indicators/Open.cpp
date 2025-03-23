@@ -6,10 +6,8 @@
 #include "Engines/BarHandler.hpp"
 #include "Engines/BaseBarHandler.hpp"
 
-Open::Open(const string& name, const string& timeframe, const bool overlay,
-           const PlotStyle plot_style, const Color& color,
-           const unsigned char line_width)
-    : Indicator(name, timeframe, overlay, plot_style, color, line_width) {}
+Open::Open(const string& name, const string& timeframe, const Plot& plot)
+    : Indicator(name, timeframe, plot) {}
 
 void Open::Initialize() {
   reference_bar_ = bar_->GetBarData(REFERENCE, this->GetTimeframe());

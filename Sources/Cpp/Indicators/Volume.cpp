@@ -6,10 +6,8 @@
 #include "Engines/BarHandler.hpp"
 #include "Engines/BaseBarHandler.hpp"
 
-Volume::Volume(const string& name, const string& timeframe, const bool overlay,
-               const PlotStyle plot_style, const Color& color,
-               const unsigned char line_width)
-    : Indicator(name, timeframe, overlay, plot_style, color, line_width) {}
+Volume::Volume(const string& name, const string& timeframe, const Plot& plot)
+    : Indicator(name, timeframe, plot) {}
 
 void Volume::Initialize() {
   reference_bar_ = bar_->GetBarData(REFERENCE, this->GetTimeframe());

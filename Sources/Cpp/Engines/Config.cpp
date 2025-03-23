@@ -7,7 +7,7 @@
 // 내부 헤더
 #include "Engines/Logger.hpp"
 
-namespace backtesting::config {
+namespace backtesting::engine {
 
 Config::Config()
     : initial_balance_(nan("")),

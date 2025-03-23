@@ -4,12 +4,11 @@
 // 파일 헤더
 #include "Indicators/SimpleMovingAverage.hpp"
 
-SimpleMovingAverage::SimpleMovingAverage(
-    const string& name, const string& timeframe, const bool overlay,
-    const PlotStyle plot_style, const Color& color,
-    const unsigned char line_width, Indicator& source, const double period)
-    : Indicator(name, timeframe, overlay, plot_style, color, line_width),
-      source_(source) {
+SimpleMovingAverage::SimpleMovingAverage(const string& name,
+                                         const string& timeframe,
+                                         const Plot& plot, Indicator& source,
+                                         const double period)
+    : Indicator(name, timeframe, plot), source_(source) {
   // 타입 안정성과 속도를 위해 미리 변환
   double_period_ = period;
   size_period_ = static_cast<size_t>(period);

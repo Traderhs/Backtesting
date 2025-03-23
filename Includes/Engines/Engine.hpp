@@ -108,14 +108,6 @@ class Engine final : public BaseEngine {
   shared_ptr<BarData> mark_price_bar_data_;  // 마크 가격 바 데이터
 
   // ===========================================================================
-  int trading_bar_num_symbols_;      // 트레이딩 바 심볼 개수
-  string trading_bar_timeframe_;     // 트레이딩 바 타임프레임
-  int64_t trading_bar_time_diff_;    // 트레이딩 바 사이의 타임스탬프 차이
-  int64_t magnifier_bar_time_diff_;  // 돋보기 바 사이의 타임스탬프 차이
-  unordered_map<string, int64_t>
-      reference_bar_time_diff_;  // 참조 바 사이의 타임스탬프 차이
-
-  // ===========================================================================
   vector<SymbolInfo> symbol_info_;  // 심볼 정보
 
   // ===========================================================================

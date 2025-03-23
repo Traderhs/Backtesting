@@ -4,6 +4,8 @@
 #include <filesystem>
 
 // 내부 헤더
+#include <Engines/BarHandler.hpp>
+
 #include "Engines/BaseBarHandler.hpp"
 #include "Engines/BinanceFetcher.hpp"
 #include "Engines/Config.hpp"
@@ -13,13 +15,15 @@
 
 // 네임 스페이스
 using namespace backtesting;
-using namespace config;
 using namespace fetcher;
 
 namespace backtesting {
 
 class Backtesting {
  public:
+  Backtesting() = delete;
+  ~Backtesting() = delete;
+
   /**
    * 백테스팅을 실행하는 함수
    *
@@ -32,9 +36,8 @@ class Backtesting {
     try {
       Engine::GetEngine()->Backtesting(start_time, end_time, format);
     } catch (...) {
-      // 오류로 비정상 종료되면 백테스팅 로그 삭제
-      // 삭제하지 않으면 전 백테스팅 로그가 중첩됨
-      Logger::GetLogger()->DeleteTempBacktestingLog();
+      Logger::LogAndThrowError("백테스팅 진행 중 오류가 발생했습니다.",
+                               __FILE__, __LINE__);
     }
   }
 
@@ -142,9 +145,10 @@ class Backtesting {
                          const int low_column = 3, const int close_column = 4,
                          const int volume_column = 5,
                          const int close_time_column = 6) {
-    Engine::AddBarData(symbol_name, file_path, bar_type, open_time_column,
-                       open_column, high_column, low_column, close_column,
-                       volume_column, close_time_column);
+    BarHandler::GetBarHandler()->AddBarData(
+        symbol_name, file_path, bar_type, open_time_column, open_column,
+        high_column, low_column, close_column, volume_column,
+        close_time_column);
   }
 
   /// 거래소 정보를 엔진에 추가하는 함수
@@ -159,10 +163,10 @@ class Backtesting {
 
   /// 엔진에 전략을 추가하는 함수.
   ///
-  /// 템플릿에 생성한 커스텀 전략을 추가하고 이름과 인수를 넣으면 됨.
-  template <typename CustomStrategy, typename... Args>
-  static void AddStrategy(const string& name, Args&&... args) {
-    Strategy::AddStrategy<CustomStrategy>(name, std::forward<Args>(args)...);
+  /// 템플릿에 생성한 커스텀 전략을 추가하고 이름을 넣으면 됨.
+  template <typename CustomStrategy>
+  static void AddStrategy(const string& name) {
+    Strategy::AddStrategy<CustomStrategy>(name);
   }
 
   /// 엔진에 설정값을 추가하는 함수.

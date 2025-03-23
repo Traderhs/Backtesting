@@ -256,7 +256,7 @@ double Order::GetEntryMargin() const { return entry_margin_; }
 double Order::GetLeftMargin() const { return left_margin_; }
 double Order::GetLiquidationPrice() const { return liquidation_price_; }
 double Order::GetLiquidationFee() const { return liquidation_fee_; }
-double Order::GetWnWhenEntryOrder() const { return wb_when_entry_order_; }
+double Order::GetWbWhenEntryOrder() const { return wb_when_entry_order_; }
 int Order::GetExitCount() const { return exit_count_; }
 
 // ===========================================================================
