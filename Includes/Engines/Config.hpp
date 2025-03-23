@@ -20,7 +20,7 @@ using namespace engine;
 using namespace logger;
 }  // namespace backtesting
 
-namespace backtesting::config {
+namespace backtesting::engine {
 
 /// 엔진의 사전 설정값을 담당하는 빌더 클래스
 class Config final {

@@ -12,7 +12,7 @@ using namespace std;
 namespace backtesting::logger {
 
 /// 로그 레벨을 지정하는 열거형 클래스
-enum class LogLevel { DEBUG_L, INFO_L, ORDER_L, WARNING_L, ERROR_L };
+enum class LogLevel { DEBUG_L, INFO_L, WARNING_L, ERROR_L };
 using enum LogLevel;
 
 /// 시스템 로깅을 담당하는 클래스
@@ -68,9 +68,6 @@ class Logger final {
 
   /// 이번 백테스팅의 로그를 지정된 폴더에 저장하는 함수
   void SaveBacktestingLog(const string& file_path);
-
- /// 임시 저장된 백테스팅 로그를 삭제하는 함수
- void DeleteTempBacktestingLog();
 
  private:
   // 싱글톤 인스턴스 관리

@@ -44,12 +44,12 @@ class BarHandler final : public BaseBarHandler {
   // ===========================================================================
   /// 지정된 바 데이터 및 심볼에 해당되는 인덱스를 target_close_time 시점의
   /// 인덱스까지 최대한 진행시키는 함수
-  bool ProcessBarIndex(BarType bar_type, const string& timeframe,
+  void ProcessBarIndex(BarType bar_type, const string& timeframe,
                        int symbol_idx, int64_t target_close_time);
 
   /// 지정된 바 데이터의 모든 심볼의 인덱스를 target_close_time 시점의
   /// 인덱스까지 진행시키는 함수
-  bool ProcessBarIndices(BarType bar_type, const string& timeframe,
+  void ProcessBarIndices(BarType bar_type, const string& timeframe,
                          int64_t target_close_time);
   // ===========================================================================
   /// 현재 사용 중인 바의 타입을 설정하는 함수.
@@ -101,7 +101,7 @@ class BarHandler final : public BaseBarHandler {
 
   /// 참조 바 데이터 사용 시 사용 중인 타임프레임
   string current_reference_timeframe_;
-
+ 
   /**
    * 주어진 데이터에서 Open Time과 다음 Open Time의 시간 차이를 계산하여
    * 타임프레임을 문자열로 반환하는 함수.

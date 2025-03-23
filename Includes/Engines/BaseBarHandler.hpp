@@ -25,16 +25,15 @@ using namespace logger;
 namespace backtesting::bar {
 
 /// 바 데이터 타입을 지정하는 열거형 클래스
-///
-/// TRADING: 백테스팅 전략을 실행하는 메인 바 데이터
-///
-/// MAGNIFIER: 트레이딩 바 하나의 내부 움직임을 추적하는 돋보기 바 데이터
-///
-/// REFERENCE: 지표 혹은 전략에서 트레이딩 바 데이터 타임프레임과 같거나 배수
-///            타임프레임의 바 데이터 값을 참조할 수 있는 바 데이터
-///
-/// MARK_PRICE: 여러 거래소의 시장 평균 가격을 나타내는 바 데이터
-enum class BarType { TRADING, MAGNIFIER, REFERENCE, MARK_PRICE };
+enum class BarType {
+  TRADING,   /**< @brief 백테스팅 전략을 실행하는 메인 바 데이터 */
+  MAGNIFIER, /**< @brief 트레이딩 바 하나의 내부 움직임을 추적하는 돋보기 바
+                         데이터 */
+  REFERENCE, /**< @brief 지표 혹은 전략에서 트레이딩 바 데이터 타임프레임과
+                같거나 배수 타임프레임의 바 데이터 값을 참조할 수 있는 바 데이터
+              */
+  MARK_PRICE /**< @brief 여러 거래소의 시장 평균 가격을 나타내는 바 데이터  */
+};
 using enum BarType;
 
 /// 타입별 바 데이터를 저장하고 기본적인 관리를 하는 클래스

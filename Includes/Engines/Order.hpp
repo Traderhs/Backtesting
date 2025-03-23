@@ -78,7 +78,7 @@ class Order {
   [[nodiscard]] double GetLeftMargin() const;
   [[nodiscard]] double GetLiquidationPrice() const;
   [[nodiscard]] double GetLiquidationFee() const;
-  [[nodiscard]] double GetWnWhenEntryOrder() const;
+  [[nodiscard]] double GetWbWhenEntryOrder() const;
   [[nodiscard]] int GetExitCount() const;
 
   // ===========================================================================

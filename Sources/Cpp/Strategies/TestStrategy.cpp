@@ -3,10 +3,12 @@
 
 TestStrategy::TestStrategy(const string& name)
     : Strategy(name, __FILE__),
-      sma1(AddIndicator<SimpleMovingAverage>("sma1", trading_timeframe, true,
-                                             LINE, Color::red, 1, close, 20)),
+      sma1(AddIndicator<SimpleMovingAverage>(
+          "sma1", trading_timeframe,
+          Line(Rgba::red, 2, SOLID, SIMPLE, false, 0, true), close, 5)),
       sma2(AddIndicator<SimpleMovingAverage>(
-          "sma2", trading_timeframe, true, LINE, Color::orange, 1, close, 5)) {}
+          "sma2", trading_timeframe,
+          Line(Rgba::orange, 2, SOLID, SIMPLE, false, 0, true), close, 20)) {}
 TestStrategy::~TestStrategy() = default;
 
 void TestStrategy::Initialize() {}

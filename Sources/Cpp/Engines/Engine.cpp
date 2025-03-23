@@ -36,9 +36,6 @@ namespace backtesting::engine {
 
 Engine::Engine()
     : use_bar_magnifier_(false),
-      trading_bar_num_symbols_(0),
-      trading_bar_time_diff_(0),
-      magnifier_bar_time_diff_(0),
       current_strategy_type_(ON_CLOSE),
       begin_open_time_(INT64_MAX),
       end_open_time_(0),
@@ -85,9 +82,6 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
   // 폴더 생성
   const string& main_directory = CreateDirectories();
 
-  // 로그 저장
-  logger_->SaveBacktestingLog(main_directory + "/backtesting.log");
-
   // 설정 저장
   SaveConfig(main_directory + "/config.json");
 
@@ -95,8 +89,9 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
   for (const auto& strategy : strategies_) {
     const auto& strategy_name = strategy->GetName();
 
-    filesystem::copy(strategy->GetSourcePath(),
-                     main_directory + "/Sources/" + strategy_name + ".cpp");
+    filesystem::copy(
+        strategy->GetSourcePath(),
+        std::format("{}/Sources/{}.cpp", main_directory, strategy_name));
 
     logger_->Log(
         INFO_L,
@@ -104,30 +99,11 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
         __FILE__, __LINE__);
   }
 
-  // 지표 저장
-  for (int strategy_idx = 0; strategy_idx < strategies_.size();
-       strategy_idx++) {
-    const auto& strategy_name = strategies_[strategy_idx]->GetName();
-
-    for (const auto& indicator : indicators_[strategy_idx]) {
-      const auto& indicator_name = indicator->GetName();
-      const auto& indicator_timeframe = indicator->GetTimeframe();
-
-      indicator->SaveIndicator(
-          std::format("{}/Indicators/{}", main_directory, strategy_name));
-
-      logger_->Log(
-          INFO_L,
-          std::format("[{}] 전략의 [{} {}] 지표가 저장되었습니다.",
-                      strategy_name, indicator_name, indicator_timeframe),
-          __FILE__, __LINE__);
-    }
-  }
-
   // 매매 목록 저장
   analyzer_->SaveTradeList(main_directory + "/Trade Lists/trade list.csv");
 
-  logger_->Log(INFO_L, "매매 목록이 저장되었습니다.", __FILE__, __LINE__);
+  // 차트 저장
+  analyzer_->SaveCharts(main_directory, strategies_);
 
   LogSeparator();
   logger_->Log(INFO_L, "백테스팅이 완료되었습니다.", __FILE__, __LINE__);
@@ -139,6 +115,9 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
       __FILE__, __LINE__);
+
+  // 로그 저장
+  logger_->SaveBacktestingLog(main_directory + "/backtesting.log");
 }
 
 void Engine::SetCurrentStrategyType(const StrategyType strategy_type) {
@@ -196,6 +175,12 @@ void Engine::IsValidConfig() {
       Logger::LogAndThrowError(
           "루트 폴더가 초기화되지 않았습니다. "
           "Backtesting::SetConfig().SetRootDirectory 함수를 호출해 주세요.",
+          __FILE__, __LINE__);
+    }
+
+    if (!filesystem::exists(root_directory)) {
+      Logger::LogAndThrowError(
+          format("루트 폴더 [{}]이(가) 존재하지 않습니다.", root_directory),
           __FILE__, __LINE__);
     }
 
@@ -742,10 +727,14 @@ void Engine::IsValidIndicators() {
       }
     }
 
-    // 지표 타임프레임 유효성 검사
     for (int strategy_idx = 0; strategy_idx < strategies_.size();
          strategy_idx++) {
+      const auto& current_strategy_name = strategies_[strategy_idx]->GetName();
+
       for (const auto& indicator : indicators_[strategy_idx]) {
+        const auto& current_indicator_name = indicator->GetName();
+
+        // 지표 타임프레임 유효성 검사
         const string& timeframe = indicator->GetTimeframe();
         try {
           ParseTimeframe(timeframe);
@@ -753,15 +742,26 @@ void Engine::IsValidIndicators() {
           // 지표에서 trading_timeframe을 변수를 사용하면 아직 초기화 전이기
           // 때문에 TRADING_TIMEFRAME으로 지정되어 있는데 이 경우는 유효한
           // 타임프레임이기 때문에 넘어감
-          if (timeframe == "TRADING_TIMEFRAME") {
-            continue;
+          if (timeframe != "TRADING_TIMEFRAME") {
+            Logger::LogAndThrowError(
+                format("[{}] 전략에서 사용하는 [{}] 지표의 타임프레임 "
+                       "[{}]이(가) 유효하지 않습니다.",
+                       current_strategy_name, current_indicator_name,
+                       timeframe),
+                __FILE__, __LINE__);
           }
+        }
 
+        // 지표 플롯 타입 검사
+        if (const auto& plot_type = indicator->plot_type_;
+            plot_type != "Area" && plot_type != "Baseline" &&
+            plot_type != "Histogram" && plot_type != "Line" &&
+            plot_type != "NullPlot") {
           Logger::LogAndThrowError(
-              format("[{}] 전략에서 사용하는 [{}] 지표의 타임프레임 "
-                     "[{}]이(가) 유효하지 않습니다.",
-                     strategies_[strategy_idx]->GetName(), indicator->GetName(),
-                     timeframe),
+              format("[{}] 전략에서 사용하는 [{}] 지표의 플롯 타입 "
+                     "[{}]이(가) 유효하지 않습니다. "
+                     "(가능한 타입: Area, Baseline, Histogram, Line, NullPlot)",
+                     current_strategy_name, current_indicator_name, plot_type),
               __FILE__, __LINE__);
         }
       }
@@ -977,7 +977,9 @@ void Engine::InitializeSymbolInfo() {
     symbol_info_[symbol_idx] = symbol_info;
   }
 
+  BaseAnalyzer::SetSymbolInfo(symbol_info_);
   BaseOrderHandler::SetSymbolInfo(symbol_info_);
+
   logger_->Log(INFO_L, "심볼 정보 초기화가 완료되었습니다.", __FILE__,
                __LINE__);
 }

@@ -158,25 +158,51 @@ string FormatTimeDiff(const int64_t diff_ms) {
     return to_string(static_cast<double>(diff_ms) / 1000.0) + "초";
   }
 
-  if (diff_ms >= kYear)
+  if (diff_ms >= kYear) {
     return to_string(diff_ms / kYear) + "년 " +
-           to_string((diff_ms % kYear) / kMonth) + "개월";
-  if (diff_ms >= kMonth)
+           to_string((diff_ms % kYear) / kMonth) + "개월 " +
+           to_string((diff_ms % kMonth) / kDay) + "일";
+  }
+
+  if (diff_ms >= kMonth) {
     return to_string(diff_ms / kMonth) + "개월 " +
-           to_string((diff_ms % kMonth) / kWeek) + "주";
-  if (diff_ms >= kWeek)
-    return to_string(diff_ms / kWeek) + "주 " +
-           to_string((diff_ms % kWeek) / kDay) + "일";
-  if (diff_ms >= kDay)
-    return to_string(diff_ms / kDay) + "일 " +
+           to_string((diff_ms % kMonth) / kDay) + "일 " +
            to_string((diff_ms % kDay) / kHour) + "시간";
-  if (diff_ms >= kHour)
-    return to_string(diff_ms / kHour) + "시간 " +
+  }
+
+  if (diff_ms >= kWeek) {
+    return to_string(diff_ms / kWeek) + "주 " +
+           to_string((diff_ms % kWeek) / kDay) + "일 " +
+           to_string((diff_ms % kDay) / kHour) + "시간";
+  }
+
+  if (diff_ms >= kDay) {
+    return to_string(diff_ms / kDay) + "일 " +
+           to_string((diff_ms % kDay) / kHour) + "시간 " +
            to_string((diff_ms % kHour) / kMinute) + "분";
-  if (diff_ms >= kMinute)
+  }
+
+  if (diff_ms >= kHour) {
+    return to_string(diff_ms / kHour) + "시간 " +
+           to_string((diff_ms % kHour) / kMinute) + "분 ";
+  }
+
+  if (diff_ms >= kMinute) {
     return to_string(diff_ms / kMinute) + "분 " +
            to_string((diff_ms % kMinute) / kSecond) + "초";
+  }
+
   return to_string(diff_ms / kSecond) + "초";
+}
+
+bool IsTimestampMs(const int64_t timestamp) {
+  // 현재 시간을 초, 밀리초 단위로 가져옴
+  const int64_t current_s = system_clock::now().time_since_epoch() / seconds(1);
+  const int64_t current_ms =
+      system_clock::now().time_since_epoch() / milliseconds(1);
+
+  // 밀리초 단위 값이 현재 밀리초 값과 더 가까우면 ms 단위
+  return abs(timestamp - current_ms) < abs(timestamp - current_s);
 }
 
 }  // namespace backtesting::utils

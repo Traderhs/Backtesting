@@ -87,10 +87,10 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
     switch (bar_type) {
       case TRADING: {
         // 데이터 추가
-        trading_bar_data_->SetBarData(symbol_name, bar_data_timeframe, bar_data,
-                                      open_time_column, open_column,
-                                      high_column, low_column, close_column,
-                                      volume_column, close_time_column);
+        trading_bar_data_->SetBarData(
+            symbol_name, bar_data_timeframe, file_path, bar_data,
+            open_time_column, open_column, high_column, low_column,
+            close_column, volume_column, close_time_column);
 
         // 트레이딩 바를 지표 계산용으로도 사용하기 때문에
         // 참조 바 데이터로 추가
@@ -100,9 +100,9 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
           reference_bar_data_[bar_data_timeframe] = make_shared<BarData>();
         }
         reference_bar_data_[bar_data_timeframe]->SetBarData(
-            symbol_name, bar_data_timeframe, bar_data, open_time_column,
-            open_column, high_column, low_column, close_column, volume_column,
-            close_time_column);
+            symbol_name, bar_data_timeframe, file_path, bar_data,
+            open_time_column, open_column, high_column, low_column,
+            close_column, volume_column, close_time_column);
 
         // 인덱스 심볼 개수 추가
         trading_index_.push_back(0);
@@ -113,10 +113,10 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
 
       case MAGNIFIER: {
         // 데이터 추가
-        magnifier_bar_data_->SetBarData(symbol_name, bar_data_timeframe,
-                                        bar_data, open_time_column, open_column,
-                                        high_column, low_column, close_column,
-                                        volume_column, close_time_column);
+        magnifier_bar_data_->SetBarData(
+            symbol_name, bar_data_timeframe, file_path, bar_data,
+            open_time_column, open_column, high_column, low_column,
+            close_column, volume_column, close_time_column);
 
         // 인덱스 심볼 개수 추가
         magnifier_index_.push_back(0);
@@ -131,9 +131,9 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
           reference_bar_data_[bar_data_timeframe] = make_shared<BarData>();
         }
         reference_bar_data_[bar_data_timeframe]->SetBarData(
-            symbol_name, bar_data_timeframe, bar_data, open_time_column,
-            open_column, high_column, low_column, close_column, volume_column,
-            close_time_column);
+            symbol_name, bar_data_timeframe, file_path, bar_data,
+            open_time_column, open_column, high_column, low_column,
+            close_column, volume_column, close_time_column);
 
         // 인덱스 심볼 개수 추가
         reference_index_[bar_data_timeframe].push_back(0);
@@ -143,9 +143,9 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
       case MARK_PRICE: {
         // 데이터 추가
         mark_price_bar_data_->SetBarData(
-            symbol_name, bar_data_timeframe, bar_data, open_time_column,
-            open_column, high_column, low_column, close_column, volume_column,
-            close_time_column);
+            symbol_name, bar_data_timeframe, file_path, bar_data,
+            open_time_column, open_column, high_column, low_column,
+            close_column, volume_column, close_time_column);
 
         // 인덱스 심볼 개수 추가
         mark_price_index_.push_back(0);
@@ -170,7 +170,7 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
       __FILE__, __LINE__);
 }
 
-bool BarHandler::ProcessBarIndex(const BarType bar_type,
+void BarHandler::ProcessBarIndex(const BarType bar_type,
                                  const string& timeframe, const int symbol_idx,
                                  const int64_t target_close_time) {
   const auto& bar_data = GetBarData(bar_type, timeframe);
@@ -178,44 +178,36 @@ bool BarHandler::ProcessBarIndex(const BarType bar_type,
 
   try {
     while (true) {
-      // 다음 바의 Close Time이 Target Close Time보다 작거나 같을 때만
-      // 인덱스 증가
       if (const auto next_close_time =
               bar_data->SafeGetBar(symbol_idx, bar_indices[symbol_idx] + 1)
                   .close_time;
-          next_close_time <= target_close_time) {
+          next_close_time < target_close_time) {
+        // 다음 바의 Close Time이 Target Close Time보다 작으면
+        // 인덱스 증가 후 반복
         bar_indices[symbol_idx]++;
+      } else if (next_close_time == target_close_time) {
+        // 다음 바의 Close Time이 Target Close Time과 같으면 인덱스 증가 후 탈출
+        bar_indices[symbol_idx]++;
+        return;
       } else {
-        // 다음 바 Close Time이 Target Close Time보다 크면 증가하지 않고 종료.
-        // 이 함수의 목적은 Target Close Time까지 지정된 심볼의 Close Time을
-        // 이동시키는 것이기 때문
-        break;
+        // 다음 바 Close Time이 Target Close Time보다 크면 증가하지 않고 종료
+        return;
       }
     }
-
-    // 정상적으로 모두 이동했으면 true를 반환
-    return true;
   } catch ([[maybe_unused]] const IndexOutOfRange& e) {
     // next_close_time이 바 데이터의 범위를 넘으면 최대 인덱스로 이동한 것이므로
     // 더 이상 이동 불가
-    return false;
   }
 }
 
-bool BarHandler::ProcessBarIndices(const BarType bar_type,
+void BarHandler::ProcessBarIndices(const BarType bar_type,
                                    const string& timeframe,
                                    const int64_t target_close_time) {
-  bool process_all = true;
   for (int symbol_idx = 0;
        symbol_idx < GetBarData(bar_type, timeframe)->GetNumSymbols();
        symbol_idx++) {
-    // 하나라도 정상 진행 실패 시 false를 반환
-    if (!ProcessBarIndex(bar_type, timeframe, symbol_idx, target_close_time)) {
-      process_all = false;
-    }
+    ProcessBarIndex(bar_type, timeframe, symbol_idx, target_close_time);
   }
-
-  return process_all;
 }
 
 void BarHandler::SetCurrentBarType(const BarType bar_type,
@@ -252,10 +244,7 @@ void BarHandler::SetCurrentBarIndex(const size_t bar_index) {
     }
 
     case MARK_PRICE: {
-      Logger::LogAndThrowError(
-          "마크 바 데이터의 바 인덱스 설정은 불가능합니다.", __FILE__,
-          __LINE__);
-      return;
+      mark_price_index_[current_symbol_index_] = bar_index;
     }
   }
 }

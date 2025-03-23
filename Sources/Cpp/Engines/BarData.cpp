@@ -24,6 +24,7 @@ BarData::BarData() : num_symbols_(0) {}
 BarData::~BarData() = default;
 
 void BarData::SetBarData(const string& symbol_name, const string& timeframe,
+                         const string& file_path,
                          const shared_ptr<arrow::Table>& bar_data,
                          const int open_time_column, const int open_column,
                          const int high_column, const int low_column,
@@ -42,6 +43,7 @@ void BarData::SetBarData(const string& symbol_name, const string& timeframe,
   bar_data_[symbol_idx].resize(total_rows);
 
   // 바 정보 설정
+  bar_data_path_.push_back(file_path);
   symbol_names_.push_back(symbol_name);
   num_symbols_++;
   num_bars_.push_back(total_rows);
@@ -92,6 +94,10 @@ Bar& BarData::GetBar(const int symbol_idx, const size_t bar_idx) {
   return bar_data_[symbol_idx][bar_idx];
 }
 
+string BarData::GetBarDataPath(const int symbol_idx) const {
+  return bar_data_path_[symbol_idx];
+}
+
 string& BarData::GetSymbolName(const int symbol_idx) {
   try {
     IsValidSymbolIndex(symbol_idx);
@@ -104,13 +110,17 @@ string& BarData::GetSymbolName(const int symbol_idx) {
 
 int BarData::GetNumSymbols() const { return num_symbols_; }
 
-size_t BarData::GetNumBars(const int symbol_idx) const {
+size_t BarData::GetSafeNumBars(const int symbol_idx) const {
   try {
     IsValidSymbolIndex(symbol_idx);
   } catch (const IndexOutOfRange& e) {
     Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
   }
 
+  return num_bars_[symbol_idx];
+}
+
+size_t BarData::GetNumBars(const int symbol_idx) const {
   return num_bars_[symbol_idx];
 }
 
@@ -122,7 +132,7 @@ void BarData::IsValidIndex(const int symbol_idx, const size_t bar_idx) const {
   // 0보다 작은 조건은 size_t이므로 제외
   if (bar_idx > num_bars_[symbol_idx] - 1) {
     throw IndexOutOfRange(
-        format("지정된 바 인덱스 {}은(는) 최대값 {}을(를) 초과했습니다.",
+        format("지정된 바 인덱스 [{}]은(는) 최대값 [{}]을(를) 초과했습니다.",
                symbol_idx, num_bars_[symbol_idx] - 1));
   }
 }
@@ -130,7 +140,7 @@ void BarData::IsValidIndex(const int symbol_idx, const size_t bar_idx) const {
 void BarData::IsValidSymbolIndex(int symbol_idx) const {
   if (symbol_idx > num_symbols_ - 1 || symbol_idx < 0) {
     throw IndexOutOfRange(
-        format("지정된 심볼 인덱스 {}은(는) 최대값 {}을(를)"
+        format("지정된 심볼 인덱스 [{}]은(는) 최대값 [{}]을(를)"
                " 초과했거나 0 미만입니다.",
                symbol_idx, num_symbols_ - 1));
   }
