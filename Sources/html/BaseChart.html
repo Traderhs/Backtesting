@@ -583,93 +583,161 @@
       function repositionMarkers() {
         const visibleRange = chart.timeScale().getVisibleRange();
         if (!visibleRange) return;
-
+        
         const containerEl = document.getElementById('container');
         const containerRect = containerEl.getBoundingClientRect();
-        const priceScaleWidth = chart.priceScale("right")?.width() || 0;
+        const priceScaleWidth = chart.priceScale("right") ? chart.priceScale("right").width() : 0;
         const rightBoundary = containerRect.right - priceScaleWidth;
         const mainPaneBottom = containerRect.top + chart.panes()[0].getHeight();
-        const triangleWidth = 8, triangleTipOffset = 5.5, textMargin = 10, gap = 2;
-
-        const canvasRect = containerEl.querySelector('canvas').getBoundingClientRect();
-        Object.assign(window.dashSvg.style, {
-            top: `${canvasRect.top - containerRect.top}px`,
-            left: `${canvasRect.left - containerRect.left}px`,
-            width: `${canvasRect.width}px`,
-            height: `${canvasRect.height}px`,
-            overflow: 'hidden'
+        
+        const triangleWidth = 8;
+        const triangleHeight = 10;
+        const triangleTipOffset = 5.5; // 삼각형 tip 위치
+        const textMargin = 10;         // 텍스트와 캔들 low/high 사이 margin
+        const gap = 2;                 // 같은 그룹 내 마커 간 간격
+        
+        // 마커들을 그룹화 (같은 time과 position을 갖는 경우)
+        const groups = {}; // key: `${time}_${position}`
+        window.customMarkers.forEach(m => {
+          if (m.time < visibleRange.from || m.time > visibleRange.to) {
+            m.triangle.style.display = 'none';
+            m.text.style.display = 'none';
+            if(m.dashLine) m.dashLine.style.display = 'none';
+            return;
+          }
+          const x = chart.timeScale().timeToCoordinate(m.time);
+          const yTriangle = mainSeries.priceToCoordinate(m.marker_price);
+          if (x == null || yTriangle == null) {
+            m.triangle.style.display = 'none';
+            m.text.style.display = 'none';
+            if(m.dashLine) m.dashLine.style.display = 'none';
+            return;
+          }
+          m._xCoord = x;
+          m._yTriangle = yTriangle;
+          m.triangle.style.display = 'block';
+          m.text.style.display = 'block';
+          
+          const key = m.time + "_" + m.position;
+          if (!groups[key]) groups[key] = [];
+          groups[key].push(m);
         });
+          
+        // dash line 업데이트 및 경계 체크
+        // 캔버스 DOM 가져오기
+        const canvasEl = containerEl.querySelector('canvas');
+        const canvasRect = canvasEl.getBoundingClientRect();
+        const parentRect = containerRect;
 
-        const groups = {};
+        window.dashSvg.style.top    = `${canvasRect.top - parentRect.top}px`;
+        window.dashSvg.style.left   = `${canvasRect.left - parentRect.left}px`;
+        window.dashSvg.style.width  = `${canvasRect.width}px`;
+        window.dashSvg.style.height = `${canvasRect.height}px`;
+        window.dashSvg.style.overflow = 'hidden';
+
+
+        const clipWidth = canvasRect.width;
+        const clipHeight = canvasRect.height; // 또는 chart.panes()[0].getHeight();
 
         window.customMarkers.forEach(m => {
-          const inView = m.time >= visibleRange.from && m.time <= visibleRange.to;
-          const x = chart.timeScale().timeToCoordinate(m.time);
-          const y = mainSeries.priceToCoordinate(m.marker_price);
+          if (!m.dashLine) return;
 
-          if (!inView || x == null || y == null) {
-            m.triangle.style.display = m.text.style.display = 'none';
-            if (m.dashLine) m.dashLine.style.display = 'none';
+          const x1 = chart.timeScale().timeToCoordinate(m.from_time);
+          const x2 = chart.timeScale().timeToCoordinate(m.time);
+          const y1 = mainSeries.priceToCoordinate(m.from_price);
+          const y2 = mainSeries.priceToCoordinate(m.marker_price);
+
+          if ([x1, x2, y1, y2].some(v => v == null)) {
+            m.dashLine.style.display = 'none';
             return;
           }
 
-          m._xCoord = x;
-          m._yTriangle = y;
-          m.triangle.style.display = m.text.style.display = 'block';
-          m.triangle.style.left = `${x - (m.position === 'left' ? triangleWidth : 0)}px`;
-          m.triangle.style.top = `${y - triangleTipOffset}px`;
+          m.dashLine.setAttribute('x1', x1);
+          m.dashLine.setAttribute('y1', y1);
+          m.dashLine.setAttribute('x2', x2);
+          m.dashLine.setAttribute('y2', y2);
 
-          const key = `${m.time}_${m.position}`;
-          (groups[key] ||= []).push(m);
-
-          if (m.dashLine) {
-            const x1 = chart.timeScale().timeToCoordinate(m.from_time);
-            const y1 = mainSeries.priceToCoordinate(m.from_price);
-
-            if ([x1, y1].some(v => v == null)) {
-              m.dashLine.style.display = 'none';
-            } else {
-              m.dashLine.setAttribute('x1', x1);
-              m.dashLine.setAttribute('y1', y1);
-              m.dashLine.setAttribute('x2', x);
-              m.dashLine.setAttribute('y2', y);
-              const outside = Math.max(x1, x) < 0 ||
-                              Math.min(x1, x) > canvasRect.width ||
-                              Math.max(y1, y) < 0 ||
-                              Math.min(y1, y) > canvasRect.height;
-              m.dashLine.style.display = outside ? 'none' : 'block';
+          // 선의 두 끝점가 캔버스 영역과 교차하는지 검사
+          const lineOutside = (
+            Math.max(x1, x2) < 0 ||  // 오른쪽도 전부 왼쪽에 있음
+            Math.min(x1, x2) > clipWidth || // 왼쪽도 전부 오른쪽에 있음
+            Math.max(y1, y2) < 0 ||  // 아래쪽도 전부 위에 있음
+            Math.min(y1, y2) > clipHeight   // 위쪽도 전부 아래에 있음
+          );
+          
+          m.dashLine.style.display = lineOutside ? 'none' : 'block';
+        });
+        
+        // 삼각형 위치 지정
+        window.customMarkers.forEach(m => {
+          if (m.triangle.style.display === 'none') return;
+          if (m.position === 'left') {
+            m.triangle.style.left = `${m._xCoord - triangleWidth}px`;
+            m.triangle.style.top = `${m._yTriangle - triangleTipOffset}px`;
+          } else if (m.position === 'right') {
+            m.triangle.style.left = `${m._xCoord}px`;
+            m.triangle.style.top = `${m._yTriangle - triangleTipOffset}px`;
+          } else {
+            const triRect = m.triangle.getBoundingClientRect();
+            m.triangle.style.left = `${m._xCoord - triRect.width / 2}px`;
+            m.triangle.style.top = `${m._yTriangle - triRect.height / 2}px`;
+          }
+        });
+        
+        // 텍스트 스택 조정 (같은 time/position 그룹끼리)
+        for (const key in groups) {
+          const group = groups[key];
+          if (group.length === 0) continue;
+          if (group[0].position === 'left') {
+            const baseY = mainSeries.priceToCoordinate(group[0].candleLow) + textMargin;
+            let cumulativeOffset = 0;
+            group.forEach(m => {
+              const textRect = m.text.getBoundingClientRect();
+              const newTextTop = baseY + cumulativeOffset;
+              m.text.style.left = `${m._xCoord - textRect.width / 2}px`;
+              m.text.style.top = `${newTextTop}px`;
+              cumulativeOffset += textRect.height + gap;
+            });
+          } else if (group[0].position === 'right') {
+            const baseY = mainSeries.priceToCoordinate(group[0].candleHigh) - textMargin;
+            let cumulativeOffset = 0;
+            group.forEach(m => {
+              const textRect = m.text.getBoundingClientRect();
+              const newTextTop = baseY - (cumulativeOffset + textRect.height);
+              m.text.style.left = `${m._xCoord - textRect.width / 2}px`;
+              m.text.style.top = `${newTextTop}px`;
+              cumulativeOffset += textRect.height + gap;
+            });
+          } else {
+            group.forEach(m => {
+              const triRect = m.triangle.getBoundingClientRect();
+              const textRect = m.text.getBoundingClientRect();
+              m.text.style.left = `${m._xCoord - textRect.width / 2}px`;
+              m.text.style.top = `${m._yTriangle + triRect.height / 2}px`;
+            });
+          }
+        }
+  
+        // 기존의 삼각형/텍스트에 대한 경계 체크
+        window.customMarkers.forEach(m => {
+          // 삼각형과 텍스트의 위치가 컨테이너 범위를 벗어나면 숨김 처리
+          if (m.triangle.style.display !== 'none') {
+            const triRect = m.triangle.getBoundingClientRect();
+            const textRect = m.text.getBoundingClientRect();
+            const markerLeft = Math.min(triRect.left, textRect.left);
+            const markerRight = Math.max(triRect.right, textRect.right);
+            const markerTop = Math.min(triRect.top, textRect.top);
+            const markerBottom = Math.max(triRect.bottom, textRect.bottom);
+            
+            if (markerLeft < containerRect.left ||
+                markerRight > rightBoundary ||
+                markerTop <= containerRect.top ||
+                markerBottom >= mainPaneBottom) {
+              m.triangle.style.display = 'none';
+              m.text.style.display = 'none';
             }
           }
         });
-
-        for (const key in groups) {
-          const group = groups[key];
-          if (!group.length) continue;
-          const first = group[0];
-           const baseY = first.position === 'left'
-              ? mainSeries.priceToCoordinate(first.candleLow) + textMargin
-              : mainSeries.priceToCoordinate(first.candleHigh) - textMargin;
-          let offset = 0;
-
-          group.forEach(m => {
-            const rect = m.text.getBoundingClientRect();
-            const top = first.position === 'left'
-              ? baseY + offset
-              : baseY - (offset + rect.height);
-            m.text.style.left = `${m._xCoord - rect.width / 2}px`;
-            m.text.style.top = `${top}px`;
-            offset += rect.height + gap;
-
-            const triRect = m.triangle.getBoundingClientRect();
-            const txtRect = m.text.getBoundingClientRect();
-            if (triRect.left < containerRect.left ||
-              txtRect.right > rightBoundary ||
-              Math.min(triRect.top, txtRect.top) <= containerRect.top ||
-              Math.max(triRect.bottom, txtRect.bottom) >= mainPaneBottom) {
-              m.triangle.style.display = m.text.style.display = 'none';
-            }
-          });
-        }
       }
 
       // 실시간 업데이트를 위한 애니메이션 루프
