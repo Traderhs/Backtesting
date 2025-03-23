@@ -27,6 +27,9 @@ class OrderHandler final : public BaseOrderHandler {
 
   /// 트레이딩 중인 심볼에서 지정된 가격을 기준으로 강제 청산을 확인하고
   /// 실행하는 함수
+  ///
+  /// 고저가 확인할 때 청산되었으면 강제 청산 가격은 청산 가격과 마크 가격의
+  /// 차이를 시장 가격에서 조정하므로 실제 가격과 다를 수 있음에 주의
   void CheckLiquidation(double price, PriceType price_type, int symbol_idx,
                         BarType market_bar_type);
 
@@ -233,27 +236,27 @@ class OrderHandler final : public BaseOrderHandler {
 
   // ===========================================================================
   /// 지정가 청산 대기 주문의 체결을 확인하고 체결시키는 함수
-  [[nodiscard]] int CheckPendingLimitExits(int symbol_idx, int order_idx,
+  [[nodiscard]] int CheckPendingLimitExits(int symbol_idx, long long order_idx,
                                            double price, PriceType price_type);
 
   /// MIT 청산 대기 주문의 체결을 확인하고 체결시키는 함수
-  [[nodiscard]] int CheckPendingMitExits(int symbol_idx, int order_idx,
+  [[nodiscard]] int CheckPendingMitExits(int symbol_idx, long long order_idx,
                                          double price, PriceType price_type);
 
   /// LIT 청산 대기 주문의 체결을 확인하고 체결시키는 함수
-  [[nodiscard]] int CheckPendingLitExits(int symbol_idx, int order_idx,
+  [[nodiscard]] int CheckPendingLitExits(int symbol_idx, long long order_idx,
                                          double price, PriceType price_type);
 
   /// 트레일링 청산 대기 주문의 체결을 확인하고 체결시키는 함수
-  [[nodiscard]] int CheckPendingTrailingExits(int symbol_idx, int order_idx,
-                                              double price,
+  [[nodiscard]] int CheckPendingTrailingExits(int symbol_idx,
+                                              long long order_idx, double price,
                                               PriceType price_type);
 
   /// 현재 사용 중인 심볼에서 지정된 청산 대기 주문을 시장가 혹은 지정가로
   /// 체결하는 함수. 자금 관련 처리를 하고 체결 주문으로 이동시킴.
   ///
   /// order_idx보다 작은 인덱스에서 주문이 삭제된 횟수를 카운트해서 반환.
-  [[nodiscard]] int FillPendingExitOrder(int symbol_idx, int order_idx,
+  [[nodiscard]] int FillPendingExitOrder(int symbol_idx, long long order_idx,
                                          double current_price);
 
   // ===========================================================================

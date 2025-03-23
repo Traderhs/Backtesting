@@ -108,16 +108,15 @@ void OrderHandler::CheckLiquidation(const double price,
 void OrderHandler::CheckPendingEntries(const double price,
                                        const PriceType price_type,
                                        const int symbol_idx) {
-  // 현재 심볼의 진입 대기 주문 로딩
   const auto& pending_entries = pending_entries_[symbol_idx];
+  int order_idx = 0;
 
-  // 체결 성공 혹은 주문/체결 거부된 주문은 진입 대기 주문에서 삭제되므로
-  // 역순으로 순회
-  for (int order_idx = static_cast<int>(pending_entries.size() - 1);
-       order_idx >= 0; order_idx--) {
-    switch (pending_entries[order_idx]->GetEntryOrderType()) {
+  while (order_idx < pending_entries.size()) {
+    // 현재 인덱스의 주문 포인터를 저장
+    const auto& current_order = pending_entries[order_idx];
+
+    switch (current_order->GetEntryOrderType()) {
       case MARKET: {
-        // 시장가는 대기 주문이 없음
         LogFormattedInfo(ERROR_L, "진입 대기 주문에 시장가 주문 존재", __FILE__,
                          __LINE__);
         throw;
@@ -125,92 +124,105 @@ void OrderHandler::CheckPendingEntries(const double price,
 
       case LIMIT: {
         CheckPendingLimitEntries(symbol_idx, order_idx, price, price_type);
-        continue;
+        break;
       }
 
       case MIT: {
         CheckPendingMitEntries(symbol_idx, order_idx, price, price_type);
-        continue;
+        break;
       }
 
       case LIT: {
         CheckPendingLitEntries(symbol_idx, order_idx, price, price_type);
-        continue;
+        break;
       }
 
       case TRAILING: {
         CheckPendingTrailingEntries(symbol_idx, order_idx, price, price_type);
-        continue;
+        break;
       }
 
       case ORDER_NONE: {
-        // NONE 타입은 에러
         LogFormattedInfo(ERROR_L, "진입 대기 주문에 NONE 주문 존재", __FILE__,
                          __LINE__);
         throw;
       }
     }
+
+    // 처리 후, current_order가 여전히 같은 위치에 있다면 인덱스를 증가
+    if (order_idx < pending_entries.size() &&
+        pending_entries[order_idx] == current_order) {
+      ++order_idx;
+    }
+    // 만약 주문이 체결되어 삭제되었다면 다음 주문이 현재 order_idx 위치로
+    // 이동했으므로 그대로 반복
   }
 }
 
 void OrderHandler::CheckPendingExits(const double price,
                                      const PriceType price_type,
                                      const int symbol_idx) {
-  // 현재 심볼의 청산 대기 주문 로딩
   const auto& pending_exits = pending_exits_[symbol_idx];
+  size_t order_idx = 0;
 
-  /* 체결된 주문은 청산 대기 주문에서 삭제되므로 역순으로 순회
-   - 체결 시 해당 주문뿐 아니라 같은 진입 이름을 목표로 한 청산 대기 주문도 삭제
-   - 따라서 체결 과정에서 현재 order_idx보다 작은 인덱스의 주문이 삭제되면,
-     삭제된 개수 + 1만큼 order_idx를 감소시켜야 함 */
-  int deleted_below_count = 0;
-  for (int order_idx = static_cast<int>(pending_exits.size() - 1);
-       order_idx >= 0;) {
-    switch (const auto pending_exit = pending_exits[order_idx];
-            pending_exit->GetExitOrderType()) {
+  while (order_idx < pending_exits.size()) {
+    // 주문 확인 함수가 반환하는 값은
+    // 현재 주문 처리 도중 현재 인덱스보다 낮은 위치의 주문이 삭제된 개수
+    int deleted_below_count = -1;
+
+    switch (pending_exits[order_idx]->GetExitOrderType()) {
       case MARKET: {
-        // 시장가는 대기 주문이 없음
         LogFormattedInfo(ERROR_L, "청산 대기 주문에 시장가 주문 존재", __FILE__,
                          __LINE__);
         throw;
       }
-
       case LIMIT: {
-        deleted_below_count =
-            CheckPendingLimitExits(symbol_idx, order_idx, price, price_type);
+        deleted_below_count = CheckPendingLimitExits(
+            symbol_idx, static_cast<int>(order_idx), price, price_type);
         break;
       }
-
       case MIT: {
-        deleted_below_count =
-            CheckPendingMitExits(symbol_idx, order_idx, price, price_type);
+        deleted_below_count = CheckPendingMitExits(
+            symbol_idx, static_cast<int>(order_idx), price, price_type);
         break;
       }
-
       case LIT: {
-        deleted_below_count =
-            CheckPendingLitExits(symbol_idx, order_idx, price, price_type);
+        deleted_below_count = CheckPendingLitExits(
+            symbol_idx, static_cast<int>(order_idx), price, price_type);
         break;
       }
-
       case TRAILING: {
-        deleted_below_count =
-            CheckPendingTrailingExits(symbol_idx, order_idx, price, price_type);
+        deleted_below_count = CheckPendingTrailingExits(
+            symbol_idx, static_cast<int>(order_idx), price, price_type);
         break;
       }
-
       case ORDER_NONE: {
-        // NONE 타입은 에러
         LogFormattedInfo(WARNING_L, "대기 주문에 NONE 주문 존재", __FILE__,
                          __LINE__);
         throw;
       }
     }
 
-    // 현재 인덱스보다 작은 주문이 삭제된 개수 + 1만큼 인덱스를 감소시킴
-    // 즉, 삭제된 주문이 없거나, 현재 인덱스 이상이 삭제된 경우 정상적으로 1을
-    // 감소시켜 다음 주문을 확인
-    order_idx -= deleted_below_count + 1;
+    // deleted_below_count가 -1이면, 주문 처리 중 체결이 없었으므로
+    // 다음 주문으로 넘어가기 위해 인덱스를 증가
+    if (deleted_below_count == -1) {
+      order_idx++;
+      continue;
+    }
+
+    // deleted_below_count가 0이면, 현재 주문은 삭제되고 order_idx보다 큰
+    // 인덱스의 주문도 삭제될 수 있지만, order_idx보다 작은 인덱스의 주문은
+    // 삭제되지 않음.
+    // 따라서 현재 인덱스에 다음 주문이 채워지므로 현재 인덱스로 재검사
+    if (deleted_below_count == 0) {
+      continue;
+    }
+
+    // 만약 deleted_below_count가 0보다 크면,
+    // 현재 order_idx 앞쪽의 주문들이 삭제되어 컨테이너가 앞으로 당겨짐.
+    // 따라서 원래 인덱스에서 삭제된 개수만큼 인덱스를 빼주어 당겨진 위치의
+    // 주문부터 다시 검사
+    order_idx -= deleted_below_count;
   }
 }
 
@@ -1256,6 +1268,7 @@ void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry,
   const auto& order_type_str =
       Order::OrderTypeToString(market_entry->GetEntryOrderType());
   const string& entry_name = market_entry->GetEntryName();
+  const auto entry_fee = market_entry->GetEntryFee();
 
   // 시장가 진입 마진 계산
   const double entry_margin =
@@ -1266,10 +1279,11 @@ void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry,
   market_entry->SetLiquidationPrice(CalculateLiquidationPrice(
       entry_direction, entry_filled_price, entry_filled_size, entry_margin));
 
-  // 진입 가능 여부 체크 (사용 가능 자금 >= 시장가 진입 마진)
+  // 진입 가능 여부 체크 (사용 가능 자금 >= 시장가 진입 마진 + 수수료)
   try {
-    HasEnoughBalance(engine_->GetAvailableBalance(), entry_margin, "사용 가능",
-                     format("{} 진입 마진", order_type_str));
+    HasEnoughBalance(engine_->GetAvailableBalance(), entry_margin + entry_fee,
+                     "사용 가능",
+                     format("{} 진입 마진 및 수수료", order_type_str));
   } catch (const InsufficientBalance& e) {
     LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
     throw OrderFailed("시장가 진입 실패");
@@ -1279,7 +1293,6 @@ void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry,
   ExitOppositeFilledEntries(entry_direction);
 
   // 지갑 자금에서 진입 수수료 차감
-  const auto entry_fee = market_entry->GetEntryFee();
   engine_->DecreaseWalletBalance(entry_fee);
 
   // 수수료 차감 로그
@@ -1724,8 +1737,9 @@ void OrderHandler::FillPendingLimitEntry(const int symbol_idx,
   limit_entry->SetEntryMargin(entry_margin).SetLeftMargin(entry_margin);
 
   try {
-    HasEnoughBalance(engine_->GetAvailableBalance(), entry_margin, "사용 가능",
-                     format("{} 진입 마진", order_type_str));
+    HasEnoughBalance(engine_->GetAvailableBalance(), entry_margin + entry_fee,
+                     "사용 가능",
+                     format("{} 진입 마진 및 수수료", order_type_str));
   } catch (const InsufficientBalance& e) {
     LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
     throw OrderFailed("지정가 진입 실패");
@@ -1804,7 +1818,7 @@ void OrderHandler::OrderPendingLitEntry(const int symbol_idx,
 }
 
 int OrderHandler::CheckPendingLimitExits(const int symbol_idx,
-                                         const int order_idx,
+                                         const long long order_idx,
                                          const double price,
                                          const PriceType price_type) {
   const auto limit_exit = pending_exits_[symbol_idx][order_idx];
@@ -1825,11 +1839,12 @@ int OrderHandler::CheckPendingLimitExits(const int symbol_idx,
     }
   }
 
-  return 0;
+  return -1;
 }
 
 int OrderHandler::CheckPendingMitExits(const int symbol_idx,
-                                       const int order_idx, const double price,
+                                       const long long order_idx,
+                                       const double price,
                                        const PriceType price_type) {
   const auto mit_exit = pending_exits_[symbol_idx][order_idx];
 
@@ -1848,11 +1863,12 @@ int OrderHandler::CheckPendingMitExits(const int symbol_idx,
     }
   }
 
-  return 0;
+  return -1;
 }
 
 int OrderHandler::CheckPendingLitExits(const int symbol_idx,
-                                       const int order_idx, const double price,
+                                       const long long order_idx,
+                                       const double price,
                                        const PriceType price_type) {
   const auto lit_exit = pending_exits_[symbol_idx][order_idx];
 
@@ -1892,11 +1908,11 @@ int OrderHandler::CheckPendingLitExits(const int symbol_idx,
     }
   }
 
-  return 0;
+  return -1;
 }
 
 int OrderHandler::CheckPendingTrailingExits(const int symbol_idx,
-                                            const int order_idx,
+                                            const long long order_idx,
                                             const double price,
                                             const PriceType price_type) {
   const auto trailing_exit = pending_exits_[symbol_idx][order_idx];
@@ -1957,11 +1973,11 @@ int OrderHandler::CheckPendingTrailingExits(const int symbol_idx,
     throw;
   }
 
-  return 0;
+  return -1;
 }
 
 int OrderHandler::FillPendingExitOrder(const int symbol_idx,
-                                       const int order_idx,
+                                       const long long order_idx,
                                        const double current_price) {
   // 바 정보 로딩
   const auto current_open_time = engine_->GetCurrentOpenTime();
@@ -2146,7 +2162,7 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
           .SetPnlNet(realized_pnl_net)
           .SetIndividualPnlPer(realized_pnl_net / exit_order->GetEntryMargin() *
                                100)
-          .SetTotalPnlPer(realized_pnl_net / exit_order->GetWnWhenEntryOrder() *
+          .SetTotalPnlPer(realized_pnl_net / exit_order->GetWbWhenEntryOrder() *
                           100)
           .SetWalletBalance(current_wallet_balance)
           .SetMaxWalletBalance(engine_->GetMaxWalletBalance())
