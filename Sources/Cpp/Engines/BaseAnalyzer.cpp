@@ -3,6 +3,9 @@
 #include <fstream>
 #include <unordered_set>
 
+// 외부 라이브러리
+#include <xlsxwriter.h>
+
 // 파일 헤더
 #include "Engines/BaseAnalyzer.hpp"
 
@@ -233,21 +236,20 @@ void BaseAnalyzer::SaveCharts(const string& main_directory,
         const auto entry_time = UtcDatetimeToUtcTimestamp(trade.GetEntryTime(),
                                                           "%Y-%m-%d %H:%M:%S");
         const auto entry_price = trade.GetEntryPrice();
+        const auto entry_size = trade.GetEntrySize();
+        ostringstream entry_size_oss;
+        entry_size_oss << fixed
+                       << setprecision(static_cast<streamsize>(
+                              CountDecimalPlaces(qty_step)));
+        entry_size_oss << (entry_direction == "매수" ? "+" : "-") << entry_size;
 
         // 이미 추가된 거래 번호가 아닐 때만 매수 체결 마커 추가
+        // -> 분할 청산 시 마커가 누적되는 것을 방지
         if (const auto trade_num = trade.GetTradeNumber();
             !added_trade_num.contains(trade_num)) {
           added_trade_num.insert(trade_num);
 
           json entry_marker;
-          const auto entry_size = trade.GetEntrySize();
-          ostringstream entry_size_oss;
-          entry_size_oss << fixed
-                         << setprecision(static_cast<streamsize>(
-                                CountDecimalPlaces(qty_step)));
-          entry_size_oss << (entry_direction == "매수" ? "+" : "-")
-                         << entry_size;
-
           entry_marker["time"] =
               IsTimestampMs(entry_time) ? entry_time / 1000 : entry_time;
           entry_marker["position"] =  // 매수 밑 위치, 매도 위 위치
@@ -255,8 +257,7 @@ void BaseAnalyzer::SaveCharts(const string& main_directory,
           entry_marker["marker_price"] = entry_price;
           entry_marker["marker_color"] =  // 롱 Green 700, 숏 Red 700
               entry_direction == "매수" ? green : red;
-          entry_marker["text"] = format("{}\\n{} ({})", trade.GetEntryName(),
-                                        entry_price, entry_size_oss.str());
+          entry_marker["text"] = trade.GetEntryName();
 
           markers.push_back(entry_marker);
         }
@@ -285,8 +286,15 @@ void BaseAnalyzer::SaveCharts(const string& main_directory,
         exit_marker["from_price"] = entry_price;
         exit_marker["line_color"] =  // 이익 Green 700, 손실 Red 700
             trade.GetPnlNet() >= 0 ? green : red;
-        exit_marker["text"] = format("{} ({})\\n{}", exit_price,
-                                     exit_size_oss.str(), trade.GetExitName());
+        exit_marker["text"] = format("{}", trade.GetExitName());
+        exit_marker["tooltip_text"] = format(
+            "전략 : {}\\n레버리지 : {}\\n진입가 : {}\\n진입 수량 : {}\\n"
+            "청산가 : {}\\n청산 수량 : {}\\n순손익 : {}\\n"
+            "개별 수익률 : {:.2f}%\\n전체 수익률 : {:.2f}%",
+            trade.GetStrategyName(), trade.GetLeverage(), entry_price,
+            entry_size_oss.str(), exit_price, exit_size_oss.str(),
+            FormatDollar(trade.GetPnlNet(), true), trade.GetIndividualPnlPer(),
+            trade.GetTotalPnlPer());
 
         markers.push_back(exit_marker);
       }
@@ -347,6 +355,151 @@ void BaseAnalyzer::SaveCharts(const string& main_directory,
     logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
     Logger::LogAndThrowError("백테스팅 차트를 저장하는 중 오류가 발생했습니다.",
                              __FILE__, __LINE__);
+  }
+}
+
+void BaseAnalyzer::SaveStreaks(const string& main_directory) const {
+  try {
+    // Trade Number 별 Net PnL 집계 (분할 청산 합산)
+    unordered_map<int, double> net_pnl;
+    vector<int> order;
+    for (const auto& trade : trade_list_) {
+      int num = trade.GetTradeNumber();
+      if (num == 0) continue;
+
+      if (!net_pnl.contains(num)) {
+        order.push_back(num);
+        net_pnl[num] = trade.GetPnlNet();
+      } else {
+        net_pnl[num] += trade.GetPnlNet();
+      }
+    }
+
+    map<int, pair<int, double>> win, lose;  // 연승패 횟수<등장 건수, 누적 PnL>
+    bool current_winning = false;  // 현재 연승(true)인지 연패(false)인지 표시
+    int streak_len = 0;            // 현재 몇 연승패 중인지 기록
+    double pnl_sum = 0;            // 현재 연승패의 누적 Net PnL 합계
+    bool first = true;             // 첫 거래 번호 여부
+
+    // 거래 번호 순서대로 순회하면서 연승 연패 계산
+    for (int order_num : order) {
+      // 해당 거래 번호의 Net PnL 합계 가져오기
+      const double pnl = net_pnl.at(order_num);
+
+      // 새 연승연패 시작 조건: 첫 반복이거나 승패가 바뀌었을 때
+      if (const bool is_win = pnl >= 0; first || is_win != current_winning) {
+        if (!first) {
+          // 연승패 종료 → 저장
+          auto& streaks = current_winning ? win : lose;
+          streaks[streak_len].first++;            // 해당 연승패의 건수 증가
+          streaks[streak_len].second += pnl_sum;  // 해당 횟수의 누적 PnL 합산
+        }
+
+        // 연승패 리셋
+        current_winning = is_win;
+        streak_len = 1;
+        pnl_sum = pnl;
+        first = false;
+      } else {
+        // 같은 승/패 연속 → 연승패 연장
+        streak_len++;
+        pnl_sum += pnl;
+      }
+    }
+
+    // 마지막 연승패가 남아있으면 저장
+    if (!first) {
+      auto& streaks = current_winning ? win : lose;
+      streaks[streak_len].first++;
+      streaks[streak_len].second += pnl_sum;
+    }
+
+    // XLSX 저장
+    // 연승/연패 스트릭 통합 엑셀 저장
+    lxw_workbook* workbook = workbook_new(
+        (main_directory + "/Streaks/Portfolio Streaks.xlsx").c_str());
+    lxw_worksheet* sheet =
+        workbook_add_worksheet(workbook, "Portfolio Streaks");
+
+    // 열 너비 설정
+    worksheet_set_column(sheet, 0, 1, 12, nullptr);
+    worksheet_set_column(sheet, 2, 3, 20, nullptr);
+    worksheet_set_column(sheet, 4, 5, 12, nullptr);
+    worksheet_set_column(sheet, 6, 7, 20, nullptr);
+
+    // 헤더 포맷 설정
+    auto make_header_format = [&](const uint32_t color) {
+      lxw_format* fmt = workbook_add_format(workbook);
+      format_set_bold(fmt);
+      format_set_border(fmt, LXW_BORDER_THIN);
+      format_set_bg_color(fmt, color);
+      format_set_align(fmt, LXW_ALIGN_CENTER);
+      return fmt;
+    };
+
+    lxw_format* win_fmt = make_header_format(0xE2EFDA);   // 연한 연두색
+    lxw_format* lose_fmt = make_header_format(0xF2DCDB);  // 연한 빨간색
+
+    // 문자열 포맷 설정
+    lxw_format* string_fmt = workbook_add_format(workbook);
+    format_set_align(string_fmt, LXW_ALIGN_RIGHT);
+
+    // 셀 쓰기 람다 (포맷은 기본 null)
+    auto write = [&](const int row, const int col, const string& txt,
+                     lxw_format* fmt = nullptr) {
+      worksheet_write_string(sheet, row, col, txt.c_str(), fmt);
+    };
+
+    // 헤더 작성
+    const vector<string> win_headers = {"연승 횟수", "연승 건수", "수익 합계",
+                                        "거래당 평균 수익"};
+    const vector<string> lose_headers = {"연패 횟수", "연패 건수", "손실 합계",
+                                         "거래당 평균 손실"};
+    for (int i = 0; i < 4; ++i) {
+      write(0, i, win_headers[i], win_fmt);
+      write(0, i + 4, lose_headers[i], lose_fmt);
+    }
+
+    // 최대 길이 기준으로 루프
+    const size_t max_row = max(win.size(), lose.size());
+    auto win_it = win.begin();
+    auto lose_it = lose.begin();
+
+    for (int row = 1; row <= static_cast<int>(max_row); ++row) {
+      if (win_it != win.end()) {
+        const int len = win_it->first;
+        const int count = win_it->second.first;
+        const double total_pnl = win_it->second.second;
+        const double avg_pnl = total_pnl / (len * count);
+        write(row, 0, to_string(len) + "연승", string_fmt);
+        write(row, 1, to_string(count) + "건", string_fmt);
+        write(row, 2, FormatDollar(total_pnl, true), string_fmt);
+        write(row, 3, FormatDollar(avg_pnl, true), string_fmt);
+        ++win_it;
+      }
+
+      if (lose_it != lose.end()) {
+        const int len = lose_it->first;
+        const int count = lose_it->second.first;
+        const double total_pnl = lose_it->second.second;
+        const double avg_pnl = total_pnl / (len * count);
+        write(row, 4, to_string(len) + "연패", string_fmt);
+        write(row, 5, to_string(count) + "건", string_fmt);
+        write(row, 6, FormatDollar(total_pnl, true), string_fmt);
+        write(row, 7, FormatDollar(avg_pnl, true), string_fmt);
+        ++lose_it;
+      }
+    }
+
+    workbook_close(workbook);
+
+    logger_->Log(INFO_L, "연승/연패 기록이 저장되었습니다.", __FILE__,
+                 __LINE__);
+  } catch (const exception& e) {
+    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__);
+    Logger::LogAndThrowError(
+        "연승/연패 기록을 저장하는 중 오류가 발생했습니다.", __FILE__,
+        __LINE__);
   }
 }
 
