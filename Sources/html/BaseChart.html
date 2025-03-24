@@ -475,6 +475,22 @@
       const triangleWidth = 9;   
       const triangleHeight = 11; 
 
+      // 삼각형, 텍스트 전용 컨테이너 생성
+      if (!window.markersOverlay) {
+        const overlayDiv = document.createElement('div');
+        overlayDiv.style.position = 'absolute';
+        overlayDiv.style.top = '0';
+        overlayDiv.style.left = '0';
+        overlayDiv.style.width = '100%';
+        overlayDiv.style.height = '100%';
+        overlayDiv.style.pointerEvents = 'none';
+        overlayDiv.style.overflow = 'hidden';  // ★ 핵심: 넘어가면 잘리도록
+        overlayDiv.style.zIndex = '900';       // 필요 시 조절
+        document.getElementById('container').appendChild(overlayDiv);
+
+        window.markersOverlay = overlayDiv;
+      }
+
       // dash line 전용 SVG 컨테이너 생성
       if (!window.dashSvg) {
         const svgNS = "http://www.w3.org/2000/svg";
@@ -539,14 +555,14 @@
         textDiv.style.fontSize = '12px';
         textDiv.style.color = '#fff';
         textDiv.style.zIndex = '1000';
-        textDiv.style.whiteSpace = 'pre-wrap';
+        textDiv.style.whiteSpace = 'pre';
         textDiv.style.textAlign = 'center';
         textDiv.style.textShadow = `-1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000`;
         
         // 컨테이너에 삼각형과 텍스트 추가
         const containerEl = document.getElementById('container');
-        containerEl.appendChild(triangleSvg);
-        containerEl.appendChild(textDiv);
+        window.markersOverlay.appendChild(triangleSvg);
+        window.markersOverlay.appendChild(textDiv);
         
         // from_time, from_price, line_color 모두 지정되었으면 dash line 생성
         let dashLine = null;
@@ -652,23 +668,19 @@
         if (hideMarkers) {
           window.customMarkers.forEach(m => {
             const { x, y } = getMarkerCoords(m);
-            if (x != null && y != null) {
-              const left = m.position === 'left' ? x - triangleWidth : x;
-              const top = y - triangleTipOffset;
-              // 경계 안에 들어올 때만 보이게
-              if (
-                left >= containerRect.left &&
-                left + triangleWidth <= rightBoundary &&
-                top >= containerRect.top &&
-                top + triangleHeight <= mainPaneBottom
-              ) {
-                showOnlyTriangle(m, x, y);
-              } else {
-                hideMarker(m);
-              }
+            const inView = x != null && y != null && x >= 0 && x <= timeScaleWidth;
+
+            if (inView) {
+              m.triangle.style.display = 'block';
+              m.triangle.style.left = `${m.position === 'left' ? x - triangleWidth : x}px`;
+              m.triangle.style.top = `${y - triangleTipOffset}px`;
             } else {
-              hideMarker(m);
+              m.triangle.style.display = 'none';
             }
+
+            // 항상 텍스트·라인 숨김
+            m.text.style.display = 'none';
+            if (m.dashLine) m.dashLine.style.display = 'none';
           });
           return;
         }
@@ -698,10 +710,15 @@
           groups[key].push(m);
         });
 
-        // dashLine 업데이트 및 경계 체크
+        // 경계 업데이트 및 체크
         const canvasEl = containerEl.querySelector('canvas');
         const canvasRect = canvasEl.getBoundingClientRect();
         const parentRect = containerRect;
+
+        window.markersOverlay.style.top    = (canvasRect.top  - parentRect.top)  + 'px';
+        window.markersOverlay.style.left   = (canvasRect.left - parentRect.left) + 'px';
+        window.markersOverlay.style.width  = canvasRect.width + 'px';
+        window.markersOverlay.style.height = canvasRect.height+ 'px';
 
         window.dashSvg.style.top = `${canvasRect.top - parentRect.top}px`;
         window.dashSvg.style.left = `${canvasRect.left - parentRect.left}px`;
@@ -713,40 +730,40 @@
         const clipHeight = canvasRect.height;
 
         window.customMarkers.forEach(m => {
-          if (!m.dashLine) return;
-
-          const x1 = chart.timeScale().timeToCoordinate(m.from_time);
-          const x2 = chart.timeScale().timeToCoordinate(m.time);
-          const y1 = mainSeries.priceToCoordinate(m.from_price);
-          const y2 = mainSeries.priceToCoordinate(m.marker_price);
-
-          if ([x1, x2, y1, y2].some(v => v == null)) {
-            m.dashLine.style.display = 'none';
-            return;
+          // 삼각형 위치 재지정
+          if (m.triangle.style.display !== 'none') {
+            if (m.position === 'left') {
+              m.triangle.style.left = `${m._xCoord - triangleWidth}px`;
+              m.triangle.style.top = `${m._yTriangle - triangleTipOffset}px`;
+            } else if (m.position === 'right') {
+              m.triangle.style.left = `${m._xCoord}px`;
+              m.triangle.style.top = `${m._yTriangle - triangleTipOffset}px`;
+            }
           }
 
-          m.dashLine.setAttribute('x1', x1);
-          m.dashLine.setAttribute('y1', y1);
-          m.dashLine.setAttribute('x2', x2);
-          m.dashLine.setAttribute('y2', y2);
+          // 라인 위치 재지정
+          if (m.dashLine) {
+            const x1 = chart.timeScale().timeToCoordinate(m.from_time);
+            const x2 = chart.timeScale().timeToCoordinate(m.time);
+            const y1 = mainSeries.priceToCoordinate(m.from_price);
+            const y2 = mainSeries.priceToCoordinate(m.marker_price);
 
-          const lineOutside =
-            Math.max(x1, x2) < 0 ||
-            Math.min(x1, x2) > clipWidth ||
-            Math.max(y1, y2) < 0 ||
-            Math.min(y1, y2) > clipHeight;
-          m.dashLine.style.display = lineOutside ? 'none' : 'block';
-        });
+            if ([x1, x2, y1, y2].some(v => v == null)) {
+              m.dashLine.style.display = 'none';
+              return;
+            }
 
-        // 삼각형 위치 지정 (업데이트된 좌표로 재설정)
-        window.customMarkers.forEach(m => {
-          if (m.triangle.style.display === 'none') return;
-          if (m.position === 'left') {
-            m.triangle.style.left = `${m._xCoord - triangleWidth}px`;
-            m.triangle.style.top = `${m._yTriangle - triangleTipOffset}px`;
-          } else if (m.position === 'right') {
-            m.triangle.style.left = `${m._xCoord}px`;
-            m.triangle.style.top = `${m._yTriangle - triangleTipOffset}px`;
+            m.dashLine.setAttribute('x1', x1);
+            m.dashLine.setAttribute('y1', y1);
+            m.dashLine.setAttribute('x2', x2);
+            m.dashLine.setAttribute('y2', y2);
+
+            const lineOutside =
+              Math.max(x1, x2) < 0 ||
+              Math.min(x1, x2) > clipWidth ||
+              Math.max(y1, y2) < 0 ||
+              Math.min(y1, y2) > clipHeight;
+            m.dashLine.style.display = lineOutside ? 'none' : 'block';
           }
         });
 
@@ -757,6 +774,7 @@
           if (group[0].position === 'left') {
             const baseY = mainSeries.priceToCoordinate(group[0].candleLow) + textMargin;
             let cumulativeOffset = 0;
+
             group.forEach(m => {
               const textRect = m.text.getBoundingClientRect();
               const newTextTop = baseY + cumulativeOffset;
@@ -767,6 +785,7 @@
           } else if (group[0].position === 'right') {
             const baseY = mainSeries.priceToCoordinate(group[0].candleHigh) - textMargin;
             let cumulativeOffset = 0;
+            
             group.forEach(m => {
               const textRect = m.text.getBoundingClientRect();
               const newTextTop = baseY - (cumulativeOffset + textRect.height);
@@ -776,29 +795,6 @@
             });
           }
         }
-
-        // 최종 경계 체크: 삼각형/텍스트가 컨테이너 범위를 벗어나면 숨김
-        window.customMarkers.forEach(m => {
-          if (m.triangle.style.display !== 'none') {
-            const triRect = m.triangle.getBoundingClientRect();
-            const textRect = m.text.getBoundingClientRect();
-            const markerLeft = Math.min(triRect.left, textRect.left);
-            const markerRight = Math.max(triRect.right, textRect.right);
-            const markerTop = Math.min(triRect.top, textRect.top);
-            const markerBottom = Math.max(triRect.bottom, textRect.bottom);
-
-            if (
-              markerLeft < containerRect.left ||
-              markerRight > rightBoundary ||
-              markerTop <= containerRect.top ||
-              markerBottom >= mainPaneBottom
-            ) {
-              hideMarker(m);
-            } else if (hideMarkers) {
-              hideMarker(m);
-            }
-          }
-        });
       }
 
       // 실시간 업데이트를 위한 애니메이션 루프
