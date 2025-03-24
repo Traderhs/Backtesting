@@ -71,12 +71,15 @@ class BaseAnalyzer {
   /// 거래 목록에 거래를 추가하는 함수
   void AddTrade(Trade& new_trade, int exit_count);
 
-  /// 거래 목록을 csv 파일로 저장하는 함수
+  /// 거래 목록을 XLSX 파일로 저장하는 함수
   void SaveTradeList(const string& file_path) const;
 
   /// 전략의 지표와 매매 표시를 포함한 캔들스틱 차트를 저장하는 함수
   void SaveCharts(const string& main_directory,
                   const vector<shared_ptr<Strategy>>& strategies);
+
+  /// 연승, 연패 정보를 XLSX 파일로 저장하는 함수
+  void SaveStreaks(const string& main_directory) const;
 
  protected:
   BaseAnalyzer();

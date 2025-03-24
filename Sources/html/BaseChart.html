@@ -505,10 +505,60 @@
         document.getElementById('container').appendChild(window.dashSvg);
       }
 
+      // Dash Line 툴팁 컨테이너 생성
+      if (!window.markerTooltip) {
+        const tooltip = document.createElement("div");
+        tooltip.style.position = "absolute";
+        tooltip.style.padding = "4px 8px";
+        tooltip.style.background = "#363a45";
+        tooltip.style.color = "#fff";
+        tooltip.style.fontSize = "12px";
+        tooltip.style.borderRadius = "4px";
+        tooltip.style.pointerEvents = "none";
+        tooltip.style.zIndex = "11000";
+        tooltip.style.display = "none";
+        tooltip.style.whiteSpace = "pre";
+        document.getElementById("container").appendChild(tooltip);
+        window.markerTooltip = tooltip;
+      }
+
+      document.getElementById('container').addEventListener('mousemove', function(event) {
+        const containerRect = document.getElementById('container').getBoundingClientRect();
+        const mouseX = event.clientX - containerRect.left;
+        const mouseY = event.clientY - containerRect.top;
+        let tooltipShown = false;
+        const threshold = 5; // 마우스와 dash line 간 허용 거리 (px)
+
+        // window.customMarkers 배열에 저장된 각 마커에 대해 검사
+        window.customMarkers.forEach(marker => {
+          if (marker.dashLine) {
+            // dash line의 시작 좌표 (from_time, from_price)와 끝 좌표 (time, marker_price)를 계산
+            const x1 = chart.timeScale().timeToCoordinate(marker.from_time);
+            const y1 = mainSeries.priceToCoordinate(marker.from_price);
+            const x2 = chart.timeScale().timeToCoordinate(marker.time);
+            const y2 = mainSeries.priceToCoordinate(marker.marker_price);
+            if ([x1, y1, x2, y2].some(v => v == null)) return;
+            
+            const dist = pointToSegmentDistance(mouseX, mouseY, x1, y1, x2, y2);
+            if (dist < threshold) {
+              window.markerTooltip.innerText = marker.tooltipText.replace("nl", "\\n");
+              window.markerTooltip.style.display = 'block';
+              window.markerTooltip.style.left = (mouseX + 10) + 'px';
+              window.markerTooltip.style.top = (mouseY + 10) + 'px';
+              tooltipShown = true;
+            }
+          }
+        });
+        
+        if (!tooltipShown) {
+          window.markerTooltip.style.display = 'none';
+        }
+      });     
 
       function addCustomMarker({time, marker_price, position, 
                                 marker_color = '#ffffff', text = '', 
-                                from_time, from_price, line_color}) {
+                                from_time, from_price, line_color,
+                                tooltip_text}) {
         // 캔들 데이터를 찾아 low/high 값을 가져옴
         const idx = candleStickData.findIndex(c => c.time > time);
         let candle;
@@ -586,7 +636,8 @@
           candleHigh: candle.high,
           from_time, 
           from_price,
-          dashLine
+          dashLine,
+          tooltipText: tooltip_text
         });
 
         repositionMarkers();
@@ -624,14 +675,14 @@
         );
       }
 
-      // 마커 숨기기: triangle, text, dashLine 모두 숨김
+      // triangle, text, dashLine을 모두 숨기는 함수
       function hideMarker(m) {
         m.triangle.style.display = 'none';
         m.text.style.display = 'none';
         if (m.dashLine) m.dashLine.style.display = 'none';
       }
 
-      // 삼각형만 보이기 (텍스트와 dashLine은 숨김)
+      // 삼각형만 보이게하는 함수
       function showOnlyTriangle(m, x, y) {
         m.triangle.style.display = 'block';
         setTrianglePosition(m, x, y);
@@ -639,8 +690,34 @@
         if (m.dashLine) m.dashLine.style.display = 'none';
       }
 
+      // 마우스와 라인의 거리를 구하는 함수
+      function pointToSegmentDistance(px, py, x1, y1, x2, y2) {
+        const A = px - x1;
+        const B = py - y1;
+        const C = x2 - x1;
+        const D = y2 - y1;
+        const dot = A * C + B * D;
+        const lenSq = C * C + D * D;
+        const param = (lenSq !== 0) ? dot / lenSq : -1;
+        let xx, yy;
+        if (param < 0) {
+          xx = x1;
+          yy = y1;
+        } else if (param > 1) {
+          xx = x2;
+          yy = y2;
+        } else {
+          xx = x1 + param * C;
+          yy = y1 + param * D;
+        }
+        const dx = px - xx;
+        const dy = py - yy;
+        return Math.sqrt(dx * dx + dy * dy);
+      }
+
+
       // ===================================================================
-      const MAX_MARKERS = 75;
+      const MAX_MARKERS = 100;
 
       function repositionMarkers() {
         const visibleRange = chart.timeScale().getVisibleRange();
@@ -654,7 +731,7 @@
         const mainPaneBottom = containerRect.top + chart.panes()[0].getHeight();
         const triangleTipOffset = triangleHeight / 2;
         const textMargin = 10;
-        const gap = 2;
+        const gap = 5;
 
         // 현재 보이는 마커 개수 계산
         let visibleCount = 0;
