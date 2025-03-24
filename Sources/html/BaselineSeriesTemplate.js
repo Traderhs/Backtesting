@@ -1,4 +1,4 @@
-      const {{ baseline_series}} = chart.addSeries(LightweightCharts.BaselineSeries, {
+      const {{ baseline_series }} = chart.addSeries(LightweightCharts.BaselineSeries, {
         // 공통 변수
         priceFormat: {
           type: 'price',

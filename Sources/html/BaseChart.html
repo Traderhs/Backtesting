@@ -472,6 +472,8 @@
       // ------------------------------------------------------
       window.customMarkers = [];
       let animationFrameId = null;
+      const triangleWidth = 9;   
+      const triangleHeight = 11; 
 
       // dash line 전용 SVG 컨테이너 생성
       if (!window.dashSvg) {
@@ -508,8 +510,6 @@
         
         // 삼각형 요소 생성
         const triangleSvg = document.createElementNS(svgNS, "svg");
-        const triangleWidth = 9;   
-        const triangleHeight = 11; 
         triangleSvg.setAttribute("width", triangleWidth.toString());
         triangleSvg.setAttribute("height", triangleHeight.toString());
         triangleSvg.setAttribute("viewBox", `0 0 ${triangleWidth} ${triangleHeight}`);
@@ -576,68 +576,141 @@
         repositionMarkers();
       }
 
-      // 캔들의 좌표를 기준으로 삼각형의 tip은 캔들 중앙에 위치하도록 하고,
-      // left인 경우 텍스트는 캔들의 low에서 textMargin 아래,
-      // right인 경우 텍스트는 캔들의 high에서 textMargin 위에 배치함.
-      // 텍스트의 위치가 컨테이너 경계를 벗어나지 않도록 clamping 적용.
+      // ===================================================================
+      // 리포지션 헬퍼 함수들
+
+      // 좌표 계산: x는 marker의 time, y는 marker_price 기반 좌표
+      function getMarkerCoords(m) {
+        const x = chart.timeScale().timeToCoordinate(m.time);
+        const y = mainSeries.priceToCoordinate(m.marker_price);
+        return { x, y };
+      }
+
+      // 삼각형 좌표 설정: left, top 계산 후 적용
+      function setTrianglePosition(m, x, y) {
+        const left = m.position === 'left' ? x - triangleWidth : x;
+        const top = y - triangleTipOffset;
+        m.triangle.style.left = `${left}px`;
+        m.triangle.style.top = `${top}px`;
+      }
+
+      // 경계 검사: 해당 좌표에서 삼각형이 컨테이너 안에 완전히 들어오는지 확인
+      function isWithinBounds(x, y) {
+        const left = x - (triangleWidth * (m.position === 'left' ? 1 : 0));
+        const top = y - triangleTipOffset;
+        const right = left + triangleWidth;
+        const bottom = top + triangleHeight;
+        return (
+          left >= containerRect.left &&
+          right <= rightBoundary &&
+          top >= containerRect.top &&
+          bottom <= mainPaneBottom
+        );
+      }
+
+      // 마커 숨기기: triangle, text, dashLine 모두 숨김
+      function hideMarker(m) {
+        m.triangle.style.display = 'none';
+        m.text.style.display = 'none';
+        if (m.dashLine) m.dashLine.style.display = 'none';
+      }
+
+      // 삼각형만 보이기 (텍스트와 dashLine은 숨김)
+      function showOnlyTriangle(m, x, y) {
+        m.triangle.style.display = 'block';
+        setTrianglePosition(m, x, y);
+        m.text.style.display = 'none';
+        if (m.dashLine) m.dashLine.style.display = 'none';
+      }
+
+      // ===================================================================
+      const MAX_MARKERS = 75;
+
       function repositionMarkers() {
         const visibleRange = chart.timeScale().getVisibleRange();
         if (!visibleRange) return;
-        
+
+        const timeScaleWidth = chart.timeScale().width();
         const containerEl = document.getElementById('container');
         const containerRect = containerEl.getBoundingClientRect();
-        const priceScaleWidth = chart.priceScale("right") ? chart.priceScale("right").width() : 0;
+        const priceScaleWidth = chart.priceScale("right")?.width() || 0;
         const rightBoundary = containerRect.right - priceScaleWidth;
         const mainPaneBottom = containerRect.top + chart.panes()[0].getHeight();
-        
-        const triangleWidth = 8;
-        const triangleHeight = 10;
-        const triangleTipOffset = 5.5; // 삼각형 tip 위치
-        const textMargin = 10;         // 텍스트와 캔들 low/high 사이 margin
-        const gap = 2;                 // 같은 그룹 내 마커 간 간격
-        
-        // 마커들을 그룹화 (같은 time과 position을 갖는 경우)
-        const groups = {}; // key: `${time}_${position}`
+        const triangleTipOffset = triangleHeight / 2;
+        const textMargin = 10;
+        const gap = 2;
+
+        // 현재 보이는 마커 개수 계산
+        let visibleCount = 0;
+        window.customMarkers.forEach(m => {
+          const { x } = getMarkerCoords(m);
+          if (x !== null && x >= 0 && x <= timeScaleWidth) visibleCount++;
+        });
+        const hideMarkers = visibleCount > MAX_MARKERS;
+
+        // MAX_MARKERS 이상이면 삼각형만 그리고 바로 리턴
+        if (hideMarkers) {
+          window.customMarkers.forEach(m => {
+            const { x, y } = getMarkerCoords(m);
+            if (x != null && y != null) {
+              const left = m.position === 'left' ? x - triangleWidth : x;
+              const top = y - triangleTipOffset;
+              // 경계 안에 들어올 때만 보이게
+              if (
+                left >= containerRect.left &&
+                left + triangleWidth <= rightBoundary &&
+                top >= containerRect.top &&
+                top + triangleHeight <= mainPaneBottom
+              ) {
+                showOnlyTriangle(m, x, y);
+              } else {
+                hideMarker(m);
+              }
+            } else {
+              hideMarker(m);
+            }
+          });
+          return;
+        }
+
+        // ── 일반 처리: visibleMarkers 이하일 때 ─────────────
+        // 그룹화를 위한 객체 (같은 time과 position을 갖는 마커들)
+        const groups = {};
         window.customMarkers.forEach(m => {
           if (m.time < visibleRange.from || m.time > visibleRange.to) {
-            m.triangle.style.display = 'none';
-            m.text.style.display = 'none';
-            if(m.dashLine) m.dashLine.style.display = 'none';
+            hideMarker(m);
             return;
           }
-          const x = chart.timeScale().timeToCoordinate(m.time);
-          const yTriangle = mainSeries.priceToCoordinate(m.marker_price);
-          if (x == null || yTriangle == null) {
-            m.triangle.style.display = 'none';
-            m.text.style.display = 'none';
-            if(m.dashLine) m.dashLine.style.display = 'none';
+
+          const { x, y } = getMarkerCoords(m);
+          if (x == null || y == null) {
+            hideMarker(m);
             return;
           }
+
           m._xCoord = x;
-          m._yTriangle = yTriangle;
+          m._yTriangle = y;
           m.triangle.style.display = 'block';
           m.text.style.display = 'block';
-          
+
           const key = m.time + "_" + m.position;
           if (!groups[key]) groups[key] = [];
           groups[key].push(m);
         });
-          
-        // dash line 업데이트 및 경계 체크
-        // 캔버스 DOM 가져오기
+
+        // dashLine 업데이트 및 경계 체크
         const canvasEl = containerEl.querySelector('canvas');
         const canvasRect = canvasEl.getBoundingClientRect();
         const parentRect = containerRect;
 
-        window.dashSvg.style.top    = `${canvasRect.top - parentRect.top}px`;
-        window.dashSvg.style.left   = `${canvasRect.left - parentRect.left}px`;
-        window.dashSvg.style.width  = `${canvasRect.width}px`;
+        window.dashSvg.style.top = `${canvasRect.top - parentRect.top}px`;
+        window.dashSvg.style.left = `${canvasRect.left - parentRect.left}px`;
+        window.dashSvg.style.width = `${canvasRect.width}px`;
         window.dashSvg.style.height = `${canvasRect.height}px`;
         window.dashSvg.style.overflow = 'hidden';
 
-
         const clipWidth = canvasRect.width;
-        const clipHeight = canvasRect.height; // 또는 chart.panes()[0].getHeight();
+        const clipHeight = canvasRect.height;
 
         window.customMarkers.forEach(m => {
           if (!m.dashLine) return;
@@ -657,18 +730,15 @@
           m.dashLine.setAttribute('x2', x2);
           m.dashLine.setAttribute('y2', y2);
 
-          // 선의 두 끝점가 캔버스 영역과 교차하는지 검사
-          const lineOutside = (
-            Math.max(x1, x2) < 0 ||  // 오른쪽도 전부 왼쪽에 있음
-            Math.min(x1, x2) > clipWidth || // 왼쪽도 전부 오른쪽에 있음
-            Math.max(y1, y2) < 0 ||  // 아래쪽도 전부 위에 있음
-            Math.min(y1, y2) > clipHeight   // 위쪽도 전부 아래에 있음
-          );
-          
+          const lineOutside =
+            Math.max(x1, x2) < 0 ||
+            Math.min(x1, x2) > clipWidth ||
+            Math.max(y1, y2) < 0 ||
+            Math.min(y1, y2) > clipHeight;
           m.dashLine.style.display = lineOutside ? 'none' : 'block';
         });
-        
-        // 삼각형 위치 지정
+
+        // 삼각형 위치 지정 (업데이트된 좌표로 재설정)
         window.customMarkers.forEach(m => {
           if (m.triangle.style.display === 'none') return;
           if (m.position === 'left') {
@@ -677,13 +747,9 @@
           } else if (m.position === 'right') {
             m.triangle.style.left = `${m._xCoord}px`;
             m.triangle.style.top = `${m._yTriangle - triangleTipOffset}px`;
-          } else {
-            const triRect = m.triangle.getBoundingClientRect();
-            m.triangle.style.left = `${m._xCoord - triRect.width / 2}px`;
-            m.triangle.style.top = `${m._yTriangle - triRect.height / 2}px`;
           }
         });
-        
+
         // 텍스트 스택 조정 (같은 time/position 그룹끼리)
         for (const key in groups) {
           const group = groups[key];
@@ -708,19 +774,11 @@
               m.text.style.top = `${newTextTop}px`;
               cumulativeOffset += textRect.height + gap;
             });
-          } else {
-            group.forEach(m => {
-              const triRect = m.triangle.getBoundingClientRect();
-              const textRect = m.text.getBoundingClientRect();
-              m.text.style.left = `${m._xCoord - textRect.width / 2}px`;
-              m.text.style.top = `${m._yTriangle + triRect.height / 2}px`;
-            });
           }
         }
-  
-        // 기존의 삼각형/텍스트에 대한 경계 체크
+
+        // 최종 경계 체크: 삼각형/텍스트가 컨테이너 범위를 벗어나면 숨김
         window.customMarkers.forEach(m => {
-          // 삼각형과 텍스트의 위치가 컨테이너 범위를 벗어나면 숨김 처리
           if (m.triangle.style.display !== 'none') {
             const triRect = m.triangle.getBoundingClientRect();
             const textRect = m.text.getBoundingClientRect();
@@ -728,13 +786,16 @@
             const markerRight = Math.max(triRect.right, textRect.right);
             const markerTop = Math.min(triRect.top, textRect.top);
             const markerBottom = Math.max(triRect.bottom, textRect.bottom);
-            
-            if (markerLeft < containerRect.left ||
-                markerRight > rightBoundary ||
-                markerTop <= containerRect.top ||
-                markerBottom >= mainPaneBottom) {
-              m.triangle.style.display = 'none';
-              m.text.style.display = 'none';
+
+            if (
+              markerLeft < containerRect.left ||
+              markerRight > rightBoundary ||
+              markerTop <= containerRect.top ||
+              markerBottom >= mainPaneBottom
+            ) {
+              hideMarker(m);
+            } else if (hideMarkers) {
+              hideMarker(m);
             }
           }
         });
@@ -746,10 +807,6 @@
         animationFrameId = requestAnimationFrame(updateLoop);
       }
       updateLoop();
-
-      // 차트 이벤트 구독 (이벤트 발생 시 한 번 업데이트)
-      chart.timeScale().subscribeVisibleTimeRangeChange(repositionMarkers);
-      window.addEventListener('resize', repositionMarkers);
 
       // 마커 데이터(JSON 문자열)를 파싱 후, 마커 생성
       const markerData = JSON.parse('{{ markers }}');
@@ -792,28 +849,12 @@
       // 2) 좌상단에 가격/볼륨/지표 데이터 업데이트
       // ------------------------------------------------------
       chart.subscribeCrosshairMove((param) => {
-        // crosshair가 차트 밖으로 벗어났을 경우
-        if (
-          !param.time ||
-          param.point === undefined ||
-          param.point.x < 0 ||
-          param.point.x > container.clientWidth ||
-          param.point.y < 0 ||
-          param.point.y > container.clientHeight
-        ) {
-          // 툴팁 숨김
-          tooltip.style.display = "none";
-
-          // 좌상단 가격 정보 클리어
+        // crosshair가 차트 밖으로 벗어났을 경우 초기화
+        if (!param.time || !param.point) {
+          tooltip.style.display = 'none';
           document.getElementById("candleData").innerText = "";
           document.getElementById("mainIndicatorInfo").innerHTML = "";
-
-          // paneIndicatorDivs가 존재한다면 각 페인의 지표 정보도 클리어
-          if (window.paneIndicatorDivs) {
-            for (let key in window.paneIndicatorDivs) {
-              window.paneIndicatorDivs[key].innerHTML = "";
-            }
-          }
+          Object.values(window.paneIndicatorDivs || {}).forEach(div => div.innerHTML = "");
           return;
         }
 
@@ -1138,6 +1179,8 @@
       // 슬라이더 놓을 때 숨기기
       slider.addEventListener('mouseup', () => sliderDateEl.style.display = 'none');
       slider.addEventListener('touchend', () => sliderDateEl.style.display = 'none');
+
+      // 줌인아웃 시 슬라이더 위치 업데이트
       chart.timeScale().subscribeVisibleLogicalRangeChange(updateSliderDate);
       window.addEventListener('resize', updateSliderDate);
 

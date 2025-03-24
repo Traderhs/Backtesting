@@ -1,4 +1,4 @@
-      const {{ area_series}} = chart.addSeries(LightweightCharts.AreaSeries, {
+      const {{ area_series }} = chart.addSeries(LightweightCharts.AreaSeries, {
         // 공동 변수
         priceFormat: {
           type: 'price',
