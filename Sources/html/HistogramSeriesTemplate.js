@@ -1,4 +1,4 @@
-      const {{ histogram_series}} = chart.addSeries(LightweightCharts.HistogramSeries, {
+      const {{ histogram_series }} = chart.addSeries(LightweightCharts.HistogramSeries, {
         // 공동 변수
         priceFormat: {
           type: 'price',
