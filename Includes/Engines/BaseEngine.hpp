@@ -11,13 +11,8 @@
 // 전방 선언
 namespace backtesting::analyzer {
 class Analyzer;
-}
-
-namespace backtesting::bar {
-class BarData;
-class BarHandler;
-enum class BarType;
-}  // namespace backtesting::bar
+class BaseAnalyzer;
+}  // namespace backtesting::analyzer
 
 namespace backtesting::engine {
 class Config;
@@ -27,23 +22,12 @@ namespace backtesting::logger {
 class Logger;
 }
 
-namespace backtesting::strategy {
-class Strategy;
-}
-
-namespace backtesting::indicator {
-class Indicator;
-}
-
 // 네임 스페이스
 using namespace std;
 using namespace nlohmann;
 namespace backtesting {
-using namespace bar;
 using namespace analyzer;
 using namespace logger;
-using namespace indicator;
-using namespace strategy;
 }  // namespace backtesting
 
 namespace backtesting::engine {
@@ -79,7 +63,7 @@ class BaseEngine {
   void IncreaseLiquidationCount();
 
   /// 엔진 설정값을 반환하는 함수
-  [[nodiscard]] static shared_ptr<Config> GetConfig();
+  [[nodiscard]] static shared_ptr<Config>& GetConfig();
 
   /// 지갑 자금을 반환하는 함수
   [[nodiscard]] double GetWalletBalance() const;
@@ -162,18 +146,6 @@ class BaseEngine {
   double drawdown_;            // 현재 드로우다운
   double max_drawdown_;        // 최고 드로우다운
   int liquidation_count_;      // 강제 청산 횟수
-
-  /// 저장에 필요한 폴더들을 생성하고 이번 백테스팅의
-  /// 메인 폴더 경로를 반환하는 함수
-  [[nodiscard]] string CreateDirectories() const;
-
-  /// 각 백테스팅의 심볼, 바, 전략, 설정 정보를 파일로 저장하는 함수
-  void SaveConfig(const string& file_path) const;
-
-  /// 주어진 바 데이터에서 누락된 Open Time들의 개수와
-  /// 문자열 벡터를 반환하는 함수
-  [[nodiscard]] static pair<int, vector<string>> GetMissingOpenTimes(
-      const shared_ptr<BarData>& bar_data, int symbol_idx, int64_t interval);
 };
 
 }  // namespace backtesting::engine

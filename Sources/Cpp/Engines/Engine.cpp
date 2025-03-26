@@ -80,10 +80,7 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
   logger_->Log(INFO_L, "백테스팅 결과 저장을 시작합니다.", __FILE__, __LINE__);
 
   // 폴더 생성
-  const string& main_directory = CreateDirectories();
-
-  // 설정 저장
-  SaveConfig(main_directory + "/config.json");
+  const string& main_directory = BaseAnalyzer::CreateDirectories();
 
   // 전략 코드 저장
   for (const auto& strategy : strategies_) {
@@ -99,11 +96,20 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
         __FILE__, __LINE__);
   }
 
-  // 매매 목록 저장
-  analyzer_->SaveTradeList(main_directory + "/Trade Lists/trade list.csv");
+  // 연승, 연패 정보 저장
+  analyzer_->SaveStreaks(main_directory + "/Streaks.csv");
 
-  // 차트 저장
+  // 거래 차트 저장
   analyzer_->SaveCharts(main_directory, strategies_);
+
+  // 거래 내역 저장
+  analyzer_->SaveTradeList(main_directory + "/Trade List.csv");
+
+  // 백테스팅 설정 저장
+  BaseAnalyzer::SaveConfig(main_directory + "/config.json");
+
+  // 대시보드 저장
+  // Analyzer::SaveBackboard(main_directory);
 
   LogSeparator();
   logger_->Log(INFO_L, "백테스팅이 완료되었습니다.", __FILE__, __LINE__);
@@ -116,8 +122,8 @@ void Engine::Backtesting(const string& start_time, const string& end_time,
               duration_cast<chrono::milliseconds>(end - start).count()),
       __FILE__, __LINE__);
 
-  // 로그 저장
-  logger_->SaveBacktestingLog(main_directory + "/backtesting.log");
+  // 백테스팅 로그 저장
+  BaseAnalyzer::SaveBacktestingLog(main_directory + "/backtesting.log");
 }
 
 void Engine::SetCurrentStrategyType(const StrategyType strategy_type) {
@@ -544,7 +550,7 @@ void Engine::IsValidBarData() {
     }
 
     // 4.5. 마크 가격 바 데이터와 타켓 바 데이터의 중복 가능성 검증
-    if (config_->GetCheckSameTargetBarData()) {
+    if (config_->GetCheckSameBarDataWithTarget()) {
       // 모든 마크 가격 바 데이터 순회
       for (int mark_price_symbol_idx = 0;
            mark_price_symbol_idx < mark_price_num_symbols;
@@ -573,7 +579,7 @@ void Engine::IsValidBarData() {
                 __FILE__, __LINE__);
             Logger::LogAndThrowError(
                 "이 검사를 비활성화하고 싶다면 "
-                "Backtesting::SetConfig().DisableSameTargetBarDataCheck "
+                "Backtesting::SetConfig().DisableSameBarDataWithTargetCheck "
                 "함수를 호출해 주세요.",
                 __FILE__, __LINE__);
           }
