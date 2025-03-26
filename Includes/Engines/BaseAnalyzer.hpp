@@ -18,8 +18,14 @@ class Trade;
 }
 
 namespace backtesting::bar {
+class BarData;
 class BarHandler;
 }  // namespace backtesting::bar
+
+namespace backtesting::engine {
+class Config;
+class Engine;
+}  // namespace backtesting::engine
 
 namespace backtesting::order {
 class Order;
@@ -48,8 +54,10 @@ class Line;
 // 네임 스페이스
 using namespace std;
 using namespace nlohmann;
+
 namespace backtesting {
 using namespace bar;
+using namespace engine;
 using namespace logger;
 using namespace indicator;
 using namespace strategy;
@@ -68,33 +76,46 @@ class BaseAnalyzer {
   /// 심볼 정보를 초기화 하는 함수
   static void SetSymbolInfo(const vector<SymbolInfo>& symbol_info);
 
-  /// 거래 목록에 거래를 추가하는 함수
+  /// 거래 내역에 거래를 추가하는 함수
   void AddTrade(Trade& new_trade, int exit_count);
 
-  /// 거래 목록을 XLSX 파일로 저장하는 함수
-  void SaveTradeList(const string& file_path) const;
+  // ===========================================================================
+  /// 백테스팅 결과 저장에 필요한 폴더들을 생성하고 이번 백테스팅의
+  /// 메인 폴더 경로를 반환하는 함수
+  [[nodiscard]] static string CreateDirectories();
+
+  /// 연승, 연패 정보를 파일로 저장하는 함수
+  void SaveStreaks(const string& file_path) const;
 
   /// 전략의 지표와 매매 표시를 포함한 캔들스틱 차트를 저장하는 함수
   void SaveCharts(const string& main_directory,
                   const vector<shared_ptr<Strategy>>& strategies);
 
-  /// 연승, 연패 정보를 XLSX 파일로 저장하는 함수
-  void SaveStreaks(const string& main_directory) const;
+  /// 거래 내역을 파일로 저장하는 함수
+  void SaveTradeList(const string& file_path) const;
+
+  /// 각 백테스팅의 설정 정보를 파일로 저장하는 함수
+  static void SaveConfig(const string& file_path);
+
+  /// 이번 백테스팅의 로그를 지정된 폴더에 저장하는 함수
+  static void SaveBacktestingLog(const string& file_path);
 
  protected:
   BaseAnalyzer();
   ~BaseAnalyzer();
 
   static shared_ptr<BarHandler>& bar_;
+  static shared_ptr<Config>& config_;
+  static shared_ptr<Engine>& engine_;
   static shared_ptr<Logger>& logger_;
 
- private:
   /// 심볼 정보
   static vector<SymbolInfo> symbol_info_;
 
   /// 거래 목록
   vector<Trade> trade_list_;
 
+ private:
   /// 마지막 거래 번호
   int trade_num_;
 
@@ -128,6 +149,11 @@ class BaseAnalyzer {
   [[nodiscard]] static json GetParsedJson(
       const shared_ptr<Indicator>& indicator, const string& bullish_color,
       const string& bearish_color);
+
+  /// 주어진 바 데이터에서 누락된 Open Time들의 개수와
+  /// 문자열 벡터를 반환하는 함수
+  [[nodiscard]] static pair<int, vector<string>> GetMissingOpenTimes(
+      const shared_ptr<BarData>& bar_data, int symbol_idx, int64_t interval);
 };
 
 }  // namespace backtesting::analyzer

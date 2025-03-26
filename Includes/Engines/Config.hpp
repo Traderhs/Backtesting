@@ -9,9 +9,15 @@
 #include "Engines/BaseEngine.hpp"
 
 // 전방 선언
-namespace backtesting::logger {
+namespace backtesting {
+namespace bar {
+enum class BarType;
+}
+
+namespace logger {
 class Logger;
 }
+}  // namespace backtesting
 
 // 네임 스페이스
 using namespace std;
@@ -51,7 +57,7 @@ class Config final {
   Config& SetTakerSlippagePercentage(double taker_slippage_percentage);
   Config& SetMakerSlippagePercentage(double maker_slippage_percentage);
   Config& DisableSameBarDataCheck(BarType bar_type);
-  Config& DisableSameTargetBarDataCheck();
+  Config& DisableSameBarDataWithTargetCheck();
 
   [[nodiscard]] string GetRootDirectory() const;
   [[nodiscard]] bool GetUseBarMagnifier() const;
@@ -61,7 +67,7 @@ class Config final {
   [[nodiscard]] double GetTakerSlippagePercentage() const;
   [[nodiscard]] double GetMakerSlippagePercentage() const;
   [[nodiscard]] vector<bool> GetCheckSameBarData() const;
-  [[nodiscard]] bool GetCheckSameTargetBarData() const;
+  [[nodiscard]] bool GetCheckSameBarDataWithTarget() const;
 
   [[nodiscard]] bool UseBarMagnifierHasValue() const;
 
@@ -110,7 +116,7 @@ class Config final {
 
   /// 마크 가격에서 목표 바 데이터와의 동일한 바 데이터 검사를 하는지 여부를
   /// 결정하는 플래그.
-  bool check_same_target_bar_data_;
+  bool check_same_bar_data_with_target_;
 };
 
-}  // namespace backtesting::config
+}  // namespace backtesting::engine

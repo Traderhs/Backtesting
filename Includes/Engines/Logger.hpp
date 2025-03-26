@@ -6,6 +6,11 @@
 #include <mutex>
 #include <string>
 
+// 전방 선언
+namespace backtesting::analyzer {
+class BaseAnalyzer;
+}
+
 // 네임 스페이스
 using namespace std;
 
@@ -17,6 +22,9 @@ using enum LogLevel;
 
 /// 시스템 로깅을 담당하는 클래스
 class Logger final {
+  // 로그 저장용
+  friend class backtesting::analyzer::BaseAnalyzer;
+
  public:
   // 싱글톤 특성 유지
   Logger(const Logger&) = delete;             // 복사 생성자 삭제
@@ -65,9 +73,6 @@ class Logger final {
    */
   static void LogAndThrowError(const string& message, const string& file,
                                int line);
-
-  /// 이번 백테스팅의 로그를 지정된 폴더에 저장하는 함수
-  void SaveBacktestingLog(const string& file_path);
 
  private:
   // 싱글톤 인스턴스 관리

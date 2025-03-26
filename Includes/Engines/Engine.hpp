@@ -12,6 +12,7 @@
 // 전방 선언
 namespace backtesting::bar {
 class BarData;
+enum class BarType;
 struct Bar;
 }  // namespace backtesting::bar
 
@@ -52,6 +53,9 @@ using enum StrategyType;
  * 백테스팅 프로세스를 진행하는 클래스
  */
 class Engine final : public BaseEngine {
+  // 전략, TimeDiff 등 접근용
+  friend class backtesting::analyzer::BaseAnalyzer;
+
  public:
   // 싱글톤 특성 유지
   Engine(const Engine&) = delete;             // 복사 생성자 삭제
@@ -59,8 +63,6 @@ class Engine final : public BaseEngine {
 
   /// Engine의 싱글톤 인스턴스를 반환하는 함수
   static shared_ptr<Engine>& GetEngine();
-
-  // @@@@@@@@@@@@@@@@@ 펀딩피 fetch하고 추가/감소되는 매커니즘 필요
 
   /**
    * 백테스팅을 실행하는 함수
