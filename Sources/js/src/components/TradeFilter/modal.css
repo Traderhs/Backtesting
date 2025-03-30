@@ -1,0 +1,5 @@
+.modal-container {
+    width: 800px;
+    max-height: 600px;
+    overflow-y: auto;  /* 내용이 넘치면 스크롤 */
+}
