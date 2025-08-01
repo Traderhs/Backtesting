@@ -1,6 +1,3 @@
-// 표준 라이브러리
-#include <cmath>
-
 // 파일 헤더
 #include "Engines/SymbolInfo.hpp"
 
@@ -13,9 +10,14 @@ SymbolInfo::SymbolInfo()
       market_max_qty_(nan("")),
       market_min_qty_(nan("")),
       qty_step_(nan("")),
-      min_notional_(nan("")),
-      liquidation_fee_(nan("")) {}
+      min_notional_value_(nan("")),
+      liquidation_fee_rate_(nan("")) {}
 SymbolInfo::~SymbolInfo() = default;
+
+SymbolInfo& SymbolInfo::SetExchangeInfoPath(const string& exchange_info_path) {
+  exchange_info_path_ = exchange_info_path;
+  return *this;
+}
 
 SymbolInfo& SymbolInfo::SetTickSize(const double tick_size) {
   tick_size_ = tick_size;
@@ -47,13 +49,19 @@ SymbolInfo& SymbolInfo::SetQtyStep(const double qty_step) {
   return *this;
 }
 
-SymbolInfo& SymbolInfo::SetMinNotional(const double min_notional) {
-  min_notional_ = min_notional;
+SymbolInfo& SymbolInfo::SetMinNotionalValue(const double min_notional) {
+  min_notional_value_ = min_notional;
   return *this;
 }
 
-SymbolInfo& SymbolInfo::SetLiquidationFee(const double liquidation_fee) {
-  liquidation_fee_ = liquidation_fee;
+SymbolInfo& SymbolInfo::SetLiquidationFeeRate(const double liquidation_fee) {
+  liquidation_fee_rate_ = liquidation_fee;
+  return *this;
+}
+
+SymbolInfo& SymbolInfo::SetLeverageBracketPath(
+    const string& leverage_bracket_path) {
+  leverage_bracket_path_ = leverage_bracket_path;
   return *this;
 }
 
@@ -63,16 +71,37 @@ SymbolInfo& SymbolInfo::SetLeverageBracket(
   return *this;
 }
 
+SymbolInfo& SymbolInfo::SetFundingRatesPath(const string& funding_rates_path) {
+  funding_rates_path_ = funding_rates_path;
+  return *this;
+}
+
+SymbolInfo& SymbolInfo::SetFundingRates(
+    const vector<FundingInfo>& funding_rates) {
+  funding_rates_ = funding_rates;
+  return *this;
+}
+
+string SymbolInfo::GetExchangeInfoPath() const { return exchange_info_path_; }
 double SymbolInfo::GetTickSize() const { return tick_size_; }
 double SymbolInfo::GetLimitMaxQty() const { return limit_max_qty_; }
 double SymbolInfo::GetLimitMinQty() const { return limit_min_qty_; }
 double SymbolInfo::GetMarketMaxQty() const { return market_max_qty_; }
 double SymbolInfo::GetMarketMinQty() const { return market_min_qty_; }
 double SymbolInfo::GetQtyStep() const { return qty_step_; }
-double SymbolInfo::GetMinNotional() const { return min_notional_; }
-double SymbolInfo::GetLiquidationFee() const { return liquidation_fee_; }
+double SymbolInfo::GetMinNotionalValue() const { return min_notional_value_; }
+double SymbolInfo::GetLiquidationFeeRate() const {
+  return liquidation_fee_rate_;
+}
+
+string SymbolInfo::GetLeverageBracketPath() const {
+  return leverage_bracket_path_;
+}
 vector<LeverageBracket>& SymbolInfo::GetLeverageBracket() {
   return leverage_brackets_;
 }
+
+string SymbolInfo::GetFundingRatesPath() const { return funding_rates_path_; }
+vector<FundingInfo>& SymbolInfo::GetFundingRates() { return funding_rates_; }
 
 }  // namespace backtesting::order

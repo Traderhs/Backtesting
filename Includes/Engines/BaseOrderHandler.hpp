@@ -5,16 +5,16 @@
 #include <memory>
 #include <vector>
 
-#include "Config.hpp"
+// 내부 헤더
+#include "Engines/Config.hpp"
 
 // 전방 선언
 namespace backtesting::analyzer {
 class Analyzer;
-class TechnicalAnalyzer;
 }  // namespace backtesting::analyzer
 
 namespace backtesting::bar {
-class Bar;
+struct Bar;
 class BarHandler;
 }  // namespace backtesting::bar
 
@@ -61,7 +61,7 @@ class BaseOrderHandler {
   /// 심볼 정보를 초기화하는 함수
   static void SetSymbolInfo(const vector<SymbolInfo>& symbol_info);
 
-  /// 현재 심볼의 포지션 사이즈 합계를 업데이트하는 함수
+  /// 현재 심볼의 포지션 사이즈 합계를 최신 상태로 업데이트하는 함수
   void UpdateCurrentPositionSize();
 
   /// 현재 심볼과 바에서 진입이 이루어졌는지를 결정하는 플래그를 초기화하는 함수
@@ -78,13 +78,14 @@ class BaseOrderHandler {
                                          PriceType price_type) const;
 
   /// 현재 심볼과 바에서 진입이 이루어졌는지 여부를 반환하는 함수
-  [[nodiscard]] bool GetJustEntered() const;
+  [[nodiscard]] bool IsJustEntered() const;
 
   /// 현재 심볼과 바에서 청산이 이루어졌는지 여부를 반환하는 함수
-  [[nodiscard]] bool GetJustExited() const;
+  [[nodiscard]] bool IsJustExited() const;
+
   // ===========================================================================
   // 전략에서 사용하는 함수들
-
+  // ===========================================================================
   /// 대기 주문 취소를 위해 사용하는 함수.
   ///
   /// order_name이 진입 대기 주문과 청산 대기 주문에 동시에 존재하면 모두 취소.
@@ -119,12 +120,9 @@ class BaseOrderHandler {
 
   static shared_ptr<Analyzer>& analyzer_;
   static shared_ptr<BarHandler>& bar_;
+  static shared_ptr<Config>& config_;
   static shared_ptr<Engine>& engine_;
   static shared_ptr<Logger>& logger_;
-  static shared_ptr<TechnicalAnalyzer>& ta_;
-
-  // 엔진 설정
-  static shared_ptr<Config> config_;
 
   // 심볼 정보
   static vector<SymbolInfo> symbol_info_;
@@ -146,7 +144,9 @@ class BaseOrderHandler {
   vector<double> last_entry_prices_;
   vector<double> last_exit_prices_;
 
-  /// 리버스 청산을 진행할 때 시장가 최대 주문 수량 검사를 피하기 위한 플래그
+  /// 리버스 청산을 진행할 때 시장가 최대 주문 수량 검사를 피하기 위한 플래그.
+  /// 시스템적으로 전량 청산 후 반대 방향 진입을 해야하는데,
+  /// 검사로 진입이 막히면 방법이 없으므로 이 방법으로 간략화
   bool is_reverse_exit_;
 
   /// 전략 이름과 심볼 이름으로 포맷된 로그를 발생시키는 함수
@@ -251,6 +251,9 @@ class BaseOrderHandler {
   void UpdateLastExitBarIndex(int symbol_idx);
 
  private:
+  // BaseOrderHandler가 초기화 됐는지 결정하는 플래그
+  bool is_initialized_;
+
   /// 심볼별 현재 레버리지
   vector<int> leverages_;
 

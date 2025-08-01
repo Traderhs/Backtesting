@@ -1,4 +1,5 @@
 // 표준 라이브러리
+#include <filesystem>
 #include <format>
 
 // 파일 헤더
@@ -11,47 +12,37 @@
 
 namespace backtesting::strategy {
 
-Strategy::Strategy(const string& name, const string& child_file_path)
+Strategy::Strategy(const string& name)
     : name_(name),
-      child_file_path_(child_file_path),
-      order(OrderHandler::GetOrderHandler(name)),
+      order(OrderHandler::GetOrderHandler()),
       open(AddIndicator<Open>("Open", trading_timeframe)),
       high(AddIndicator<High>("High", trading_timeframe)),
       low(AddIndicator<Low>("Low", trading_timeframe)),
       close(AddIndicator<Close>("Close", trading_timeframe)),
       volume(AddIndicator<Volume>("Volume", trading_timeframe)) {
-  // 증가 카운터는 AddStrategy 함수로만 증가하는데 AddStrategy 없이 직접 생성자
-  // 호출로 전 증가 카운터가 현재 증가 카운터와 같다면 오류 발생
-  if (pre_creation_counter_ == creation_counter_) {
+  // AddStrategy 함수를 거치지 않은 전략 생성자는 오류
+  if (!used_creation_function_) {
     logger->Log(ERROR_L,
                 "전략의 추가는 AddStrategy 함수의 호출로만 가능합니다.",
-                __FILE__, __LINE__);
+                __FILE__, __LINE__, true);
     Logger::LogAndThrowError(
         format("[{}] 전략을 추가하는 중 에러가 발생했습니다.", name), __FILE__,
         __LINE__);
+  } else {
+    // 추후 OrderHandler를 또 받을 수 있기 때문에 초기화
+    used_creation_function_ = false;
   }
-
-  // 정상적으로 AddStrategy 함수를 통했다면 전 증가 가운터에 현재 카운터를 대입
-  pre_creation_counter_ = creation_counter_;
 
   if (name.empty()) {
-    logger->Log(ERROR_L, "전략 이름이 비어있습니다.", __FILE__, __LINE__);
+    logger->Log(ERROR_L, "전략 이름이 비어있습니다.", __FILE__, __LINE__, true);
     Logger::LogAndThrowError("전략 생성 중 오류가 발생했습니다.", __FILE__,
                              __LINE__);
-  }
-
-  if (!filesystem::exists(child_file_path)) {
-    Logger::LogAndThrowError(
-        format("[{}] 전략의 파일 경로 [{}]이(가) 존재하지 않습니다.", name,
-               child_file_path),
-        __FILE__, __LINE__);
   }
 }
 Strategy::~Strategy() = default;
 
-vector<shared_ptr<Strategy>> Strategy::strategies_;
-size_t Strategy::creation_counter_;
-size_t Strategy::pre_creation_counter_;
+shared_ptr<Strategy> Strategy::strategy_;
+bool Strategy::used_creation_function_ = false;
 
 // ReSharper disable once CppInconsistentNaming
 shared_ptr<BarHandler>& Strategy::bar = BarHandler::GetBarHandler();
@@ -65,14 +56,83 @@ shared_ptr<Logger>& Strategy::logger = Logger::GetLogger();
 // ReSharper disable once CppInconsistentNaming
 string Strategy::trading_timeframe = "TRADING_TIMEFRAME";
 
+// =============================================================================
 void Strategy::SetTradingTimeframe(const string& trading_tf) {
-  trading_timeframe = trading_tf;
+  if (trading_timeframe == "TRADING_TIMEFRAME") {
+    trading_timeframe = trading_tf;
+  } else {
+    Logger::LogAndThrowError(
+        format("트레이딩 바 데이터의 타임프레임 [{}]이(가) 이미 설정되어 "
+               "재설정할 수 없습니다.",
+               trading_timeframe),
+        __FILE__, __LINE__);
+  }
 }
 
-vector<shared_ptr<Strategy>>& Strategy::GetStrategies() { return strategies_; }
+void Strategy::SetSourcePath(const string& source_path) {
+  if (!filesystem::exists(source_path)) {
+    Logger::LogAndThrowError(
+        format("[{}] 전략의 소스 파일 경로 [{}]이(가) 존재하지 않습니다.",
+               name_, source_path),
+        __FILE__, __LINE__);
+  }
+
+  cpp_file_path_ = source_path;
+}
+
+void Strategy::SetHeaderPath(const string& header_path) {
+  if (!filesystem::exists(header_path)) {
+    Logger::LogAndThrowError(
+        format("[{}] 전략의 헤더 파일 경로 [{}]이(가) 존재하지 않습니다.",
+               name_, header_path),
+        __FILE__, __LINE__);
+  }
+
+  header_file_path_ = header_path;
+}
+
+shared_ptr<Strategy>& Strategy::GetStrategy() { return strategy_; }
 vector<shared_ptr<Indicator>>& Strategy::GetIndicators() { return indicators_; }
 string Strategy::GetName() const { return name_; }
-string Strategy::GetSourcePath() { return child_file_path_; }
+string Strategy::GetClassName() const { return class_name_; }
 shared_ptr<OrderHandler> Strategy::GetOrderHandler() const { return order; }
+string Strategy::GetSourcePath() { return cpp_file_path_; }
+string Strategy::GetHeaderPath() { return header_file_path_; }
+
+bool Strategy::SetFilePath(const string& path, const bool is_cpp) {
+  if (filesystem::exists(path)) {
+    if (is_cpp) {
+      cpp_file_path_ = path;
+    } else {
+      header_file_path_ = path;
+    }
+
+    return true;
+  }
+
+  // 파일 경로 감지 실패
+  if (is_cpp) {
+    logger->Log(
+        ERROR_L,
+        format("[{}] 전략의 소스 파일 경로 감지가 실패했습니다.", name_),
+        __FILE__, __LINE__, true);
+    Logger::LogAndThrowError(
+        "전략의 클래스명과 소스 파일명은 동일해야 하며, "
+        "[루트 폴더/Sources/cpp/Strategies/클래스명.cpp] 경로에 존재해야 "
+        "합니다.",
+        __FILE__, __LINE__);
+  } else {
+    logger->Log(
+        ERROR_L,
+        format("[{}] 전략의 헤더 파일 경로 감지가 실패했습니다.", name_),
+        __FILE__, __LINE__, true);
+    Logger::LogAndThrowError(
+        "전략의 클래스명과 헤더 파일명은 동일해야 하며, "
+        "[루트 폴더/Includes/Strategies/클래스명.hpp] 경로에 존재해야 합니다.",
+        __FILE__, __LINE__);
+  }
+
+  return false;
+}
 
 }  // namespace backtesting::strategy

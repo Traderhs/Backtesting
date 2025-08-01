@@ -48,6 +48,15 @@ constexpr int64_t kYear = 12 * kMonth;
 [[nodiscard]] string GetCurrentLocalDatetime();
 
 /**
+ * 최적화된 현재 시간 포맷팅 함수 (로그용)
+ * Thread-local 캐시를 사용하여 극한 성능 최적화
+ *
+ * @param buffer 출력 버퍼
+ * @return 포맷된 시간 문자열의 길이
+ */
+[[nodiscard]] size_t FormatCurrentTimeFast(char* buffer);
+
+/**
  * 주어진 타임스탬프(밀리초 기준)를 유닉스 에포크 시간대부터 UTC 날짜-시간
  * 문자열로 변환하여 반환하는 함수
  *
@@ -83,5 +92,8 @@ int64_t ParseTimeframe(const string& timeframe_str);
 
 /// 타임스탬프 값이 ms 단위인지 검사하는 함수
 [[nodiscard]] bool IsTimestampMs(int64_t timestamp);
+
+/// 주어진 타임스탬프에서 다음 월 경계 시간을 계산하는 함수
+[[nodiscard]] int64_t CalculateNextMonthBoundary(int64_t timestamp_ms);
 
 }  // namespace backtesting::utils

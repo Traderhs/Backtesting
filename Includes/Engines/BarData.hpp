@@ -18,7 +18,7 @@ namespace backtesting::bar {
 
 /// 하나의 바 구조를 지정하는 구조체
 struct Bar {
-  Bar() = delete;
+  Bar() = default;  // 명시적 초기화용
   Bar(const int64_t open_time, const double open, const double high,
       const double low, const double close, const double volume,
       const int64_t close_time) {
@@ -95,14 +95,19 @@ class BarData final {
   /// 심볼 인덱스 유효성을 검증하는 함수
   void IsValidSymbolIndex(int symbol_idx) const;
 
+  /// 바 인덱스 유효성을 검증하는 함수
+  void IsValidBarIndex(int symbol_idx, size_t bar_idx) const;
+
  private:
   // 첫 번째 벡터: 심볼 인덱스, 두 번째 벡터: 해당 벡터의 바 인덱스
   vector<vector<Bar>> bar_data_;
+
+  // 설정에서 경로 저장용
   vector<string> bar_data_path_;
 
   vector<string> symbol_names_;  // 심볼 인덱스에 해당하는 심볼의 이름
   int num_symbols_;              // 심볼의 개수
-  vector<size_t> num_bars_;      // 해당 심볼의 바 개수
+  vector<size_t> num_bars_;      // 심볼 인덱스에 해당하는 심볼의 바 개수
   string timeframe_;             // 바 데이터의 타임프레임
 
   // 심볼 설정의 유효성 검사

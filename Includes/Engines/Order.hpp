@@ -158,7 +158,6 @@ class Order {
   string exit_name_;           // 청산 주문 이름
   OrderType exit_order_type_;  // 청산 주문 타입
   Direction exit_direction_;   // 청산 방향
-                               // (원본 진입의 경우 총 청산 마진이 누적됨)
   double exit_fee_;            // 청산 수수료 금액
 
   // MIT, LIT, Trailing 청산 대기 변수

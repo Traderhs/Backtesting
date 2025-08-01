@@ -10,8 +10,8 @@ class Close final : public Indicator {
 
  private:
   shared_ptr<BarData> reference_bar_;
+  int symbol_idx_;
 
   void Initialize() override;
-
   Numeric<double> Calculate() override;
 };

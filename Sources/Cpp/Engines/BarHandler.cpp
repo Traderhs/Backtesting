@@ -1,7 +1,11 @@
 // 표준 라이브러리
+#include <algorithm>
+#include <execution>
 #include <format>
+#include <future>
 #include <memory>
 #include <ranges>
+#include <thread>
 
 // 외부 라이브러리
 #include "arrow/table.h"
@@ -167,7 +171,189 @@ void BarHandler::AddBarData(const string& symbol_name, const string& file_path,
              UtcTimestampToUtcDatetime(any_cast<int64_t>(GetCellValue(
                  bar_data, close_time_column, bar_data->num_rows() - 1))),
              symbol_name, bar_data_timeframe, bar_data_type_str),
-      __FILE__, __LINE__);
+      __FILE__, __LINE__, true);
+}
+
+void BarHandler::AddBarDataBatch(
+    const vector<string>& symbol_names, const vector<string>& file_paths,
+    const BarType bar_type, const int open_time_column, const int open_column,
+    const int high_column, const int low_column, const int close_column,
+    const int volume_column, const int close_time_column) {
+  if (symbol_names.size() != file_paths.size()) {
+    Logger::LogAndThrowError(
+        "심볼 이름과 파일 경로의 개수가 일치하지 않습니다.", __FILE__,
+        __LINE__);
+  }
+
+  if (symbol_names.empty()) {
+    return;
+  }
+
+  // 로그용 바 데이터 타입 문자열
+  string bar_data_type_str;
+  switch (bar_type) {
+    case TRADING: {
+      bar_data_type_str = "트레이딩 및 참조";
+      break;
+    }
+    case MAGNIFIER: {
+      bar_data_type_str = "돋보기";
+      break;
+    }
+    case REFERENCE: {
+      bar_data_type_str = "참조";
+      break;
+    }
+    case MARK_PRICE: {
+      bar_data_type_str = "마크 가격";
+    }
+  }
+
+  logger_->Log(INFO_L,
+               format("{} 바 데이터 추가를 시작합니다.", bar_data_type_str),
+               __FILE__, __LINE__, true);
+
+  // 배치로 모든 Parquet 파일을 병렬 읽기 (최적화된 함수 사용)
+  const vector<shared_ptr<arrow::Table>>& bar_data_tables =
+      ReadParquetBatch(file_paths);
+
+  // 타임프레임 계산 및 검증을 병렬로 수행
+  const size_t num_symbols = symbol_names.size();
+  const size_t num_threads =
+      min(num_symbols, static_cast<size_t>(thread::hardware_concurrency()));
+
+  // 전처리 결과를 저장할 구조체
+  struct BarDataInfo {
+    string timeframe;
+    bool success = false;
+    string error_message;
+  };
+
+  vector<BarDataInfo> bar_data_infos(num_symbols);
+  vector<future<void>> futures;
+
+  // 병렬 전처리 (타임프레임 계산 및 검증)
+  const size_t chunk_size = (num_symbols + num_threads - 1) / num_threads;
+
+  for (size_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
+    size_t start_idx = thread_idx * chunk_size;
+    size_t end_idx = min(start_idx + chunk_size, num_symbols);
+
+    if (start_idx >= num_symbols) break;
+
+    futures.emplace_back(async(launch::async, [&, start_idx, end_idx]() {
+      for (size_t i = start_idx; i < end_idx; ++i) {
+        try {
+          if (!bar_data_tables[i]) {
+            bar_data_infos[i].success = false;
+            bar_data_infos[i].error_message = "파일 읽기 실패";
+            continue;
+          }
+
+          // 타임프레임 계산
+          bar_data_infos[i].timeframe =
+              CalculateTimeframe(bar_data_tables[i], open_time_column);
+
+          // 타임프레임 유효성 검증
+          IsValidTimeframeBetweenBars(bar_data_infos[i].timeframe, bar_type);
+
+          bar_data_infos[i].success = true;
+        } catch (const std::exception& e) {
+          bar_data_infos[i].success = false;
+          bar_data_infos[i].error_message = e.what();
+        } catch (...) {
+          bar_data_infos[i].success = false;
+          bar_data_infos[i].error_message = "알 수 없는 오류가 발생했습니다.";
+        }
+      }
+    }));
+  }
+
+  // 모든 병렬 작업 완료 대기
+  for (auto& future : futures) {
+    future.wait();
+  }
+
+  // 순차적으로 데이터 추가
+  for (size_t i = 0; i < num_symbols; ++i) {
+    if (!bar_data_infos[i].success) {
+      Logger::LogAndThrowError(
+          format("심볼 [{}]의 바 데이터 처리 중 오류 발생: {}", symbol_names[i],
+                 bar_data_infos[i].error_message),
+          __FILE__, __LINE__);
+    }
+
+    const auto& symbol_name = symbol_names[i];
+    const auto& file_path = file_paths[i];
+    const auto& bar_data = bar_data_tables[i];  // 배치 읽기 결과 사용
+    const auto& bar_data_timeframe = bar_data_infos[i].timeframe;
+
+    // 데이터 추가
+    switch (bar_type) {
+      case TRADING: {
+        trading_bar_data_->SetBarData(
+            symbol_name, bar_data_timeframe, file_path, bar_data,
+            open_time_column, open_column, high_column, low_column,
+            close_column, volume_column, close_time_column);
+
+        if (const auto& timeframe_it =
+                reference_bar_data_.find(bar_data_timeframe);
+            timeframe_it == reference_bar_data_.end()) {
+          reference_bar_data_[bar_data_timeframe] = make_shared<BarData>();
+        }
+        reference_bar_data_[bar_data_timeframe]->SetBarData(
+            symbol_name, bar_data_timeframe, file_path, bar_data,
+            open_time_column, open_column, high_column, low_column,
+            close_column, volume_column, close_time_column);
+
+        trading_index_.push_back(0);
+        reference_index_[bar_data_timeframe].push_back(0);
+        break;
+      }
+
+      case MAGNIFIER: {
+        magnifier_bar_data_->SetBarData(
+            symbol_name, bar_data_timeframe, file_path, bar_data,
+            open_time_column, open_column, high_column, low_column,
+            close_column, volume_column, close_time_column);
+        magnifier_index_.push_back(0);
+        break;
+      }
+
+      case REFERENCE: {
+        if (const auto& timeframe_it =
+                reference_bar_data_.find(bar_data_timeframe);
+            timeframe_it == reference_bar_data_.end()) {
+          reference_bar_data_[bar_data_timeframe] = make_shared<BarData>();
+        }
+        reference_bar_data_[bar_data_timeframe]->SetBarData(
+            symbol_name, bar_data_timeframe, file_path, bar_data,
+            open_time_column, open_column, high_column, low_column,
+            close_column, volume_column, close_time_column);
+        reference_index_[bar_data_timeframe].push_back(0);
+        break;
+      }
+
+      case MARK_PRICE: {
+        mark_price_bar_data_->SetBarData(
+            symbol_name, bar_data_timeframe, file_path, bar_data,
+            open_time_column, open_column, high_column, low_column,
+            close_column, volume_column, close_time_column);
+        mark_price_index_.push_back(0);
+        break;
+      }
+    }
+
+    logger_->Log(
+        INFO_L,
+        format("[{} - {}] 기간의 [{} {}]이(가) {} 바 데이터로 추가되었습니다.",
+               UtcTimestampToUtcDatetime(any_cast<int64_t>(
+                   GetCellValue(bar_data, open_time_column, 0))),
+               UtcTimestampToUtcDatetime(any_cast<int64_t>(GetCellValue(
+                   bar_data, close_time_column, bar_data->num_rows() - 1))),
+               symbol_name, bar_data_timeframe, bar_data_type_str),
+        __FILE__, __LINE__, true);
+  }
 }
 
 void BarHandler::ProcessBarIndex(const BarType bar_type,
@@ -194,7 +380,7 @@ void BarHandler::ProcessBarIndex(const BarType bar_type,
         return;
       }
     }
-  } catch ([[maybe_unused]] const IndexOutOfRange& e) {
+  } catch (const IndexOutOfRange&) {
     // next_close_time이 바 데이터의 범위를 넘으면 최대 인덱스로 이동한 것이므로
     // 더 이상 이동 불가
   }

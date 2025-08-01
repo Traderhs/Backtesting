@@ -1,0 +1,13 @@
+{
+    "terminal.integrated.fontSize": 13,
+    "chat.editor.fontSize": 13,
+    "markdown.preview.fontSize": 13,
+    "debug.console.fontSize": 13,
+    "editor.fontSize": 13,
+    "editor.inlayHints.fontSize": 13,
+    "editor.suggestFontSize": 13,
+    "notebook.markup.fontSize": 13,
+    "notebook.output.fontSize": 13,
+    "editor.codeLensFontSize": 13,
+    "editor.minimap.sectionHeaderFontSize": 13
+}

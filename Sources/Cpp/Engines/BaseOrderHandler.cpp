@@ -1,5 +1,4 @@
 // 표준 라이브러리
-#include <cmath>
 #include <format>
 
 // 파일 헤더
@@ -16,7 +15,6 @@
 #include "Engines/Logger.hpp"
 #include "Engines/Order.hpp"
 #include "Engines/SymbolInfo.hpp"
-#include "Engines/TechnicalAnalyzer.hpp"
 
 // 네임 스페이스
 namespace backtesting {
@@ -30,22 +28,22 @@ BaseOrderHandler::BaseOrderHandler()
     : current_position_size(0),
       just_entered_(false),
       just_exited_(false),
-      is_reverse_exit_(false) {}
+      is_reverse_exit_(false),
+      is_initialized_(false) {}
 BaseOrderHandler::~BaseOrderHandler() = default;
 
 shared_ptr<Analyzer>& BaseOrderHandler::analyzer_ = Analyzer::GetAnalyzer();
 shared_ptr<BarHandler>& BaseOrderHandler::bar_ = BarHandler::GetBarHandler();
+shared_ptr<Config>& BaseOrderHandler::config_ = Engine::GetConfig();
 shared_ptr<Engine>& BaseOrderHandler::engine_ = Engine::GetEngine();
 shared_ptr<Logger>& BaseOrderHandler::logger_ = Logger::GetLogger();
-shared_ptr<TechnicalAnalyzer>& BaseOrderHandler::ta_ =
-    TechnicalAnalyzer::GetTechnicalAnalyzer();
-shared_ptr<Config> BaseOrderHandler::config_;
 vector<SymbolInfo> BaseOrderHandler::symbol_info_;
 
 void BaseOrderHandler::Initialize(const int num_symbols) {
-  // 엔진 설정 받아오기
-  if (config_ == nullptr) {
-    config_ = Engine::GetConfig();
+  if (is_initialized_) {
+    Logger::LogAndThrowError(
+        "이미 초기화가 완료되어 다시 초기화할 수 없습니다.", __FILE__,
+        __LINE__);
   }
 
   // 주문들을 심볼 개수로 초기화
@@ -72,10 +70,18 @@ void BaseOrderHandler::Initialize(const int num_symbols) {
   // 레버리지 벡터를 심볼 개수로 초기화
   // 초기 레버리지는 1
   leverages_.resize(num_symbols, 1);
+
+  is_initialized_ = true;
 }
 
 void BaseOrderHandler::SetSymbolInfo(const vector<SymbolInfo>& symbol_info) {
-  symbol_info_ = symbol_info;
+  if (symbol_info_.empty()) {
+    symbol_info_ = symbol_info;
+  } else {
+    Logger::LogAndThrowError(
+        "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.", __FILE__,
+        __LINE__);
+  }
 }
 
 void BaseOrderHandler::UpdateCurrentPositionSize() {
@@ -154,7 +160,7 @@ double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
         filled_entry->GetEntryFilledPrice(),
         filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize());
 
-    if (loss < 0) {
+    if (IsLess(loss, 0.0)) {
       sum_loss += abs(loss);
     }
   }
@@ -163,8 +169,8 @@ double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
   return sum_loss;
 }
 
-bool BaseOrderHandler::GetJustEntered() const { return just_entered_; }
-bool BaseOrderHandler::GetJustExited() const { return just_exited_; }
+bool BaseOrderHandler::IsJustEntered() const { return just_entered_; }
+bool BaseOrderHandler::IsJustExited() const { return just_exited_; }
 
 void BaseOrderHandler::Cancel(const string& order_name) {
   const int symbol_idx = bar_->GetCurrentSymbolIndex();
@@ -233,12 +239,15 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
   // 최대 레버리지는 브라켓 첫 요소의 레버리지
   if (const auto max_leverage =
           symbol_info_[symbol_idx].GetLeverageBracket().front().max_leverage;
-      IsLess(leverage, 1) || IsGreater(leverage, max_leverage)) {
-    LogFormattedInfo(WARNING_L,
-                     format("레버리지 [{}] → [{}] 변경 불가 "
-                            "(조건: [1] 이상 및 심볼 최대 레버리지 [{}] 이하)",
-                            current_leverage, leverage, max_leverage),
-                     __FILE__, __LINE__);
+      IsLess(leverage, 1.0) || IsGreater(leverage, max_leverage)) {
+    LogFormattedInfo(
+        WARNING_L,
+        format("레버리지 [{}] → [{}] 변경 불가 "
+               "(조건: [1] 이상 및 {}의 최대 레버리지 [{}] 이하)",
+               current_leverage, leverage,
+               bar_->GetBarData(TRADING)->GetSymbolName(symbol_idx),
+               max_leverage),
+        __FILE__, __LINE__);
     return;
   }
 
@@ -311,7 +320,7 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
 
     // Limit 또는 LIT 주문으로 예약 증거금이 잡혀있으면 재설정
     if (const auto entry_margin = pending_entry->GetEntryMargin();
-        entry_margin != 0) {
+        !IsEqual(entry_margin, 0.0)) {
       // 새로운 마진 계산
       // ON_CLOSE, AFTER 전략 모두에서 이 함수가 실행될 수 있으므로
       // 초기 마진 계산 시 미실현 손실을 계산하는 기준 가격 타입은 '시가'로 통일
@@ -332,7 +341,8 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
       } catch (const InsufficientBalance& e) {
         LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
 
-        // Cancel 내부적으로 사용한 마진을 감소시키므로 중복 감소 방지
+        // 위쪽에서 마진 재설정을 위해 DecreaseUsedMargin 함수를 이미 호출했고,
+        // Cancel 함수에서 내부적으로 사용한 마진을 감소시키므로 중복 감소 방지
         pending_entry->SetEntryMargin(0);
 
         // 새로운 마진을 충당할 수 없으면 주문 취소
@@ -340,11 +350,11 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
         continue;
       }
 
-      // 사용한 마진 증가
+      // 사용 가능 자금이 충분하다면 사용한 마진을 증가하여 주문 마진 재설정
       engine_->IncreaseUsedMargin(updated_margin);
     }
 
-    // 현재 주문의 레버리지 재설정
+    // 최종적으로 문제가 없다면 현재 주문의 레버리지 재설정
     pending_entry->SetLeverage(leverage);
   }
 }
@@ -362,6 +372,7 @@ double BaseOrderHandler::BarsSinceEntry() const {
   // 진입이 있었던 심볼은 현재 바 인덱스와의 차이를 구해 반환
   return static_cast<double>(bar_->GetCurrentBarIndex() - last_entry_bar_index);
 }
+
 double BaseOrderHandler::BarsSinceExit() const {
   // 전략 실행 시 무조건 트레이딩 바를 사용하므로 원본 바 타입은 저장하지 않음
   const auto last_exit_bar_index =
@@ -388,7 +399,7 @@ void BaseOrderHandler::LogFormattedInfo(const LogLevel log_level,
                                         const string& formatted_message,
                                         const char* file, const int line) {
   logger_->Log(log_level,
-               format("[{}] [{}] | {}", engine_->GetCurrentStrategyName(),
+               format("[{}] {}",
                       bar_->GetBarData(bar_->GetCurrentBarType())
                           ->GetSymbolName(bar_->GetCurrentSymbolIndex()),
                       formatted_message),
@@ -494,14 +505,15 @@ double BaseOrderHandler::CalculateLiquidationPrice(
   const auto& leverage_bracket =
       GetLeverageBracket(symbol_idx, order_price, unsigned_position_size);
 
-  const auto numerator = entry_margin + leverage_bracket.maintenance_amount -
-                         order_price * signed_position_size;
-  const auto denominator =
+  const double numerator = entry_margin + leverage_bracket.maintenance_amount -
+                           order_price * signed_position_size;
+  const double denominator =
       unsigned_position_size * leverage_bracket.maintenance_margin_rate -
       signed_position_size;
 
-  if (const auto result = numerator / denominator; result <= 0) {
-    // 롱의 경우, 청산가가 음수면 절대 청산되지 않음
+  if (const double result = numerator / denominator;
+      IsLessOrEqual(result, 0.0)) {
+    // 롱의 경우, 청산가가 0이하면 절대 청산되지 않음
     return 0;
   } else {
     return RoundToTickSize(result, symbol_info_[symbol_idx].GetTickSize());
@@ -515,8 +527,9 @@ LeverageBracket BaseOrderHandler::GetLeverageBracket(
 
   for (const auto& leverage_bracket :
        symbol_info_[symbol_idx].GetLeverageBracket()) {
-    if (leverage_bracket.min_notional_value <= notional_value &&
-        notional_value < leverage_bracket.max_notional_value) {
+    // 최소 명목 가치 <= 주문의 명목 가치 < 최대 명목 가치
+    if (IsLessOrEqual(leverage_bracket.min_notional_value, notional_value) &&
+        IsLess(notional_value, leverage_bracket.max_notional_value)) {
       return leverage_bracket;
     }
   }
@@ -574,7 +587,7 @@ void BaseOrderHandler::IsValidPositionSize(const double position_size,
 
   // 포지션 수량 단위 확인
   if (const auto qty_step = symbol_info.GetQtyStep();
-      round(position_size / qty_step) * qty_step != position_size) {
+      !IsEqual(round(position_size / qty_step) * qty_step, position_size)) {
     throw InvalidValue(
         format("포지션 크기 지정 오류 (포지션 크기 [{}] | "
                "조건: 수량 단위 [{}]의 배수)",
@@ -631,7 +644,7 @@ void BaseOrderHandler::IsValidNotionalValue(const double order_price,
   // 명목 가치가 해당 심볼의 최소 명목 가치보다 작으면 오류
   const auto notional = order_price * position_size;
   if (const auto min_notional =
-          symbol_info_[bar_->GetCurrentSymbolIndex()].GetMinNotional();
+          symbol_info_[bar_->GetCurrentSymbolIndex()].GetMinNotionalValue();
       IsLess(notional, min_notional)) {
     throw InvalidValue(
         format("명목 가치 부족 (명목 가치 [{}] | "
@@ -765,7 +778,7 @@ void BaseOrderHandler::ExecuteCancelEntry(
     case LIMIT: {
       // 사용한 자금에서 예약 증거금 감소
       if (const auto entry_margin = cancel_order->GetEntryMargin();
-          entry_margin != 0) {
+          !IsEqual(entry_margin, 0.0)) {
         engine_->DecreaseUsedMargin(entry_margin);
       }
       return;
@@ -783,7 +796,7 @@ void BaseOrderHandler::ExecuteCancelEntry(
            Touch 이후에는 지정가로 예약 증거금을 사용하므로 사용한 자금에서 예약
            증거금을 감소시켜야 함 */
         if (const auto entry_margin = cancel_order->GetEntryMargin();
-            entry_margin != 0) {
+            !IsEqual(entry_margin, 0.0)) {
           engine_->DecreaseUsedMargin(entry_margin);
         }
       }

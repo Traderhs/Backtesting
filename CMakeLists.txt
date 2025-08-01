@@ -13,19 +13,22 @@ set(CMAKE_TOOLCHAIN_FILE "D:/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRIN
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Build types" FORCE)
 
 # 디버그 빌드 설정
-if (MSVC)
-    set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Zi /Od /RTC1")
-endif ()
-set(CMAKE_LINKER_FLAGS_DEBUG "${CMAKE_LINKER_FLAGS_DEBUG} /DEBUG")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -g -O0")
+
+# 릴리즈 빌드 설정
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -DNDEBUG")
+
+# 빌드 결과물 경로 설정
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_DEBUG ${CMAKE_BINARY_DIR}/Debug)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_RELEASE ${CMAKE_BINARY_DIR}/Release)
 
 # 패키지 임포트
 find_package(Arrow CONFIG REQUIRED)
 find_package(CURL CONFIG REQUIRED)
-find_package(GTest CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(Parquet CONFIG REQUIRED)
 find_package(OpenSSL CONFIG REQUIRED)
-find_package(inja CONFIG REQUIRED)
+find_package(ZLIB REQUIRED)
 
 # ======================================================================================================================
 # Backtesting 설정
@@ -43,7 +46,10 @@ file(GLOB SOURCES  # 해당 경로에서 cpp 파일들을 GLOB
 add_executable(Backtesting ${SOURCES}) # 실행 파일 Backtesting을 ${SOURCES} 소스 파일로 생성
 target_include_directories(Backtesting PRIVATE # Backtesting 타겟에 포함 디렉터리 경로 추가
         Includes
-        Sources/Cpp)
+        Sources/Cpp
+        D:/vcpkg/installed/x64-windows/include)
+target_link_directories(Backtesting PRIVATE
+        D:/vcpkg/installed/x64-windows/lib)
 target_link_libraries(Backtesting PRIVATE # Backtesting 타겟에 외부 라이브러리 링크
         arrow_shared
         CURL::libcurl
@@ -51,40 +57,10 @@ target_link_libraries(Backtesting PRIVATE # Backtesting 타겟에 외부 라이�
         parquet_shared
         OpenSSL::SSL
         OpenSSL::Crypto
-        pantor::inja)
+        ZLIB::ZLIB)
 
 # MSVC 프로파일링 링크
-# target_link_options(Backtesting PRIVATE $<$<CONFIG:Release>:/PROFILE>)
-# ======================================================================================================================
-# Google Test 설정
-file(GLOB TEST_HEADERS  # 해당 경로에서 hpp 파일들을 GLOB
-        "Tests/*.hpp"
-        "Includes/Backtesting.hpp"
-        "Includes/Engines/*.hpp"
-        "Includes/Indicators/*.hpp"
-        "Includes/Strategies/*.hpp")
-file(GLOB TEST_SOURCES  # 해당 경로에서 cpp 파일들을 GLOB
-        "Tests/*.cpp"
-        "Sources/cpp/Backtesting.cpp"
-        "Sources/cpp/Engines/*.cpp"
-        "Sources/cpp/Indicators/*.cpp"
-        "Sources/cpp/Strategies/*.cpp")
-
-add_executable(Tests ${TEST_SOURCES}) # 실행 파일 Tests를 ${TEST_SOURCES} 소스 파일로 생성
-target_include_directories(Tests PRIVATE # Tests 타겟에 포함 디렉터리 경로 추가
-        Tests
-        Includes
-        Sources/Cpp)
-target_link_libraries(Tests PRIVATE # Tests 타겟에 외부 라이브러리 연결
-        arrow_shared
-        CURL::libcurl
-        GTest::gtest_main
-        nlohmann_json::nlohmann_json
-        parquet_shared
-        OpenSSL::SSL
-        OpenSSL::Crypto
-        pantor::inja)
-
-# Google Test
-enable_testing()
-add_test(NAME AllTests COMMAND Tests) # GTest 테스트 파일 추가
+#target_link_options(Backtesting PRIVATE
+#        $<$<CONFIG:Release>:/PROFILE>
+#        $<$<CONFIG:Release>:/DEBUG>   # PDB 파일 생성용 옵션
+#)

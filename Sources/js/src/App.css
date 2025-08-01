@@ -1,24 +1,141 @@
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
-  text-align: center;
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  text-align: left;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 하드웨어 가속 및 렌더링 최적화 클래스 */
+.gpu-accelerated {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  will-change: transform;
+}
+
+.gpu-accelerated-heavy {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+}
+
+/* 탭 컨텐츠 기본 스타일 */
+.tab-content {
+  will-change: transform, opacity, visibility;
+  transition: opacity 0.3s ease-out;
+}
+
+/* 비활성 탭에 적용되는 최적화 스타일 */
+.tab-inactive {
+  /* CPU 렌더링 최적화 */
+  /* content-visibility: auto; - 이 속성이 스크롤 컨테이너에 영향을 줄 수 있음 */
+  /* 스크롤 성능 최적화 */
+  overscroll-behavior: none;
+  /* GPU 렌더링 중지 */
+  will-change: auto;
+  /* 애니메이션 최적화 */
+  transition: none !important;
+}
+
+/* 숨겨진 탭 스타일 */
+.tab-content-hidden {
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 탭 진입 애니메이션 */
+.tab-content-enter {
+  animation: none;
+  will-change: opacity, transform;
+}
+
+/* 탭 퇴장 애니메이션 */
+.tab-content-exit {
+  animation: none;
+  will-change: opacity, transform;
+}
+
+/* 애니메이션 방향에 따른 컨테이너 스타일 */
+.tab-container.slide-in-right .tab-content-enter {
+  animation: slideInRight 0.5s forwards;
+}
+
+.tab-container.slide-in-right .tab-content-exit {
+  animation: slideOutLeft 0.5s forwards;
+}
+
+.tab-container.slide-in-left .tab-content-enter {
+  animation: slideInLeft 0.5s forwards;
+}
+
+.tab-container.slide-in-left .tab-content-exit {
+  animation: slideOutRight 0.5s forwards;
+}
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(15%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutLeft {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(-15%);
+    opacity: 0;
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-15%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  to {
+    transform: translateX(15%);
+    opacity: 0;
+  }
 }
 
 .logo {
   height: 6em;
   padding: 1.5em;
   will-change: filter;
-  transition: filter 300ms;
-}
-.logo:hover {
-  filter: drop-shadow(0 0 2em #646cffaa);
-}
-.logo.react:hover {
-  filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
 @keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes spin {
   from {
     transform: rotate(0deg);
   }
@@ -31,6 +148,10 @@
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
   }
+  
+  .chart-loading-indicator {
+    animation: spin infinite 1s linear;
+  }
 }
 
 .card {
@@ -39,4 +160,9 @@
 
 .read-the-docs {
   color: #888;
+}
+
+.performance-container {
+  height: calc(100vh - 2rem); /* 브라우저 높이에서 약간의 여백을 뺀 값 */
+  overflow-y: auto;
 }

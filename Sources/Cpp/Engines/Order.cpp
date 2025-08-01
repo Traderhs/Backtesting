@@ -1,5 +1,4 @@
 // 표준 라이브러리
-#include <cmath>
 #include <stdexcept>
 
 // 파일 헤더

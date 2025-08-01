@@ -5,6 +5,8 @@
 #include <cmath>
 #include <future>
 #include <locale>
+#include <regex>
+#include <string>
 
 // 외부 라이브러리
 #include <nlohmann/json_fwd.hpp>
@@ -41,12 +43,33 @@ namespace backtesting::utils {
 [[nodiscard]] double RoundToDecimalPlaces(double value, size_t decimal_places);
 
 /**
- * 지정된 경로의 Parquet 파일을 읽고 테이블로 변환하여 반환하는 함수
+ * typeid().name()에서 클래스 이름을 추출하는 함수
+ *
+ * @param type_name typeid(T).name()의 결과 문자열
+ * @return 추출된 클래스 이름
+ */
+[[nodiscard]] string ExtractClassName(const string& type_name);
+
+/**
+ * 지정된 경로의 Parquet 파일을 읽고 테이블로 변환하여 반환하는 함수 (최적화됨)
  *
  * @param file_path 읽을 Parquet 파일의 경로
  * @return 변환된 테이블을 포함하는 shared_ptr 객체
  */
 [[nodiscard]] shared_ptr<arrow::Table> ReadParquet(const string& file_path);
+
+/**
+ * 여러 Parquet 파일을 병렬로 읽어들이는 최적화된 함수
+ *
+ * @param file_paths 읽을 Parquet 파일들의 경로 목록
+ * @return 변환된 테이블들을 포함하는 vector
+ */
+[[nodiscard]] vector<shared_ptr<arrow::Table>> ReadParquetBatch(const vector<string>& file_paths);
+
+/**
+ * Parquet 파일 메타데이터 캐시를 정리하는 함수
+ */
+void ClearParquetMetadataCache();
 
 /**
  * 지정된 테이블에서 주어진 열 이름과 행 인덱스에 해당하는
@@ -92,11 +115,16 @@ namespace backtesting::utils {
 /**
  * 주어진 테이블을 Parquet 파일 형식으로 지정된 파일 경로에 저장하는 함수
  *
+ * 로딩 최적화를 위해 분할한 parquet 파일을 추가 저장하는 기능 제공
+ *
  * @param table 저장할 데이터를 포함하는 Table 객체에 대한 shared_ptr
- * @param file_path 데이터를 저장할 Parquet 파일의 경로
+ * @param directory_path 데이터를 저장할 폴더의 경로
+ * @param file_name 파일 이름
+ * @param save_split_files 분할 저장을 할지 결정하는 플래그
  */
 void TableToParquet(const shared_ptr<arrow::Table>& table,
-                    const string& file_path);
+                    const string& directory_path, const string& file_name,
+                    bool save_split_files);
 
 /// Json을 지정된 경로에 파일로 저장하는 함수
 void JsonToFile(future<json> data, const string& file_path);
@@ -132,11 +160,20 @@ void RunPythonScript(const string& script_path,
 /// 지정된 경로에서 Html 파일을 열고 String으로 반환하는 함수
 [[nodiscard]] string OpenHtml(const string& html_path);
 
-/// 부동소숫점 같은 값 비교를 위한 함수.
+/// Parquet 확장자를 제거한 문자열을 반환하는 함수
+string RemoveParquetExtension(const string& file_path);
+
+/// 부동 소수점 같은 값 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값과 같으면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsEqual(T a, U b) {
   using CommonType = std::common_type_t<T, U>;
+
+  // NaN 체크: 둘 중 하나라도 NaN이면 false 반환
+  if (std::isnan(static_cast<CommonType>(a)) ||
+      std::isnan(static_cast<CommonType>(b))) {
+    return false;
+  }
 
   const CommonType diff =
       std::fabs(static_cast<CommonType>(a) - static_cast<CommonType>(b));
@@ -145,11 +182,17 @@ template <typename T, typename U>
   return diff <= tolerance;
 }
 
-/// 부동소숫점 크기 비교를 위한 함수.
+/// 부동 소수점 크기 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값보다 크면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsGreater(T a, U b) {
   using CommonType = std::common_type_t<T, U>;
+
+  // NaN 체크: 둘 중 하나라도 NaN이면 false 반환
+  if (std::isnan(static_cast<CommonType>(a)) ||
+      std::isnan(static_cast<CommonType>(b))) {
+    return false;
+  }
 
   const CommonType diff =
       static_cast<CommonType>(a) - static_cast<CommonType>(b);
@@ -158,11 +201,17 @@ template <typename T, typename U>
   return diff > tolerance;  // 차이가 tolerance보다 크면 a가 더 큼
 }
 
-/// 부동소숫점 크기 비교를 위한 함수.
+/// 부동 소수점 크기 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값보다 크거나 같으면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsGreaterOrEqual(T a, U b) {
   using CommonType = std::common_type_t<T, U>;
+
+  // NaN 체크: 둘 중 하나라도 NaN이면 false 반환
+  if (std::isnan(static_cast<CommonType>(a)) ||
+      std::isnan(static_cast<CommonType>(b))) {
+    return false;
+  }
 
   const CommonType diff =
       static_cast<CommonType>(a) - static_cast<CommonType>(b);
@@ -172,17 +221,33 @@ template <typename T, typename U>
          -tolerance;  // 차이가 tolerance보다 크거나 같으면 a가 크거나 같음
 }
 
-/// 부동소숫점 크기 비교를 위한 함수.
+/// 부동 소수점 크기 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값보다 작으면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsLess(T a, U b) {
+  using CommonType = std::common_type_t<T, U>;
+
+  // NaN 체크: 둘 중 하나라도 NaN이면 false 반환
+  if (std::isnan(static_cast<CommonType>(a)) ||
+      std::isnan(static_cast<CommonType>(b))) {
+    return false;
+  }
+
   return !utils::IsGreaterOrEqual(a, b);
 }
 
-/// 부동소숫점 크기 비교를 위한 함수.
+/// 부동 소수점 크기 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값보다 작거나 같으면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsLessOrEqual(T a, U b) {
+  using CommonType = std::common_type_t<T, U>;
+
+  // NaN 체크: 둘 중 하나라도 NaN이면 false 반환
+  if (std::isnan(static_cast<CommonType>(a)) ||
+      std::isnan(static_cast<CommonType>(b))) {
+    return false;
+  }
+
   return !utils::IsGreater(a, b);
 }
 

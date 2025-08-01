@@ -1,5 +1,4 @@
 // 표준 라이브러리
-#include <cmath>
 #include <format>
 
 // 외부 라이브러리
@@ -40,8 +39,12 @@ BaseEngine::~BaseEngine() = default;
 shared_ptr<Analyzer>& BaseEngine::analyzer_ = Analyzer::GetAnalyzer();
 shared_ptr<BarHandler>& BaseEngine::bar_ = BarHandler::GetBarHandler();
 shared_ptr<Logger>& BaseEngine::logger_ = Logger::GetLogger();
+vector<json> BaseEngine::funding_rates_;
+vector<string> BaseEngine::funding_rates_paths_;
 json BaseEngine::exchange_info_;
+string BaseEngine::exchange_info_path_;
 json BaseEngine::leverage_bracket_;
+string BaseEngine::leverage_bracket_path_;
 shared_ptr<Config> BaseEngine::config_;
 
 void BaseEngine::AddExchangeInfo(const string& exchange_info_path) {
@@ -61,13 +64,14 @@ void BaseEngine::AddExchangeInfo(const string& exchange_info_path) {
 
   try {
     exchange_info_ = json::parse(file);
+    exchange_info_path_ = exchange_info_path;
   } catch (const json::parse_error& e) {
     // JSON 파싱 오류 처리
     logger_->Log(
         ERROR_L,
         format("거래소 정보 파일 [{}]의 Json 형식이 유효하지 않습니다.",
                exchange_info_path),
-        __FILE__, __LINE__);
+        __FILE__, __LINE__, true);
 
     Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
   }
@@ -75,7 +79,7 @@ void BaseEngine::AddExchangeInfo(const string& exchange_info_path) {
   file.close();
 
   logger_->Log(INFO_L, "거래소 정보가 엔진에 추가되었습니다.", __FILE__,
-               __LINE__);
+               __LINE__, true);
 }
 
 void BaseEngine::AddLeverageBracket(const string& leverage_bracket_path) {
@@ -96,20 +100,69 @@ void BaseEngine::AddLeverageBracket(const string& leverage_bracket_path) {
 
   try {
     leverage_bracket_ = json::parse(file);
+    leverage_bracket_path_ = leverage_bracket_path;
   } catch (const json::parse_error& e) {
     // JSON 파싱 오류 처리
     logger_->Log(
         ERROR_L,
         format("레버리지 구간 파일 [{}]의 Json 형식이 유효하지 않습니다.",
                leverage_bracket_path),
-        __FILE__, __LINE__);
+        __FILE__, __LINE__, true);
     Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
   }
 
   file.close();
 
   logger_->Log(INFO_L, "레버리지 구간이 엔진에 추가되었습니다.", __FILE__,
-               __LINE__);
+               __LINE__, true);
+}
+
+void BaseEngine::AddFundingRates(const vector<string>& symbol_names,
+                                 const string& funding_rates_directory) {
+  if (!filesystem::exists(funding_rates_directory)) {
+    Logger::LogAndThrowError(
+        format("펀딩 비율 폴더 [{}]이(가) 유효하지 않습니다.",
+               funding_rates_directory),
+        __FILE__, __LINE__);
+  }
+
+  for (const auto& symbol_name : symbol_names) {
+    const auto& funding_rate_path =
+        format("{}/{}.json", funding_rates_directory, symbol_name);
+
+    ifstream file(funding_rate_path);
+    if (!file.is_open()) {
+      Logger::LogAndThrowError(
+          format("펀딩 비율 파일 [{}]이(가) 유효하지 않습니다.",
+                 funding_rate_path),
+          __FILE__, __LINE__);
+    }
+
+    if (file.peek() == ifstream::traits_type::eof()) {
+      Logger::LogAndThrowError(
+          format("펀딩 비율 파일 [{}]이(가) 비어있습니다.", funding_rate_path),
+          __FILE__, __LINE__);
+    }
+
+    try {
+      funding_rates_.push_back(json::parse(file));
+      funding_rates_paths_.push_back(funding_rate_path);
+    } catch (const json::parse_error& e) {
+      // JSON 파싱 오류 처리
+      logger_->Log(
+          ERROR_L,
+          format("펀딩 비율 파일 [{}]의 Json 형식이 유효하지 않습니다.",
+                 funding_rate_path),
+          __FILE__, __LINE__, true);
+
+      Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
+    }
+
+    file.close();
+  }
+
+  logger_->Log(INFO_L, "펀딩 비율이 엔진에 추가되었습니다.", __FILE__, __LINE__,
+               true);
 }
 
 bool BaseEngine::IsEngineInitialized() const { return engine_initialized_; }
@@ -121,7 +174,7 @@ void BaseEngine::IncreaseWalletBalance(const double increase_balance) {
         format(
             "현재 자금 증가를 위해 주어진 [{}]는 0보다 크거나 같아야 합니다.",
             FormatDollar(increase_balance, true)),
-        __FILE__, __LINE__);
+        __FILE__, __LINE__, true);
     throw runtime_error("지갑 자금 증가 실패");
   }
 
@@ -135,7 +188,7 @@ void BaseEngine::DecreaseWalletBalance(const double decrease_balance) {
         format(
             "지갑 자금 감소를 위해 주어진 [{}]는 0보다 크거나 같아야 합니다.",
             FormatDollar(decrease_balance, true)),
-        __FILE__, __LINE__);
+        __FILE__, __LINE__, true);
     throw runtime_error("지갑 자금 감소 실패");
   }
 
@@ -146,7 +199,7 @@ void BaseEngine::DecreaseWalletBalance(const double decrease_balance) {
                "없습니다.",
                FormatDollar(decrease_balance, true),
                FormatDollar(wallet_balance_, true)),
-        __FILE__, __LINE__);
+        __FILE__, __LINE__, true);
     throw exception::Bankruptcy("지갑 자금 감소 실패");
   }
 
@@ -159,7 +212,7 @@ void BaseEngine::IncreaseUsedMargin(const double increase_margin) {
         ERROR_L,
         format("사용한 마진 증가를 위해 주어진 [{}]는 양수로 지정해야 합니다.",
                FormatDollar(increase_margin, true)),
-        __FILE__, __LINE__);
+        __FILE__, __LINE__, true);
     throw runtime_error("사용한 마진 증가 실패");
   }
 
@@ -172,7 +225,7 @@ void BaseEngine::IncreaseUsedMargin(const double increase_margin) {
                         FormatDollar(increase_margin, true),
                         FormatDollar(sum_used_margin, true),
                         FormatDollar(wallet_balance_, true)),
-                 __FILE__, __LINE__);
+                 __FILE__, __LINE__, true);
     throw runtime_error("사용한 마진 증가 실패");
   }
 
@@ -186,7 +239,7 @@ void BaseEngine::DecreaseUsedMargin(const double decrease_margin) {
         format(
             "사용한 마진 감소를 위해 주어진 [{}]는 음수로 지정할 수 없습니다.",
             FormatDollar(decrease_margin, true)),
-        __FILE__, __LINE__);
+        __FILE__, __LINE__, true);
     throw runtime_error("사용한 마진 감소 실패");
   }
 
@@ -197,7 +250,7 @@ void BaseEngine::DecreaseUsedMargin(const double decrease_margin) {
                "초과할 수 없습니다.",
                FormatDollar(decrease_margin, true),
                FormatDollar(used_margin_, true)),
-        __FILE__, __LINE__);
+        __FILE__, __LINE__, true);
     throw runtime_error("사용한 마진 감소 실패");
   }
 
@@ -244,8 +297,8 @@ void BaseEngine::LogBalance() {
                __FILE__, __LINE__);
 }
 
-void BaseEngine::LogSeparator() {
-  logger_->LogNoFormat(INFO_L, string(217, '='));
+void BaseEngine::LogSeparator(const bool log_to_console) {
+  logger_->LogNoFormat(INFO_L, string(217, '='), log_to_console);
 }
 
 }  // namespace backtesting::engine

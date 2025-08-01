@@ -1,24 +1,21 @@
-import React, {useEffect, useState} from "react";
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
+import {TradeFilter, TradeFilterContext, TradeItem} from "./TradeFilterContext";
 import {
-    TradeFilterContext,
-    TradeFilter,
-    TradeItem,
-    TradeFilterContextType,
-} from "./TradeFilterContext";
-import {
-    getYearOptions,
-    getMonthOptions,
-    getDayOptions,
     getDayOfWeekOptions,
+    getDayOptions,
     getHourOptions,
     getMinuteSecondOptions,
-} from "./TimeFilterOptions";
-import {parseHoldingTime} from "./ParseHoldingTime";
-import ServerAlert from "../ServerAlert";
+    getMonthOptions,
+    getYearOptions,
+} from "./TimeFilterOptions.js";
 
+import ServerAlert from "../Server/ServerAlert.tsx";
+import {filterTradesAsync} from "@/workers/tradeFilterUtils.ts";
+
+// 필터링 로직을 청크 단위로 처리하는 함수
 export const TradeFilterProvider = ({children}: { children: React.ReactNode }) => {
     const [filter, setFilter] = useState<TradeFilter>({
-        recalculateBalance: undefined,
+        recalculateBalance: true,
 
         tradeNumberMin: undefined,
         tradeNumberMax: undefined,
@@ -31,6 +28,7 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
         entryTimeMax: undefined,
         exitTimeMin: undefined,
         exitTimeMax: undefined,
+        // 초기에는 빈 배열로 설정하여 불필요한 계산 방지
         entryYears: [],
         entryMonths: [],
         entryDays: [],
@@ -89,6 +87,12 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
         heldSymbolsCountMax: undefined,
     });
 
+    // 필터 패널 확장 상태 추가
+    const [filterExpanded, setFilterExpanded] = useState<boolean>(false);
+
+    // 달력 상태 관리 추가
+    const [openCalendar, setOpenCalendar] = useState<string | null>(null);
+
     const [tradeListError, setTradeListError] = useState(false)
     const [allTrades, setAllTrades] = useState<TradeItem[]>([]);
     const [filteredTrades, setFilteredTrades] = useState<TradeItem[]>([]);
@@ -98,6 +102,16 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
     const [entryOptions, setEntryOptions] = useState<{ name: string }[]>([]);
     const [exitOptions, setExitOptions] = useState<{ name: string }[]>([]);
 
+    // 필터링 작업 진행 상태 추가
+    const [isFiltering, setIsFiltering] = useState(false);
+    const filteringTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // 고급 시간 필터 옵션 계산 완료 상태
+    const [timeOptionsCalculated, setTimeOptionsCalculated] = useState(false);
+
+    // 필터링 진행률 상태
+    const [filteringProgress, setFilteringProgress] = useState<number>(0);
+
     // 앱 시작 시 config.json 불러오기 (전략, 심볼)
     useEffect(() => {
         async function loadConfig() {
@@ -105,11 +119,13 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                 const res = await fetch("/Backboard/config.json");
                 const config = await res.json();
                 const symbols = (config["심볼"] ?? []).map(
-                    (s: Record<string, unknown>) => ({name: String(s["심볼명"])})
+                    (s: Record<string, unknown>) => ({name: String(s["심볼 이름"])})
                 );
-                const strategies = (config["전략"] ?? []).map(
-                    (s: Record<string, unknown>) => ({name: String(s["전략명"])})
-                );
+
+                // 전략은 이제 객체로 존재
+                const strategy = config["전략"] as Record<string, unknown>;
+                const strategies = [{name: String(strategy["전략 이름"])}];
+
                 setSymbolOptions(symbols);
                 setStrategyOptions(strategies);
                 setFilter((prev) => ({
@@ -179,14 +195,109 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                     )
                 ).map((name) => ({name: String(name)}));
 
+                // 이름 기준으로 정렬
+                uniqueEntryNames.sort((a, b) => a.name.localeCompare(b.name));
+                uniqueExitNames.sort((a, b) => a.name.localeCompare(b.name));
+
                 setEntryOptions(uniqueEntryNames);
                 setExitOptions(uniqueExitNames);
+
+                // 시간 범위 계산 (GMT 기준)
+                const validTrades = data.filter(trade => {
+                    const tradeNumber = Number(trade["거래 번호"]);
+                    return tradeNumber !== 0;
+                });
+
+                let minEntryTime = undefined;
+                let maxEntryTime = undefined;
+                let minExitTime = undefined;
+                let maxExitTime = undefined;
+
+                if (validTrades.length > 0) {
+                    // 진입 시간 범위 - 전체 데이터에서 실제 최소/최대값 찾기
+                    const entryTimes = validTrades.map(trade => String(trade["진입 시간"])).filter(time => time && time !== "-");
+                    if (entryTimes.length > 0) {
+                        // 전체 데이터를 순회하면서 실제 최소/최대값 찾기
+                        let minEntryTimeStr = entryTimes[0];
+                        let maxEntryTimeStr = entryTimes[0];
+                        for (const time of entryTimes) {
+                            if (time < minEntryTimeStr) minEntryTimeStr = time;
+                            if (time > maxEntryTimeStr) maxEntryTimeStr = time;
+                        }
+
+                        // GMT 기준으로 파싱
+                        const startTime = minEntryTimeStr.includes('T')
+                            ? minEntryTimeStr
+                            : new Date(minEntryTimeStr + 'Z').toISOString();
+                        const endTime = maxEntryTimeStr.includes('T')
+                            ? maxEntryTimeStr
+                            : new Date(maxEntryTimeStr + 'Z').toISOString();
+
+                        minEntryTime = startTime;
+                        maxEntryTime = endTime;
+                    }
+
+                    // 청산 시간 범위 - 전체 데이터에서 실제 최소/최대값 찾기
+                    const exitTimes = validTrades.map(trade => String(trade["청산 시간"])).filter(time => time && time !== "-");
+                    if (exitTimes.length > 0) {
+                        // 전체 데이터를 순회하면서 실제 최소/최대값 찾기
+                        let minExitTimeStr = exitTimes[0];
+                        let maxExitTimeStr = exitTimes[0];
+                        for (const time of exitTimes) {
+                            if (time < minExitTimeStr) minExitTimeStr = time;
+                            if (time > maxExitTimeStr) maxExitTimeStr = time;
+                        }
+
+                        // GMT 기준으로 파싱
+                        const startTime = minExitTimeStr.includes('T')
+                            ? minExitTimeStr
+                            : new Date(minExitTimeStr + 'Z').toISOString();
+                        const endTime = maxExitTimeStr.includes('T')
+                            ? maxExitTimeStr
+                            : new Date(maxExitTimeStr + 'Z').toISOString();
+
+                        minExitTime = startTime;
+                        maxExitTime = endTime;
+                    }
+                }
+
+                // 고급 필터 초기값도 즉시 계산
+                const computedEntryYears = getYearOptions(data, ["진입 시간", "청산 시간"]);
+                const computedEntryMonths = getMonthOptions();
+                const computedEntryDays = getDayOptions();
+                const computedEntryDayOfWeeks = getDayOfWeekOptions();
+                const computedEntryHours = getHourOptions();
+                const computedEntryMinutes = getMinuteSecondOptions();
+                const computedEntrySeconds = getMinuteSecondOptions();
 
                 setFilter((prev) => ({
                     ...prev,
                     entryNames: uniqueEntryNames.map((option) => option.name),
                     exitNames: uniqueExitNames.map((option) => option.name),
+                    // 시간 범위 초기값 (GMT)
+                    entryTimeMin: minEntryTime,
+                    entryTimeMax: maxEntryTime,
+                    exitTimeMin: minExitTime,
+                    exitTimeMax: maxExitTime,
+                    // 고급 필터 초기값도 즉시 설정
+                    entryYears: computedEntryYears,
+                    entryMonths: computedEntryMonths,
+                    entryDays: computedEntryDays,
+                    entryDayOfWeeks: computedEntryDayOfWeeks,
+                    entryHours: computedEntryHours,
+                    entryMinutes: computedEntryMinutes,
+                    entrySeconds: computedEntrySeconds,
+                    exitYears: computedEntryYears,
+                    exitMonths: computedEntryMonths,
+                    exitDays: computedEntryDays,
+                    exitDayOfWeeks: computedEntryDayOfWeeks,
+                    exitHours: computedEntryHours,
+                    exitMinutes: computedEntryMinutes,
+                    exitSeconds: computedEntrySeconds,
                 }));
+
+                // 초기값 계산 완료로 설정
+                setTimeOptionsCalculated(true);
             } catch (error) {
                 console.error("trade_list.json 로딩 실패:", error);
                 setAllTrades([]);
@@ -198,304 +309,191 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
         void fetchTrades();
     }, []);
 
-    // allTrades가 로드되면 고급 필터의 기본값(모든 옵션 체크)을 설정
+    // 고급 필터가 처음 열릴 때만 시간 옵션 계산
     useEffect(() => {
-        if (allTrades.length > 0) {
-            const computedEntryYears = getYearOptions(allTrades, ["진입 시간", "청산 시간"]);
-            const computedEntryMonths = getMonthOptions();
-            const computedEntryDays = getDayOptions();
-            const computedEntryDayOfWeeks = getDayOfWeekOptions();
-            const computedEntryHours = getHourOptions();
-            const computedEntryMinutes = getMinuteSecondOptions();
-            const computedEntrySeconds = getMinuteSecondOptions();
+        if (filterExpanded && !timeOptionsCalculated && allTrades.length > 0) {
+            // 비동기로 처리하여 UI 블로킹 방지
+            setTimeout(() => {
+                const computedEntryYears = getYearOptions(allTrades, ["진입 시간", "청산 시간"]);
+                const computedEntryMonths = getMonthOptions();
+                const computedEntryDays = getDayOptions();
+                const computedEntryDayOfWeeks = getDayOfWeekOptions();
+                const computedEntryHours = getHourOptions();
+                const computedEntryMinutes = getMinuteSecondOptions();
+                const computedEntrySeconds = getMinuteSecondOptions();
 
-            // 청산시간도 동일한 옵션 사용
-            setFilter((prev) => ({
-                ...prev,
-                entryYears: computedEntryYears,
-                entryMonths: computedEntryMonths,
-                entryDays: computedEntryDays,
-                entryDayOfWeeks: computedEntryDayOfWeeks,
-                entryHours: computedEntryHours,
-                entryMinutes: computedEntryMinutes,
-                entrySeconds: computedEntrySeconds,
-                exitYears: computedEntryYears,
-                exitMonths: computedEntryMonths,
-                exitDays: computedEntryDays,
-                exitDayOfWeeks: computedEntryDayOfWeeks,
-                exitHours: computedEntryHours,
-                exitMinutes: computedEntryMinutes,
-                exitSeconds: computedEntrySeconds,
-            }));
+                // 청산시간도 동일한 옵션 사용
+                setFilter((prev) => ({
+                    ...prev,
+                    entryYears: computedEntryYears,
+                    entryMonths: computedEntryMonths,
+                    entryDays: computedEntryDays,
+                    entryDayOfWeeks: computedEntryDayOfWeeks,
+                    entryHours: computedEntryHours,
+                    entryMinutes: computedEntryMinutes,
+                    entrySeconds: computedEntrySeconds,
+                    exitYears: computedEntryYears,
+                    exitMonths: computedEntryMonths,
+                    exitDays: computedEntryDays,
+                    exitDayOfWeeks: computedEntryDayOfWeeks,
+                    exitHours: computedEntryHours,
+                    exitMinutes: computedEntryMinutes,
+                    exitSeconds: computedEntrySeconds,
+                }));
+
+                setTimeOptionsCalculated(true);
+            }, 0);
         }
-    }, [allTrades]);
+    }, [filterExpanded, timeOptionsCalculated, allTrades]);
 
-    // 필터 적용 및 필터된 거래 내역에 누적 계산 값 적용 (0행은 항상 포함)
-    useEffect(() => {
-        const filtered = allTrades.filter((trade, index) => {
-            if (index === 0) return true; // 첫 번째 행은 항상 포함
+    // 즉시 필터링 함수 (디바운스 없음)
+    const immediateFiltering = useCallback(async (currentFilter: TradeFilter, trades: TradeItem[]) => {
+            // 필터링 중 상태 설정
+            setIsFiltering(true);
+            setFilteringProgress(0);
 
-            // 기본 필터 조건
-            const tradeNumber = Number(trade["거래 번호"]);
-            const tradeNumberMatch =
-                (filter.tradeNumberMin === undefined || tradeNumber >= filter.tradeNumberMin) &&
-                (filter.tradeNumberMax === undefined || tradeNumber <= filter.tradeNumberMax);
-
-            const strategyMatch = filter.strategies.includes(String(trade["전략 이름"]));
-            const symbolMatch = filter.symbols.includes(String(trade["심볼 이름"]));
-            const entryMatch = filter.entryNames.includes(String(trade["진입 이름"]));
-            const exitMatch = filter.exitNames.includes(String(trade["청산 이름"]));
-            const directionMatch = filter.entryDirections.includes(String(trade["진입 방향"]));
-
-            const entryTimeStr = String(trade["진입 시간"]).replace(" ", "T") + "Z";
-            const exitTimeStr = String(trade["청산 시간"]).replace(" ", "T") + "Z";
-            const entryTime = Date.parse(entryTimeStr);
-            const exitTime = Date.parse(exitTimeStr);
-
-            const entryTimeMatch =
-                (filter.entryTimeMin === undefined || entryTime >= Date.parse(filter.entryTimeMin)) &&
-                (filter.entryTimeMax === undefined || entryTime <= Date.parse(filter.entryTimeMax));
-            const exitTimeMatch =
-                (filter.exitTimeMin === undefined || exitTime >= Date.parse(filter.exitTimeMin)) &&
-                (filter.exitTimeMax === undefined || exitTime <= Date.parse(filter.exitTimeMax));
-
-            // 고급 필터 조건 - 시간 관련
-            const entryDate = new Date(entryTimeStr);
-            const exitDate = new Date(exitTimeStr);
-
-            // 보유 시간 필터
-            const holdingTimeStr = String(trade["보유 시간"]);
-            const holdingTime = parseHoldingTime(holdingTimeStr); // 초 단위 변환
-            const holdingTimeMatch =
-                (filter.holdingTimeMin === undefined || (holdingTime !== null && holdingTime >= filter.holdingTimeMin)) &&
-                (filter.holdingTimeMax === undefined || (holdingTime !== null && holdingTime <= filter.holdingTimeMax));
-
-            const leverage = Number(trade["레버리지"]);
-            const leverageMatch =
-                (filter.leverageMin === undefined || leverage >= filter.leverageMin) &&
-                (filter.leverageMax === undefined || leverage <= filter.leverageMax);
-
-            const entryPrice = Number(trade["진입 가격"]);
-            const entryPriceMatch =
-                (filter.entryPriceMin === undefined || entryPrice >= filter.entryPriceMin) &&
-                (filter.entryPriceMax === undefined || entryPrice <= filter.entryPriceMax);
-
-            const entryQuantity = Number(trade["진입 수량"]);
-            const entryQuantityMatch =
-                (filter.entryQuantityMin === undefined || entryQuantity >= filter.entryQuantityMin) &&
-                (filter.entryQuantityMax === undefined || entryQuantity <= filter.entryQuantityMax);
-
-            const exitPrice = Number(trade["청산 가격"]);
-            const exitPriceMatch =
-                (filter.exitPriceMin === undefined || exitPrice >= filter.exitPriceMin) &&
-                (filter.exitPriceMax === undefined || exitPrice <= filter.exitPriceMax);
-
-            const exitQuantity = Number(trade["청산 수량"]);
-            const exitQuantityMatch =
-                (filter.exitQuantityMin === undefined || exitQuantity >= filter.exitQuantityMin) &&
-                (filter.exitQuantityMax === undefined || exitQuantity <= filter.exitQuantityMax);
-
-            const forcedLiquidationPrice = Number(trade["강제 청산 가격"]);
-            const forcedLiquidationPriceMatch =
-                (filter.forcedLiquidationPriceMin === undefined || forcedLiquidationPrice >= filter.forcedLiquidationPriceMin) &&
-                (filter.forcedLiquidationPriceMax === undefined || forcedLiquidationPrice <= filter.forcedLiquidationPriceMax);
-
-            const entryFee = Number(trade["진입 수수료"]);
-            const entryFeeMatch =
-                (filter.entryFeeMin === undefined || entryFee >= filter.entryFeeMin) &&
-                (filter.entryFeeMax === undefined || entryFee <= filter.entryFeeMax);
-
-            const exitFee = Number(trade["청산 수수료"]);
-            const exitFeeMatch =
-                (filter.exitFeeMin === undefined || exitFee >= filter.exitFeeMin) &&
-                (filter.exitFeeMax === undefined || exitFee <= filter.exitFeeMax);
-
-            const forcedLiquidationFee = Number(trade["강제 청산 수수료"]);
-            const forcedLiquidationFeeMatch =
-                (filter.forcedLiquidationFeeMin === undefined || forcedLiquidationFee >= filter.forcedLiquidationFeeMin) &&
-                (filter.forcedLiquidationFeeMax === undefined || forcedLiquidationFee <= filter.forcedLiquidationFeeMax);
-
-            const profitLoss = Number(trade["손익"]);
-            const profitLossMatch =
-                (filter.profitLossMin === undefined || profitLoss >= filter.profitLossMin) &&
-                (filter.profitLossMax === undefined || profitLoss <= filter.profitLossMax);
-
-            const netProfitLoss = Number(trade["순손익"]);
-            const netProfitLossMatch =
-                (filter.netProfitLossMin === undefined || netProfitLoss >= filter.netProfitLossMin) &&
-                (filter.netProfitLossMax === undefined || netProfitLoss <= filter.netProfitLossMax);
-
-            const individualProfitRate = Number(trade["개별 손익률"]);
-            const individualProfitRateMatch =
-                (filter.individualProfitRateMin === undefined || individualProfitRate >= filter.individualProfitRateMin) &&
-                (filter.individualProfitRateMax === undefined || individualProfitRate <= filter.individualProfitRateMax);
-
-            const overallProfitRate = Number(trade["전체 손익률"]);
-            const overallProfitRateMatch =
-                (filter.overallProfitRateMin === undefined || overallProfitRate >= filter.overallProfitRateMin) &&
-                (filter.overallProfitRateMax === undefined || overallProfitRate <= filter.overallProfitRateMax);
-
-            const currentCapital = Number(trade["현재 자금"]);
-            const currentCapitalMatch =
-                (filter.currentCapitalMin === undefined || currentCapital >= filter.currentCapitalMin) &&
-                (filter.currentCapitalMax === undefined || currentCapital <= filter.currentCapitalMax);
-
-            const highestCapital = Number(trade["최고 자금"]);
-            const highestCapitalMatch =
-                (filter.highestCapitalMin === undefined || highestCapital >= filter.highestCapitalMin) &&
-                (filter.highestCapitalMax === undefined || highestCapital <= filter.highestCapitalMax);
-
-            const drawdown = Number(trade["드로우다운"]);
-            const drawdownMatch =
-                (filter.drawdownMin === undefined || drawdown >= filter.drawdownMin) &&
-                (filter.drawdownMax === undefined || drawdown <= filter.drawdownMax);
-
-            const maxDrawdown = Number(trade["최고 드로우다운"]);
-            const maxDrawdownMatch =
-                (filter.maxDrawdownMin === undefined || maxDrawdown >= filter.maxDrawdownMin) &&
-                (filter.maxDrawdownMax === undefined || maxDrawdown <= filter.maxDrawdownMax);
-
-            const accumulatedProfitLoss = Number(trade["누적 손익"]);
-            const accumulatedProfitLossMatch =
-                (filter.accumulatedProfitLossMin === undefined || accumulatedProfitLoss >= filter.accumulatedProfitLossMin) &&
-                (filter.accumulatedProfitLossMax === undefined || accumulatedProfitLoss <= filter.accumulatedProfitLossMax);
-
-            const accumulatedProfitRate = Number(trade["누적 손익률"]);
-            const accumulatedProfitRateMatch =
-                (filter.accumulatedProfitRateMin === undefined || accumulatedProfitRate >= filter.accumulatedProfitRateMin) &&
-                (filter.accumulatedProfitRateMax === undefined || accumulatedProfitRate <= filter.accumulatedProfitRateMax);
-
-            const heldSymbolsCount = Number(trade["보유 심볼 수"]);
-            const heldSymbolsCountMatch =
-                (filter.heldSymbolsCountMin === undefined || heldSymbolsCount >= filter.heldSymbolsCountMin) &&
-                (filter.heldSymbolsCountMax === undefined || heldSymbolsCount <= filter.heldSymbolsCountMax);
-
-            return (
-                tradeNumberMatch &&
-                strategyMatch &&
-                symbolMatch &&
-                entryMatch &&
-                exitMatch &&
-                directionMatch &&
-                entryTimeMatch &&
-                exitTimeMatch &&
-                filter.entryYears.includes(entryDate.getUTCFullYear()) &&
-                filter.entryMonths.includes(entryDate.getUTCMonth() + 1) &&
-                filter.entryDays.includes(entryDate.getUTCDate()) &&
-                filter.entryDayOfWeeks.includes(entryDate.getUTCDay()) &&
-                filter.entryHours.includes(entryDate.getUTCHours()) &&
-                filter.entryMinutes.includes(entryDate.getUTCMinutes()) &&
-                filter.entrySeconds.includes(entryDate.getUTCSeconds()) &&
-                filter.exitYears.includes(exitDate.getUTCFullYear()) &&
-                filter.exitMonths.includes(exitDate.getUTCMonth() + 1) &&
-                filter.exitDays.includes(exitDate.getUTCDate()) &&
-                filter.exitDayOfWeeks.includes(exitDate.getUTCDay()) &&
-                filter.exitHours.includes(exitDate.getUTCHours()) &&
-                filter.exitMinutes.includes(exitDate.getUTCMinutes()) &&
-                filter.exitSeconds.includes(exitDate.getUTCSeconds()) &&
-                holdingTimeMatch &&
-                leverageMatch &&
-                entryPriceMatch &&
-                entryQuantityMatch &&
-                exitPriceMatch &&
-                exitQuantityMatch &&
-                forcedLiquidationPriceMatch &&
-                entryFeeMatch &&
-                exitFeeMatch &&
-                forcedLiquidationFeeMatch &&
-                profitLossMatch &&
-                netProfitLossMatch &&
-                individualProfitRateMatch &&
-                overallProfitRateMatch &&
-                currentCapitalMatch &&
-                highestCapitalMatch &&
-                drawdownMatch &&
-                maxDrawdownMatch &&
-                accumulatedProfitLossMatch &&
-                accumulatedProfitRateMatch &&
-                heldSymbolsCountMatch
-            );
-        });
-
-        // allTrades에 오류가 없을 때만 진행
-        if (allTrades.length > 0) {
-            // recalculateBalance 값은 기본적으로 true (활성화)
-            const shouldRecalculate = filter.recalculateBalance !== false;
-
-            // 필터 조건이 적용되지 않아 전체 거래 데이터가 그대로 포함된 경우,
-            // 즉, filtered가 allTrades와 동일하면 원본 데이터를 보여줌.
-            if (!shouldRecalculate || filtered.length === allTrades.length) {
-                setFilteredTrades(filtered);
+            // allTrades가 비어있으면 처리하지 않음
+            if (!trades.length) {
+                setFilteredTrades([]);
+                setIsFiltering(false);
                 return;
             }
 
-            // 자금 재계산 로직 (필터가 적용된 경우에만)
-            const initialBalance = allTrades.length > 0 ? Number(allTrades[0]["현재 자금"]) : 0;
-            let currentBalance = initialBalance;
-            let maxBalance = initialBalance;
-            let maxDrawdown = 0;
-
-            const updatedTrades = filtered.map((trade, index) => {
-                if (index === 0) {
-                    // 첫 번째 행은 아무 처리 없이 그대로 반환
-                    return trade;
-                }
-
-                const profit = Number(trade["순손익"]);
-                currentBalance += profit;
-                maxBalance = Math.max(maxBalance, currentBalance);
-                const drawdown = maxBalance ? (1 - currentBalance / maxBalance) * 100 : 0;
-                maxDrawdown = Math.max(maxDrawdown, drawdown);
-                return {
-                    ...trade,
-                    "전체 손익률": "-", // 재계산 시 전체 손익률은 별도로 계산할 수 있지만, 여기서는 '-'로 표시
-                    "현재 자금": currentBalance,
-                    "최고 자금": maxBalance,
-                    "드로우다운": drawdown,
-                    "최고 드로우다운": maxDrawdown,
-                    "누적 손익": currentBalance - initialBalance,
-                    "누적 손익률": initialBalance ? ((currentBalance - initialBalance) / initialBalance) * 100 : 0,
-                    "보유 심볼 수": "-", // 보유 심볼 수 역시 '-' 처리 (추가 계산이 필요하면 별도 로직 적용)
+            try {
+                // 워커의 TradeFilter 형식으로 변환 (recalculateBalance를 boolean으로 확실히 설정)
+                const workerFilter = {
+                    ...currentFilter,
+                    recalculateBalance: currentFilter.recalculateBalance ?? true,
+                    // string | number 타입들을 number로 변환
+                    tradeNumberMin: currentFilter.tradeNumberMin !== undefined ? Number(currentFilter.tradeNumberMin) : undefined,
+                    tradeNumberMax: currentFilter.tradeNumberMax !== undefined ? Number(currentFilter.tradeNumberMax) : undefined,
+                    leverageMin: currentFilter.leverageMin !== undefined ? Number(currentFilter.leverageMin) : undefined,
+                    leverageMax: currentFilter.leverageMax !== undefined ? Number(currentFilter.leverageMax) : undefined,
+                    entryPriceMin: currentFilter.entryPriceMin !== undefined ? Number(currentFilter.entryPriceMin) : undefined,
+                    entryPriceMax: currentFilter.entryPriceMax !== undefined ? Number(currentFilter.entryPriceMax) : undefined,
+                    entryQuantityMin: currentFilter.entryQuantityMin !== undefined ? Number(currentFilter.entryQuantityMin) : undefined,
+                    entryQuantityMax: currentFilter.entryQuantityMax !== undefined ? Number(currentFilter.entryQuantityMax) : undefined,
+                    exitPriceMin: currentFilter.exitPriceMin !== undefined ? Number(currentFilter.exitPriceMin) : undefined,
+                    exitPriceMax: currentFilter.exitPriceMax !== undefined ? Number(currentFilter.exitPriceMax) : undefined,
+                    exitQuantityMin: currentFilter.exitQuantityMin !== undefined ? Number(currentFilter.exitQuantityMin) : undefined,
+                    exitQuantityMax: currentFilter.exitQuantityMax !== undefined ? Number(currentFilter.exitQuantityMax) : undefined,
+                    forcedLiquidationPriceMin: currentFilter.forcedLiquidationPriceMin !== undefined ? Number(currentFilter.forcedLiquidationPriceMin) : undefined,
+                    forcedLiquidationPriceMax: currentFilter.forcedLiquidationPriceMax !== undefined ? Number(currentFilter.forcedLiquidationPriceMax) : undefined,
+                    entryFeeMin: currentFilter.entryFeeMin !== undefined ? Number(currentFilter.entryFeeMin) : undefined,
+                    entryFeeMax: currentFilter.entryFeeMax !== undefined ? Number(currentFilter.entryFeeMax) : undefined,
+                    exitFeeMin: currentFilter.exitFeeMin !== undefined ? Number(currentFilter.exitFeeMin) : undefined,
+                    exitFeeMax: currentFilter.exitFeeMax !== undefined ? Number(currentFilter.exitFeeMax) : undefined,
+                    forcedLiquidationFeeMin: currentFilter.forcedLiquidationFeeMin !== undefined ? Number(currentFilter.forcedLiquidationFeeMin) : undefined,
+                    forcedLiquidationFeeMax: currentFilter.forcedLiquidationFeeMax !== undefined ? Number(currentFilter.forcedLiquidationFeeMax) : undefined,
+                    profitLossMin: currentFilter.profitLossMin !== undefined ? Number(currentFilter.profitLossMin) : undefined,
+                    profitLossMax: currentFilter.profitLossMax !== undefined ? Number(currentFilter.profitLossMax) : undefined,
+                    netProfitLossMin: currentFilter.netProfitLossMin !== undefined ? Number(currentFilter.netProfitLossMin) : undefined,
+                    netProfitLossMax: currentFilter.netProfitLossMax !== undefined ? Number(currentFilter.netProfitLossMax) : undefined,
+                    individualProfitRateMin: currentFilter.individualProfitRateMin !== undefined ? Number(currentFilter.individualProfitRateMin) : undefined,
+                    individualProfitRateMax: currentFilter.individualProfitRateMax !== undefined ? Number(currentFilter.individualProfitRateMax) : undefined,
+                    overallProfitRateMin: currentFilter.overallProfitRateMin !== undefined ? Number(currentFilter.overallProfitRateMin) : undefined,
+                    overallProfitRateMax: currentFilter.overallProfitRateMax !== undefined ? Number(currentFilter.overallProfitRateMax) : undefined,
+                    currentCapitalMin: currentFilter.currentCapitalMin !== undefined ? Number(currentFilter.currentCapitalMin) : undefined,
+                    currentCapitalMax: currentFilter.currentCapitalMax !== undefined ? Number(currentFilter.currentCapitalMax) : undefined,
+                    highestCapitalMin: currentFilter.highestCapitalMin !== undefined ? Number(currentFilter.highestCapitalMin) : undefined,
+                    highestCapitalMax: currentFilter.highestCapitalMax !== undefined ? Number(currentFilter.highestCapitalMax) : undefined,
+                    drawdownMin: currentFilter.drawdownMin !== undefined ? Number(currentFilter.drawdownMin) : undefined,
+                    drawdownMax: currentFilter.drawdownMax !== undefined ? Number(currentFilter.drawdownMax) : undefined,
+                    maxDrawdownMin: currentFilter.maxDrawdownMin !== undefined ? Number(currentFilter.maxDrawdownMin) : undefined,
+                    maxDrawdownMax: currentFilter.maxDrawdownMax !== undefined ? Number(currentFilter.maxDrawdownMax) : undefined,
+                    accumulatedProfitLossMin: currentFilter.accumulatedProfitLossMin !== undefined ? Number(currentFilter.accumulatedProfitLossMin) : undefined,
+                    accumulatedProfitLossMax: currentFilter.accumulatedProfitLossMax !== undefined ? Number(currentFilter.accumulatedProfitLossMax) : undefined,
+                    accumulatedProfitRateMin: currentFilter.accumulatedProfitRateMin !== undefined ? Number(currentFilter.accumulatedProfitRateMin) : undefined,
+                    accumulatedProfitRateMax: currentFilter.accumulatedProfitRateMax !== undefined ? Number(currentFilter.accumulatedProfitRateMax) : undefined,
+                    heldSymbolsCountMin: currentFilter.heldSymbolsCountMin !== undefined ? Number(currentFilter.heldSymbolsCountMin) : undefined,
+                    heldSymbolsCountMax: currentFilter.heldSymbolsCountMax !== undefined ? Number(currentFilter.heldSymbolsCountMax) : undefined,
                 };
-            });
 
-            setFilteredTrades(updatedTrades);
+                // 멀티 워커로 필터링 실행
+                const result = await filterTradesAsync(
+                    trades as any[],
+                    workerFilter
+                );
+
+                setFilteredTrades(result as TradeItem[]);
+                setIsFiltering(false);
+                setFilteringProgress(100);
+            } catch (error) {
+                console.error('멀티 워커 필터링 실패:', error);
+                setFilteredTrades([]);
+                setIsFiltering(false);
+                setFilteringProgress(0);
+            }
+    }, []);
+
+    // 필터링 로직을 최적화된 useEffect로 처리
+    useEffect(() => {
+        // 이전 타이머 정리
+        if (filteringTimeoutRef.current) {
+            clearTimeout(filteringTimeoutRef.current);
         }
+
+        // 즉시 필터링 실행
+        immediateFiltering(filter, allTrades).then();
+
+        return () => {
+            if (filteringTimeoutRef.current) {
+                clearTimeout(filteringTimeoutRef.current);
+            }
+        };
     }, [filter, allTrades]);
 
-    const contextValue: TradeFilterContextType = {
+    // contextValue도 useMemo로 최적화하여 불필요한 재생성 방지
+    const contextValue = useMemo(() => ({
         filter,
         setFilter,
         allTrades,
         filteredTrades,
         loading,
+        isFiltering, // 필터링 진행 상태 추가
+        filteringProgress, // 멀티 워커 진행률 추가
         options: {
             symbols: symbolOptions,
             strategies: strategyOptions,
             entryNames: entryOptions,
             exitNames: exitOptions,
         },
-    };
+        // 필터 패널 확장 상태 관련 값 추가
+        filterExpanded,
+        setFilterExpanded,
+        // 달력 상태 관리 추가
+        openCalendar,
+        setOpenCalendar
+    }), [
+        filter,
+        allTrades,
+        filteredTrades,
+        loading,
+        isFiltering,
+        filteringProgress,
+        symbolOptions,
+        strategyOptions,
+        entryOptions,
+        exitOptions,
+        filterExpanded,
+        openCalendar
+    ]);
 
     // 에러 경고 컴포넌트를 변수로 분리
     const tradeListAlert = tradeListError ? (
         <ServerAlert
-            serverError={tradeListError}
-            message={"오류가 발생했습니다.\n거래 내역 첫 번째 행의 거래 번호가 0이 아닙니다."}
+            serverError={true}
+            message="거래 내역 데이터 오류: 0번 거래(초기 자금 정보)가 올바르게 구성되지 않았습니다."
         />
     ) : null;
 
-    // Provider 컴포넌트를 변수로 분리
-    const tradeFilterProvider = (
-        <TradeFilterContext.Provider value={contextValue}>
-            {children}
-        </TradeFilterContext.Provider>
-    );
-
+    // Provider 렌더링
     return (
         <>
             {tradeListAlert}
-            {tradeFilterProvider}
+            <TradeFilterContext.Provider value={contextValue}>
+                {children}
+            </TradeFilterContext.Provider>
         </>
     );
 };

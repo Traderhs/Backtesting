@@ -14,6 +14,10 @@ using namespace chrono;
 
 namespace backtesting::utils {
 
+// Thread-local 시간 캐시 (1초 단위로 캐싱)
+thread_local char time_cache_[32];
+thread_local int64_t last_cached_second_ = 0;
+
 int64_t GetCurrentLocalTimestamp() { return time(nullptr) * 1000; }
 
 int64_t GetCurrentUtcTimestamp() {
@@ -22,21 +26,92 @@ int64_t GetCurrentUtcTimestamp() {
       .count();
 }
 
-string GetCurrentLocalDatetime() {
-  const auto& now = system_clock::now();
+// 최적화된 현재 시간 포맷팅 함수 (로그용)
+size_t FormatCurrentTimeFast(char* buffer) {
+  const auto now = system_clock::now();
   const time_t now_time_t = system_clock::to_time_t(now);
 
-  // Local 시간으로 변환
+  // 1초 단위로 캐싱
+  if (now_time_t == last_cached_second_) {
+    // 캐시된 시간 복사
+    char* p = buffer;
+    const char* cached = time_cache_;
+    while (*cached) *p++ = *cached++;
+    return p - buffer;
+  }
+
+  // 새로운 시간 포맷팅
   tm local_time{};
   localtime_s(&local_time, &now_time_t);
 
-  // Datetime으로 변환
-  ostringstream ss;
-  ss << put_time(&local_time, "%Y-%m-%d %H:%M:%S");
-  return ss.str();
+  char* p = buffer;
+
+  // "YYYY-MM-DD HH:MM:SS" 형식으로 수동 포맷팅
+  // 연도
+  const int year = local_time.tm_year + 1900;
+  *p++ = static_cast<char>('0' + year / 1000);
+  *p++ = static_cast<char>('0' + (year / 100) % 10);
+  *p++ = static_cast<char>('0' + (year / 10) % 10);
+  *p++ = static_cast<char>('0' + year % 10);
+
+  *p++ = '-';
+
+  // 월
+  const int month = local_time.tm_mon + 1;
+  *p++ = static_cast<char>('0' + month / 10);
+  *p++ = static_cast<char>('0' + month % 10);
+
+  *p++ = '-';
+
+  // 일
+  const int day = local_time.tm_mday;
+  *p++ = static_cast<char>('0' + day / 10);
+  *p++ = static_cast<char>('0' + day % 10);
+
+  *p++ = ' ';
+
+  // 시
+  const int hour = local_time.tm_hour;
+  *p++ = static_cast<char>('0' + hour / 10);
+  *p++ = static_cast<char>('0' + hour % 10);
+
+  *p++ = ':';
+
+  // 분
+  const int min = local_time.tm_min;
+  *p++ = static_cast<char>('0' + min / 10);
+  *p++ = static_cast<char>('0' + min % 10);
+
+  *p++ = ':';
+
+  // 초
+  const int sec = local_time.tm_sec;
+  *p++ = static_cast<char>('0' + sec / 10);
+  *p++ = static_cast<char>('0' + sec % 10);
+
+  *p = '\0';
+
+  // 캐시 업데이트
+  char* cache_p = time_cache_;
+  const char* temp_p = buffer;
+  while (*temp_p) *cache_p++ = *temp_p++;
+  *cache_p = '\0';
+  last_cached_second_ = now_time_t;
+
+  return p - buffer;
+}
+
+string GetCurrentLocalDatetime() {
+  char buffer[32];
+  const size_t len = FormatCurrentTimeFast(buffer);
+  return {buffer, len};
 }
 
 string UtcTimestampToUtcDatetime(const int64_t timestamp_ms) {
+  if (timestamp_ms < 0) {
+    return "";
+  }
+
   // timestamp ms를 time_t로 변환
   const auto timestamp_s = seconds(timestamp_ms / 1000);
   const system_clock::time_point tp(timestamp_s);
@@ -59,9 +134,10 @@ int64_t UtcDatetimeToUtcTimestamp(const string& datetime,
 
   // 문자열을 tm으로 파싱
   ss >> get_time(&tm, format.c_str());
-  if (ss.fail())
+  if (ss.fail()) {
     Logger::LogAndThrowError("Datetime 문자열을 파싱하는 데 실패했습니다.",
                              __FILE__, __LINE__);
+  }
 
   // tm 구조체를 UTC 타임스탬프로 변환
   // _mkgmtime은 윈도우 전용
@@ -148,7 +224,7 @@ int64_t ParseTimeframe(const string& timeframe_str) {
 }
 
 string FormatTimeDiff(const int64_t diff_ms) {
-  // 같은 봉에서의 거래일 경우
+  // 보유 시간을 계산하고, 같은 봉에서의 거래일 경우
   if (diff_ms == 0) {
     return "동일봉 거래";
   }
@@ -184,7 +260,7 @@ string FormatTimeDiff(const int64_t diff_ms) {
 
   if (diff_ms >= kHour) {
     return to_string(diff_ms / kHour) + "시간 " +
-           to_string((diff_ms % kHour) / kMinute) + "분 ";
+           to_string((diff_ms % kHour) / kMinute) + "분";
   }
 
   if (diff_ms >= kMinute) {
@@ -203,6 +279,30 @@ bool IsTimestampMs(const int64_t timestamp) {
 
   // 밀리초 단위 값이 현재 밀리초 값과 더 가까우면 ms 단위
   return abs(timestamp - current_ms) < abs(timestamp - current_s);
+}
+
+int64_t CalculateNextMonthBoundary(const int64_t timestamp_ms) {
+  const auto time_point = system_clock::from_time_t(timestamp_ms / 1000);
+  const auto time_t_val = system_clock::to_time_t(time_point);
+
+  tm tm = {};
+  gmtime_s(&tm, &time_t_val);
+
+  // 다음 달 1일 00:00:00으로 설정
+  tm.tm_mday = 1;
+  tm.tm_hour = 0;
+  tm.tm_min = 0;
+  tm.tm_sec = 0;
+
+  // 월 증가 처리
+  tm.tm_mon++;
+  if (tm.tm_mon == 12) {
+    tm.tm_mon = 0;
+    tm.tm_year++;
+  }
+
+  // UTC 기준 time_t로 변환
+  return _mkgmtime(&tm) * 1000;
 }
 
 }  // namespace backtesting::utils

@@ -1,11 +1,43 @@
 import React, { createContext } from "react";
 
+// 필터 타입 정의
+export type FilterType = 
+    | 'tradeNumber'
+    | 'strategy'
+    | 'symbol'
+    | 'entryName'
+    | 'exitName'
+    | 'entryDirection'
+    | 'entryTime'
+    | 'exitTime'
+    | 'holdingTime'
+    | 'leverage'
+    | 'entryPrice'
+    | 'entryQuantity'
+    | 'exitPrice'
+    | 'exitQuantity'
+    | 'forcedLiquidationPrice'
+    | 'entryFee'
+    | 'exitFee'
+    | 'forcedLiquidationFee'
+    | 'profitLoss'
+    | 'netProfitLoss'
+    | 'individualProfitRate'
+    | 'overallProfitRate'
+    | 'currentCapital'
+    | 'highestCapital'
+    | 'drawdown'
+    | 'maxDrawdown'
+    | 'accumulatedProfitLoss'
+    | 'accumulatedProfitRate'
+    | 'heldSymbolsCount';
+
 export type TradeFilter = {
     // 자금 재계산 여부 (기본값 true)
     recalculateBalance?: boolean;
 
-    tradeNumberMin?: number;
-    tradeNumberMax?: number;
+    tradeNumberMin?: string | number;
+    tradeNumberMax?: string | number;
     strategies: string[];
     symbols: string[];
     entryNames: string[];
@@ -35,46 +67,46 @@ export type TradeFilter = {
     holdingTimeMax?: number;
 
     // ───────────── 새로 추가할 숫자 범위 필터 ─────────────
-    leverageMin?: number;
-    leverageMax?: number;
-    entryPriceMin?: number;
-    entryPriceMax?: number;
-    entryQuantityMin?: number;
-    entryQuantityMax?: number;
-    exitPriceMin?: number;
-    exitPriceMax?: number;
-    exitQuantityMin?: number;
-    exitQuantityMax?: number;
-    forcedLiquidationPriceMin?: number;
-    forcedLiquidationPriceMax?: number;
-    entryFeeMin?: number;
-    entryFeeMax?: number;
-    exitFeeMin?: number;
-    exitFeeMax?: number;
-    forcedLiquidationFeeMin?: number;
-    forcedLiquidationFeeMax?: number;
-    profitLossMin?: number;
-    profitLossMax?: number;
-    netProfitLossMin?: number;
-    netProfitLossMax?: number;
-    individualProfitRateMin?: number;
-    individualProfitRateMax?: number;
-    overallProfitRateMin?: number;
-    overallProfitRateMax?: number;
-    currentCapitalMin?: number;
-    currentCapitalMax?: number;
-    highestCapitalMin?: number;
-    highestCapitalMax?: number;
-    drawdownMin?: number;
-    drawdownMax?: number;
-    maxDrawdownMin?: number;
-    maxDrawdownMax?: number;
-    accumulatedProfitLossMin?: number;
-    accumulatedProfitLossMax?: number;
-    accumulatedProfitRateMin?: number;
-    accumulatedProfitRateMax?: number;
-    heldSymbolsCountMin?: number;
-    heldSymbolsCountMax?: number;
+    leverageMin?: string | number;
+    leverageMax?: string | number;
+    entryPriceMin?: string | number;
+    entryPriceMax?: string | number;
+    entryQuantityMin?: string | number;
+    entryQuantityMax?: string | number;
+    exitPriceMin?: string | number;
+    exitPriceMax?: string | number;
+    exitQuantityMin?: string | number;
+    exitQuantityMax?: string | number;
+    forcedLiquidationPriceMin?: string | number;
+    forcedLiquidationPriceMax?: string | number;
+    entryFeeMin?: string | number;
+    entryFeeMax?: string | number;
+    exitFeeMin?: string | number;
+    exitFeeMax?: string | number;
+    forcedLiquidationFeeMin?: string | number;
+    forcedLiquidationFeeMax?: string | number;
+    profitLossMin?: string | number;
+    profitLossMax?: string | number;
+    netProfitLossMin?: string | number;
+    netProfitLossMax?: string | number;
+    individualProfitRateMin?: string | number;
+    individualProfitRateMax?: string | number;
+    overallProfitRateMin?: string | number;
+    overallProfitRateMax?: string | number;
+    currentCapitalMin?: string | number;
+    currentCapitalMax?: string | number;
+    highestCapitalMin?: string | number;
+    highestCapitalMax?: string | number;
+    drawdownMin?: string | number;
+    drawdownMax?: string | number;
+    maxDrawdownMin?: string | number;
+    maxDrawdownMax?: string | number;
+    accumulatedProfitLossMin?: string | number;
+    accumulatedProfitLossMax?: string | number;
+    accumulatedProfitRateMin?: string | number;
+    accumulatedProfitRateMax?: string | number;
+    heldSymbolsCountMin?: string | number;
+    heldSymbolsCountMax?: string | number;
 };
 
 export type FilterOption = {
@@ -93,12 +125,19 @@ export interface TradeFilterContextType {
     allTrades: TradeItem[];
     filteredTrades: TradeItem[];
     loading: boolean;
+    isFiltering: boolean;
+    filteringProgress: number; // 필터링 진행률 (0-100) 추가
     options: {
         symbols: FilterOption[];
         strategies: FilterOption[];
         entryNames: FilterOption[];
         exitNames: FilterOption[];
     };
+    filterExpanded: boolean;
+    setFilterExpanded: React.Dispatch<React.SetStateAction<boolean>>;
+    // 달력 상태 관리
+    openCalendar: string | null; // 현재 열린 달력 ID
+    setOpenCalendar: React.Dispatch<React.SetStateAction<string | null>>;
 }
 
 export const TradeFilterContext = createContext<TradeFilterContextType | undefined>(undefined);

@@ -2,7 +2,6 @@
 
 // 표준 라이브러리
 #include <mutex>
-#include <unordered_map>
 
 // 내부 헤더
 #include "Engines/BaseOrderHandler.hpp"
@@ -14,22 +13,37 @@ enum class BarType;
 
 namespace backtesting::order {
 
-/// 주문, 포지션 등과 관련된 세부적인 작업을 처리하는 클래스.
-/// 전략 이름에 따라 멀티톤으로 작동.
+/**
+ * 주문, 포지션 등과 관련된 세부적인 작업을 처리하는 클래스.
+ *
+ * ※ 주의 사항 ※
+ * 1. 하나의 진입 이름으로는 하나의 진입만 체결할 수 있음.
+ * 2. 동일한 진입 이름으로 주문 시 진입 대기 주문은 취소 후 재주문,
+ *    체결 시 동일한 진입 이름으로 체결된 진입이 있을 경우 체결이 거부됨.
+ * 3. 체결된 하나의 진입 이름에 대해서 여러 청산 대기 주문을 가질 수 있음.
+ * 4. 동일한 청산 이름으로 주문 시 청산 대기 주문은 취소 후 재주문.
+ * 5. 하나의 청산 주문이 진입 수량을 부분 청산 시, 같은 진입 이름을 목표로
+ *    하는 청산 대기 주문들은 별도 처리 없이 먼저 체결되는 순서대로 진입 체결
+ *    잔량만 청산됨.
+ * 6. 총 청산 체결 수량이 진입 체결 수량보다 크다면 내부적으로 청산 주문
+ *    타입과 관계 없이 진입 체결 수량보다 크지 않게 조정됨.
+ * 7. 청산 체결 수량이 진입 체결 수량과 같아지면 같은 진입 이름을 목표로 하는
+ *    청산 대기 주문들은 모두 취소됨.
+ */
 class OrderHandler final : public BaseOrderHandler {
  public:
-  // 멀티톤 특성 유지
+  // 싱글톤 특성 유지
   OrderHandler(const OrderHandler&) = delete;             // 복사 생성자 삭제
   OrderHandler& operator=(const OrderHandler&) = delete;  // 대입 연산자 삭제
 
-  /// OrderHandler의 멀티톤 인스턴스를 반환하는 함수
-  static shared_ptr<OrderHandler>& GetOrderHandler(const string& name);
+  /// OrderHandler의 싱글톤 인스턴스를 반환하는 함수
+  static shared_ptr<OrderHandler>& GetOrderHandler();
 
   /// 트레이딩 중인 심볼에서 지정된 가격을 기준으로 강제 청산을 확인하고
   /// 실행하는 함수
   ///
-  /// 고저가 확인할 때 청산되었으면 강제 청산 가격은 청산 가격과 마크 가격의
-  /// 차이를 시장 가격에서 조정하므로 실제 가격과 다를 수 있음에 주의
+  /// 고저가를 확인할 때 강제 청산되었으면 강제 청산 가격은 청산 가격과 마크
+  /// 가격의 차이를 시장 가격에서 조정하므로 실제 가격과 다를 수 있음에 주의
   void CheckLiquidation(double price, PriceType price_type, int symbol_idx,
                         BarType market_bar_type);
 
@@ -41,26 +55,12 @@ class OrderHandler final : public BaseOrderHandler {
   /// 체결됐는지 확인하고 실행하는 함수
   void CheckPendingExits(double price, PriceType price_type, int symbol_idx);
 
-  // ===========================================================================
-  /*
-   * Strategy 구현부에서 사용하는 함수들
-   *
-   * ! 주의 사항 !
-   * 1. 하나의 진입 이름으로는 하나의 진입만 체결할 수 있음.
-   * 2. 동일한 진입 이름으로 주문 시 진입 대기 주문은 취소 후 재주문,
-   *    체결 시 동일한 진입 이름으로 체결된 진입이 있을 경우 체결이 거부됨.
-   * 3. 체결된 하나의 진입 이름에 대해서 여러 청산 대기 주문을 가질 수 있음.
-   * 4. 동일한 청산 이름으로 주문 시 대기 청산 주문은 취소 후 재주문.
-   * 5. 하나의 청산 주문이 진입 수량을 부분 청산 시, 같은 진입 이름을 목표로
-   *    하는 대기 청산 주문들은 별도 처리 없이 먼저 체결되는 순서대로 진입 체결
-   *    잔량만 청산됨.
-   * 6. 총 청산 체결 수량이 진입 체결 수량보다 크다면 내부적으로 청산 주문
-   *    타입과 관계 없이 진입 체결 수량보다 크지 않게 조정됨.
-   * 7. 청산 체결 수량이 진입 체결 수량과 같아지면 같은 진입 이름을 목표로 하는
-   *    대기 청산 주문들은 모두 취소됨.
-   */
-  // ===========================================================================
+  /// 체결된 진입 주문에서 펀딩비를 정산하는 함수
+  void ExecuteFunding(double funding_rate, double funding_price);
 
+  // ===========================================================================
+  // 전략 Strategy 구현부에서 사용하는 진입 함수들
+  // ===========================================================================
   /// 시장가 진입 주문을 위해 사용하는 함수
   ///
   /// @param entry_name 진입 이름
@@ -114,6 +114,8 @@ class OrderHandler final : public BaseOrderHandler {
                      double touch_price, double trail_point, double order_size);
 
   // ===========================================================================
+  // 전략 Strategy 구현부에서 사용하는 청산 함수들
+  // ===========================================================================
   /// 시장가 청산 주문을 위해 사용하는 함수.
   ///
   /// @param exit_name 청산 이름
@@ -160,8 +162,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param target_name 청산할 진입 이름
   /// @param touch_price 최고저가 추적을 시작할 시점의 가격.
   ///                    0으로 지정할 시 바로 추적을 시작
-  /// @param trail_point 최고저가로부터 어느정도 움직였을 때 청산할지 결정하는
-  ///                    포인트
+  /// @param trail_point 최고저가로부터 어느정도 움직였을 때 청산할지
+  ///                    결정하는 포인트
   /// @param order_size 청산 수량
   void TrailingExit(const string& exit_name, const string& target_name,
                     double touch_price, double trail_point, double order_size);
@@ -174,7 +176,7 @@ class OrderHandler final : public BaseOrderHandler {
   void CloseAll();
 
  private:
-  // 멀티톤 인스턴스 관리
+  // 싱글톤 인스턴스 관리
   OrderHandler();
   class Deleter {
    public:
@@ -182,7 +184,7 @@ class OrderHandler final : public BaseOrderHandler {
   };
 
   static mutex mutex_;
-  static unordered_map<string, shared_ptr<OrderHandler>> instances_;
+  static shared_ptr<OrderHandler> instance_;
 
   // ===========================================================================
   /// 강제 청산 가격 달성 시 자금 관련 처리 후 청산시키는 함수
@@ -202,6 +204,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// 청산 시 자금, 통계 관련 처리를 하는 함수
   void ExecuteExit(const shared_ptr<Order>& exit_order);
 
+  // ===========================================================================
+  // 진입 주문 체결 확인 및 체결 함수
   // ===========================================================================
   /// 지정가 진입 대기 주문의 체결을 확인하고 체결시키는 함수
   void CheckPendingLimitEntries(int symbol_idx, int order_idx, double price,
@@ -234,6 +238,8 @@ class OrderHandler final : public BaseOrderHandler {
   void OrderPendingLitEntry(int symbol_idx, int order_idx,
                             PriceType price_type);
 
+  // ===========================================================================
+  // 청산 주문 체결 확인 및 체결 함수
   // ===========================================================================
   /// 지정가 청산 대기 주문의 체결을 확인하고 체결시키는 함수
   [[nodiscard]] int CheckPendingLimitExits(int symbol_idx, long long order_idx,
