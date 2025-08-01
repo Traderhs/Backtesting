@@ -22096,7 +22096,7 @@
 }
 
 .font-sans{
-  font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+  font-family: Inter, sans-serif;
 }
 
 .font-serif{
@@ -31337,13 +31337,22 @@
 
 @custom-variant dark (&:is(.dark *));
 
+html, body, #root {
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  position: relative;
+}
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', 'Pretendard', system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
   color-scheme: light dark;
   color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  background-color: #111111;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -31394,8 +31403,10 @@ a:hover {
 
 body {
   margin: 0;
-  min-width: 320px;
+  padding: 0;
+  min-width: 100vw;
   min-height: 100vh;
+  overflow: hidden;
 }
 
 h1 {
@@ -31410,24 +31421,19 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: #0f0f0f;
   cursor: pointer;
-  transition: border-color 0.25s;
-}
-
-button:hover {
-  border-color: #646cff;
 }
 
 button:focus,
 button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
+  outline: none !important;
 }
 
 @media (prefers-color-scheme: light) {
   :root {
     color: #213547;
-    background-color: #ffffff;
+    background-color: #111111;
   }
 
   a:hover {
@@ -31547,12 +31553,384 @@ button:focus-visible {
 
 * {
   border-color: hsl(var(--border));
-  outline-color: hsl(var(--ring) / 0.5);
+  outline: none !important;
 }
 
 body {
   background-color: hsl(var(--background));
   color: hsl(var(--foreground));
+}
+
+/* 애니메이션 클래스 */
+
+@keyframes fade-in {
+  0% {
+    opacity: 0;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-up {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.6s ease-in-out;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.6s ease-out;
+}
+
+.animate-fade-in-delayed {
+  animation: fade-in 0.8s ease-in-out 0.3s forwards;
+  opacity: 0;
+}
+
+/* 배경 그라데이션 애니메이션 */
+
+@keyframes gradientAnimation {
+  0% {
+    background-position: 0 50%
+  }
+
+  50% {
+    background-position: 100% 50%
+  }
+
+  100% {
+    background-position: 0 50%
+  }
+}
+
+/* 로딩 스피너 애니메이션 */
+
+@keyframes spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* GPU 가속 최적화 유틸리티 클래스 - 최대 성능 */
+
+.gpu-accelerated {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform, opacity, filter;
+  isolation: isolate;
+  contain: content;
+  -webkit-transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  -webkit-perspective: 1000px;
+  -webkit-font-smoothing: subpixel-antialiased;
+  filter: blur(0);
+}
+
+.gpu-accelerated-heavy {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  will-change: transform, opacity, visibility, position;
+  isolation: isolate;
+  contain: layout style;
+  -webkit-transform: translate3d(0, 0, 0);
+  -webkit-backface-visibility: hidden;
+  -webkit-perspective: 1000px;
+  -webkit-font-smoothing: subpixel-antialiased;
+  z-index: 1;
+}
+
+.main-content {
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  will-change: transform;
+  contain: layout;
+  isolation: isolate;
+  overflow: auto;
+}
+
+.animation-smooth {
+  transition-timing-function: cubic-bezier(0.2, 0, 0.1, 1);
+}
+
+/* 탭 컨테이너 및 애니메이션 */
+
+.tab-container {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+}
+
+/* 탭 컨텐츠 기본 스타일 */
+
+.tab-content {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  background-color: transparent !important;
+  overflow: auto;
+  pointer-events: auto;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+}
+
+.tab-content-hidden {
+  visibility: hidden;
+  pointer-events: none;
+  contain: content;
+}
+
+/* 오른쪽에서 들어오는 애니메이션 */
+
+@keyframes slideInFromRight {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 왼쪽에서 들어오는 애니메이션 */
+
+@keyframes slideInFromLeft {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 왼쪽으로 나가는 애니메이션 */
+
+@keyframes slideOutToLeft {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+}
+
+/* 오른쪽으로 나가는 애니메이션 */
+
+@keyframes slideOutToRight {
+  0% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* 애니메이션 적용 - 뒤쪽 탭 선택 */
+
+.slide-in-right .tab-content-exit {
+  animation: slideOutToLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  z-index: 1;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.slide-in-right .tab-content-enter {
+  animation: slideInFromRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  z-index: 2;
+  pointer-events: auto;
+  will-change: transform, opacity;
+}
+
+/* 애니메이션 적용 - 앞쪽 탭 선택 */
+
+.slide-in-left .tab-content-exit {
+  animation: slideOutToRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  z-index: 1;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.slide-in-left .tab-content-enter {
+  animation: slideInFromLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  z-index: 2;
+  pointer-events: auto;
+  will-change: transform, opacity;
+}
+
+/* ===== Global Overlay Scrollbar Styles ===== */
+
+/* WebKit 의사요소를 지원하는 브라우저는 픽셀 단위로 정확한 크기 지정 */
+
+@supports selector(::-webkit-scrollbar) {
+  *::-webkit-scrollbar {
+    width: 10px;
+    /* 세로 스크롤 두께 */
+    height: 10px;
+    /* 가로 스크롤 두께 */
+  }
+
+  *::-webkit-scrollbar-track {
+    background-color: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 2px;
+    /* 트랙 마진 */
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background-color: rgba(255, 215, 0, 0.5);
+    /* 금색 계열 썸 */
+    border-radius: 8px;
+    border: 2px solid transparent;
+    /* 경계선으로 마진 효과 */
+    background-clip: content-box;
+    /* 경계선 영역 제외하고 배경 적용 */
+    -webkit-transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease;
+    /* 호버 전환 효과 */
+    min-height: 50px;
+  }
+
+  /* 호버 효과 */
+
+  *::-webkit-scrollbar-thumb:hover {
+    background-color: rgba(255, 215, 0, 0.7);
+    /* 호버 시 더 진한 금색 */
+  }
+
+  /* 스크롤바 모서리 부분 투명하게 처리 */
+
+  *::-webkit-scrollbar-corner {
+    background: transparent;
+  }
+
+  /* 가로 스크롤바 썸도 동일한 모양 유지 */
+
+  *::-webkit-scrollbar-thumb:horizontal {
+    border-radius: 8px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+    -webkit-transition: background-color 0.2s ease;
+    transition: background-color 0.2s ease;
+    min-width: 50px;
+  }
+
+  /* 가로 스크롤바 호버 효과 */
+
+  *::-webkit-scrollbar-thumb:horizontal:hover {
+    background-color: rgba(255, 215, 0, 0.7);
+  }
+}
+
+/* WebKit 의사요소를 지원하지 않는 브라우저는 표준 속성 사용 */
+
+@supports not selector(::-webkit-scrollbar) {
+  * {
+    scrollbar-width: thin;
+    /* thin이 6px와 가장 비슷함 */
+    scrollbar-color: rgba(255, 215, 0, 0.5) transparent;
+  }
+}
+
+/* Log 탭 텍스트 렌더링 최적화 - 애니메이션 허용, 검색 네비게이터 제외 */
+
+.tab-content[data-tab="Log"] {
+  /* GPU 가속은 애니메이션 중이 아닐 때만 비활성화 */
+  backface-visibility: visible;
+}
+
+/* 애니메이션이 적용되지 않는 상태에서만 transform 비활성화, 검색 네비게이터 제외 */
+
+.tab-content[data-tab="Log"]:not(.tab-content-enter):not(.tab-content-exit) {
+  transform: none !important;
+  will-change: auto !important;
+}
+
+.tab-content[data-tab="Log"] * {
+  /* 모든 하위 요소의 텍스트 렌더링 최적화 */
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+  font-feature-settings: "liga" 1, "kern" 1 !important;
+}
+
+/* react-window 리스트 컨테이너 최적화 - 애니메이션 허용 */
+
+.tab-content[data-tab="Log"] [style*="position: relative"]:not([style*="right:"]) {
+  /* 가상화 컨테이너는 애니메이션 중이 아닐 때만 GPU 가속 비활성화 */
+  /* 검색 네비게이터(right 속성 포함)는 제외 */
+  backface-visibility: visible !important;
+}
+
+.tab-content[data-tab="Log"]:not(.tab-content-enter):not(.tab-content-exit) [style*="position: relative"]:not([style*="right:"]) {
+  transform: none !important;
+  will-change: auto !important;
+}
+
+/* 가상화된 로그 행 최적화 - 애니메이션 허용, 검색 네비게이터 제외 */
+
+.tab-content[data-tab="Log"] [style*="position: absolute"]:not([style*="right:"]):not([style*="transform: translateY"]) {
+  /* 개별 로그 행의 렌더링 최적화 */
+  /* 검색 네비게이터(right 속성 또는 translateY 포함)는 제외 */
+  backface-visibility: visible !important;
+  -webkit-font-smoothing: antialiased !important;
+  -moz-osx-font-smoothing: grayscale !important;
+  text-rendering: optimizeLegibility !important;
+  opacity: 1 !important;
+  filter: none !important;
+}
+
+.tab-content[data-tab="Log"]:not(.tab-content-enter):not(.tab-content-exit) [style*="position: absolute"]:not([style*="right:"]):not([style*="transform: translateY"]) {
+  transform: none !important;
+  will-change: auto !important;
+}
+
+/* Log 탭이 비활성화될 때 GPU 가속 복원 */
+
+.tab-content[data-tab="Log"].tab-inactive {
+  transform: translate3d(0, 0, 0);
+  will-change: transform, opacity;
+  backface-visibility: hidden;
+}
+
+/* Log 컨테이너 클래스 추가 */
+
+.log-container {
+  /* 로그 컨테이너 식별을 위한 클래스 */
+  isolation: isolate;
 }
 
 @media (min-width: 640px){
@@ -53619,7 +53997,7 @@ body {
   }
 
   .sm\:font-sans{
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    font-family: Inter, sans-serif;
   }
 
   .sm\:font-serif{
@@ -84550,7 +84928,7 @@ body {
   }
 
   .md\:font-sans{
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    font-family: Inter, sans-serif;
   }
 
   .md\:font-serif{
@@ -115481,7 +115859,7 @@ body {
   }
 
   .lg\:font-sans{
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    font-family: Inter, sans-serif;
   }
 
   .lg\:font-serif{
@@ -146412,7 +146790,7 @@ body {
   }
 
   .xl\:font-sans{
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    font-family: Inter, sans-serif;
   }
 
   .xl\:font-serif{
@@ -177343,7 +177721,7 @@ body {
   }
 
   .\32xl\:font-sans{
-    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    font-family: Inter, sans-serif;
   }
 
   .\32xl\:font-serif{

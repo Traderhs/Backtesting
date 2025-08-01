@@ -16,7 +16,6 @@ class Trade final {
 
   // 기본 정보
   Trade& SetTradeNumber(int trade_number);
-  Trade& SetStrategyName(const string& strategy_name);
   Trade& SetSymbolName(const string& symbol_name);
   Trade& SetEntryName(const string& entry_name);
   Trade& SetExitName(const string& exit_name);
@@ -41,8 +40,9 @@ class Trade final {
   Trade& SetEntryFee(double entry_fee);
   Trade& SetExitFee(double exit_fee);
   Trade& SetLiquidationFee(double liquidation_fee);
+  Trade& SetFundingFee(double funding_fee);
   Trade& SetPnl(double pnl);
-  Trade& SetPnlNet(double pnl_net);
+  Trade& SetNetPnl(double net_pnl);
   Trade& SetIndividualPnlPer(double individual_pnl_per);
   Trade& SetTotalPnlPer(double total_pnl_per);
   Trade& SetWalletBalance(double wallet_balance);
@@ -58,7 +58,6 @@ class Trade final {
   // ======================================================
   // 기본 정보
   [[nodiscard]] int GetTradeNumber() const;
-  [[nodiscard]] string GetStrategyName() const;
   [[nodiscard]] string GetSymbolName() const;
   [[nodiscard]] string GetEntryName() const;
   [[nodiscard]] string GetExitName() const;
@@ -83,8 +82,9 @@ class Trade final {
   [[nodiscard]] double GetEntryFee() const;
   [[nodiscard]] double GetExitFee() const;
   [[nodiscard]] double GetLiquidationFee() const;
+  [[nodiscard]] double GetFundingFee() const;
   [[nodiscard]] double GetPnl() const;
-  [[nodiscard]] double GetPnlNet() const;
+  [[nodiscard]] double GetNetPnl() const;
   [[nodiscard]] double GetIndividualPnlPer() const;
   [[nodiscard]] double GetTotalPnlPer() const;
   [[nodiscard]] double GetWalletBalance() const;
@@ -100,7 +100,6 @@ class Trade final {
  private:
   // 기본 정보
   int trade_number_;        // 거래 번호
-  string strategy_name_;    // 전략 이름
   string symbol_name_;      // 심볼 이름
   string entry_name_;       // 진입 이름
   string exit_name_;        // 청산 이름
@@ -125,8 +124,9 @@ class Trade final {
   double entry_fee_;           // 진입 수수료
   double exit_fee_;            // 청산 수수료
   double liquidation_fee_;     // 강제 청산 수수료
+  double funding_fee_;         // 펀딩비
   double pnl_;                 // 손익
-  double pnl_net_;             // 순 손익
+  double net_pnl_;             // 순손익
   double individual_pnl_per_;  // 진입 마진 대비 순손익률
   double total_pnl_per_;       // 진입 주문 시점의 지갑 자금 대비 순손익률
   double wallet_balance_;      // 현재 자금

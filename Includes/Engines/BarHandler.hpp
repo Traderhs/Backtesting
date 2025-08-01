@@ -41,6 +41,24 @@ class BarHandler final : public BaseBarHandler {
                   int high_column, int low_column, int close_column,
                   int volume_column, int close_time_column);
 
+  /// 여러 심볼의 바 데이터를 배치로 처리하여 추가하는 최적화된 함수
+  /// 
+  /// @param symbol_names 심볼 이름들
+  /// @param file_paths 각 심볼에 대응하는 Parquet 파일 경로들
+  /// @param bar_type 추가할 데이터의 바 타입
+  /// @param open_time_column Open Time 컬럼 인덱스
+  /// @param open_column Open 컬럼 인덱스
+  /// @param high_column High 컬럼 인덱스
+  /// @param low_column Low 컬럼 인덱스
+  /// @param close_column Close 컬럼 인덱스
+  /// @param volume_column Volume 컬럼 인덱스
+  /// @param close_time_column Close Time 컬럼 인덱스
+  void AddBarDataBatch(const vector<string>& symbol_names,
+                       const vector<string>& file_paths,
+                       BarType bar_type, int open_time_column, int open_column,
+                       int high_column, int low_column, int close_column,
+                       int volume_column, int close_time_column);
+
   // ===========================================================================
   /// 지정된 바 데이터 및 심볼에 해당되는 인덱스를 target_close_time 시점의
   /// 인덱스까지 최대한 진행시키는 함수
@@ -101,7 +119,7 @@ class BarHandler final : public BaseBarHandler {
 
   /// 참조 바 데이터 사용 시 사용 중인 타임프레임
   string current_reference_timeframe_;
- 
+
   /**
    * 주어진 데이터에서 Open Time과 다음 Open Time의 시간 차이를 계산하여
    * 타임프레임을 문자열로 반환하는 함수.

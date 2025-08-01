@@ -14,8 +14,9 @@ Trade::Trade()
       entry_fee_(0),
       exit_fee_(0),
       liquidation_fee_(0),
+      funding_fee_(0),
       pnl_(0),
-      pnl_net_(0),
+      net_pnl_(0),
       individual_pnl_per_(0),
       total_pnl_per_(0),
       wallet_balance_(0),
@@ -29,11 +30,6 @@ Trade::~Trade() = default;
 
 Trade& Trade::SetTradeNumber(const int trade_number) {
   trade_number_ = trade_number;
-  return *this;
-}
-
-Trade& Trade::SetStrategyName(const string& strategy_name) {
-  strategy_name_ = strategy_name;
   return *this;
 }
 
@@ -117,13 +113,18 @@ Trade& Trade::SetLiquidationFee(const double liquidation_fee) {
   return *this;
 }
 
+Trade& Trade::SetFundingFee(const double funding_fee) {
+  funding_fee_ = funding_fee;
+  return *this;
+}
+
 Trade& Trade::SetPnl(const double pnl) {
   pnl_ = pnl;
   return *this;
 }
 
-Trade& Trade::SetPnlNet(const double pnl_net) {
-  pnl_net_ = pnl_net;
+Trade& Trade::SetNetPnl(const double net_pnl) {
+  net_pnl_ = net_pnl;
   return *this;
 }
 
@@ -173,7 +174,6 @@ Trade& Trade::SetCumPnlPer(const double cum_pnl_per) {
 }
 
 int Trade::GetTradeNumber() const { return trade_number_; }
-string Trade::GetStrategyName() const { return strategy_name_; }
 string Trade::GetSymbolName() const { return symbol_name_; }
 string Trade::GetEntryName() const { return entry_name_; }
 string Trade::GetExitName() const { return exit_name_; }
@@ -194,8 +194,9 @@ double Trade::GetLiquidationPrice() const { return liquidation_price_; }
 double Trade::GetEntryFee() const { return entry_fee_; }
 double Trade::GetExitFee() const { return exit_fee_; }
 double Trade::GetLiquidationFee() const { return liquidation_fee_; }
+double Trade::GetFundingFee() const { return funding_fee_; }
 double Trade::GetPnl() const { return pnl_; }
-double Trade::GetPnlNet() const { return pnl_net_; }
+double Trade::GetNetPnl() const { return net_pnl_; }
 double Trade::GetIndividualPnlPer() const { return individual_pnl_per_; }
 double Trade::GetTotalPnlPer() const { return total_pnl_per_; }
 double Trade::GetWalletBalance() const { return wallet_balance_; }

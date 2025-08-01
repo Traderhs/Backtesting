@@ -71,7 +71,7 @@ future<json> BaseFetcher::Fetch(
     curl_slist_free_all(headers);  // 헤더 메모리 해제
 
     if (response != CURLE_OK || response_code != 200) {
-      logger_->Log(ERROR_L, full_url, __FILE__, __LINE__);
+      logger_->Log(ERROR_L, full_url, __FILE__, __LINE__, true);
       throw runtime_error(format("[{}] | [{}] | HTTP 응답이 실패했습니다.: {}",
                                  response_header, response_code,
                                  response_string));

@@ -22,7 +22,8 @@ class Strategy;
 
 namespace backtesting::order {
 class SymbolInfo;
-}
+class OrderHandler;
+}  // namespace backtesting::order
 
 // 네임 스페이스
 using namespace std;
@@ -54,7 +55,7 @@ using enum StrategyType;
  */
 class Engine final : public BaseEngine {
   // 전략, TimeDiff 등 접근용
-  friend class backtesting::analyzer::BaseAnalyzer;
+  friend class backtesting::analyzer::Analyzer;
 
  public:
   // 싱글톤 특성 유지
@@ -64,21 +65,11 @@ class Engine final : public BaseEngine {
   /// Engine의 싱글톤 인스턴스를 반환하는 함수
   static shared_ptr<Engine>& GetEngine();
 
-  /**
-   * 백테스팅을 실행하는 함수
-   *
-   * @param start_time: 백테스팅 시작 시간
-   * @param end_time: 백테스팅 끝 시간
-   * @param format start_time, end_time의 시간 포맷
-   */
-  void Backtesting(const string& start_time = "", const string& end_time = "",
-                   const string& format = "%Y-%m-%d %H:%M:%S");
+  /// 백테스팅을 실행하는 함수
+  void Backtesting();
 
   /// 현재 사용 중인 전략의 실행 타입을 설정하는 함수
   void SetCurrentStrategyType(StrategyType strategy_type);
-
-  /// 현재 사용 중인 전략의 이름을 반환하는 함수
-  [[nodiscard]] string GetCurrentStrategyName() const;
 
   /// 현재 사용 중인 전략의 실행 타입을 반환하는 함수
   [[nodiscard]] StrategyType GetCurrentStrategyType() const;
@@ -88,6 +79,9 @@ class Engine final : public BaseEngine {
 
   /// 현재 사용 중인 바 데이터 현재 인덱스의 Close Time을 반환하는 함수
   [[nodiscard]] int64_t GetCurrentCloseTime() const;
+
+  /// 모든 심볼의 트레이딩이 끝났는지 여부를 반환하는 함수
+  [[nodiscard]] bool IsAllTradingEnded() const;
 
  private:
   // 싱글톤 인스턴스 관리
@@ -110,46 +104,56 @@ class Engine final : public BaseEngine {
   shared_ptr<BarData> mark_price_bar_data_;  // 마크 가격 바 데이터
 
   // ===========================================================================
-  vector<SymbolInfo> symbol_info_;  // 심볼 정보
+  vector<size_t>* trading_indices_;     // 각 심볼의 트레이딩 바 인덱스
+  vector<size_t>* magnifier_indices_;   // 각 심볼의 돋보기 바 인덱스
+  vector<size_t>* mark_price_indices_;  // 각 심볼의 마크 가격 바 인덱스
 
   // ===========================================================================
-  string current_strategy_name_;        // 현재 사용 중인 전략 이름
-  StrategyType current_strategy_type_;  // 현재 사용 중인 전략 실행 타입
+  vector<SymbolInfo> symbol_info_;  // 심볼 정보
+
+  vector<size_t> funding_rates_indices_;     // 각 심볼의 펀딩 비율 인덱스
+  vector<double> next_funding_rates_;        // 다음 펀딩 비율
+  vector<int64_t> next_funding_times_;       // 다음 펀딩 시간
+  vector<double> next_funding_mark_prices_;  // 다음 펀딩 시 사용하는 마크 가격
+
+  // ===========================================================================
+  StrategyType current_strategy_type_;      // 현재 사용 중인 전략 실행 타입
+  shared_ptr<OrderHandler> order_handler_;  // 주문 핸들러
 
   // ===========================================================================
   int64_t begin_open_time_;     // 전체 바 데이터의 가장 처음 Open Time
-  int64_t end_open_time_;       // 전체 바 데이터의 가장 마지막 Open Time
+  int64_t end_close_time_;      // 전체 바 데이터의 가장 마지막 Close Time
   int64_t current_open_time_;   // 현재 사용 중인 바 인덱스의 Open Time
   int64_t current_close_time_;  // 현재 사용 중인 바 인덱스의 Close Time
 
   // ===========================================================================
+  int64_t next_month_boundary_;  // 다음 월 경계 시간 (콘솔 로그 여부 결정)
+
+  // ===========================================================================
   vector<bool> trading_began_;  // 심볼별로 트레이딩이 진행 중인지 결정
   vector<bool> trading_ended_;  // 심볼별로 트레이딩이 끝났는지 결정
+  bool all_trading_ended_;  // 모든 심볼의 트레이딩이 끝났는지 결정하는 플래그
 
-  // 현재 바에서 트레이딩을 진행하는 심볼 인덱스
+  // 현재 트레이딩 바 시간에서 트레이딩을 진행하는 심볼 인덱스
   vector<int> activated_symbol_indices_;
-  vector<int> activated_magnifier_symbol_indices_;
-  vector<int> activated_trading_symbol_indices_;
 
   /// 백테스팅의 메인 로직 시작 전 엔진의 유효성 검사와 초기화를 하는 함수
-  void Initialize(const string& start_time, const string& end_time,
-                  const string& format);
+  void Initialize();
 
   /// 엔진 설정의 유효성을 검증하는 함수
   static void IsValidConfig();
-
-  /// 거래소 및 레버리지 정보의 유효성을 검증하는 함수
-  static void IsValidSymbolInfo();
 
   /// 바 데이터의 유효성을 검증하는 함수
   static void IsValidBarData();
 
   /// Start, End의 시간 범위가 바 데이터 시간 범위 내인지 유효성을 검증하는 함수
-  void IsValidDateRange(const string& start_time, const string& end_time,
-                        const string& format);
+  void IsValidDateRange();
+
+  /// 펀딩 비율, 거래소 및 레버리지 정보의 유효성을 검증하는 함수
+  static void IsValidSymbolInfo();
 
   /// 엔진에 추가된 전략의 유효성을 검증하는 함수
-  void IsValidStrategies();
+  void IsValidStrategy();
 
   /// 전략에서 사용하는 지표의 유효성을 검증하는 함수
   void IsValidIndicators();
@@ -160,8 +164,8 @@ class Engine final : public BaseEngine {
   /// 거래소 정보에 따라 심볼 정보를 초기화하는 함수
   void InitializeSymbolInfo();
 
-  /// 전략들을 초기화하는 함수
-  void InitializeStrategies() const;
+  /// 전략을 초기화하는 함수
+  void InitializeStrategy();
 
   /// 전략에서 사용하는 지표들을 계산하고 저장하는 함수
   void InitializeIndicators() const;
@@ -170,21 +174,25 @@ class Engine final : public BaseEngine {
   void BacktestingMain();
 
   /**
-   * 모든 심볼에 대하여 현재 트레이딩 바 인덱스에서 트레이딩을 진행하는지
+   * 모든 심볼에 대하여 현재 트레이딩 바 시간에서 트레이딩을 진행하는지
    * 확인하고 상태를 업데이트하는 함수.
    *
-   * 트레이딩을 진행하는 심볼들은 트레이딩 바 혹은 돋보기 바를 사용 가능하다면
-   * 돋보기 바의 심볼 인덱스 벡터에 추가됨.
+   * 돋보기 기능을 사용하지 않는다면 무조건 트레이딩 바에서, 돋보기 기능을
+   * 사용한다면 무조건 돋보기 바에서 백테스팅이 진행됨.
    */
   void UpdateTradingStatus();
 
-  /// 트레이딩이 끝난 심볼의 상태 변화와 체결 진입 청산을 하는 함수
+  /// 트레이딩이 끝난 심볼의 상태 변화와 체결된 진입 주문의
+  /// 전량 청산을 하는 함수
   void ExecuteTradingEnd(int symbol_idx, const string& bar_type_str);
 
-  /// UpdateTradingStatus 함수에서 활성화된 심볼 인덱스에 추가할 때,
-  /// 참조 바가 사용 가능한지 확인하고, 사용 가능하면 조건에 따라 트레이딩
-  /// 바인지 돋보기 바인지 결정하고 추가하는 함수
-  void DetermineActivation(int symbol_idx);
+  // 트레이딩이 끝나지 않은 심볼의 종료를 위하여 상태 변화와 체결된 진입 주문의
+  // 전량 청산을 하는 함수
+  void ExecuteAllTradingEnd();
+
+  /// 각 심볼의 펀딩 시간과 현재 시간을 비교하여 펀딩 시간이 됐다면 펀딩을
+  /// 실행하는 함수
+  void CheckFundingTime();
 
   /// 주어진 바 타입과 심볼들의 현재 바 인덱스에서 OHLC 가격을 기준으로
   /// 강제 청산 및 대기 중인 주문의 체결을 확인하는 함수
@@ -193,8 +201,8 @@ class Engine final : public BaseEngine {
   /// 주어진 바 타입과 심볼들의 현재 바 인덱스에서 마크 가격과 시장 가격의 시가,
   /// 고가/저가, 종가를 순서대로 확인하여 강제 청산 및 대기 중인 주문의 체결을
   /// 확인할 수 있도록 정보를 구조체 형태로 저장한 벡터를 반환하는 함수.
-  [[nodiscard]] static pair<vector<PriceData>, vector<PriceData>> GetPriceQueue(
-      BarType market_bar_type, const vector<int>& symbol_indices);
+  [[nodiscard]] pair<vector<PriceData>, vector<PriceData>> GetPriceQueue(
+      BarType market_bar_type, const vector<int>& symbol_indices) const;
 
   /// 지정된 전략과 심볼에서 전략을 실행하는 함수
   void ExecuteStrategy(const shared_ptr<Strategy>& strategy,

@@ -2,16 +2,18 @@
 
 // 표준 라이브러리
 #include <string>
+#include <unordered_map>
 #include <vector>
 
+// 내부 헤더
+#include "Engines/Analyzer.hpp"
+
 // 외부 라이브러리
-#include "BaseAnalyzer.hpp"
 #include "nlohmann/json_fwd.hpp"
 
 // 전방 선언
 namespace backtesting::analyzer {
 class Analyzer;
-class BaseAnalyzer;
 }  // namespace backtesting::analyzer
 
 namespace backtesting::engine {
@@ -39,6 +41,10 @@ class BaseEngine {
 
   /// 레버리지 구간을 엔진에 추가하는 함수.
   static void AddLeverageBracket(const string& leverage_bracket_path);
+
+  /// 펀딩 비율을 엔진에 추가하는 함수.
+  static void AddFundingRates(const vector<string>& symbol_names,
+                              const string& funding_rates_directory);
 
   // ==========================================================================
   /// 엔진이 초기화 되었는지 여부를 반환하는 함수
@@ -89,8 +95,8 @@ class BaseEngine {
   /// 현재 자금을 로그하는 함수
   void LogBalance();
 
-  /// =로 콘솔창을 분리하는 로그를 발생시키는 함수
-  static void LogSeparator();
+  /// '='로 콘솔창을 분리하는 로그를 발생시키는 함수
+  static void LogSeparator(bool log_to_console);
 
  protected:
   BaseEngine();
@@ -112,21 +118,25 @@ class BaseEngine {
 
   /// 거래소 정보
   static json exchange_info_;
+  static string exchange_info_path_;
 
   /// 레버리지 구간
   static json leverage_bracket_;
+  static string leverage_bracket_path_;
+
+  /// 펀딩 비율 (벡터는 심볼 순서)
+  static vector<json> funding_rates_;
+  static vector<string> funding_rates_paths_;
 
   /// 엔진의 사전 설정 항목
   static shared_ptr<Config> config_;
   friend class Config;
 
   /// 엔진에 추가된 전략
-  vector<shared_ptr<Strategy>> strategies_;
+  shared_ptr<Strategy> strategy_;
 
-  /// 전략에서 사용하는 지표
-  ///
-  /// 전략<지표>
-  vector<vector<shared_ptr<Indicator>>> indicators_;
+  /// 전략에서 사용하는 지표들
+  vector<shared_ptr<Indicator>> indicators_;
 
   // 자금 항목
   /// 지갑 자금 = 초기 자금 ± 실현 손익 ± 펀딩피 - 수수료

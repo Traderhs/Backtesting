@@ -93,4 +93,4 @@ class BaseFetcher {
                                string* data);
 };
 
-}  // namespace fetcher
+}  // namespace backtesting::fetcher

@@ -27,11 +27,11 @@ class BinanceFetcher final : public BaseFetcher {
   BinanceFetcher() = delete;
   explicit BinanceFetcher(string api_key_env_var, string api_secret_env_var);
   explicit BinanceFetcher(string api_key_env_var, string api_secret_env_var,
-                          string market_data_path);
+                          string market_data_directory);
 
   /**
-   * 지정된 심볼과 시간 프레임에 대해 현물 및 연속 선물 klines 데이터를
-   * Fetch 후 병합하고 Parquet 형식으로 저장하는 함수
+   * 지정된 심볼과 시간 프레임에 대해 연속 선물 klines 데이터를
+   * Fetch 후 Parquet 형식으로 저장하는 함수
    *
    * @param symbol 연속 선물 캔들스틱 데이터를 가져올
    *               거래 쌍 심볼(예: "BTCUSDT")
@@ -55,10 +55,6 @@ class BinanceFetcher final : public BaseFetcher {
    * 지정된 심볼과 시간 프레임에 대해 마크 가격 캔들스틱 데이터를
    * Fetch 후 Parquet 형식으로 저장하는 함수.
    *
-   * 마크 가격이 존재하지 않는 시절을 선물 또는 현물을 Fetch하여 보정하지 않는
-   * 이유는, 마크 가격이 아예 없었던 시절은 시장 가격이 미실현 손익과 강제
-   * 청산의 기준이었기 때문.
-   *
    * @param symbol 마크 가격 캔들스틱 데이터를 가져올
    *               거래 쌍 심볼(예: "BTCUSDT")
    * @param timeframe 마크 가격 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
@@ -77,10 +73,26 @@ class BinanceFetcher final : public BaseFetcher {
   void UpdateMarkPriceKlines(const string& symbol,
                              const string& timeframe) const;
 
-  /// 바이낸스 선물 거래소 정보를 Fetch하고 저장하는 함수
+  /**
+   * 지정된 심볼에 대해 펀딩 비율 데이터를 Fetch 후 json 형식으로 저장하는 함수
+   *
+   * @param symbol 펀딩 비율 데이터를 가져올
+   *               거래 쌍 심볼(예: "BTCUSDT")
+   */
+  void FetchFundingRates(const string& symbol) const;
+
+  /**
+   * 지정된 심볼에 대해 펀딩 비율 데이터를 업데이트하는 함수
+   *
+   * @param symbol 업데이트 할 펀딩 비율 데이터의
+   *               거래 쌍 심볼(예: "BTCUSDT")
+   */
+  void UpdateFundingRates(const string& symbol) const;
+
+  /// 바이낸스 선물 거래소 정보를 Fetch하고 json 형식으로 저장하는 함수
   void FetchExchangeInfo() const;
 
-  /// 바이낸스 레버리지 구간을 Fecth하고 저장하는 함수
+  /// 바이낸스 레버리지 구간을 Fecth하고 json 형식으로 저장하는 함수
   void FetchLeverageBracket() const;
 
  private:
@@ -88,36 +100,46 @@ class BinanceFetcher final : public BaseFetcher {
 
   static string header_;            // 바이낸스 API 헤더 문자열
   static string futures_endpoint_;  // 선물 엔드 포인트
-  static string spot_endpoint_;     // 현물 엔드 포인트
 
   static string server_time_url_;        // 서버 시간 URL
   static string continuous_klines_url_;  // 연속 선물 Klines URL
-  static string spot_klines_url_;        // 현물 Klines URL
-  static string mark_price_klines_url_;  // 마크 Klines URL
+  static string mark_price_klines_url_;  // 마크 가격 Klines URL
+  static string funding_rates_url_;      // 펀딩 비율 URL
   static string exchange_info_url_;      // 거래소 정보 URL
   static string leverage_bracket_url_;   // 레버리지 구간 URL
 
   string api_key_env_var_;     // API 키를 저장한 환경 변수 이름
   string api_secret_env_var_;  // API 시크릿을 저장한 환경 변수 이름
 
-  string data_path_;               // Data 폴더 경로
-  string continuous_klines_path_;  // 연속 선물 Klines 폴더 경로
-  string mark_price_klines_path_;  // 마크 Klines 폴더 경로
-  string funding_rates_path_;      // Funding Rate 폴더 경로
+  string market_data_directory_;        // Data 폴더 경로
+  string continuous_klines_directory_;  // 연속 선물 Klines 폴더 경로
+  string mark_price_klines_directory_;  // 마크 Klines 폴더 경로
+  string funding_rates_directory_;      // Funding Rate 폴더 경로
 
   /**
    * Binance API를 사용하여 지정된 URL과 파라미터에 대한
-   * klines 데이터를 연속적으로 Fetch하는 함수
+   * 캔들스틱 데이터를 연속적으로 Fetch하는 함수
    *
-   * @param url klines 데이터를 가져올 API의 URL
+   * @param url 데이터를 가져올 API의 URL
    * @param params 요청에 사용될 파라미터
    * @param forward 데이터를 가져오는 방향. true이면 데이터를 앞으로
    *                가져오고, false이면 데이터를 뒤로 가져옴
-   * @return 가져온 klines 데이터를 나타내는 deque의 비동기 future 객체
+   * @return 가져온 데이터를 나타내는 deque의 비동기 future 객체
    */
   static future<vector<json>> FetchKlines(
       const string& url, const unordered_map<string, string>& params,
       bool forward);
+
+  /**
+   * Binance API를 사용하여 지정된 URL과 파라미터에 대한
+   * 펀딩 비율 데이터를 연속적으로 Fetch하는 함수
+   *
+   * @param url 데이터를 가져올 API의 URL
+   * @param params 요청에 사용될 파라미터
+   * @return 가져온 데이터를 나타내는 deque의 비동기 future 객체
+   */
+  static future<vector<json>> FetchContinuousFundingRates(
+      const string& url, const unordered_map<string, string>& params);
 
   /**
    * 주어진 기간 문자열을 파일 이름에 적합한 형식으로 변환
@@ -156,9 +178,9 @@ class BinanceFetcher final : public BaseFetcher {
    * 주어진 현물 klines와 선물 klines 데이터를 병합하여 조정된 klines 데이터를
    * 반환하는 함수.
    *
-   * @param spot_klines 조정할 현물 klines 데이터의 deque
+   * @param spot_klines 병합할 현물 klines 데이터의 deque
    * @param futures_klines 병합할 선물 klines 데이터의 deque
-   * @return 조정된 현물 데이터와 선물 데이터가 병합된 새로운 klines deque
+   * @return 현물 데이터와 선물 데이터가 병합된 새로운 klines deque
    */
   static vector<json> ConcatKlines(const vector<json>& spot_klines,
                                    const vector<json>& futures_klines);
@@ -167,9 +189,13 @@ class BinanceFetcher final : public BaseFetcher {
    * 주어진 klines 데이터를 Parquet 파일로 변환하고 저장하는 함수
    *
    * @param klines 저장할 klines 데이터를 포함하는 JSON 객체의 deque
-   * @param file_path Parquet 파일을 저장할 경로
+   * @param directory_path 데이터를 저장할 폴더의 경로
+   * @param file_name 파일 이름
+   * @param save_split_files 분할 저장을 할지 결정하는 플래그
    */
-  static void SaveKlines(const vector<json>& klines, const string& file_path);
+  static void SaveKlines(const vector<json>& klines,
+                         const string& directory_path, const string& file_name,
+                         bool save_split_files);
 
   /// 백슬래시를 모두 슬래시로 변환하여 반환하는 함수
   static string ConvertBackslashToSlash(const string& path_string);

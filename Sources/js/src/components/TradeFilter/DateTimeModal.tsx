@@ -71,6 +71,8 @@ const DateTimeModal: React.FC<DateTimeModalProps> = ({type, isOpen, onClose, tra
                 <div className="flex items-center space-x-4 mb-4">
                     <div className="flex items-center space-x-1">
                         <select
+                            id={`${type}-year-select`}
+                            name={`${type}-year-select`}
                             value={year}
                             onChange={(e) => setYear(e.target.value)}
                             className="p-1 border rounded"
@@ -83,6 +85,8 @@ const DateTimeModal: React.FC<DateTimeModalProps> = ({type, isOpen, onClose, tra
                             ))}
                         </select>
                         <select
+                            id={`${type}-month-select`}
+                            name={`${type}-month-select`}
                             value={month}
                             onChange={(e) => setMonth(e.target.value)}
                             className="p-1 border rounded"
@@ -95,6 +99,8 @@ const DateTimeModal: React.FC<DateTimeModalProps> = ({type, isOpen, onClose, tra
                             ))}
                         </select>
                         <select
+                            id={`${type}-day-select`}
+                            name={`${type}-day-select`}
                             value={day}
                             onChange={(e) => setDay(e.target.value)}
                             className="p-1 border rounded"
@@ -110,6 +116,8 @@ const DateTimeModal: React.FC<DateTimeModalProps> = ({type, isOpen, onClose, tra
 
                     <div className="flex items-center space-x-1">
                         <select
+                            id={`${type}-hour-select`}
+                            name={`${type}-hour-select`}
                             value={hour}
                             onChange={(e) => setHour(e.target.value)}
                             className="p-1 border rounded"
@@ -122,6 +130,8 @@ const DateTimeModal: React.FC<DateTimeModalProps> = ({type, isOpen, onClose, tra
                             ))}
                         </select>
                         <select
+                            id={`${type}-minute-select`}
+                            name={`${type}-minute-select`}
                             value={minute}
                             onChange={(e) => setMinute(e.target.value)}
                             className="p-1 border rounded"
@@ -134,6 +144,8 @@ const DateTimeModal: React.FC<DateTimeModalProps> = ({type, isOpen, onClose, tra
                             ))}
                         </select>
                         <select
+                            id={`${type}-second-select`}
+                            name={`${type}-second-select`}
                             value={second}
                             onChange={(e) => setSecond(e.target.value)}
                             className="p-1 border rounded"

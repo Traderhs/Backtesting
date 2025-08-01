@@ -1,6 +1,3 @@
-// 표준 라이브러리
-#include <cmath>
-
 // 파일 헤더
 #include "Engines/Config.hpp"
 
@@ -22,7 +19,7 @@ Config::Config()
   if (pre_creation_counter_ == creation_counter_) {
     logger_->Log(ERROR_L,
                  "엔진의 사전 설정은 SetConfig 함수의 호출로만 가능합니다.",
-                 __FILE__, __LINE__);
+                 __FILE__, __LINE__, true);
     Logger::LogAndThrowError("엔진을 사전 설정하는 중 에러가 발생했습니다.",
                              __FILE__, __LINE__);
   }
@@ -35,9 +32,21 @@ Config::~Config() = default;
 shared_ptr<Logger>& Config::logger_ = Logger::GetLogger();
 size_t Config::creation_counter_;
 size_t Config::pre_creation_counter_;
+string Config::root_directory_;
 
 Config& Config::SetRootDirectory(const string& root_directory) {
   root_directory_ = root_directory;
+
+  // 루트 디렉토리 설정 시 로그 디렉토리도 함께 설정
+  Logger::SetLogDirectory(root_directory + "/Logs");
+
+  return *this;
+}
+
+Config& Config::SetBacktestingPeriod(const string& start_time,
+                                     const string& end_time,
+                                     const string& format) {
+  backtesting_period_ = BacktestingPeriod{start_time, end_time, format};
   return *this;
 }
 
@@ -83,8 +92,11 @@ Config& Config::DisableSameBarDataWithTargetCheck() {
   return *this;
 }
 
-string Config::GetRootDirectory() const { return root_directory_; }
-bool Config::GetUseBarMagnifier() const { return use_bar_magnifier_.value(); }
+string Config::GetRootDirectory() { return root_directory_; }
+optional<BacktestingPeriod> Config::GetBacktestingPeriod() const {
+  return backtesting_period_;
+}
+optional<bool> Config::GetUseBarMagnifier() const { return use_bar_magnifier_; }
 double Config::GetInitialBalance() const { return initial_balance_; }
 double Config::GetTakerFeePercentage() const { return taker_fee_percentage_; }
 double Config::GetMakerFeePercentage() const { return maker_fee_percentage_; }
@@ -101,8 +113,4 @@ bool Config::GetCheckSameBarDataWithTarget() const {
   return check_same_bar_data_with_target_;
 }
 
-bool Config::UseBarMagnifierHasValue() const {
-  return use_bar_magnifier_.has_value();
-}
-
-}  // namespace backtesting::config
+}  // namespace backtesting::engine

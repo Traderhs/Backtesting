@@ -3,8 +3,10 @@ import { TradeFilterContext, TradeFilterContextType } from "./TradeFilterContext
 
 export const useTradeFilter = (): TradeFilterContextType => {
     const context = useContext(TradeFilterContext);
-    if (!context) {
+    
+    if (context === undefined) {
         throw new Error("useTradeFilter must be used within a TradeFilterProvider");
     }
+    
     return context;
 };
