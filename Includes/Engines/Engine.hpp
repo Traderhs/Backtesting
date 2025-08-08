@@ -74,10 +74,10 @@ class Engine final : public BaseEngine {
   /// 현재 사용 중인 전략의 실행 타입을 반환하는 함수
   [[nodiscard]] StrategyType GetCurrentStrategyType() const;
 
-  /// 현재 사용 중인 바 데이터 현재 인덱스의 Open Time을 반환하는 함수
+  /// 현재 진행 중인 Open Time을 반환하는 함수
   [[nodiscard]] int64_t GetCurrentOpenTime() const;
 
-  /// 현재 사용 중인 바 데이터 현재 인덱스의 Close Time을 반환하는 함수
+  /// 현재 진행 중인 Close Time을 반환하는 함수
   [[nodiscard]] int64_t GetCurrentCloseTime() const;
 
   /// 모든 심볼의 트레이딩이 끝났는지 여부를 반환하는 함수
@@ -123,8 +123,8 @@ class Engine final : public BaseEngine {
   // ===========================================================================
   int64_t begin_open_time_;     // 전체 바 데이터의 가장 처음 Open Time
   int64_t end_close_time_;      // 전체 바 데이터의 가장 마지막 Close Time
-  int64_t current_open_time_;   // 현재 사용 중인 바 인덱스의 Open Time
-  int64_t current_close_time_;  // 현재 사용 중인 바 인덱스의 Close Time
+  int64_t current_open_time_;   // 현재 진행 중인 Open Time
+  int64_t current_close_time_;  // 현재 진행 중인 Close Time
 
   // ===========================================================================
   int64_t next_month_boundary_;  // 다음 월 경계 시간 (콘솔 로그 여부 결정)

@@ -150,6 +150,9 @@ static locale global_locale("en_US.UTF-8");
 /// 금액을 천 단위 쉼표와 달러 표기로 포맷하여 반환하는 함수
 [[nodiscard]] string FormatDollar(double price, bool use_rounding);
 
+/// 퍼센트 값을 퍼센트 형식으로 포맷하여 반환하는 함수
+[[nodiscard]] string FormatPercentage(double percentage, bool use_rounding);
+
 /// 환경 변수 값을 가져오는 함수
 [[nodiscard]] string GetEnvVariable(const string& env_var);
 

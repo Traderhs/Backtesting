@@ -414,6 +414,12 @@ void Analyzer::SaveTradeList() const {
         {"청산 가격", trade.GetExitPrice()},
         {"청산 수량", trade.GetExitSize()},
         {"강제 청산 가격", trade.GetLiquidationPrice()},
+        {"펀딩 수령 횟수", trade.GetReceivedFundingCount()},
+        {"펀딩비 수령", trade.GetReceivedFundingAmount()},
+        {"펀딩 지불 횟수", trade.GetPaidFundingCount()},
+        {"펀딩비 지불", trade.GetPaidFundingAmount()},
+        {"펀딩 횟수", trade.GetTotalFundingCount()},
+        {"펀딩비", trade.GetTotalFundingAmount()},
         {"진입 수수료", trade.GetEntryFee()},
         {"청산 수수료", trade.GetExitFee()},
         {"강제 청산 수수료", trade.GetLiquidationFee()},
@@ -487,6 +493,7 @@ void Analyzer::SaveConfig() {
         const auto tick_size = symbol_info.GetTickSize();
         symbol["거래소 정보"] = {
             {"데이터 경로", symbol_info.GetExchangeInfoPath()},
+            {"펀딩비 데이터 경로", symbol_info.GetFundingRatesPath()},
             {"틱 사이즈", tick_size},
             {"소수점 정밀도", CountDecimalPlaces(tick_size)},
             {"지정가 최대 수량", symbol_info.GetLimitMaxQty()},
@@ -768,12 +775,12 @@ void Analyzer::SaveSourcesAndHeaders() {
     }
 
     logger_->Log(INFO_L,
-                 "전략과 지표의 소스 파일 및 헤더 파일이 저장되었습니다.",
+                 "전략과 지표의 헤더 파일 및 소스 파일이 저장되었습니다.",
                  __FILE__, __LINE__, true);
   } catch (const exception& e) {
     logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
     Logger::LogAndThrowError(
-        "전략과 지표의 소스 파일 및 헤더 파일을 저장하는 중 오류가 "
+        "전략과 지표의 헤더 파일 및 소스 파일을 저장하는 중 오류가 "
         "발생했습니다.",
         __FILE__, __LINE__);
   }

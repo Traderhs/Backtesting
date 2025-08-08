@@ -57,6 +57,18 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
         exitQuantityMax: undefined,
         forcedLiquidationPriceMin: undefined,
         forcedLiquidationPriceMax: undefined,
+        fundingReceiveCountMin: undefined,
+        fundingReceiveCountMax: undefined,
+        fundingReceiveFeeMin: undefined,
+        fundingReceiveFeeMax: undefined,
+        fundingPayCountMin: undefined,
+        fundingPayCountMax: undefined,
+        fundingPayFeeMin: undefined,
+        fundingPayFeeMax: undefined,
+        fundingCountMin: undefined,
+        fundingCountMax: undefined,
+        fundingFeeMin: undefined,
+        fundingFeeMax: undefined,
         entryFeeMin: undefined,
         entryFeeMax: undefined,
         exitFeeMin: undefined,
@@ -348,82 +360,94 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
 
     // 즉시 필터링 함수 (디바운스 없음)
     const immediateFiltering = useCallback(async (currentFilter: TradeFilter, trades: TradeItem[]) => {
-            // 필터링 중 상태 설정
-            setIsFiltering(true);
+        // 필터링 중 상태 설정
+        setIsFiltering(true);
+        setFilteringProgress(0);
+
+        // allTrades가 비어있으면 처리하지 않음
+        if (!trades.length) {
+            setFilteredTrades([]);
+            setIsFiltering(false);
+            return;
+        }
+
+        try {
+            // 워커의 TradeFilter 형식으로 변환 (recalculateBalance를 boolean으로 확실히 설정)
+            const workerFilter = {
+                ...currentFilter,
+                recalculateBalance: currentFilter.recalculateBalance ?? true,
+                // string | number 타입들을 number로 변환
+                tradeNumberMin: currentFilter.tradeNumberMin !== undefined ? Number(currentFilter.tradeNumberMin) : undefined,
+                tradeNumberMax: currentFilter.tradeNumberMax !== undefined ? Number(currentFilter.tradeNumberMax) : undefined,
+                leverageMin: currentFilter.leverageMin !== undefined ? Number(currentFilter.leverageMin) : undefined,
+                leverageMax: currentFilter.leverageMax !== undefined ? Number(currentFilter.leverageMax) : undefined,
+                entryPriceMin: currentFilter.entryPriceMin !== undefined ? Number(currentFilter.entryPriceMin) : undefined,
+                entryPriceMax: currentFilter.entryPriceMax !== undefined ? Number(currentFilter.entryPriceMax) : undefined,
+                entryQuantityMin: currentFilter.entryQuantityMin !== undefined ? Number(currentFilter.entryQuantityMin) : undefined,
+                entryQuantityMax: currentFilter.entryQuantityMax !== undefined ? Number(currentFilter.entryQuantityMax) : undefined,
+                exitPriceMin: currentFilter.exitPriceMin !== undefined ? Number(currentFilter.exitPriceMin) : undefined,
+                exitPriceMax: currentFilter.exitPriceMax !== undefined ? Number(currentFilter.exitPriceMax) : undefined,
+                exitQuantityMin: currentFilter.exitQuantityMin !== undefined ? Number(currentFilter.exitQuantityMin) : undefined,
+                exitQuantityMax: currentFilter.exitQuantityMax !== undefined ? Number(currentFilter.exitQuantityMax) : undefined,
+                forcedLiquidationPriceMin: currentFilter.forcedLiquidationPriceMin !== undefined ? Number(currentFilter.forcedLiquidationPriceMin) : undefined,
+                forcedLiquidationPriceMax: currentFilter.forcedLiquidationPriceMax !== undefined ? Number(currentFilter.forcedLiquidationPriceMax) : undefined,
+                fundingCountMin: currentFilter.fundingCountMin !== undefined ? Number(currentFilter.fundingCountMin) : undefined,
+                fundingCountMax: currentFilter.fundingCountMax !== undefined ? Number(currentFilter.fundingCountMax) : undefined,
+                fundingFeeMin: currentFilter.fundingFeeMin !== undefined ? Number(currentFilter.fundingFeeMin) : undefined,
+                fundingFeeMax: currentFilter.fundingFeeMax !== undefined ? Number(currentFilter.fundingFeeMax) : undefined,
+                entryFeeMin: currentFilter.entryFeeMin !== undefined ? Number(currentFilter.entryFeeMin) : undefined,
+                entryFeeMax: currentFilter.entryFeeMax !== undefined ? Number(currentFilter.entryFeeMax) : undefined,
+                exitFeeMin: currentFilter.exitFeeMin !== undefined ? Number(currentFilter.exitFeeMin) : undefined,
+                exitFeeMax: currentFilter.exitFeeMax !== undefined ? Number(currentFilter.exitFeeMax) : undefined,
+                forcedLiquidationFeeMin: currentFilter.forcedLiquidationFeeMin !== undefined ? Number(currentFilter.forcedLiquidationFeeMin) : undefined,
+                forcedLiquidationFeeMax: currentFilter.forcedLiquidationFeeMax !== undefined ? Number(currentFilter.forcedLiquidationFeeMax) : undefined,
+                fundingReceiveCountMin: currentFilter.fundingReceiveCountMin !== undefined ? Number(currentFilter.fundingReceiveCountMin) : undefined,
+                fundingReceiveCountMax: currentFilter.fundingReceiveCountMax !== undefined ? Number(currentFilter.fundingReceiveCountMax) : undefined,
+                fundingReceiveFeeMin: currentFilter.fundingReceiveFeeMin !== undefined ? Number(currentFilter.fundingReceiveFeeMin) : undefined,
+                fundingReceiveFeeMax: currentFilter.fundingReceiveFeeMax !== undefined ? Number(currentFilter.fundingReceiveFeeMax) : undefined,
+                fundingPayCountMin: currentFilter.fundingPayCountMin !== undefined ? Number(currentFilter.fundingPayCountMin) : undefined,
+                fundingPayCountMax: currentFilter.fundingPayCountMax !== undefined ? Number(currentFilter.fundingPayCountMax) : undefined,
+                fundingPayFeeMin: currentFilter.fundingPayFeeMin !== undefined ? Number(currentFilter.fundingPayFeeMin) : undefined,
+                fundingPayFeeMax: currentFilter.fundingPayFeeMax !== undefined ? Number(currentFilter.fundingPayFeeMax) : undefined,
+                profitLossMin: currentFilter.profitLossMin !== undefined ? Number(currentFilter.profitLossMin) : undefined,
+                profitLossMax: currentFilter.profitLossMax !== undefined ? Number(currentFilter.profitLossMax) : undefined,
+                netProfitLossMin: currentFilter.netProfitLossMin !== undefined ? Number(currentFilter.netProfitLossMin) : undefined,
+                netProfitLossMax: currentFilter.netProfitLossMax !== undefined ? Number(currentFilter.netProfitLossMax) : undefined,
+                individualProfitRateMin: currentFilter.individualProfitRateMin !== undefined ? Number(currentFilter.individualProfitRateMin) : undefined,
+                individualProfitRateMax: currentFilter.individualProfitRateMax !== undefined ? Number(currentFilter.individualProfitRateMax) : undefined,
+                overallProfitRateMin: currentFilter.overallProfitRateMin !== undefined ? Number(currentFilter.overallProfitRateMin) : undefined,
+                overallProfitRateMax: currentFilter.overallProfitRateMax !== undefined ? Number(currentFilter.overallProfitRateMax) : undefined,
+                currentCapitalMin: currentFilter.currentCapitalMin !== undefined ? Number(currentFilter.currentCapitalMin) : undefined,
+                currentCapitalMax: currentFilter.currentCapitalMax !== undefined ? Number(currentFilter.currentCapitalMax) : undefined,
+                highestCapitalMin: currentFilter.highestCapitalMin !== undefined ? Number(currentFilter.highestCapitalMin) : undefined,
+                highestCapitalMax: currentFilter.highestCapitalMax !== undefined ? Number(currentFilter.highestCapitalMax) : undefined,
+                drawdownMin: currentFilter.drawdownMin !== undefined ? Number(currentFilter.drawdownMin) : undefined,
+                drawdownMax: currentFilter.drawdownMax !== undefined ? Number(currentFilter.drawdownMax) : undefined,
+                maxDrawdownMin: currentFilter.maxDrawdownMin !== undefined ? Number(currentFilter.maxDrawdownMin) : undefined,
+                maxDrawdownMax: currentFilter.maxDrawdownMax !== undefined ? Number(currentFilter.maxDrawdownMax) : undefined,
+                accumulatedProfitLossMin: currentFilter.accumulatedProfitLossMin !== undefined ? Number(currentFilter.accumulatedProfitLossMin) : undefined,
+                accumulatedProfitLossMax: currentFilter.accumulatedProfitLossMax !== undefined ? Number(currentFilter.accumulatedProfitLossMax) : undefined,
+                accumulatedProfitRateMin: currentFilter.accumulatedProfitRateMin !== undefined ? Number(currentFilter.accumulatedProfitRateMin) : undefined,
+                accumulatedProfitRateMax: currentFilter.accumulatedProfitRateMax !== undefined ? Number(currentFilter.accumulatedProfitRateMax) : undefined,
+                heldSymbolsCountMin: currentFilter.heldSymbolsCountMin !== undefined ? Number(currentFilter.heldSymbolsCountMin) : undefined,
+                heldSymbolsCountMax: currentFilter.heldSymbolsCountMax !== undefined ? Number(currentFilter.heldSymbolsCountMax) : undefined,
+            };
+
+            // 멀티 워커로 필터링 실행
+            const result = await filterTradesAsync(
+                trades as any[],
+                workerFilter
+            );
+
+            setFilteredTrades(result as TradeItem[]);
+            setIsFiltering(false);
+            setFilteringProgress(100);
+        } catch (error) {
+            console.error('멀티 워커 필터링 실패:', error);
+            setFilteredTrades([]);
+            setIsFiltering(false);
             setFilteringProgress(0);
-
-            // allTrades가 비어있으면 처리하지 않음
-            if (!trades.length) {
-                setFilteredTrades([]);
-                setIsFiltering(false);
-                return;
-            }
-
-            try {
-                // 워커의 TradeFilter 형식으로 변환 (recalculateBalance를 boolean으로 확실히 설정)
-                const workerFilter = {
-                    ...currentFilter,
-                    recalculateBalance: currentFilter.recalculateBalance ?? true,
-                    // string | number 타입들을 number로 변환
-                    tradeNumberMin: currentFilter.tradeNumberMin !== undefined ? Number(currentFilter.tradeNumberMin) : undefined,
-                    tradeNumberMax: currentFilter.tradeNumberMax !== undefined ? Number(currentFilter.tradeNumberMax) : undefined,
-                    leverageMin: currentFilter.leverageMin !== undefined ? Number(currentFilter.leverageMin) : undefined,
-                    leverageMax: currentFilter.leverageMax !== undefined ? Number(currentFilter.leverageMax) : undefined,
-                    entryPriceMin: currentFilter.entryPriceMin !== undefined ? Number(currentFilter.entryPriceMin) : undefined,
-                    entryPriceMax: currentFilter.entryPriceMax !== undefined ? Number(currentFilter.entryPriceMax) : undefined,
-                    entryQuantityMin: currentFilter.entryQuantityMin !== undefined ? Number(currentFilter.entryQuantityMin) : undefined,
-                    entryQuantityMax: currentFilter.entryQuantityMax !== undefined ? Number(currentFilter.entryQuantityMax) : undefined,
-                    exitPriceMin: currentFilter.exitPriceMin !== undefined ? Number(currentFilter.exitPriceMin) : undefined,
-                    exitPriceMax: currentFilter.exitPriceMax !== undefined ? Number(currentFilter.exitPriceMax) : undefined,
-                    exitQuantityMin: currentFilter.exitQuantityMin !== undefined ? Number(currentFilter.exitQuantityMin) : undefined,
-                    exitQuantityMax: currentFilter.exitQuantityMax !== undefined ? Number(currentFilter.exitQuantityMax) : undefined,
-                    forcedLiquidationPriceMin: currentFilter.forcedLiquidationPriceMin !== undefined ? Number(currentFilter.forcedLiquidationPriceMin) : undefined,
-                    forcedLiquidationPriceMax: currentFilter.forcedLiquidationPriceMax !== undefined ? Number(currentFilter.forcedLiquidationPriceMax) : undefined,
-                    entryFeeMin: currentFilter.entryFeeMin !== undefined ? Number(currentFilter.entryFeeMin) : undefined,
-                    entryFeeMax: currentFilter.entryFeeMax !== undefined ? Number(currentFilter.entryFeeMax) : undefined,
-                    exitFeeMin: currentFilter.exitFeeMin !== undefined ? Number(currentFilter.exitFeeMin) : undefined,
-                    exitFeeMax: currentFilter.exitFeeMax !== undefined ? Number(currentFilter.exitFeeMax) : undefined,
-                    forcedLiquidationFeeMin: currentFilter.forcedLiquidationFeeMin !== undefined ? Number(currentFilter.forcedLiquidationFeeMin) : undefined,
-                    forcedLiquidationFeeMax: currentFilter.forcedLiquidationFeeMax !== undefined ? Number(currentFilter.forcedLiquidationFeeMax) : undefined,
-                    profitLossMin: currentFilter.profitLossMin !== undefined ? Number(currentFilter.profitLossMin) : undefined,
-                    profitLossMax: currentFilter.profitLossMax !== undefined ? Number(currentFilter.profitLossMax) : undefined,
-                    netProfitLossMin: currentFilter.netProfitLossMin !== undefined ? Number(currentFilter.netProfitLossMin) : undefined,
-                    netProfitLossMax: currentFilter.netProfitLossMax !== undefined ? Number(currentFilter.netProfitLossMax) : undefined,
-                    individualProfitRateMin: currentFilter.individualProfitRateMin !== undefined ? Number(currentFilter.individualProfitRateMin) : undefined,
-                    individualProfitRateMax: currentFilter.individualProfitRateMax !== undefined ? Number(currentFilter.individualProfitRateMax) : undefined,
-                    overallProfitRateMin: currentFilter.overallProfitRateMin !== undefined ? Number(currentFilter.overallProfitRateMin) : undefined,
-                    overallProfitRateMax: currentFilter.overallProfitRateMax !== undefined ? Number(currentFilter.overallProfitRateMax) : undefined,
-                    currentCapitalMin: currentFilter.currentCapitalMin !== undefined ? Number(currentFilter.currentCapitalMin) : undefined,
-                    currentCapitalMax: currentFilter.currentCapitalMax !== undefined ? Number(currentFilter.currentCapitalMax) : undefined,
-                    highestCapitalMin: currentFilter.highestCapitalMin !== undefined ? Number(currentFilter.highestCapitalMin) : undefined,
-                    highestCapitalMax: currentFilter.highestCapitalMax !== undefined ? Number(currentFilter.highestCapitalMax) : undefined,
-                    drawdownMin: currentFilter.drawdownMin !== undefined ? Number(currentFilter.drawdownMin) : undefined,
-                    drawdownMax: currentFilter.drawdownMax !== undefined ? Number(currentFilter.drawdownMax) : undefined,
-                    maxDrawdownMin: currentFilter.maxDrawdownMin !== undefined ? Number(currentFilter.maxDrawdownMin) : undefined,
-                    maxDrawdownMax: currentFilter.maxDrawdownMax !== undefined ? Number(currentFilter.maxDrawdownMax) : undefined,
-                    accumulatedProfitLossMin: currentFilter.accumulatedProfitLossMin !== undefined ? Number(currentFilter.accumulatedProfitLossMin) : undefined,
-                    accumulatedProfitLossMax: currentFilter.accumulatedProfitLossMax !== undefined ? Number(currentFilter.accumulatedProfitLossMax) : undefined,
-                    accumulatedProfitRateMin: currentFilter.accumulatedProfitRateMin !== undefined ? Number(currentFilter.accumulatedProfitRateMin) : undefined,
-                    accumulatedProfitRateMax: currentFilter.accumulatedProfitRateMax !== undefined ? Number(currentFilter.accumulatedProfitRateMax) : undefined,
-                    heldSymbolsCountMin: currentFilter.heldSymbolsCountMin !== undefined ? Number(currentFilter.heldSymbolsCountMin) : undefined,
-                    heldSymbolsCountMax: currentFilter.heldSymbolsCountMax !== undefined ? Number(currentFilter.heldSymbolsCountMax) : undefined,
-                };
-
-                // 멀티 워커로 필터링 실행
-                const result = await filterTradesAsync(
-                    trades as any[],
-                    workerFilter
-                );
-
-                setFilteredTrades(result as TradeItem[]);
-                setIsFiltering(false);
-                setFilteringProgress(100);
-            } catch (error) {
-                console.error('멀티 워커 필터링 실패:', error);
-                setFilteredTrades([]);
-                setIsFiltering(false);
-                setFilteringProgress(0);
-            }
+        }
     }, []);
 
     // 필터링 로직을 최적화된 useEffect로 처리

@@ -107,23 +107,24 @@ double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
                                            const PriceType price_type) const {
   // 체결된 주문이 없는 경우 0을 반환
   if (filled_entries_[symbol_idx].empty()) {
-    return 0;
+    return 0.0;
   }
 
   const auto original_bar_type = bar_->GetCurrentBarType();
 
-  // 현재 마크 가격 바의 Close Time이 메인 Close Time과 같다면 유효하므로
-  // 마크 가격 기준으로 Loss 계산. 그렇지 않다면 트레이딩 바를 기준으로 계산
+  // 현재 마크 가격 바의 Close Time이 현재 진행 중인 Close Time과 같다면
+  // 유효하므로 마크 가격 기준으로 Loss 계산. 그렇지 않다면 전략을 실행한 바
+  // 타입을 기준으로 계산 (트레이딩 바 or 돋보기 바)
   Bar base_bar{};
-  bar_->SetCurrentBarType(MARK_PRICE, "NONE");
+  bar_->SetCurrentBarType(MARK_PRICE, "");
   if (const auto& current_mark_bar =
-          bar_->GetBarData(MARK_PRICE, "NONE")
+          bar_->GetBarData(MARK_PRICE, "")
               ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
       current_mark_bar.close_time == engine_->GetCurrentCloseTime()) {
     base_bar = current_mark_bar;
   } else {
-    bar_->SetCurrentBarType(TRADING, "NONE");
-    base_bar = bar_->GetBarData(TRADING, "NONE")
+    bar_->SetCurrentBarType(original_bar_type, "");
+    base_bar = bar_->GetBarData(original_bar_type, "")
                    ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
   }
 
@@ -165,7 +166,7 @@ double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
     }
   }
 
-  bar_->SetCurrentBarType(original_bar_type, "NONE");
+  bar_->SetCurrentBarType(original_bar_type, "");
   return sum_loss;
 }
 
@@ -365,7 +366,7 @@ double BaseOrderHandler::BarsSinceEntry() const {
       last_entry_bar_indices_[bar_->GetCurrentSymbolIndex()];
 
   if (last_entry_bar_index == SIZE_MAX) {
-    // 아직 진입이 없었던 심볼은 NaN을 반환 (기본 -1로 초기화 됨)
+    // 아직 진입이 없었던 심볼은 NaN을 반환 (기본 SIZE_MAX로 초기화 됨)
     return nan("");
   }
 
@@ -492,28 +493,27 @@ double BaseOrderHandler::CalculateTradingFee(const OrderType order_type,
 
 double BaseOrderHandler::CalculateLiquidationPrice(
     const Direction entry_direction, const double order_price,
-    const double position_size, const double entry_margin) {
+    const double position_size, const double margin) {
   // 청산 가격
-  // = (진입 마진 + 유지 금액 - (진입 가격 * 포지션 크기: 롱 양수, 숏 음수))
+  // = (마진 + 유지 금액 - (진입 가격 * 포지션 크기: 롱 양수, 숏 음수))
   //    / (포지션 크기 절댓값 * 유지 증거금율 - (포지션 크기: 롱 양수, 숏 음수))
 
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
-  const auto unsigned_position_size = abs(position_size);
-  const auto signed_position_size = entry_direction == LONG
-                                        ? unsigned_position_size
-                                        : -unsigned_position_size;
+  const auto abs_position_size = abs(position_size);
+  const auto signed_position_size =
+      entry_direction == LONG ? abs_position_size : -abs_position_size;
   const auto& leverage_bracket =
-      GetLeverageBracket(symbol_idx, order_price, unsigned_position_size);
+      GetLeverageBracket(symbol_idx, order_price, abs_position_size);
 
-  const double numerator = entry_margin + leverage_bracket.maintenance_amount -
+  const double numerator = margin + leverage_bracket.maintenance_amount -
                            order_price * signed_position_size;
   const double denominator =
-      unsigned_position_size * leverage_bracket.maintenance_margin_rate -
+      abs_position_size * leverage_bracket.maintenance_margin_rate -
       signed_position_size;
 
   if (const double result = numerator / denominator;
       IsLessOrEqual(result, 0.0)) {
-    // 롱의 경우, 청산가가 0이하면 절대 청산되지 않음
+    // 롱의 경우, 강제 청산 가격이 0 이하면 절대 청산되지 않음
     return 0;
   } else {
     return RoundToTickSize(result, symbol_info_[symbol_idx].GetTickSize());
@@ -682,6 +682,14 @@ void BaseOrderHandler::IsValidEntryName(const string& entry_name) const {
       throw InvalidValue(
           format("중복된 진입 이름 [{}] 동시 체결 불가", entry_name));
     }
+  }
+}
+
+void BaseOrderHandler::IsValidExitName(const string& exit_name) {
+  // 강제 청산을 청산 이름으로 사용하면 혼선이 있을 수 있으며,
+  // 백보드에서 강제 청산 카운트에서 오류가 생기므로 원칙적 금지
+  if (exit_name.find("강제 청산") != string::npos) {
+    throw InvalidValue("청산 이름에 \"강제 청산\" 단어 포함 금지");
   }
 }
 

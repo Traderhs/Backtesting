@@ -12,6 +12,10 @@ Order::Order()
       left_margin_(0),
       liquidation_price_(nan("")),
       liquidation_fee_(0),
+      received_funding_count_(0),
+      received_funding_amount_(0),
+      paid_funding_count_(0),
+      paid_funding_amount_(0),
       wb_when_entry_order_(0),
       exit_count_(0),
 
@@ -73,6 +77,26 @@ Order& Order::SetLiquidationPrice(const double liquidation_price) {
 
 Order& Order::SetLiquidationFee(const double liquidation_fee) {
   liquidation_fee_ = liquidation_fee;
+  return *this;
+}
+
+Order& Order::AddReceivedFundingCount() {
+  received_funding_count_++;
+  return *this;
+}
+
+Order& Order::SetReceivedFundingAmount(const double received_funding_amount) {
+  received_funding_amount_ = received_funding_amount;
+  return *this;
+}
+
+Order& Order::AddPaidFundingCount() {
+  paid_funding_count_++;
+  return *this;
+}
+
+Order& Order::SetPaidFundingAmount(const double paid_funding_amount) {
+  paid_funding_amount_ = paid_funding_amount;
   return *this;
 }
 
@@ -246,7 +270,7 @@ string Order::OrderTypeToString(const OrderType order_type) {
     return "트레일링";
   }
 
-  throw runtime_error("");
+  throw runtime_error("[OrderTypeToString] 잘못된 주문 타입 지정");
 }
 
 // ===========================================================================
@@ -255,6 +279,12 @@ double Order::GetEntryMargin() const { return entry_margin_; }
 double Order::GetLeftMargin() const { return left_margin_; }
 double Order::GetLiquidationPrice() const { return liquidation_price_; }
 double Order::GetLiquidationFee() const { return liquidation_fee_; }
+int Order::GetReceivedFundingCount() const { return received_funding_count_; }
+double Order::GetReceivedFundingAmount() const {
+  return received_funding_amount_;
+}
+int Order::GetPaidFundingCount() const { return paid_funding_count_; }
+double Order::GetPaidFundingAmount() const { return paid_funding_amount_; }
 double Order::GetWbWhenEntryOrder() const { return wb_when_entry_order_; }
 int Order::GetExitCount() const { return exit_count_; }
 

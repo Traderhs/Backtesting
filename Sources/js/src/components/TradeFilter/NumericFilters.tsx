@@ -73,6 +73,56 @@ const numericFilters: NumericFilterDefinition[] = [
         filterType: "forcedLiquidationPrice"
     },
     {
+        label: "펀딩 수령 횟수",
+        minKey: "fundingReceiveCountMin",
+        maxKey: "fundingReceiveCountMax",
+        unit: "회",
+        allowedChars: "0123456789",
+        filterType: "fundingReceiveCount"
+    },
+    {
+        label: "펀딩비 수령",
+        minKey: "fundingReceiveFeeMin",
+        maxKey: "fundingReceiveFeeMax",
+        unit: "$",
+        allowedChars: "0123456789.",
+        filterType: "fundingReceiveFee"
+    },
+    {
+        label: "펀딩 지불 횟수",
+        minKey: "fundingPayCountMin",
+        maxKey: "fundingPayCountMax",
+        unit: "회",
+        allowedChars: "0123456789",
+        filterType: "fundingPayCount"
+    },
+    {
+        label: "펀딩비 지불",
+        minKey: "fundingPayFeeMin",
+        maxKey: "fundingPayFeeMax",
+        unit: "$",
+        allowedChars: "0123456789.-",
+        allowNegative: true,
+        filterType: "fundingPayFee"
+    },
+    {
+        label: "펀딩 횟수",
+        minKey: "fundingCountMin",
+        maxKey: "fundingCountMax",
+        unit: "회",
+        allowedChars: "0123456789",
+        filterType: "fundingCount"
+    },
+    {
+        label: "펀딩비",
+        minKey: "fundingFeeMin",
+        maxKey: "fundingFeeMax",
+        unit: "$",
+        allowedChars: "0123456789.-",
+        allowNegative: true,
+        filterType: "fundingFee"
+    },
+    {
         label: "진입 수수료",
         minKey: "entryFeeMin",
         maxKey: "entryFeeMax",
@@ -525,7 +575,7 @@ const NumericFilters: React.FC = () => {
                     }
 
                     // **추가 클릭 검증 - mousedown에서 놓친 경우를 대비한 최종 차단**
-                    if (value && (value.includes('$') || value.includes('#') || value.includes('%') || value.includes('x') || value.includes('개'))) {
+                    if (value && (value.includes('$') || value.includes('#') || value.includes('%') || value.includes('x') || value.includes('회') || value.includes('개'))) {
                         const cursorPosition = input.selectionStart || 0;
 
                         // 허용된 영역 계산
@@ -537,12 +587,12 @@ const NumericFilters: React.FC = () => {
                             allowedStart = 2;
                         } else if (value.startsWith('$') || value.startsWith('#')) {
                             allowedStart = 1;
-                        } else if (value.startsWith('-') && /[%x개]$/.test(value)) {
+                        } else if (value.startsWith('-') && /[%x회개]$/.test(value)) {
                             allowedStart = 1; // 음수 접미사는 - 뒤부터 허용
                         }
 
                         // 접미사 처리
-                        if (value.endsWith('%') || value.endsWith('x') || value.endsWith('개')) {
+                        if (value.endsWith('%') || value.endsWith('x') || value.endsWith('회') || value.endsWith('개')) {
                             allowedEnd = value.length - 1;
                         }
 
@@ -578,7 +628,7 @@ const NumericFilters: React.FC = () => {
 
                     // **완전한 클릭 위치 제어 - 가장 가까운 허용 영역으로 이동**
                     setTimeout(() => {
-                        if (input === document.activeElement && value && (value.includes('$') || value.includes('#') || value.includes('%') || value.includes('x') || value.includes('개'))) {
+                        if (input === document.activeElement && value && (value.includes('$') || value.includes('#') || value.includes('%') || value.includes('x') || value.includes('회') || value.includes('개'))) {
                             const cursorPosition = input.selectionStart || 0;
 
                             // 허용된 영역 계산
@@ -590,12 +640,12 @@ const NumericFilters: React.FC = () => {
                                 allowedStart = 2;
                             } else if (value.startsWith('$') || value.startsWith('#')) {
                                 allowedStart = 1;
-                            } else if (value.startsWith('-') && /[%x개]$/.test(value)) {
+                            } else if (value.startsWith('-') && /[%x회개]$/.test(value)) {
                                 allowedStart = 1; // 음수 접미사는 - 뒤부터 허용
                             }
 
                             // 접미사 처리
-                            if (value.endsWith('%') || value.endsWith('x') || value.endsWith('개')) {
+                            if (value.endsWith('%') || value.endsWith('x') || value.endsWith('회') || value.endsWith('개')) {
                                 allowedEnd = value.length - 1;
                             }
 
@@ -645,7 +695,7 @@ const NumericFilters: React.FC = () => {
 
                     // **포커스 시에도 커서 위치 검증 및 조정**
                     setTimeout(() => {
-                        if (input === document.activeElement && value && (value.includes('$') || value.includes('#') || value.includes('%') || value.includes('x') || value.includes('개'))) {
+                        if (input === document.activeElement && value && (value.includes('$') || value.includes('#') || value.includes('%') || value.includes('x') || value.includes('회') || value.includes('개'))) {
                             const cursorPosition = input.selectionStart || 0;
 
                             // 허용된 영역 계산
@@ -657,12 +707,12 @@ const NumericFilters: React.FC = () => {
                                 allowedStart = 2;
                             } else if (value.startsWith('$') || value.startsWith('#')) {
                                 allowedStart = 1;
-                            } else if (value.startsWith('-') && /[%x개]$/.test(value)) {
+                            } else if (value.startsWith('-') && /[%x회개]$/.test(value)) {
                                 allowedStart = 1; // 음수 접미사는 - 뒤부터 허용
                             }
 
                             // 접미사 처리
-                            if (value.endsWith('%') || value.endsWith('x') || value.endsWith('개')) {
+                            if (value.endsWith('%') || value.endsWith('x') || value.endsWith('회') || value.endsWith('개')) {
                                 allowedEnd = value.length - 1;
                             }
 
@@ -708,7 +758,7 @@ const NumericFilters: React.FC = () => {
                     } else if (currentValue.startsWith('$') || currentValue.startsWith('#')) {
                         pureValue = currentValue.substring(1);
                     }
-                    pureValue = pureValue.replace(/[%x개]$/, '');
+                    pureValue = pureValue.replace(/[%x회개]$/, '');
 
                     // leading/trailing zeros 제거 필요한지 확인
                     if (pureValue && pureValue !== '-' && pureValue !== '.') {
@@ -735,6 +785,7 @@ const NumericFilters: React.FC = () => {
 
                                 if (currentValue.endsWith('%')) newFormattedValue += '%';
                                 else if (currentValue.endsWith('x')) newFormattedValue += 'x';
+                                else if (currentValue.endsWith('회')) newFormattedValue += '회';
                                 else if (currentValue.endsWith('개')) newFormattedValue += '개';
 
                                 // input 값 즉시 업데이트
@@ -788,7 +839,16 @@ const NumericFilters: React.FC = () => {
                                             let digitCount = 0;
                                             targetPos = 0;
 
+                                            // 접미사 존재 여부 확인
+                                            const hasSuffix = /[%x회개]$/.test(currentValue);
+                                            const suffixStartPos = hasSuffix ? currentValue.search(/[%x회개]$/) : currentValue.length;
+
                                             for (let i = 0; i < currentValue.length; i++) {
+                                                // 접미사 영역에 도달하면 중단
+                                                if (hasSuffix && i >= suffixStartPos) {
+                                                    break;
+                                                }
+
                                                 if (/\d/.test(currentValue[i])) {
                                                     if (digitCount === pos) {
                                                         targetPos = i;
@@ -797,6 +857,11 @@ const NumericFilters: React.FC = () => {
                                                     digitCount++;
                                                 }
                                                 targetPos = i + 1;
+                                            }
+
+                                            // 접미사가 있는 경우 최대 위치 제한
+                                            if (hasSuffix) {
+                                                targetPos = Math.min(targetPos, suffixStartPos);
                                             }
                                         }
 
@@ -832,7 +897,7 @@ const NumericFilters: React.FC = () => {
                             const target = e.target as HTMLInputElement;
                             const value = target.value;
 
-                            if (value && (value.includes('$') || value.includes('#') || value.includes('%') || value.includes('x') || value.includes('개'))) {
+                            if (value && (value.includes('$') || value.includes('#') || value.includes('%') || value.includes('x') || value.includes('회') || value.includes('개'))) {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 e.stopImmediatePropagation();
@@ -851,7 +916,7 @@ const NumericFilters: React.FC = () => {
                             }
 
                             const value = input.value;
-                            if (value && (value.includes('$') || value.includes('#') || value.includes('%') || value.includes('x') || value.includes('개'))) {
+                            if (value && (value.includes('$') || value.includes('#') || value.includes('%') || value.includes('x') || value.includes('회') || value.includes('개'))) {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 e.stopImmediatePropagation();
@@ -868,11 +933,11 @@ const NumericFilters: React.FC = () => {
                                     allowedStart = 2;
                                 } else if (value.startsWith('$') || value.startsWith('#')) {
                                     allowedStart = 1;
-                                } else if (value.startsWith('-') && /[%x개]$/.test(value)) {
+                                } else if (value.startsWith('-') && /[%x회개]$/.test(value)) {
                                     allowedStart = 1;
                                 }
 
-                                if (value.endsWith('%') || value.endsWith('x') || value.endsWith('개')) {
+                                if (value.endsWith('%') || value.endsWith('x') || value.endsWith('회') || value.endsWith('개')) {
                                     allowedEnd = value.length - 1;
                                 }
 
@@ -1047,7 +1112,7 @@ const NumericFilters: React.FC = () => {
                     }
 
                     // **STEP 1: 제한 영역 포함하는 선택만 정밀 차단 (허용 영역 내 선택은 허용)**
-                    if (value && (value.includes('$') || value.includes('#') || value.includes('%') || value.includes('x') || value.includes('개'))) {
+                    if (value && (value.includes('$') || value.includes('#') || value.includes('%') || value.includes('x') || value.includes('회') || value.includes('개'))) {
                         // 허용된 선택 범위 계산
                         let allowedStart = 0;
                         let allowedEnd = value.length;
@@ -1057,12 +1122,12 @@ const NumericFilters: React.FC = () => {
                             allowedStart = 2;
                         } else if (value.startsWith('$') || value.startsWith('#')) {
                             allowedStart = 1;
-                        } else if (value.startsWith('-') && /[%x개]$/.test(value)) {
+                        } else if (value.startsWith('-') && /[%x회개]$/.test(value)) {
                             allowedStart = 1; // 음수 접미사는 - 뒤부터 허용
                         }
 
                         // 접미사 처리
-                        if (value.endsWith('%') || value.endsWith('x') || value.endsWith('개')) {
+                        if (value.endsWith('%') || value.endsWith('x') || value.endsWith('회') || value.endsWith('개')) {
                             allowedEnd = value.length - 1;
                         }
 
@@ -1199,195 +1264,265 @@ const NumericFilters: React.FC = () => {
                     const filterDef = labelMatch ? numericFilters.find(f => f.label === labelMatch[1]) : null;
                     const filterKey = filterDef ? (keyType === 'min' ? filterDef.minKey : filterDef.maxKey) : null;
 
-                    // 즉시 처리가 필요한 특별한 키 입력들
-                    if (filterKey && filterDef) {
+                    // 소수점(.) 키 통합 처리 시스템
+                    if (e.key === '.' && filterKey && filterDef) {
                         const {prefix, suffix} = getPrefixSuffix(filterDef.unit);
 
-                        // 1. 빈 필드에 . 입력 - 즉시 0.으로 변환
-                        if (e.key === '.' && !value) {
+                        // 빈 필드에 . 입력
+                        if (!value) {
                             e.preventDefault();
-
-                            // 즉시 값 변경
                             input.value = `${prefix}0.${suffix}`;
-
-                            // 상태 업데이트
                             localValuesRef.current[filterKey as string] = '0.';
                             toggleOption(filterKey, '0.', true, setFilter);
+                            const targetPos = prefix.length + 2;
+                            const cursorKey = `${input.id}_cursor`;
+                            localValuesRef.current[cursorKey] = String(targetPos);
+                            return;
+                        }
 
-                            // 커서 위치 설정 (getInputRef에서 처리하도록 저장)
-                            const targetPos = prefix.length + 2; // "0." = 2글자
+                        // 이미 소수점이 있는 경우 - 소수점 이동 처리
+                        if (value.includes('.')) {
+                            e.preventDefault();
+
+                            const currentDotIndex = value.indexOf('.');
+                            if (cursorPosition !== currentDotIndex) {
+                                // 현재 순수 값 가져오기
+                                let pureValue = value;
+                                let isNegative: boolean;
+
+                                // 음수 여부 확인 및 접두사 제거
+                                if (prefix) {
+                                    isNegative = value.startsWith('-' + prefix) || value.startsWith(prefix + '-');
+                                    pureValue = pureValue.replace(/^-?\$/, '').replace(/^\$-?/, '');
+                                    pureValue = pureValue.replace(/^-?#/, '').replace(/^#-?/, '');
+                                } else if (suffix) {
+                                    isNegative = value.startsWith('-');
+                                    pureValue = pureValue.replace(/^-/, '');
+                                } else {
+                                    isNegative = value.startsWith('-');
+                                    pureValue = pureValue.replace(/^-/, '');
+                                }
+
+                                pureValue = pureValue.replace(/[%x회개]$/, '');
+
+                                // 소수점과 쉼표 제거하여 순수 숫자만 추출
+                                let newPureValue = pureValue.replace(/[.,]/g, '');
+
+                                // 커서 위치 조정 (순수 값 기준)
+                                let adjustedPosition = cursorPosition;
+                                if (value.startsWith('-$')) adjustedPosition -= 2;
+                                else if (value.startsWith('$') || value.startsWith('#')) adjustedPosition -= 1;
+                                else if (value.startsWith('-') && suffix) adjustedPosition -= 1;
+
+                                if (prefix && cursorPosition === 0 && !value.startsWith('-')) {
+                                    adjustedPosition = 0;
+                                }
+
+                                const pureDotIndex = pureValue.indexOf('.');
+                                if (adjustedPosition > pureDotIndex && pureDotIndex !== -1) {
+                                    adjustedPosition -= 1;
+                                }
+
+                                const pureValueBeforeCursor = pureValue.substring(0, Math.min(adjustedPosition, pureValue.length));
+                                const commaCount = (pureValueBeforeCursor.match(/,/g) || []).length;
+                                adjustedPosition -= commaCount;
+
+                                // 새 위치에 소수점 삽입
+                                if (hasSelection) {
+                                    const selectionEndAdjusted = adjustedPosition + selectionLength;
+                                    newPureValue = newPureValue.substring(0, adjustedPosition) + '.' +
+                                        newPureValue.substring(selectionEndAdjusted);
+                                } else {
+                                    newPureValue = newPureValue.substring(0, adjustedPosition) + '.' +
+                                        newPureValue.substring(adjustedPosition);
+                                }
+
+                                if (newPureValue.startsWith('.')) {
+                                    newPureValue = '0' + newPureValue;
+                                }
+
+                                if (/^0\d+\./.test(newPureValue)) {
+                                    newPureValue = newPureValue.substring(1);
+                                }
+
+                                if (isNegative) {
+                                    newPureValue = '-' + newPureValue;
+                                }
+
+                                localValuesRef.current[filterKey as string] = newPureValue;
+                                toggleOption(filterKey, newPureValue, true, setFilter);
+
+                                const pureNumberPart = newPureValue.startsWith('-') ? newPureValue.substring(1) : newPureValue;
+                                const dotIndexInNumber = pureNumberPart.indexOf('.');
+                                const digitsBeforeDot = pureNumberPart.substring(0, dotIndexInNumber).replace(/[^0-9]/g, '').length;
+
+                                const cursorKey = `${input.id}_cursor`;
+                                localValuesRef.current[cursorKey] = String(digitsBeforeDot);
+                                localValuesRef.current[`${cursorKey}_mode`] = 'digit_count';
+                            }
+                            return;
+                        } else {
+                            // 새로운 소수점 추가 로직
+                            let pureValue = value;
+                            let isNegative = false;
+                            let cleanNumber: string;
+
+                            // 음수 여부 및 순수 값 추출
+                            if (value.startsWith('-$') || value.startsWith('-#')) {
+                                isNegative = true;
+                                pureValue = pureValue.replace(/^-[$#]/, '');
+                            } else if (value.startsWith('-') && /[%x회개]$/.test(value)) {
+                                isNegative = true;
+                                pureValue = pureValue.replace(/^-/, '');
+                            } else if (value.startsWith('$') || value.startsWith('#')) {
+                                pureValue = pureValue.replace(/^[$#]/, '');
+                            }
+
+                            pureValue = pureValue.replace(/[%x회개]$/, '');
+                            cleanNumber = pureValue.replace(/,/g, '');
+
+                            // 커서 위치별 소수점 처리
+                            let shouldProcess = false;
+                            let newPureValue = '';
+                            let targetPos = 0;
+
+                            // Case 1: 음수 접두사 필드 (-$123)
+                            if (isNegative && prefix) {
+                                if (value === `-${prefix}${suffix}`) {
+                                    // -$만 있는 상태
+                                    shouldProcess = true;
+                                    newPureValue = '-0.';
+                                    targetPos = prefix.length + 3;
+                                } else if (cursorPosition === 1 || cursorPosition === prefix.length + 1) {
+                                    // - 뒤 또는 $ 뒤에 . 입력
+                                    shouldProcess = true;
+                                    newPureValue = `-0.${cleanNumber}`;
+                                    targetPos = prefix.length + 3;
+                                }
+                            }
+                            // Case 2: 음수 접미사 필드 (-123%)
+                            else if (isNegative && suffix) {
+                                if (pureValue === '' && cursorPosition === 1) {
+                                    // -% 상태에서 - 뒤에 . 입력
+                                    shouldProcess = true;
+                                    newPureValue = '-0.';
+                                    targetPos = 3;
+                                } else if ((cursorPosition === 0 || cursorPosition === 1) && cleanNumber) {
+                                    // -1,234% 상태에서 맨 앞(position 0) 또는 - 뒤(position 1)에 . 입력 시 -0.1234%로 변환
+                                    shouldProcess = true;
+                                    newPureValue = `-0.${cleanNumber}`;
+                                    targetPos = 3;
+                                }
+                            }
+                            // Case 3: 양수 접두사 필드 ($123)
+                            else if (!isNegative && prefix) {
+                                if (cursorPosition === 0 || cursorPosition === prefix.length) {
+                                    // 맨 앞 또는 $ 뒤에 . 입력
+                                    shouldProcess = true;
+                                    newPureValue = `0.${cleanNumber}`;
+                                    targetPos = prefix.length + 2;
+                                }
+                            }
+                            // Case 4: 양수 접미사 또는 일반 필드 (123%)
+                            else if (!isNegative) {
+                                if (cursorPosition === 0) {
+                                    // 맨 앞에 . 입력
+                                    shouldProcess = true;
+                                    newPureValue = `0.${cleanNumber}`;
+                                    targetPos = 2;
+                                }
+                            }
+
+                            if (shouldProcess) {
+                                e.preventDefault();
+                                input.value = `${prefix}${newPureValue}${suffix}`;
+                                localValuesRef.current[filterKey as string] = newPureValue;
+                                toggleOption(filterKey, newPureValue, true, setFilter);
+                                const cursorKey = `${input.id}_cursor`;
+                                localValuesRef.current[cursorKey] = String(targetPos);
+                                return;
+                            }
+                        }
+                    }
+
+                    // 0 뒤에 1-9 숫자 입력 - 즉시 0 제거 (모든 필드에 적용)
+                    if (/^[1-9]$/.test(e.key) && value && filterKey && filterDef) {
+                        const {prefix, suffix} = getPrefixSuffix(filterDef.unit);
+
+                        // 접두사/접미사 제거하여 순수 값 확인
+                        let pureValue = value;
+                        let isNegative = false;
+
+                        // 음수 여부 확인
+                        if (value.startsWith('-$') || value.startsWith('-#')) {
+                            isNegative = true;
+                            pureValue = pureValue.replace(/^-[$#]/, '');
+                        } else if (value.startsWith('-') && /[%x회개]$/.test(value)) {
+                            isNegative = true;
+                            pureValue = pureValue.replace(/^-/, '');
+                        } else {
+                            pureValue = pureValue.replace(/^[$#]/, '');
+                        }
+                        pureValue = pureValue.replace(/[%x회개]$/, '');
+
+                        // 0으로 시작하고 0. 이 아닌 경우 (예: "0", "$0", "0%", "-$0")
+                        if (pureValue === '0' && !hasSelection) {
+                            e.preventDefault();
+
+                            // 즉시 값 변경 (0을 새 숫자로 교체, 음수 부호 유지)
+                            const newPureValue = isNegative ? `-${e.key}` : e.key;
+                            input.value = `${prefix}${newPureValue}${suffix}`;
+
+                            // 상태 업데이트
+                            localValuesRef.current[filterKey as string] = newPureValue;
+                            toggleOption(filterKey, newPureValue, true, setFilter);
+
+                            // 커서 위치 설정 (음수 부호 고려)
+                            const targetPos = prefix.length + (isNegative ? 2 : 1); // 음수면 -1, 양수면 1
                             const cursorKey = `${input.id}_cursor`;
                             localValuesRef.current[cursorKey] = String(targetPos);
 
                             return;
                         }
-
-                        // 1-1. 접미사 음수 필드에서 . 입력 - 즉시 -0.으로 변환
-                        if (e.key === '.' && value && value.startsWith('-') && /[%x개]$/.test(value)) {
-                            // 순수 값 확인 (접미사 제거)
-                            const pureValue = value.replace(/[%x개]$/, '');
-
-                            // -만 있는 경우 (예: -%에서 . 입력)
-                            if (pureValue === '-') {
-                                e.preventDefault();
-
-                                // 즉시 값 변경 (-0.%로)
-                                input.value = `-0.${suffix}`;
-
-                                // 상태 업데이트
-                                localValuesRef.current[filterKey as string] = '-0.';
-                                toggleOption(filterKey, '-0.', true, setFilter);
-
-                                // 커서 위치 설정 (소수점 뒤)
-                                const targetPos = 3; // "-0." = 3글자
-                                const cursorKey = `${input.id}_cursor`;
-                                localValuesRef.current[cursorKey] = String(targetPos);
-
-                                return;
-                            }
-                        }
-
-                        // 1-1. 맨 앞에 . 입력하여 .123 형태 만들기 - 즉시 0.123으로 변환
-                        if (e.key === '.' && value && cursorPosition === (prefix.length || 0) && !hasSelection) {
-                            // 현재 순수 값 가져오기 (접두사/접미사 제거)
-                            let pureValue = value;
-                            pureValue = pureValue.replace(/^-?[$#]/, '');
-                            pureValue = pureValue.replace(/[%x개]$/, '');
-
-                            // 소수점이 없는 경우에만 처리
-                            if (!pureValue.includes('.')) {
-                                e.preventDefault();
-
-                                // 즉시 값 변경 (.123 → 0.123)
-                                const newPureValue = '0.' + pureValue;
-                                input.value = `${prefix}${newPureValue}${suffix}`;
-
-                                // 상태 업데이트
-                                localValuesRef.current[filterKey as string] = newPureValue;
-                                toggleOption(filterKey, newPureValue, true, setFilter);
-
-                                // 커서 위치 설정 (소수점 바로 뒤)
-                                const targetPos = prefix.length + 2; // "0." = 2글자
-                                const cursorKey = `${input.id}_cursor`;
-                                localValuesRef.current[cursorKey] = String(targetPos);
-
-                                return;
-                            }
-                        }
-
-                        // 1-2. 접미사 음수 필드에서 - 뒤에 . 입력하여 -.123 형태를 -0.123으로 변환
-                        if (e.key === '.' && value && value.startsWith('-') && /[%x개]$/.test(value) && cursorPosition === 1 && !hasSelection) {
-                            // 순수 값 확인 (접미사 제거)
-                            const pureValue = value.replace(/[%x개]$/, '');
-                            const numberPart = pureValue.substring(1); // - 제거
-
-                            // 소수점이 없는 경우에만 처리
-                            if (!numberPart.includes('.')) {
-                                e.preventDefault();
-
-                                // 즉시 값 변경 (-123% → -.123% → -0.123%)
-                                const newPureValue = `-0.${numberPart}`;
-                                input.value = `${newPureValue}${suffix}`;
-
-                                // 상태 업데이트
-                                localValuesRef.current[filterKey as string] = newPureValue;
-                                toggleOption(filterKey, newPureValue, true, setFilter);
-
-                                // 커서 위치 설정 (소수점 바로 뒤)
-                                const targetPos = 3; // "-0." = 3글자
-                                const cursorKey = `${input.id}_cursor`;
-                                localValuesRef.current[cursorKey] = String(targetPos);
-
-                                return;
-                            }
-                        }
-
-                        // 1-2. -$ 상태에서 . 입력 시 -$0.으로 즉시 변환
-                        if (e.key === '.' && value && filterDef && filterDef.allowNegative && prefix) {
-                            // -$ 상태인지 확인 (음수 접두사만 있고 숫자가 없는 상태)
-                            if (value === `-${prefix}${suffix}`) {
-                                e.preventDefault();
-
-                                // 즉시 값 변경 (-$ → -$0.)
-                                const newPureValue = '-0.';
-                                input.value = `-${prefix}0.${suffix}`;
-
-                                // 상태 업데이트
-                                localValuesRef.current[filterKey as string] = newPureValue;
-                                toggleOption(filterKey, newPureValue, true, setFilter);
-
-                                // 커서 위치 설정 (소수점 바로 뒤)
-                                const targetPos = prefix.length + 3; // "-$0." = 4글자에서 소수점 뒤
-                                const cursorKey = `${input.id}_cursor`;
-                                localValuesRef.current[cursorKey] = String(targetPos);
-
-                                return;
-                            }
-                        }
-
-                        // 2. 0 뒤에 1-9 숫자 입력 - 즉시 0 제거
-                        if (/^[1-9]$/.test(e.key) && value) {
-                            // 접두사/접미사 제거하여 순수 값 확인
-                            let pureValue = value;
-                            let isNegative = false;
-
-                            // 음수 여부 확인
-                            if (value.startsWith('-$') || value.startsWith('-#')) {
-                                isNegative = true;
-                                pureValue = pureValue.replace(/^-[$#]/, '');
-                            } else if (value.startsWith('-') && /[%x개]$/.test(value)) {
-                                isNegative = true;
-                                pureValue = pureValue.replace(/^-/, '');
-                            } else {
-                                pureValue = pureValue.replace(/^[$#]/, '');
-                            }
-                            pureValue = pureValue.replace(/[%x개]$/, '');
-
-                            // 0으로 시작하고 0. 이 아닌 경우 (예: "0", "$0", "0%", "-$0")
-                            if (pureValue === '0' && !hasSelection) {
-                                e.preventDefault();
-
-                                // 즉시 값 변경 (0을 새 숫자로 교체, 음수 부호 유지)
-                                const newPureValue = isNegative ? `-${e.key}` : e.key;
-                                input.value = `${prefix}${newPureValue}${suffix}`;
-
-                                // 상태 업데이트
-                                localValuesRef.current[filterKey as string] = newPureValue;
-                                toggleOption(filterKey, newPureValue, true, setFilter);
-
-                                // 커서 위치 설정 (음수 부호 고려)
-                                const targetPos = prefix.length + (isNegative ? 2 : 1); // 음수면 -1, 양수면 1
-                                const cursorKey = `${input.id}_cursor`;
-                                localValuesRef.current[cursorKey] = String(targetPos);
-
-                                return;
-                            }
-                        }
                     }
 
-                    // 거래 번호, 레버리지, 보유 심볼 수 필드에서 소수점 키 차단
-                    if (e.key === '.' && (label === '거래 번호' || label === '레버리지' || label === '보유 심볼 수')) {
+                    // 거래 번호, 레버리지, 보유 심볼 수, 펀딩 횟수 필드에서 소수점 키 차단
+                    if (e.key === '.' && (label === '거래 번호' || label === '레버리지' || label === '펀딩 수령 횟수' || label === '펀딩 지불 횟수' || label === '펀딩 횟수' || label === '보유 심볼 수')) {
                         e.preventDefault();
                         return;
                     }
 
                     // 정수 필드에서 0 관련 입력 제어
-                    if (e.key === '0' && (label === '거래 번호' || label === '레버리지' || label === '보유 심볼 수')) {
+                    if (e.key === '0' && (label === '거래 번호' || label === '레버리지' || label === '펀딩 수령 횟수' || label === '펀딩 지불 횟수' || label === '펀딩 횟수' || label === '보유 심볼 수')) {
                         // 접두사/접미사 제거하여 순수 값 확인
                         let pureValue = value;
                         if (value.startsWith('-$') || value.startsWith('-#')) {
                             pureValue = pureValue.replace(/^-[$#]/, '');
-                        } else if (value.startsWith('-') && /[%x개]$/.test(value)) {
+                        } else if (value.startsWith('-') && /[%x회개]$/.test(value)) {
                             pureValue = pureValue.replace(/^-/, '');
                         } else {
                             pureValue = pureValue.replace(/^[$#]/, '');
                         }
-                        pureValue = pureValue.replace(/[%x개]$/, '');
+                        pureValue = pureValue.replace(/[%x회개]$/, '');
 
                         // 접두사 길이 계산
                         let prefixLength = 0;
                         if (value.startsWith('-$')) prefixLength = 2;
                         else if (value.startsWith('$') || value.startsWith('#')) prefixLength = 1;
+
+                        // 레버리지 필드는 첫 문자로 0이 올 수 없음
+                        if (label === '레버리지') {
+                            // 빈 필드이거나 접두사만 있는 경우 0 입력 방지
+                            if (!pureValue || pureValue === '') {
+                                e.preventDefault();
+                                return;
+                            }
+                            // 이미 0으로 시작하는 경우 추가 0 입력 방지
+                            if (pureValue === '0' && !hasSelection) {
+                                e.preventDefault();
+                                return;
+                            }
+                        }
 
                         // 이미 다른 숫자가 있고, 커서가 맨 앞(접두사 바로 뒤)에 있을 때 0 입력 방지
                         if (pureValue && pureValue !== '0' && /\d/.test(pureValue) && cursorPosition === prefixLength && !hasSelection) {
@@ -1444,7 +1579,7 @@ const NumericFilters: React.FC = () => {
                                     }
 
                                     // 접미사 제거
-                                    pureValue = pureValue.replace(/[%x개]$/, '');
+                                    pureValue = pureValue.replace(/[%x회개]$/, '');
 
                                     // 소수점 제거
                                     let newPureValue = pureValue.replace('.', '');
@@ -1529,7 +1664,7 @@ const NumericFilters: React.FC = () => {
                     // Home 키 처리
                     if (e.key === 'Home') {
                         // 접미사 음수 처리가 우선 (-%, -x, -개)
-                        if (value && value.startsWith('-') && /[%x개]$/.test(value)) {
+                        if (value && value.startsWith('-') && /[%x회개]$/.test(value)) {
                             e.preventDefault();
                             // 항상 - 뒤로 이동
                             input.setSelectionRange(1, 1);
@@ -1549,9 +1684,9 @@ const NumericFilters: React.FC = () => {
                     // End 키 처리
                     if (e.key === 'End') {
                         // 접미사 음수 처리가 우선 (-%, -x, -개)
-                        if (value && value.startsWith('-') && /[%x개]$/.test(value)) {
+                        if (value && value.startsWith('-') && /[%x회개]$/.test(value)) {
                             e.preventDefault();
-                            const suffixIndex = value.search(/[%x개]$/);
+                            const suffixIndex = value.search(/[%x회개]$/);
                             if (suffixIndex !== -1) {
                                 input.setSelectionRange(suffixIndex, suffixIndex);
                             }
@@ -1631,7 +1766,7 @@ const NumericFilters: React.FC = () => {
                             }
                         }
                         // 접미사 음수 처리 (-%, -x, -개) - 커서 차단
-                        else if (value && value.startsWith('-') && /[%x개]$/.test(value)) {
+                        else if (value && value.startsWith('-') && /[%x회개]$/.test(value)) {
                             // 왼쪽 화살표 키로 - 앞으로 이동하려는 경우 차단
                             if (e.key === 'ArrowLeft' && cursorPosition <= 1) {
                                 e.preventDefault();
@@ -1660,7 +1795,7 @@ const NumericFilters: React.FC = () => {
                                 const hasNumbers = /\d/.test(value);
                                 if (hasNumbers) {
                                     // 숫자가 있으면 숫자와 접미사 사이로 이동
-                                    const suffixIndex = value.search(/[%x개]$/);
+                                    const suffixIndex = value.search(/[%x회개]$/);
                                     if (suffixIndex !== -1) {
                                         input.setSelectionRange(suffixIndex, suffixIndex);
                                     }
@@ -1780,13 +1915,13 @@ const NumericFilters: React.FC = () => {
                                                     pureValue = newValue.substring(2);
                                                 } else if (newValue.startsWith('$') || newValue.startsWith('#')) {
                                                     pureValue = newValue.substring(1);
-                                                } else if (newValue.startsWith('-') && /[%x개]$/.test(newValue)) {
+                                                } else if (newValue.startsWith('-') && /[%x회개]$/.test(newValue)) {
                                                     isNegative = true;
                                                     pureValue = newValue.substring(1);
                                                 }
 
                                                 // 접미사 제거
-                                                pureValue = pureValue.replace(/[%x개]$/, '');
+                                                pureValue = pureValue.replace(/[%x회개]$/, '');
 
                                                 // 쉼표 제거하여 순수 숫자만 추출
                                                 pureValue = pureValue.replace(/,/g, '');
@@ -1844,13 +1979,13 @@ const NumericFilters: React.FC = () => {
                                                     pureValue = newValue.substring(2);
                                                 } else if (newValue.startsWith('$') || newValue.startsWith('#')) {
                                                     pureValue = newValue.substring(1);
-                                                } else if (newValue.startsWith('-') && /[%x개]$/.test(newValue)) {
+                                                } else if (newValue.startsWith('-') && /[%x회개]$/.test(newValue)) {
                                                     isNegative = true;
                                                     pureValue = newValue.substring(1);
                                                 }
 
                                                 // 접미사 제거
-                                                pureValue = pureValue.replace(/[%x개]$/, '');
+                                                pureValue = pureValue.replace(/[%x회개]$/, '');
 
                                                 // 쉼표 제거하여 순수 숫자만 추출
                                                 pureValue = pureValue.replace(/,/g, '');
@@ -1985,7 +2120,7 @@ const NumericFilters: React.FC = () => {
                             }
 
                             // 접미사 필드 처리 (%, x, 개)
-                            else if (/[%x개]$/.test(value)) {
+                            else if (/[%x회개]$/.test(value)) {
                                 const suffix = value.charAt(value.length - 1);
                                 const hasNumbers = /\d/.test(value);
 
@@ -2065,7 +2200,7 @@ const NumericFilters: React.FC = () => {
                     // Ctrl+방향키 조합에 대한 특별 처리 (단어 단위 이동 제어)
                     if ((e.ctrlKey || e.metaKey) && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
                         // 접미사 처리
-                        if (value && /[%x개]$/.test(value)) {
+                        if (value && /[%x회개]$/.test(value)) {
                             e.preventDefault();
                             const lastNumberIndex = value.search(/[^0-9.]+$/);
 
@@ -2124,12 +2259,12 @@ const NumericFilters: React.FC = () => {
                                     allowedStart = 2;
                                 } else if (value.startsWith('$') || value.startsWith('#')) {
                                     allowedStart = 1;
-                                } else if (value.startsWith('-') && /[%x개]$/.test(value)) {
+                                } else if (value.startsWith('-') && /[%x회개]$/.test(value)) {
                                     allowedStart = 1; // 음수 접미사는 - 뒤부터 허용
                                 }
 
                                 // 접미사 처리
-                                if (value.endsWith('%') || value.endsWith('x') || value.endsWith('개')) {
+                                if (value.endsWith('%') || value.endsWith('x') || value.endsWith('회') || value.endsWith('개')) {
                                     allowedEnd = value.length - 1;
                                 }
 
@@ -2272,7 +2407,7 @@ const NumericFilters: React.FC = () => {
                     }
 
                     // 접미사 처리
-                    const suffixPattern = /[%x개]$/;
+                    const suffixPattern = /[%x회개]$/;
                     const suffixMatch = value.match(suffixPattern);
 
                     if (suffixMatch) {
@@ -2353,7 +2488,7 @@ const NumericFilters: React.FC = () => {
                     const value = input.value;
 
                     // 제한 영역이 있는 경우에만 더블 클릭 처리
-                    if (value && (value.includes('$') || value.includes('#') || value.includes('%') || value.includes('x') || value.includes('개'))) {
+                    if (value && (value.includes('$') || value.includes('#') || value.includes('%') || value.includes('x') || value.includes('회') || value.includes('개'))) {
                         e.preventDefault();
                         e.stopPropagation();
 
@@ -2365,11 +2500,11 @@ const NumericFilters: React.FC = () => {
                             allowedStart = 2;
                         } else if (value.startsWith('$') || value.startsWith('#')) {
                             allowedStart = 1;
-                        } else if (value.startsWith('-') && /[%x개]$/.test(value)) {
+                        } else if (value.startsWith('-') && /[%x개회]$/.test(value)) {
                             allowedStart = 1;
                         }
 
-                        if (value.endsWith('%') || value.endsWith('x') || value.endsWith('개')) {
+                        if (value.endsWith('%') || value.endsWith('x') || value.endsWith('회') || value.endsWith('개')) {
                             allowedEnd = value.length - 1;
                         }
 
@@ -2527,7 +2662,7 @@ const NumericFilters: React.FC = () => {
         <div className="space-y-4">
             {numericFilters.map(({label, minKey, maxKey, unit, allowNegative = false}, index) => {
                 const {prefix, suffix} = getPrefixSuffix(unit);
-                const isIntegerOnly = label === "레버리지" || label === "보유 심볼 수" || label === "거래 번호";
+                const isIntegerOnly = label === "거래 번호" || label === "레버리지" || label === '펀딩 수령 횟수' || label === '펀딩 지불 횟수' || label === '펀딩 횟수' || label === "보유 심볼 수";
 
                 // 음수 허용 필드인지 확인
                 const isNegativeAllowed = allowNegative || false;
@@ -2601,6 +2736,3 @@ const NumericFilters: React.FC = () => {
 };
 
 export default NumericFilters;
-
-
-

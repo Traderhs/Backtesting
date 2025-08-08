@@ -553,26 +553,73 @@ string FormatDollar(const double price, const bool use_rounding) {
 
   ostringstream oss;
   oss.imbue(global_locale);
-  oss << showpoint << fixed;
 
-  int precision = 2;  // 기본 2자리
+  if (use_rounding) {
+    // rounding 모드: 적절한 precision으로 반올림
+    oss << showpoint << fixed;
 
-  if (use_rounding && adjusted_price != 0.0) {
-    // 효율적인 정밀도 계산
-    // 2자리로 반올림했을 때 0이 되는지 빠르게 확인
-    if (const double abs_price = abs(adjusted_price); abs_price < 0.01) {
-      // 로그를 이용한 빠른 정밀도 계산
-      const double log_val = -log10(abs_price);
-      precision = min(10, static_cast<int>(ceil(log_val)) + 1);
+    int precision = 2;  // 기본 2자리
+
+    if (adjusted_price != 0.0) {
+      // 2자리로 반올림했을 때 0이 되는지 빠르게 확인
+      if (const double abs_price = abs(adjusted_price); abs_price < 0.01) {
+        // 로그를 이용한 빠른 정밀도 계산
+        const double log_val = -log10(abs_price);
+        precision = min(10, static_cast<int>(ceil(log_val)) + 1);
+      }
     }
-  }
 
-  oss << setprecision(precision);
+    oss << setprecision(precision);
+  } else {
+    // non-rounding 모드: trailing zeros 제거하고 원본 값 그대로 사용
+    oss << noshowpoint;  // trailing zeros 제거
+  }
 
   if (adjusted_price < 0.0) {
     oss << "-$" << -adjusted_price;
   } else {
     oss << "$" << adjusted_price;
+  }
+
+  return oss.str();
+}
+
+string FormatPercentage(const double percentage, const bool use_rounding) {
+  // 음수 0 처리 - 매우 작은 값들은 0으로 처리
+  double adjusted_percentage = percentage;
+  if (abs(percentage) < 1e-10) {
+    adjusted_percentage = 0.0;
+  }
+
+  ostringstream oss;
+  oss.imbue(global_locale);
+
+  if (use_rounding) {
+    // rounding 모드: 적절한 precision으로 반올림
+    oss << showpoint << fixed;
+
+    int precision = 2;  // 기본 2자리
+
+    if (adjusted_percentage != 0.0) {
+      // 2자리로 반올림했을 때 0이 되는지 빠르게 확인
+      if (const double abs_percentage = abs(adjusted_percentage);
+          abs_percentage < 0.01) {
+        // 로그를 이용한 빠른 정밀도 계산
+        const double log_val = -log10(abs_percentage);
+        precision = min(10, static_cast<int>(ceil(log_val)) + 1);
+      }
+    }
+
+    oss << setprecision(precision);
+  } else {
+    // non-rounding 모드: trailing zeros 제거하고 원본 값 그대로 사용
+    oss << noshowpoint;  // trailing zeros 제거
+  }
+
+  if (adjusted_percentage < 0.0) {
+    oss << "-" << -adjusted_percentage << "%";
+  } else {
+    oss << adjusted_percentage << "%";
   }
 
   return oss.str();

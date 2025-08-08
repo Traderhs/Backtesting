@@ -1056,10 +1056,33 @@ void Engine::InitializeSymbolInfo() {
       }
 
       // 첫 펀딩 비율 및 시간 캐시
-      next_funding_rates_[symbol_idx] = funding_rates_vector[0].funding_rate;
-      next_funding_times_[symbol_idx] = funding_rates_vector[0].funding_time;
-      next_funding_mark_prices_[symbol_idx] =
-          funding_rates_vector[0].mark_price;
+      bool funding_rate_exist = false;
+
+      for (size_t idx = 0; idx < funding_rates_vector.size(); ++idx) {
+        // 백테스팅 기간 중의 첫 데이터 포인트를 찾으면 캐시 후 루프 종료
+        if (const auto& [funding_rate, funding_time, mark_price] =
+                funding_rates_vector[idx];
+            funding_time >= begin_open_time_ &&
+            funding_time <= end_close_time_) {
+          funding_rates_indices_[symbol_idx] = idx;
+          next_funding_rates_[symbol_idx] = funding_rate;
+          next_funding_times_[symbol_idx] = funding_time;
+          next_funding_mark_prices_[symbol_idx] = mark_price;
+
+          funding_rate_exist = true;
+          break;
+        }
+      }
+
+      if (!funding_rate_exist) {
+        Logger::LogAndThrowError(
+            format("백테스팅 기간 [{} - {}]에 해당되는 [{}] 펀딩 비율 데이터가 "
+                   "존재하지 않습니다.",
+                   UtcTimestampToUtcDatetime(begin_open_time_),
+                   UtcTimestampToUtcDatetime(end_close_time_),
+                   trading_bar_data_->GetSymbolName(symbol_idx)),
+            __FILE__, __LINE__);
+      }
 
       symbol_info.SetFundingRates(funding_rates_vector);
     } catch (const std::exception& e) {
@@ -1538,15 +1561,16 @@ void Engine::CheckFundingTime() {
     const auto& funding_rates = symbol_info_[symbol_idx].GetFundingRates();
 
     // 다음 펀딩 비율 인덱스가 데이터 범위를 벗어나는지 체크
-    if (const auto next_index = ++funding_rates_indices_[symbol_idx];
-        next_index < funding_rates.size()) {
+    if (const auto next_idx = ++funding_rates_indices_[symbol_idx];
+        next_idx < funding_rates.size()) {
       const auto& [funding_rate, funding_time, mark_price] =
-          funding_rates[next_index];
+          funding_rates[next_idx];
 
       next_funding_rates_[symbol_idx] = funding_rate;
       next_funding_times_[symbol_idx] = funding_time;
       next_funding_mark_prices_[symbol_idx] = mark_price;
     } else {
+      // TODO 로그 체크
       logger_->Log(WARNING_L,
                    format("[{}] 펀딩 비율 데이터가 종료되었으므로 해당 심볼의 "
                           "펀딩비는 더 이상 정산되지 않습니다.",
@@ -1554,7 +1578,7 @@ void Engine::CheckFundingTime() {
                    __FILE__, __LINE__);
 
       next_funding_rates_[symbol_idx] = -1;
-      next_funding_times_[symbol_idx] = -1;
+      next_funding_times_[symbol_idx] = INT64_MAX;
       next_funding_mark_prices_[symbol_idx] = -1;
     }
   };
@@ -1562,8 +1586,13 @@ void Engine::CheckFundingTime() {
   const auto current_bar_type = bar_->GetCurrentBarType();
 
   for (const auto symbol_idx : activated_symbol_indices_) {
+    bar_->SetCurrentSymbolIndex(symbol_idx);
+
     // 펀딩 시간이 되면 펀딩
-    if (current_open_time_ >= next_funding_times_[symbol_idx]) {
+    // 만약 펀딩 비율 데이터가 종료되었으면 펀딩비는 없음
+    // -> 종료 시 MAX 값으로 설정되므로 자동으로 조건 미통과
+    if (const auto funding_time = next_funding_times_[symbol_idx];
+        current_open_time_ >= funding_time) {
       const double next_funding_price = next_funding_mark_prices_[symbol_idx];
       double funding_price;
 
@@ -1593,9 +1622,10 @@ void Engine::CheckFundingTime() {
         // 4. 모든 일치하는 데이터가 없다면 펀딩비 정산 불가
         logger_->Log(
             WARNING_L,
-            format("펀딩 비율 가격 데이터에 마크 가격이 존재하지 않으며, 현재 "
+            format("[{}] 펀딩 비율 데이터에 마크 가격이 존재하지 않으며, 현재 "
                    "진행 시간 [{}]과 일치하는 마크 가격 바와 시장 가격 바가 "
                    "존재하지 않으므로 펀딩비를 정산할 수 없습니다.",
+                   UtcTimestampToUtcDatetime(funding_time),
                    UtcTimestampToUtcDatetime(current_open_time_)),
             __FILE__, __LINE__, true);
 
@@ -1603,10 +1633,11 @@ void Engine::CheckFundingTime() {
         update_next_funding_info(symbol_idx);
         continue;
       }
-
+  
       // 펀딩 가격이 정상적으로 존재한다면 펀딩비 정산
       order_handler_->ExecuteFunding(next_funding_rates_[symbol_idx],
-                                     funding_price);
+                                     UtcTimestampToUtcDatetime(funding_time),
+                                     funding_price, symbol_idx);
 
       // 다음 펀딩 정보 업데이트
       update_next_funding_info(symbol_idx);

@@ -73,7 +73,8 @@ class BaseOrderHandler {
   /// 지정된 심볼 마크 가격의 지정된 가격 타입을 기준으로 계산한 미실현 손실의
   /// 절댓값의 합계를 반환하는 함수.
   ///
-  /// 마크 가격이 현재 Close Time과 일치하지 않는다면 트레이딩 바 가격을 사용
+  /// 마크 가격이 현재 진행 중인 Close Time과 일치하지 않는다면 전략을 실행한 바
+  /// 타입의 가격을 사용
   [[nodiscard]] double GetUnrealizedLoss(int symbol_idx,
                                          PriceType price_type) const;
 
@@ -170,7 +171,7 @@ class BaseOrderHandler {
   /// 주문 정보에 따라 강제 청산 가격을 계산하여 반환하는 함수
   [[nodiscard]] static double CalculateLiquidationPrice(
       Direction entry_direction, double order_price, double position_size,
-      double entry_margin);
+      double margin);
 
   /// 지정된 심볼과 명목 가치에 해당되는 레버리지 구간을 찾아 반환하는 함수
   [[nodiscard]] static LeverageBracket GetLeverageBracket(int symbol_idx,
@@ -207,6 +208,9 @@ class BaseOrderHandler {
 
   /// 진입 체결 시 진입 이름이 유효한지 확인하는 함수
   void IsValidEntryName(const string& entry_name) const;
+
+  /// 청산 주문 시 청산 이름이 유효한지 확인하는 함수
+  static void IsValidExitName(const string& exit_name) ;
 
   /// 지정가 주문 가격이 유효한 가격인지 확인하는 함수
   static void IsValidLimitOrderPrice(double limit_price, double base_price,

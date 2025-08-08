@@ -37,10 +37,15 @@ class Trade final {
   Trade& SetLiquidationPrice(double liquidation_price);
 
   // 자금 정보
+  Trade& SetReceivedFundingCount(int received_funding_count);
+  Trade& SetReceivedFundingAmount(double received_funding_amount);
+  Trade& SetPaidFundingCount(int paid_funding_count);
+  Trade& SetPaidFundingAmount(double paid_funding_amount);
+  Trade& SetTotalFundingCount(int total_funding_count);
+  Trade& SetTotalFundingAmount(double total_funding_amount);
   Trade& SetEntryFee(double entry_fee);
   Trade& SetExitFee(double exit_fee);
   Trade& SetLiquidationFee(double liquidation_fee);
-  Trade& SetFundingFee(double funding_fee);
   Trade& SetPnl(double pnl);
   Trade& SetNetPnl(double net_pnl);
   Trade& SetIndividualPnlPer(double individual_pnl_per);
@@ -79,10 +84,15 @@ class Trade final {
   [[nodiscard]] double GetLiquidationPrice() const;
 
   // 자금 정보
+  [[nodiscard]] int GetReceivedFundingCount() const;
+  [[nodiscard]] double GetReceivedFundingAmount() const;
+  [[nodiscard]] int GetPaidFundingCount() const;
+  [[nodiscard]] double GetPaidFundingAmount() const;
+  [[nodiscard]] int GetTotalFundingCount() const;
+  [[nodiscard]] double GetTotalFundingAmount() const;
   [[nodiscard]] double GetEntryFee() const;
   [[nodiscard]] double GetExitFee() const;
   [[nodiscard]] double GetLiquidationFee() const;
-  [[nodiscard]] double GetFundingFee() const;
   [[nodiscard]] double GetPnl() const;
   [[nodiscard]] double GetNetPnl() const;
   [[nodiscard]] double GetIndividualPnlPer() const;
@@ -121,20 +131,25 @@ class Trade final {
   double liquidation_price_;  // 강제 청산 가격
 
   // 자금 정보
-  double entry_fee_;           // 진입 수수료
-  double exit_fee_;            // 청산 수수료
-  double liquidation_fee_;     // 강제 청산 수수료
-  double funding_fee_;         // 펀딩비
-  double pnl_;                 // 손익
-  double net_pnl_;             // 순손익
-  double individual_pnl_per_;  // 진입 마진 대비 순손익률
-  double total_pnl_per_;       // 진입 주문 시점의 지갑 자금 대비 순손익률
-  double wallet_balance_;      // 현재 자금
-  double max_wallet_balance_;  // 최고 자금
-  double drawdown_;            // 드로우다운
-  double max_drawdown_;        // 최고 드로우다운
-  double cum_pnl_;             // 초기 자본금 대비 누적 손익
-  double cum_pnl_per_;         // 초기 자본금 대비 누적 손익률
+  int received_funding_count_;      // 펀딩비 수령 횟수
+  double received_funding_amount_;  // 펀딩비 수령
+  int paid_funding_count_;          // 펀딩비 지불 횟수
+  double paid_funding_amount_;      // 펀딩비 지불
+  int total_funding_count_;         // 펀딩 횟수
+  double total_funding_amount_;     // 펀딩비
+  double entry_fee_;                // 진입 수수료
+  double exit_fee_;                 // 청산 수수료
+  double liquidation_fee_;          // 강제 청산 수수료
+  double pnl_;                      // 손익
+  double net_pnl_;                  // 순손익
+  double individual_pnl_per_;       // 진입 마진 대비 순손익률
+  double total_pnl_per_;            // 진입 주문 시점의 지갑 자금 대비 순손익률
+  double wallet_balance_;           // 현재 자금
+  double max_wallet_balance_;       // 최고 자금
+  double drawdown_;                 // 드로우다운
+  double max_drawdown_;             // 최고 드로우다운
+  double cum_pnl_;                  // 초기 자본금 대비 누적 손익
+  double cum_pnl_per_;              // 초기 자본금 대비 누적 손익률
 
   // 기타 정보
   int symbol_count_;  // 보유 심볼 수

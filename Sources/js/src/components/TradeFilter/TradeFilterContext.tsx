@@ -17,6 +17,12 @@ export type FilterType =
     | 'exitPrice'
     | 'exitQuantity'
     | 'forcedLiquidationPrice'
+    | 'fundingReceiveCount'
+    | 'fundingReceiveFee'
+    | 'fundingPayCount'
+    | 'fundingPayFee'
+    | 'fundingCount'
+    | 'fundingFee'
     | 'entryFee'
     | 'exitFee'
     | 'forcedLiquidationFee'
@@ -79,6 +85,18 @@ export type TradeFilter = {
     exitQuantityMax?: string | number;
     forcedLiquidationPriceMin?: string | number;
     forcedLiquidationPriceMax?: string | number;
+    fundingReceiveCountMin?: string | number;
+    fundingReceiveCountMax?: string | number;
+    fundingReceiveFeeMin?: string | number;
+    fundingReceiveFeeMax?: string | number;
+    fundingPayCountMin?: string | number;
+    fundingPayCountMax?: string | number;
+    fundingPayFeeMin?: string | number;
+    fundingPayFeeMax?: string | number;
+    fundingCountMin?: string | number;
+    fundingCountMax?: string | number;
+    fundingFeeMin?: string | number;
+    fundingFeeMax?: string | number;
     entryFeeMin?: string | number;
     entryFeeMax?: string | number;
     exitFeeMin?: string | number;
