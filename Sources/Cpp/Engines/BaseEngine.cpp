@@ -32,8 +32,7 @@ BaseEngine::BaseEngine()
       is_bankruptcy_(false),
       max_wallet_balance_(nan("")),
       drawdown_(0),
-      max_drawdown_(0),
-      liquidation_count_(0) {}
+      max_drawdown_(0) {}
 BaseEngine::~BaseEngine() = default;
 
 shared_ptr<Analyzer>& BaseEngine::analyzer_ = Analyzer::GetAnalyzer();
@@ -258,8 +257,6 @@ void BaseEngine::DecreaseUsedMargin(const double decrease_margin) {
 }
 
 void BaseEngine::SetBankruptcy() { is_bankruptcy_ = true; }
-
-void BaseEngine::IncreaseLiquidationCount() { liquidation_count_++; }
 
 shared_ptr<Config>& BaseEngine::GetConfig() { return config_; }
 

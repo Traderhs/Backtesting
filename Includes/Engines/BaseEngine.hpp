@@ -65,9 +65,6 @@ class BaseEngine {
   /// 파산을 당했을 때 설정하는 함수
   void SetBankruptcy();
 
-  /// 강제 청산 횟수를 증가시키는 함수
-  void IncreaseLiquidationCount();
-
   /// 엔진 설정값을 반환하는 함수
   [[nodiscard]] static shared_ptr<Config>& GetConfig();
 
@@ -139,7 +136,7 @@ class BaseEngine {
   vector<shared_ptr<Indicator>> indicators_;
 
   // 자금 항목
-  /// 지갑 자금 = 초기 자금 ± 실현 손익 ± 펀딩피 - 수수료
+  /// 지갑 자금 = 초기 자금 ± 실현 손익 ± 펀딩비 - 수수료
   double wallet_balance_;
 
   /// 사용한 마진: 진입 증거금 + 예약 증거금
@@ -155,7 +152,6 @@ class BaseEngine {
   double max_wallet_balance_;  // 최고 자금
   double drawdown_;            // 현재 드로우다운
   double max_drawdown_;        // 최고 드로우다운
-  int liquidation_count_;      // 강제 청산 횟수
 };
 
 }  // namespace backtesting::engine

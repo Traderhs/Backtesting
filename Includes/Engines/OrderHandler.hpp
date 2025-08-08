@@ -56,7 +56,8 @@ class OrderHandler final : public BaseOrderHandler {
   void CheckPendingExits(double price, PriceType price_type, int symbol_idx);
 
   /// 체결된 진입 주문에서 펀딩비를 정산하는 함수
-  void ExecuteFunding(double funding_rate, double funding_price);
+  void ExecuteFunding(double funding_rate, const string& funding_time,
+                      double funding_price, int symbol_idx);
 
   // ===========================================================================
   // 전략 Strategy 구현부에서 사용하는 진입 함수들
@@ -191,7 +192,8 @@ class OrderHandler final : public BaseOrderHandler {
   ///
   /// 청산 확인은 Mark Price이지만 청산 가격은 실제 시장 가격 기준이므로
   /// order_price는 시장 가격으로 지정
-  void ExecuteLiquidation(int symbol_idx, int order_idx, double order_price);
+  void ExecuteLiquidation(const string& exit_name, int symbol_idx,
+                          int order_idx, double order_price);
 
   /// 시장가 진입 시 자금 관련 처리 후 체결 주문에 추가하는 함수
   void ExecuteMarketEntry(const shared_ptr<Order>& market_entry,

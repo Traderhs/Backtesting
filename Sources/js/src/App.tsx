@@ -245,8 +245,6 @@ function AppContent() {
                     // 비활성 클래스 제거
                     newTabElement.classList.remove('tab-inactive');
 
-
-
                     // 이벤트 디스패치 - 컴포넌트에게 활성화 알림
                     newTabElement.dispatchEvent(new CustomEvent('tabActive', {
                         bubbles: true,

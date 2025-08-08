@@ -28,6 +28,10 @@ class Order {
   Order& SetLeftMargin(double left_margin);
   Order& SetLiquidationPrice(double liquidation_price);
   Order& SetLiquidationFee(double liquidation_fee);
+  Order& AddReceivedFundingCount();
+  Order& SetReceivedFundingAmount(double received_funding_amount);
+  Order& AddPaidFundingCount();
+  Order& SetPaidFundingAmount(double paid_funding_amount);
   Order& SetWbWhenEntryOrder(double wb_when_entry_order);
   Order& AddExitCount();
 
@@ -78,6 +82,10 @@ class Order {
   [[nodiscard]] double GetLeftMargin() const;
   [[nodiscard]] double GetLiquidationPrice() const;
   [[nodiscard]] double GetLiquidationFee() const;
+  [[nodiscard]] int GetReceivedFundingCount() const;
+  [[nodiscard]] double GetReceivedFundingAmount() const;
+  [[nodiscard]] int GetPaidFundingCount() const;
+  [[nodiscard]] double GetPaidFundingAmount() const;
   [[nodiscard]] double GetWbWhenEntryOrder() const;
   [[nodiscard]] int GetExitCount() const;
 
@@ -121,13 +129,17 @@ class Order {
 
  private:
   // 통합 변수
-  int leverage_;                // 레버리지 배수
-  double entry_margin_;         // 최초 진입 마진
-  double left_margin_;          // 청산 후 잔여 마진
-  double liquidation_price_;    // 강제 청산 가격
-  double liquidation_fee_;      // 강제 청산 수수료
-  double wb_when_entry_order_;  // 진입 주문 시점의 지갑 자금
-  int exit_count_;              // 원본 진입의 청산 횟수
+  int leverage_;                    // 레버리지 배수
+  double entry_margin_;             // 최초 진입 마진
+  double left_margin_;              // 청산 후 잔여 마진
+  double liquidation_price_;        // 강제 청산 가격
+  double liquidation_fee_;          // 강제 청산 수수료
+  int received_funding_count_;      // 펀딩 수령 횟수
+  double received_funding_amount_;  // 펀딩비 수령
+  int paid_funding_count_;          // 펀딩 지불 횟수
+  double paid_funding_amount_;      // 펀딩비 지불
+  double wb_when_entry_order_;      // 진입 주문 시점의 지갑 자금
+  int exit_count_;                  // 원본 진입의 청산 횟수
 
   // ===========================================================================
   // 진입 변수

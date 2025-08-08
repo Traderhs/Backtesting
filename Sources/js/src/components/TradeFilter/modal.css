@@ -19,22 +19,3 @@
     pointer-events: auto;
     z-index: 10000;
 }
-
-/* 스크롤바 스타일링 */
-.advanced-filter-modal-container > div:nth-child(2)::-webkit-scrollbar {
-    width: 8px;
-}
-
-.advanced-filter-modal-container > div:nth-child(2)::-webkit-scrollbar-track {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-radius: 4px;
-}
-
-.advanced-filter-modal-container > div:nth-child(2)::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 215, 0, 0.3);
-    border-radius: 4px;
-}
-
-.advanced-filter-modal-container > div:nth-child(2)::-webkit-scrollbar-button {
-    display: none;
-}

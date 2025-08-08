@@ -22,6 +22,9 @@ const DOLLAR_FIELDS = new Set([
     "진입 수수료",
     "청산 수수료",
     "강제 청산 수수료",
+    "펀딩비 수령",
+    "펀딩비 지불",
+    "펀딩비",
     "손익",
     "순손익",
     "현재 자금",
@@ -55,6 +58,12 @@ const COMMA_FIELDS = new Set([
     "청산 가격",
     "청산 수량",
     "강제 청산 가격",
+    "펀딩 수령 횟수",
+    "펀딩비 수령",
+    "펀딩 지불 횟수",
+    "펀딩비 지불",
+    "펀딩 횟수",
+    "펀딩비",
     "진입 수수료",
     "청산 수수료",
     "강제 청산 수수료",
@@ -69,6 +78,13 @@ const COMMA_FIELDS = new Set([
     "드로우다운",
     "최고 드로우다운",
     "레버리지"
+]);
+
+// 경계선 스타일을 위한 Set - 컴포넌트 밖에서 정의하여 재생성 방지
+const THICK_BORDER_COLUMNS = new Set([
+    "거래 번호", "심볼 이름", "진입 방향", "보유 시간", "레버리지", "진입 수량",
+    "청산 수량", "강제 청산 가격", "펀딩비 수령", "펀딩비 지불", "강제 청산 수수료",
+    "순손익", "전체 순손익률", "최고 자금", "최고 드로우다운", "누적 손익률"
 ]);
 
 // 천단위 쉼표 포맷 함수 - 숫자 타입 체크 최적화
@@ -155,6 +171,13 @@ const getDisplayStringForMeasuring = (value: string | number | undefined, key: s
         }
         return `${value}개`;
     }
+    // 펀딩 횟수
+    if (key === "펀딩 수령 횟수" || key === "펀딩 지불 횟수" || key === "펀딩 횟수") {
+        if (String(value) === "-") {
+            return "-";
+        }
+        return `${value}회`;
+    }
 
     // 가격 필드들은 심볼별 precision 사용 + 천단위 쉼표
     if (PRICE_FIELDS.has(key)) {
@@ -199,22 +222,16 @@ const getDisplayStringForMeasuring = (value: string | number | undefined, key: s
     }
 }
 
-// 포맷 함수 메모이제이션을 위한 캐시 - WeakMap 사용으로 메모리 누수 방지
-const formatCache = new WeakMap<object, Map<string, React.ReactElement>>();
+// 포맷 함수 메모이제이션을 위한 캐시 - 단순한 Map 사용으로 성능 개선
+const formatCache = new Map<string, React.ReactElement>();
+const MAX_CACHE_SIZE = 10000; // 캐시 크기 제한
 
 const formatWithTooltip = (value: string | number, key: string, config?: any, symbol?: string): React.ReactElement => {
-    // 캐시를 위한 고유한 객체 생성
-    const cacheObj = {value, key, symbol};
+    // 캐시 키 생성 - 모든 매개변수를 포함하여 고유성 보장
+    const cacheKey = `${key}:${value}:${symbol}:${config?.심볼?.length || 0}`;
 
-    if (!formatCache.has(cacheObj)) {
-        formatCache.set(cacheObj, new Map());
-    }
-
-    const cache = formatCache.get(cacheObj)!;
-    const cacheKey = `${key}:${value}:${symbol}`;
-
-    if (cache.has(cacheKey)) {
-        return cache.get(cacheKey)!;
+    if (formatCache.has(cacheKey)) {
+        return formatCache.get(cacheKey)!;
     }
 
     let result: React.ReactElement;
@@ -230,6 +247,15 @@ const formatWithTooltip = (value: string | number, key: string, config?: any, sy
             result = <span title="-">-</span>;
         } else {
             result = <span title={`${value}개`}>{`${value}개`}</span>
+        }
+    }
+    // 펀딩 횟수 처리 ('회' 추가)
+    else if (key === "펀딩 수령 횟수" || key === "펀딩 지불 횟수" || key === "펀딩 횟수") {
+        if (String(value) === "-") {
+            result = <span title="-">-</span>;
+        } else {
+            const display = `${formatWithCommas(value, 0)}회`;
+            result = <span title={display}>{display}</span>
         }
     }
     // 진입 시간과 청산 시간 처리
@@ -321,9 +347,14 @@ const formatWithTooltip = (value: string | number, key: string, config?: any, sy
         }
     }
 
-    // 캐시에 저장 (WeakMap이므로 자동으로 메모리 관리됨)
-    if (cache.size < 100) {
-        cache.set(cacheKey, result);
+    // 캐시에 저장 - 크기 제한으로 메모리 사용량 관리
+    if (formatCache.size < MAX_CACHE_SIZE) {
+        formatCache.set(cacheKey, result);
+    } else if (formatCache.size >= MAX_CACHE_SIZE) {
+        // 캐시 크기 제한 도달 시 일부 제거
+        const keysToDelete = Array.from(formatCache.keys()).slice(0, Math.floor(MAX_CACHE_SIZE * 0.1));
+        keysToDelete.forEach(key => formatCache.delete(key));
+        formatCache.set(cacheKey, result);
     }
 
     return result;
@@ -336,7 +367,6 @@ interface TradeRowProps {
     allHeaders: string[];
     columnWidths: { [key: string]: string };
     rowHeight: number;
-    isOddRow: boolean;
     isActiveRow: boolean;
     hoverTradeNo: number | null;
     initialBalance: number;
@@ -353,7 +383,6 @@ const TradeRow = React.memo<TradeRowProps>(({
                                                 allHeaders,
                                                 columnWidths,
                                                 rowHeight,
-                                                isOddRow,
                                                 isActiveRow,
                                                 hoverTradeNo,
                                                 initialBalance,
@@ -372,10 +401,6 @@ const TradeRow = React.memo<TradeRowProps>(({
     if (!isDifferentFromNext && !isLastRowOfDataset) rowClass += " same-trade";
     else if (isDifferentFromNext || isLastRowOfDataset) rowClass += " last-group-row";
 
-    // 호버되지 않은 홀수 행에만 배경색 적용
-    if (isOddRow && !isHovered) {
-        rowClass += " odd-row";
-    }
     if (isActiveRow) rowClass += " active-row";
 
     const handleMouseEnter = useCallback(() => {
@@ -394,8 +419,16 @@ const TradeRow = React.memo<TradeRowProps>(({
                     key === "개별 순손익률" ||
                     key === "전체 순손익률")) {
                 textColor = "white";
+            } else if (key === "펀딩비 수령" || key === "펀딩비 지불" || key === "펀딩비") {
+                if (row[key] === "-" || row[key] === undefined || row[key] === null) {
+                    textColor = "";
+                } else if (value === 0) {
+                    textColor = "white";
+                } else {
+                    textColor = value >= 0 ? "#4caf50" : "#f23645";
+                }
             } else if (key === "순손익" || key === "개별 순손익률" || key === "전체 순손익률" ||
-                key === "손익" || key === "누적 손익" || key === "누적 손익률") {
+                key === "손익" || key === "누적 손익" || key === "누적 손익률" || key === "펀딩비 수령" || key === "펀딩비 지불" || key === "펀딩비") {
                 textColor = value >= 0 ? "#4caf50" : "#f23645";
             } else if (key === "현재 자금") {
                 textColor = value >= initialBalance ? "#4caf50" : "#f23645";
@@ -424,43 +457,41 @@ const TradeRow = React.memo<TradeRowProps>(({
             onMouseLeave={onMouseLeave}
             style={{
                 position: 'absolute',
-                top: `${originalIndex * rowHeight}px`,
+                top: `${Math.floor(originalIndex * rowHeight)}px`,
                 left: 0,
                 right: 0,
-                height: `${rowHeight}px`,
+                height: `${Math.floor(rowHeight)}px`,
                 width: '100%',
                 display: 'flex',
+                // 픽셀 정렬 강제
+                backfaceVisibility: 'hidden',
+                transform: 'translateZ(0)'
             }}
         >
             {cellContents.map((cell, colIndex) => {
-                const oddRowBackgroundColor = 'rgba(41, 37, 15)';
-                const hoverBackgroundColor = 'rgba(255, 215, 0, 0.2)';
                 // 기본 배경색 설정
-                let calculatedBackground = isOddRow ? oddRowBackgroundColor : undefined;
+                let calculatedBackground;
 
                 // 호버 상태일 때는 호버 배경색 우선 적용
                 if (isHovered && currentTradeNo === hoverTradeNo) {
-                    calculatedBackground = hoverBackgroundColor;
+                    calculatedBackground = 'rgba(255, 215, 0, 0.2)';
                 }
+
+                // 경계선 클래스 결정 - 모듈 레벨 Set 사용
+                const borderClass = colIndex < allHeaders.length - 1 ? 
+                    (THICK_BORDER_COLUMNS.has(cell.key) ? 'thick-border' : 'thin-border') : '';
 
                 return (
                     <div
                         key={cell.key}
-                        className="td cell-width"
+                        className={`td cell-width ${borderClass}`}
                         style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
                             color: cell.textColor || 'inherit',
                             background: calculatedBackground,
                             width: columnWidths[cell.key] || 'auto',
                             minWidth: columnWidths[cell.key] || 'auto',
                             maxWidth: columnWidths[cell.key] || 'auto',
-                            flexBasis: columnWidths[cell.key] || 'auto',
-                            flexGrow: 0,
-                            flexShrink: 0,
-                            padding: '3px 10px',
-                            borderRight: colIndex < allHeaders.length - 1 ? '1px solid rgba(255, 215, 0, 0.8)' : 'none'
+                            flexBasis: columnWidths[cell.key] || 'auto'
                         }}
                     >
                         {cell.formattedContent}
@@ -474,7 +505,6 @@ const TradeRow = React.memo<TradeRowProps>(({
     return (
         prevProps.row === nextProps.row &&
         prevProps.originalIndex === nextProps.originalIndex &&
-        prevProps.isOddRow === nextProps.isOddRow &&
         prevProps.isActiveRow === nextProps.isActiveRow &&
         prevProps.hoverTradeNo === nextProps.hoverTradeNo &&
         prevProps.isDifferentFromNext === nextProps.isDifferentFromNext &&
@@ -641,20 +671,27 @@ export default function TradeList({config}: TradeListProps) {
 
             let maxDataTextWidth = 0;
             if (trades.length > 0) {
-                // 성능을 위해 더 효율적인 샘플링 사용 (최대 30개 항목만 체크)
-                const sampleSize = Math.min(30, trades.length);
+                // 성능을 위해 훨씬 더 효율적인 샘플링 사용 (최대 15개 항목만 체크)
+                const sampleSize = Math.min(15, trades.length);
                 const step = Math.max(1, Math.floor(trades.length / sampleSize));
 
-                for (let i = 0; i < trades.length; i += step) {
+                // 추가 최적화: 최대값 발견 시 조기 종료
+                const maxPossibleWidth = 400; // 합리적인 최대 셀 너비
+                
+                for (let i = 0; i < trades.length && maxDataTextWidth < maxPossibleWidth; i += step) {
                     const trade = trades[i];
                     const displayString = getDisplayStringForMeasuring(trade[headerKey], headerKey, config, getSymbolFromTrade(trade));
+                    
+                    // 빈 문자열이면 스킵
+                    if (!displayString) continue;
+                    
                     const dataTextMetrics = context.measureText(displayString);
                     maxDataTextWidth = Math.max(maxDataTextWidth, Math.ceil(dataTextMetrics.width));
                 }
             }
-            const calculatedMaxDataWidth = maxDataTextWidth + cellPadding;
+            const calculatedMaxDataWidth = Math.ceil(maxDataTextWidth + cellPadding);
 
-            const finalWidth = Math.max(calculatedHeaderWidth, calculatedMaxDataWidth, minCellWidth);
+            const finalWidth = Math.ceil(Math.max(calculatedHeaderWidth, calculatedMaxDataWidth, minCellWidth));
             newColumnWidths[headerKey] = `${finalWidth}px`;
         });
 
@@ -719,17 +756,37 @@ export default function TradeList({config}: TradeListProps) {
     }, [scrollTop, trades.length, rowHeight, overscanCount]);
 
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    
     const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
         const newScrollTop = event.currentTarget.scrollTop;
 
-        // 즉시 스크롤 상태 업데이트 (하지만 렌더링은 디바운스)
-        if (scrollTimeoutRef.current) {
-            clearTimeout(scrollTimeoutRef.current);
+        // RAF를 사용하여 스크롤 최적화
+        if (rafRef.current) {
+            cancelAnimationFrame(rafRef.current);
         }
 
-        scrollTimeoutRef.current = setTimeout(() => {
-            setScrollTop(newScrollTop);
-        }, 8); // 120fps 제한으로 더 부드러운 스크롤
+        rafRef.current = requestAnimationFrame(() => {
+            // 디바운스로 빈번한 상태 업데이트 방지
+            if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
+            }
+
+            scrollTimeoutRef.current = setTimeout(() => {
+                setScrollTop(newScrollTop);
+            }, 16); // 60fps로 제한하여 성능 개선
+        });
+    }, []);
+
+    // cleanup 함수 추가
+    useEffect(() => {
+        return () => {
+            if (rafRef.current) {
+                cancelAnimationFrame(rafRef.current);
+            }
+            if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
+            }
+        };
     }, []);
 
     // 초기 자금 계산 - 캐싱 추가
@@ -747,33 +804,6 @@ export default function TradeList({config}: TradeListProps) {
         initialBalanceCache.current = {trades, balance};
 
         return balance;
-    }, [trades]);
-
-    // 그룹별 홀짝 배경색 플래그 계산 최적화 - 메모이제이션 강화 및 배열 미리 할당
-    const groupOddFlags: boolean[] = useMemo(() => {
-        if (trades.length === 0) return [];
-
-        const flags: boolean[] = new Array(trades.length);
-        if (trades.length === 1) {
-            flags[0] = false;
-            return flags;
-        }
-
-        let lastTradeNo = trades[0]["거래 번호"];
-        let isOdd = false;
-
-        flags[0] = false;
-
-        for (let idx = 1; idx < trades.length; idx++) {
-            const currentTradeNo = trades[idx]["거래 번호"];
-            if (currentTradeNo !== lastTradeNo) {
-                isOdd = !isOdd;
-                lastTradeNo = currentTradeNo;
-            }
-            flags[idx] = isOdd;
-        }
-
-        return flags;
     }, [trades]);
 
     // 렌더링할 가시적 거래 데이터 준비 - 최적화된 계산 및 메모리 절약
@@ -908,7 +938,11 @@ export default function TradeList({config}: TradeListProps) {
                             position: 'relative',
                             backgroundColor: '#111111',
                             willChange: 'transform',
-                            transform: 'translateZ(0)'
+                            transform: 'translateZ(0)',
+                            // 픽셀 정렬 강제 (세로선 밀리므로 필수)
+                            imageRendering: 'pixelated',
+                            backfaceVisibility: 'hidden',
+                            perspective: '1000px'
                         }}>
                             <div className="thead" ref={headerRef} style={{
                                 borderRadius: '6px 6px 0 0',
@@ -924,16 +958,37 @@ export default function TradeList({config}: TradeListProps) {
                                             minWidth: columnWidths[header] || '50px',
                                             maxWidth: columnWidths[header] || 'auto',
                                             boxSizing: 'border-box',
-                                            padding: '0px !important;',
+                                            padding: '10px',
+                                            margin: '0px',
                                             fontFamily: 'inherit',
                                             color: 'rgba(255, 215, 0, 0.8)',
                                             backgroundColor: 'transparent',
-                                            borderRight: index < allHeaders.length - 1 ? '1px solid rgba(255, 215, 0, 0.8)' : 'none',
+                                            borderRight: index < allHeaders.length - 1 ? (
+                                                header === "거래 번호" ||
+                                                header === "심볼 이름" ||
+                                                header === "진입 방향" ||
+                                                header === "보유 시간" ||
+                                                header === "레버리지" ||
+                                                header === "진입 수량" ||
+                                                header === "청산 수량" ||
+                                                header === "강제 청산 가격" ||
+                                                header === "펀딩비 수령" ||
+                                                header === "펀딩비 지불" ||
+                                                header === "강제 청산 수수료" ||
+                                                header === "순손익" ||
+                                                header === "전체 순손익률" ||
+                                                header === "최고 자금" ||
+                                                header === "최고 드로우다운" ||
+                                                header === "누적 손익률"
+                                                    ? '2px solid rgba(255, 215, 0, 0.4)'
+                                                    : '1px dashed rgba(255, 215, 0, 0.4)'
+                                            ) : 'none',
                                             flexBasis: columnWidths[header] || 'auto',
                                             flexGrow: 0,
                                             flexShrink: 0,
-                                            willChange: 'transform',
-                                            transform: 'translateZ(0)'
+                                            // 픽셀 정렬 강제
+                                            position: 'relative',
+                                            overflow: 'hidden'
                                         }}>
                                             <div style={{
                                                 display: 'flex',
@@ -954,48 +1009,41 @@ export default function TradeList({config}: TradeListProps) {
                                 </div>
                             </div>
                             <div className="tbody" style={{
-                                height: `${trades.length * rowHeight}px`,
+                                height: `${Math.floor(trades.length * rowHeight)}px`,
                                 backgroundColor: '#111111',
-                                willChange: 'transform',
-                                transform: 'translateZ(0)'
+                                // GPU 가속 제거하여 메모리 사용량 감소
+                                position: 'relative'
                             }}>
                                 {visibleTradesData.map(({tradeData: row, originalIndex}) => {
                                     const currentTradeNo = row["거래 번호"];
 
-                                    // isDifferentFromNext 계산 시 originalIndex 사용
+                                    // 조기 반환을 통한 성능 최적화
                                     const nextTradeOriginalIndex = originalIndex + 1;
                                     const nextTrade = nextTradeOriginalIndex < trades.length ? trades[nextTradeOriginalIndex] : null;
                                     const nextTradeNo = nextTrade ? nextTrade["거래 번호"] : null;
                                     const isDifferentFromNext = nextTradeNo !== null && currentTradeNo !== nextTradeNo;
-
                                     const isLastRowOfDataset = originalIndex === trades.length - 1;
 
-                                    let isOddRow = groupOddFlags[originalIndex];
-
-                                    // isActiveRow 계산 시 originalIndex 사용
+                                    // isActiveRow 계산 최적화
                                     let isActiveRow = false;
                                     if (originalIndex === 0) {
                                         isActiveRow = currentTradeNo !== 0;
                                     } else {
-                                        // trades[originalIndex-1] 접근 시 존재 여부 확인
                                         const prevTrade = trades[originalIndex - 1];
                                         if (prevTrade) {
                                             const prevTradeNo = prevTrade["거래 번호"];
-                                            if (currentTradeNo !== 0 && currentTradeNo !== prevTradeNo) {
-                                                isActiveRow = true;
-                                            }
+                                            isActiveRow = currentTradeNo !== 0 && currentTradeNo !== prevTradeNo;
                                         }
                                     }
 
                                     return (
                                         <TradeRow
-                                            key={`trade-${row["거래 번호"]}-idx-${originalIndex}`}
+                                            key={`${originalIndex}-${currentTradeNo}`} // 키 최적화
                                             row={row}
                                             originalIndex={originalIndex}
                                             allHeaders={allHeaders}
                                             columnWidths={columnWidths}
                                             rowHeight={rowHeight}
-                                            isOddRow={isOddRow}
                                             isActiveRow={isActiveRow}
                                             hoverTradeNo={hoverTradeNo}
                                             initialBalance={initialBalance}

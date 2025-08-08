@@ -4,6 +4,7 @@
             "심볼 이름": "BTCUSDT",
             "거래소 정보": {
                 "데이터 경로": "D:/Programming/Backtesting/Data/exchange_info.json",
+                "펀딩비 데이터 경로": "D:/Programming/Backtesting/Data/Funding Rates/BTCUSDT.json",
                 "틱 사이즈": 0.1,
                 "소수점 정밀도": 1,
                 "지정가 최대 수량": 1000.0,
@@ -128,7 +129,21 @@
                     "시간": []
                 }
             },
-            "돋보기 바 데이터": {},
+            "돋보기 바 데이터": {
+                "데이터 경로": "D:/Programming/Backtesting/Data/Continuous Klines/BTCUSDT/1m/1m.parquet",
+                "기간": {
+                    "시작": "2019-09-08 17:57:00",
+                    "종료": "2025-07-26 09:47:59"
+                },
+                "타임프레임": "1m",
+                "바 개수": 3092630,
+                "누락된 바": {
+                    "개수": 1,
+                    "시간": [
+                        "2019-09-08 19:00:00"
+                    ]
+                }
+            },
             "참조 바 데이터": [
                 {
                     "데이터 경로": "D:/Programming/Backtesting/Data/Continuous Klines/BTCUSDT/1h/1h.parquet",
@@ -158,31 +173,228 @@
                 }
             ],
             "마크 가격 바 데이터": {
-                "데이터 경로": "D:/Programming/Backtesting/Data/Mark Price Klines/BTCUSDT/1h.parquet",
+                "데이터 경로": "D:/Programming/Backtesting/Data/Mark Price Klines/BTCUSDT/1m.parquet",
                 "기간": {
-                    "시작": "2019-12-23 11:00:00",
-                    "종료": "2025-07-26 03:59:59"
+                    "시작": "2019-12-23 11:58:00",
+                    "종료": "2025-07-30 14:26:59"
+                },
+                "타임프레임": "1m",
+                "바 개수": 2946334,
+                "누락된 바": {
+                    "개수": 55,
+                    "시간": [
+                        "2020-01-19 13:09:00 - 2020-01-19 13:37:00",
+                        "2020-12-17 07:32:00 - 2020-12-17 07:55:00",
+                        "2024-08-12 10:02:00 - 2024-08-12 10:03:00"
+                    ]
+                }
+            }
+        },
+        {
+            "심볼 이름": "ETHUSDT",
+            "거래소 정보": {
+                "데이터 경로": "D:/Programming/Backtesting/Data/exchange_info.json",
+                "펀딩비 데이터 경로": "D:/Programming/Backtesting/Data/Funding Rates/ETHUSDT.json",
+                "틱 사이즈": 0.01,
+                "소수점 정밀도": 2,
+                "지정가 최대 수량": 10000.0,
+                "지정가 최소 수량": 0.001,
+                "시장가 최대 수량": 2000.0,
+                "시장가 최소 수량": 0.001,
+                "수량 최소 단위": 0.001,
+                "최소 명목 가치": 20.0,
+                "강제 청산 수수료율": 0.0125
+            },
+            "레버리지 구간": {
+                "데이터 경로": "D:/Programming/Backtesting/Data/leverage_bracket.json",
+                "구간": [
+                    {
+                        "구간 번호": 1,
+                        "최소 명목 가치": 0.0,
+                        "최대 명목 가치": 300000.0,
+                        "최대 레버리지": 125,
+                        "유지 마진율": 0.004,
+                        "유지 금액": 0.0
+                    },
+                    {
+                        "구간 번호": 2,
+                        "최소 명목 가치": 300000.0,
+                        "최대 명목 가치": 800000.0,
+                        "최대 레버리지": 100,
+                        "유지 마진율": 0.005,
+                        "유지 금액": 300.0
+                    },
+                    {
+                        "구간 번호": 3,
+                        "최소 명목 가치": 800000.0,
+                        "최대 명목 가치": 3000000.0,
+                        "최대 레버리지": 75,
+                        "유지 마진율": 0.0065,
+                        "유지 금액": 1500.0
+                    },
+                    {
+                        "구간 번호": 4,
+                        "최소 명목 가치": 3000000.0,
+                        "최대 명목 가치": 12000000.0,
+                        "최대 레버리지": 50,
+                        "유지 마진율": 0.01,
+                        "유지 금액": 12000.0
+                    },
+                    {
+                        "구간 번호": 5,
+                        "최소 명목 가치": 12000000.0,
+                        "최대 명목 가치": 50000000.0,
+                        "최대 레버리지": 25,
+                        "유지 마진율": 0.02,
+                        "유지 금액": 132000.0
+                    },
+                    {
+                        "구간 번호": 6,
+                        "최소 명목 가치": 50000000.0,
+                        "최대 명목 가치": 65000000.0,
+                        "최대 레버리지": 20,
+                        "유지 마진율": 0.025,
+                        "유지 금액": 382000.0
+                    },
+                    {
+                        "구간 번호": 7,
+                        "최소 명목 가치": 65000000.0,
+                        "최대 명목 가치": 150000000.0,
+                        "최대 레버리지": 10,
+                        "유지 마진율": 0.05,
+                        "유지 금액": 2007000.0
+                    },
+                    {
+                        "구간 번호": 8,
+                        "최소 명목 가치": 150000000.0,
+                        "최대 명목 가치": 320000000.0,
+                        "최대 레버리지": 5,
+                        "유지 마진율": 0.1,
+                        "유지 금액": 9507000.0
+                    },
+                    {
+                        "구간 번호": 9,
+                        "최소 명목 가치": 320000000.0,
+                        "최대 명목 가치": 400000000.0,
+                        "최대 레버리지": 4,
+                        "유지 마진율": 0.125,
+                        "유지 금액": 17507000.0
+                    },
+                    {
+                        "구간 번호": 10,
+                        "최소 명목 가치": 400000000.0,
+                        "최대 명목 가치": 530000000.0,
+                        "최대 레버리지": 3,
+                        "유지 마진율": 0.15,
+                        "유지 금액": 27507000.0
+                    },
+                    {
+                        "구간 번호": 11,
+                        "최소 명목 가치": 530000000.0,
+                        "최대 명목 가치": 800000000.0,
+                        "최대 레버리지": 2,
+                        "유지 마진율": 0.25,
+                        "유지 금액": 80507000.0
+                    },
+                    {
+                        "구간 번호": 12,
+                        "최소 명목 가치": 800000000.0,
+                        "최대 명목 가치": 1200000000.0,
+                        "최대 레버리지": 1,
+                        "유지 마진율": 0.5,
+                        "유지 금액": 280507000.0
+                    }
+                ]
+            },
+            "트레이딩 바 데이터": {
+                "데이터 경로": "D:/Programming/Backtesting/Data/Continuous Klines/ETHUSDT/1h/1h.parquet",
+                "기간": {
+                    "시작": "2019-11-27 07:00:00",
+                    "종료": "2025-07-26 08:59:59"
                 },
                 "타임프레임": "1h",
-                "바 개수": 49001,
+                "바 개수": 49634,
                 "누락된 바": {
                     "개수": 0,
                     "시간": []
+                }
+            },
+            "돋보기 바 데이터": {
+                "데이터 경로": "D:/Programming/Backtesting/Data/Continuous Klines/ETHUSDT/1m/1m.parquet",
+                "기간": {
+                    "시작": "2019-11-27 07:45:00",
+                    "종료": "2025-07-26 10:07:59"
+                },
+                "타임프레임": "1m",
+                "바 개수": 2978063,
+                "누락된 바": {
+                    "개수": 0,
+                    "시간": []
+                }
+            },
+            "참조 바 데이터": [
+                {
+                    "데이터 경로": "D:/Programming/Backtesting/Data/Continuous Klines/ETHUSDT/1h/1h.parquet",
+                    "기간": {
+                        "시작": "2019-11-27 07:00:00",
+                        "종료": "2025-07-26 08:59:59"
+                    },
+                    "타임프레임": "1h",
+                    "바 개수": 49634,
+                    "누락된 바": {
+                        "개수": 0,
+                        "시간": []
+                    }
+                },
+                {
+                    "데이터 경로": "D:/Programming/Backtesting/Data/Continuous Klines/ETHUSDT/1d/1d.parquet",
+                    "기간": {
+                        "시작": "2019-11-27 00:00:00",
+                        "종료": "2025-07-26 23:59:59"
+                    },
+                    "타임프레임": "1d",
+                    "바 개수": 2069,
+                    "누락된 바": {
+                        "개수": 0,
+                        "시간": []
+                    }
+                }
+            ],
+            "마크 가격 바 데이터": {
+                "데이터 경로": "D:/Programming/Backtesting/Data/Mark Price Klines/ETHUSDT/1m.parquet",
+                "기간": {
+                    "시작": "2019-12-23 11:58:00",
+                    "종료": "2025-07-30 14:13:59"
+                },
+                "타임프레임": "1m",
+                "바 개수": 2946310,
+                "누락된 바": {
+                    "개수": 66,
+                    "시간": [
+                        "2020-01-19 13:09:00 - 2020-01-19 13:37:00",
+                        "2020-12-17 07:32:00 - 2020-12-17 07:55:00",
+                        "2022-07-12 12:57:00",
+                        "2022-07-12 13:07:00",
+                        "2022-07-12 13:15:00 - 2022-07-12 13:21:00",
+                        "2022-07-12 13:52:00",
+                        "2022-07-13 06:59:00",
+                        "2024-08-12 10:02:00 - 2024-08-12 10:03:00"
+                    ]
                 }
             }
         }
     ],
     "전략": {
-        "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250727_130055/Backboard/Sources/TestStrategy2.hpp",
-        "소스 파일 경로": "D:/Programming/Backtesting/Results/20250727_130055/Backboard/Sources/TestStrategy2.cpp",
+        "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/TestStrategy2.hpp",
+        "소스 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/TestStrategy2.cpp",
         "전략 클래스 이름": "TestStrategy2",
         "전략 이름": "SMA Strategy"
     },
     "지표": [
         {
-            "데이터 경로": "D:/Programming/Backtesting/Results/20250727_130055/Backboard/Indicators/Daily Close/Daily Close.parquet",
-            "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250727_130055/Backboard/Sources/Close.hpp",
-            "소스 파일 경로": "D:/Programming/Backtesting/Results/20250727_130055/Backboard/Sources/Close.cpp",
+            "데이터 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Indicators/Daily Close/Daily Close.parquet",
+            "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/Close.hpp",
+            "소스 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/Close.cpp",
             "지표 클래스 이름": "Close",
             "지표 이름": "Daily Close",
             "타임프레임": "1d",
@@ -199,9 +411,9 @@
             }
         },
         {
-            "데이터 경로": "D:/Programming/Backtesting/Results/20250727_130055/Backboard/Indicators/sma1/sma1.parquet",
-            "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250727_130055/Backboard/Sources/SimpleMovingAverage.hpp",
-            "소스 파일 경로": "D:/Programming/Backtesting/Results/20250727_130055/Backboard/Sources/SimpleMovingAverage.cpp",
+            "데이터 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Indicators/sma1/sma1.parquet",
+            "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/SimpleMovingAverage.hpp",
+            "소스 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/SimpleMovingAverage.cpp",
             "지표 클래스 이름": "SimpleMovingAverage",
             "지표 이름": "sma1",
             "타임프레임": "1d",
@@ -218,9 +430,9 @@
             }
         },
         {
-            "데이터 경로": "D:/Programming/Backtesting/Results/20250727_130055/Backboard/Indicators/sma2/sma2.parquet",
-            "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250727_130055/Backboard/Sources/SimpleMovingAverage.hpp",
-            "소스 파일 경로": "D:/Programming/Backtesting/Results/20250727_130055/Backboard/Sources/SimpleMovingAverage.cpp",
+            "데이터 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Indicators/sma2/sma2.parquet",
+            "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/SimpleMovingAverage.hpp",
+            "소스 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/SimpleMovingAverage.cpp",
             "지표 클래스 이름": "SimpleMovingAverage",
             "지표 이름": "sma2",
             "타임프레임": "1d",
@@ -241,9 +453,9 @@
         "루트 폴더": "D:/Programming/Backtesting",
         "백테스팅 기간": {
             "시작": "2019-09-08 17:00:00",
-            "종료": "2025-07-26 03:59:59"
+            "종료": "2025-07-26 08:59:59"
         },
-        "바 돋보기 기능": "비활성화",
+        "바 돋보기 기능": "활성화",
         "초기 자금": "$10,000.00",
         "테이커 수수료율": "0.0450000000%",
         "메이커 수수료율": "0.0180000000%",
