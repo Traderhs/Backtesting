@@ -1271,6 +1271,7 @@ void Engine::BacktestingMain() {
       // 돋보기 기능 미사용 시 트레이딩 바 진행 도중 펀딩비 정산
       CheckFundingTime();
 
+      // 해당 트레이딩 바를 진행
       ProcessOhlc(TRADING, activated_symbol_indices_);
     }
 
@@ -1570,7 +1571,6 @@ void Engine::CheckFundingTime() {
       next_funding_times_[symbol_idx] = funding_time;
       next_funding_mark_prices_[symbol_idx] = mark_price;
     } else {
-      // TODO 로그 체크
       logger_->Log(WARNING_L,
                    format("[{}] 펀딩 비율 데이터가 종료되었으므로 해당 심볼의 "
                           "펀딩비는 더 이상 정산되지 않습니다.",
@@ -1582,8 +1582,6 @@ void Engine::CheckFundingTime() {
       next_funding_mark_prices_[symbol_idx] = -1;
     }
   };
-
-  const auto current_bar_type = bar_->GetCurrentBarType();
 
   for (const auto symbol_idx : activated_symbol_indices_) {
     bar_->SetCurrentSymbolIndex(symbol_idx);
@@ -1608,12 +1606,8 @@ void Engine::CheckFundingTime() {
         //    마크 가격의 Open 가격을 사용
         funding_price = current_mark_price_bar.open;
       } else if (const auto& current_market_bar =
-                     (current_bar_type == TRADING ? trading_bar_data_
-                                                  : magnifier_bar_data_)
-                         ->GetBar(symbol_idx,
-                                  current_bar_type == TRADING
-                                      ? (*trading_indices_)[symbol_idx]
-                                      : (*magnifier_indices_)[symbol_idx]);
+                     bar_->GetBarData(bar_->GetCurrentBarType())
+                         ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
                  current_close_time_ == current_market_bar.close_time) {
         // 3. 시장 가격의 Close Time이 현재 진행 시간의 Close Time과 같다면
         //    시장 가격의 Open 가격을 사용
@@ -1633,7 +1627,7 @@ void Engine::CheckFundingTime() {
         update_next_funding_info(symbol_idx);
         continue;
       }
-  
+
       // 펀딩 가격이 정상적으로 존재한다면 펀딩비 정산
       order_handler_->ExecuteFunding(next_funding_rates_[symbol_idx],
                                      UtcTimestampToUtcDatetime(funding_time),

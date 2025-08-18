@@ -41,22 +41,16 @@ void TestStrategy2::ExecuteOnClose() {
 
 void TestStrategy2::ExecuteAfterEntry() {
   if (order->current_position_size > 0) {
-    order->MitExit("이평선 매수 청산", "이평선 매수",
-                   order->LastEntryPrice() * 1.05,
-                   order->current_position_size * 0.5);
-    order->MitExit("이평선 매수 청산 2", "이평선 매수",
-                   order->LastEntryPrice() * 1.1,
-                   order->current_position_size * 0.5);
+    order->MitExit("이평선 매수 청산 ", "이평선 매수",
+                   order->LastEntryPrice() * 1.2,
+                   order->current_position_size);
     return;
   }
 
   if (order->current_position_size < 0) {
     order->MitExit("이평선 매도 청산", "이평선 매도",
-                   order->LastEntryPrice() * 0.95,
-                   abs(order->current_position_size * 0.5));
-    order->MitExit("이평선 매도 청산 2", "이평선 매도",
-                   order->LastEntryPrice() * 0.9,
-                   abs(order->current_position_size * 0.5));
+                   order->LastEntryPrice() * 0.8,
+                   abs(order->current_position_size));
     return;
   }
 }

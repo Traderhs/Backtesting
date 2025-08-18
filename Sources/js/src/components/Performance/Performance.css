@@ -1,0 +1,319 @@
+.performance-container {
+    width: 100%;
+    min-height: 100%;
+    padding-bottom: 50px; /* 하단 여백 추가 */
+    position: relative;
+    color: #ffffff;
+    background-color: transparent; /* 배경 투명하게 변경 */
+    overflow-x: auto; /* 가로 스크롤 추가 */
+}
+
+/* 테이블 너비 관련 스타일 */
+.performance-container table {
+    min-width: fit-content;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 15px;
+    width: 100%; /* 원래대로 100% 너비로 복구 */
+    background-color: #111111; /* 테이블 배경색 원래대로 복구 */
+    border-radius: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+    border: 2px solid rgb(155, 132, 7) !important; /* 테이블 전체 테두리 색상 변경 */
+    animation: fadeIn 0.6s ease-out;
+    table-layout: auto; /* fixed에서 auto로 변경하여 컬럼 너비 자동 조절 */
+}
+
+.performance-container table th {
+    color: rgba(255, 215, 0, 0.8);
+    font-weight: 500 !important; /* !important 추가 */
+    text-align: center; /* 텍스트 중앙 정렬 */
+    padding: 15px 18px;
+    background-color: rgba(255, 215, 0, 0.3);
+    border-top: none; /* 상단 테두리 제거 (테이블 테두리와 겹치지 않도록) */
+    border-bottom: 2px solid rgba(255, 215, 0, 0.4) !important; /* 하단 테두리 색상을 테이블 테두리 색상과 동일하게 수정 */
+    border-left: none; /* 왼쪽 테두리 제거 */
+    border-right: 2px solid rgba(255, 215, 0, 0.4) !important; /* 오른쪽 테두리 2px로 수정 및 !important 추가 */
+    letter-spacing: 0.3px !important; /* !important 추가 */
+    font-size: calc(0.75rem + 6px) !important; /* 크기 통일 및 !important 추가 */
+    position: relative;
+    overflow: hidden;
+}
+
+.performance-container table th:last-child {
+    border-right: none !important; /* 마지막 헤더 셀 오른쪽 테두리 확실히 제거 */
+}
+
+/* 헤더 셀 호버 효과 */
+.performance-container table th:hover::after {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: linear-gradient(to right, transparent, rgba(255, 215, 0, 0.2), transparent) !important;
+    animation: sweep 1.5s ease infinite !important;
+    pointer-events: none !important;
+    z-index: 2 !important; /* 높은 z-index로 셀 내용 위에 표시 */
+}
+
+@keyframes sweep {
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.performance-container table td {
+    padding: 12px 0; /* 좌우 패딩 제거, 상하 패딩만 유지 */
+    border-top: none; /* 상단 테두리 제거 (이전 행의 하단 테두리와 겹치지 않도록) */
+    border-bottom: 2px solid rgba(255, 215, 0, 0.4) !important; /* 하단 테두리 색상을 테이블 테두리 색상과 동일하게 수정 */
+    border-left: none; /* 왼쪽 테두리 제거 */
+    border-right: 2px solid rgba(255, 215, 0, 0.4) !important;
+    font-size: calc(0.9rem + 3px); /* 기존 크기에서 1px 증가 */
+    vertical-align: middle;
+    background-color: #111111; /* 테이블 셀 배경색 원래대로 복구 */
+    text-align: center; /* 텍스트 중앙 정렬 추가 */
+    font-family: 'Pretendard', sans-serif; /* 폰트를 Pretendard로 통일 */
+    transition: background-color 0.2s ease;
+}
+
+.performance-container table td:last-child {
+    border-right: none !important; /* 마지막 데이터 셀 오른쪽 테두리 확실히 제거 */
+}
+
+.performance-container table tr:hover td:not(:first-child) {
+    background-color: rgba(255, 215, 0, 0.1) !important; /* 호버 시 금색 배경 유지 및 !important 추가 */
+}
+
+/* 테이블 마지막 행 스타일 */
+.performance-container table tr:last-child td {
+    border-bottom: none !important; /* 마지막 행 하단 테두리 제거 (테이블 테두리와 겹치지 않도록) 및 !important 추가 */
+}
+
+/* 첫 번째 헤더 셀 오른쪽 테두리 */
+.performance-container table tr th:first-child {
+    border-right: 2px solid rgba(255, 215, 0, 0.4) !important; /* 오른쪽 테두리 색상 추가 */
+    width: auto; /* 너비를 내용에 맞게 자동 조절 */
+    white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+}
+
+/* 테이블 첫 번째 열 스타일 */
+.performance-container table tr td:first-child {
+    font-weight: 500;
+    font-size: calc(0.9rem + 2px); /* 기본 td 폰트 크기 */
+    color: rgba(255, 215, 0, 0.8) !important;
+    background-color: rgba(255, 215, 0, 0.1); /* 헤더 배경색보다 약간 어둡게 설정 */
+    border-right: 2px solid rgba(255, 215, 0, 0.5) !important; /* 오른쪽 테두리 색상 추가 */
+    width: auto; /* 너비를 내용에 맞게 자동 조절 */
+    white-space: nowrap; /* 텍스트 줄바꿈 방지 */
+    transition: background-color 0.2s ease;
+}
+
+/* 두 번째 헤더 셀 왼쪽 테두리 스타일 */
+.performance-container table tr th:nth-child(2) {
+    border-left: none !important; /* 왼쪽 테두리 제거 */
+}
+
+/* 두 번째 데이터 셀 왼쪽 테두리 스타일 */
+.performance-container table tr td:nth-child(2) {
+    border-left: none !important; /* 왼쪽 테두리 제거 */
+}
+
+/* 셀 내 중요 데이터 강조 */
+.performance-container table td.highlight-cell {
+    font-weight: 600;
+    color: rgba(255, 215, 0, 0.95);
+}
+
+/* 양수 값 스타일 */
+.performance-container .positive {
+    color: #4caf50;
+    font-weight: 500 !important; /* !important 추가 */
+}
+
+/* 음수 값 스타일 */
+.performance-container .negative {
+    color: #f23645;
+    font-weight: 500 !important; /* !important 추가 */
+}
+
+/* 테이블 스크롤 방지 */
+.performance-container .overflow-visible {
+    overflow: visible !important;
+}
+
+/* 성과 그래프 스타일 */
+.performance-container .chart-container {
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    border: 0.2px solid rgba(255, 215, 0, 0.3);
+    background-color: transparent; /* 배경 투명하게 변경 */
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.performance-container .chart-container:hover {
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 215, 0, 0.5);
+}
+
+/* 금색 텍스트 강조 효과 */
+.performance-container .highlight {
+    color: rgba(255, 215, 0, 0.9);
+    font-weight: 500;
+}
+
+/* 그림자 효과가 있는 박스 */
+.performance-container .shadowed-box {
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    border: 0.2px solid rgba(255, 215, 0, 0.3);
+    border-radius: 8px;
+    overflow: hidden;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    background-color: transparent; /* 배경 투명하게 변경 */
+}
+
+.performance-container .shadowed-box:hover {
+    box-shadow: 0 6px 15px rgba(0, 0, 0, 0.4);
+    border-color: rgba(255, 215, 0, 0.5);
+}
+
+/* 테이블 반응형 스크롤 */
+.performance-container .table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    margin-bottom: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+}
+
+/* 애니메이션 효과 */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.performance-container .fade-in {
+    animation: fadeIn 0.5s ease forwards;
+}
+
+/* 헤더 텍스트 스타일 */
+.performance-container .header-text {
+    font-size: calc(0.75rem + 2px);
+    margin-bottom: 0 !important; /* 마진 제거 */
+}
+
+/* Report 테이블 헤더 하단 테두리 강화 */
+.performance-container .report-table th {
+    border-bottom-width: 2px; /* 하단 테두리 2px 유지 */
+}
+
+/* Report 테이블 첫번째 셀 오른쪽 테두리 강화 */
+.performance-container .report-table td:first-child {
+    border-right-width: 2px !important; /* 오른쪽 테두리 2px로 통일 */
+    color: rgba(255, 215, 0, 0.8) !important; /* 최상단 헤더 색상과 동일하게 */
+}
+
+/* Report.tsx의 '전략 성과' 헤더 전용 스타일 */
+.performance-container .main-header-cell {
+    font-size: calc(0.75rem + 7.5px) !important;
+    font-weight: 600 !important;
+}
+
+/* Streaks.tsx 헤더 전용 스타일 */
+.performance-container .streaks-header-cell {
+    font-weight: 600 !important;
+    color: rgba(255, 215, 0, 0.8) !important; /* 최상단 헤더 색상과 동일하게 */
+}
+
+/* Report 테이블 첫 번째 열 폰트 크기 조정 */
+.performance-container .report-table tr td:first-child {
+    font-size: calc(0.9rem + 3px) !important; /* 기본 크기 + 1px, 다른 스타일 덮어쓰기 */
+}
+
+/* 셀 내부 분할 div 스타일 수정 - 컨테이너 전체 너비 사용하도록 수정 */
+.performance-container table td .flex.justify-around {
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: space-around; /* stretch 대신 space-around 사용 */
+}
+
+/* 셀 내부 분할된 div들이 외부 div의 전체 너비를 차지하도록 수정 */
+.performance-container table td .flex.justify-around .flex-1,
+.performance-container table td .flex.justify-around .flex-grow {
+    min-width: 0;
+    box-sizing: border-box;
+    flex: 1 1 auto; /* flex-basis를 auto로 변경하여 내용에 따라 너비 조절 */
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* 수직 중앙 정렬 */
+    padding: 0; /* 패딩은 span에서 관리 */
+    height: 100%; /* div가 셀의 전체 높이 차지하도록 */
+}
+
+/* 내부 span 요소가 부모 div 너비 100% 차지하고 텍스트 중앙 정렬 */
+.performance-container table td .flex.justify-around .flex-1 > span,
+.performance-container table td .flex.justify-around .flex-grow > span {
+    width: 100%; /* span 너비를 부모 div 너비와 같게 */
+    display: block; /* 블록 요소로 만들어 너비 적용 */
+    text-align: center; /* 텍스트를 span 내부에서 중앙 정렬 */
+    padding-left: 0.25rem; /* 좌측 패딩 */
+    padding-right: 0.25rem; /* 우측 패딩 */
+    box-sizing: border-box; /* 패딩 포함 너비 계산 */
+    margin: 0 !important; /* 모든 마진 제거 */
+}
+
+/* 실제 값(헤더 텍스트가 아닌 span) */
+.performance-container table td .flex.justify-around .flex-1 > span:not(.header-text),
+.performance-container table td .flex.justify-around .flex-grow > span:not(.header-text) {
+    margin-top: 7px !important; /* 상단 마진 추가 */
+}
+
+/* 컨텐츠 래퍼 수정 - 화면 줄일 때 겹치지 않도록 */
+.performance-container .flex.flex-row {
+    flex-wrap: nowrap;
+    min-width: 1200px; /* 최소 너비 설정 */
+}
+
+/* 반쪽 컴포넌트의 최소 너비 설정 */
+.performance-container .flex.flex-row .w-1\/2 {
+    min-width: 580px; /* 최소 너비 설정 */
+    width: 50%;
+}
+
+/* '전략 성과' 헤더의 오른쪽 테두리 제거하여 이중 테두리 효과 없애기 */
+.performance-container .report-table tr th.main-header-cell {
+    border-right: none !important;
+}
+
+/* Report 테이블 기본 경계선: 점선으로 변경 (아래 예외만 실선 유지) */
+.performance-container .report-table tbody tr td {
+    border-bottom: 2px solid rgba(255, 215, 0, 0.4) !important;
+}
+
+/* Report 테이블 마지막 행 하단 테두리 제거 */
+.performance-container .report-table tbody tr:last-child td {
+    border-bottom: none !important;
+}
+
+/* Report 테이블 특정 행에 dashed 테두리 적용 */
+.performance-container .report-table tbody tr.border-bottom-dashed td {
+    border-bottom: 1px dashed rgba(255, 215, 0, 0.6) !important;
+}
+
+/* Report 테이블 그룹 호버 효과 - 첫 번째 열 제외 */
+.performance-container .report-table tbody tr.group-hovered td:not(:first-child) {
+    background-color: rgba(255, 215, 0, 0.1) !important;
+}

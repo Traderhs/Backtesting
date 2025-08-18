@@ -1,7 +1,7 @@
-import { useState, useCallback, useEffect, useRef, memo } from "react"
-import { motion, AnimatePresence } from "framer-motion"
-import { Select, FormControl, InputLabel, MenuItem, Box, SelectChangeEvent } from '@mui/material';
-import { useLogo } from "@/contexts/LogoContext";
+import {useState, useCallback, useEffect, useRef, memo} from "react"
+import {motion, AnimatePresence} from "framer-motion"
+import {Select, FormControl, InputLabel, MenuItem, Box, SelectChangeEvent} from '@mui/material';
+import {useLogo} from "@/contexts/LogoContext";
 import "./SymbolCard.css";
 
 interface BarData {
@@ -19,6 +19,7 @@ interface BarData {
 }
 
 interface ExchangeInfo {
+    dataPath: string
     tickSize: number
     precision: number
     maxOrderQty: number
@@ -28,7 +29,6 @@ interface ExchangeInfo {
     qtyStep: number
     minNotional: number
     liquidationFee: number
-    dataPath: string
 }
 
 interface LeverageBracket {
@@ -45,14 +45,29 @@ interface LeverageBrackets {
     brackets: LeverageBracket[]
 }
 
+interface FundingRates {
+    dataPath: string
+    period: {
+        start: string
+        end: string
+    }
+    totalCount: number
+    positiveCount: number
+    negativeCount: number
+    averageFundingRate: number
+    maxFundingRate: number
+    minFundingRate: number
+}
+
 interface SymbolData {
     symbol: string
+    exchangeInfo?: ExchangeInfo
+    leverageBrackets?: LeverageBrackets
+    fundingRates?: FundingRates
     trading: BarData
     magnifier?: BarData
     reference: BarData[]
     mark: BarData
-    exchangeInfo?: ExchangeInfo
-    leverageBrackets?: LeverageBrackets
 }
 
 interface SymbolCardProps {
@@ -70,12 +85,12 @@ const trimEndZeros = (num: number): string => {
 
 // 최적화된 SymbolCard 컴포넌트
 const SymbolCard = memo(({
-    symbols,
-    initialSymbol
-}: SymbolCardProps) => {
+                             symbols,
+                             initialSymbol
+                         }: SymbolCardProps) => {
     const [selectedSymbol, setSelectedSymbol] = useState<string>(initialSymbol || (symbols.length > 0 ? symbols[0].symbol : ''));
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const { getLogoUrl } = useLogo();
+    const {getLogoUrl} = useLogo();
     const [containerHeight, setContainerHeight] = useState<number | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -200,6 +215,7 @@ const SymbolCard = memo(({
     const hasMagnifier = currentData.magnifier !== undefined;
     const hasExchangeInfo = currentData.exchangeInfo !== undefined;
     const hasLeverageBrackets = currentData.leverageBrackets !== undefined && currentData.leverageBrackets.brackets.length > 0;
+    const hasFundingRates = currentData.fundingRates !== undefined;
 
     // 애니메이션 변형 객체
     const pageTransition = {
@@ -217,15 +233,15 @@ const SymbolCard = memo(({
         return (
             <motion.div
                 className="symbol-card-container"
-                initial={{ opacity: 1 }}
-                animate={{ opacity: 1 }}
+                initial={{opacity: 1}}
+                animate={{opacity: 1}}
                 transition={pageTransition}
             >
-                <div className="symbol-card-border" />
+                <div className="symbol-card-border"/>
                 <motion.div
                     className="symbol-card-header"
-                    initial={{ opacity: 1 }}
-                    animate={{ opacity: 1 }}
+                    initial={{opacity: 1}}
+                    animate={{opacity: 1}}
                     transition={pageTransition}
                 >
                     {title}
@@ -236,8 +252,8 @@ const SymbolCard = memo(({
                         <motion.div
                             key={key}
                             className="symbol-card-content"
-                            initial={{ opacity: 1 }}
-                            animate={{ opacity: 1 }}
+                            initial={{opacity: 1}}
+                            animate={{opacity: 1}}
                             transition={pageTransition}
                         >
                             <div className="symbol-card-inner">
@@ -251,7 +267,7 @@ const SymbolCard = memo(({
                                     <div className="symbol-card-row">
                                         <div className="symbol-card-row-inner">
                                             <span className="symbol-card-bullet">&bull;</span>
-                                            <span className="symbol-card-label">기간</span>
+                                            <span className="symbol-card-label">데이터 기간</span>
                                         </div>
                                     </div>
                                     <div className="symbol-card-row">
@@ -300,7 +316,8 @@ const SymbolCard = memo(({
                                         marginBottom: (bar.missing.count > 0 && bar.missing.times.length > 0) ? '10px' : undefined
                                     }}>
                                         <div className="symbol-card-row-inner">
-                                            <span className="symbol-card-value">{bar.missing.count.toLocaleString()}개</span>
+                                            <span
+                                                className="symbol-card-value">{bar.missing.count.toLocaleString()}개</span>
                                         </div>
                                     </div>
 
@@ -330,23 +347,23 @@ const SymbolCard = memo(({
         return (
             <motion.div
                 className="symbol-card-container"
-                initial={{ opacity: 1 }}
-                animate={{ opacity: 1 }}
+                initial={{opacity: 1}}
+                animate={{opacity: 1}}
                 transition={pageTransition}
             >
-                <div className="symbol-card-border" />
+                <div className="symbol-card-border"/>
                 <motion.div
                     className="symbol-card-header"
-                    initial={{ opacity: 1 }}
-                    animate={{ opacity: 1 }}
+                    initial={{opacity: 1}}
+                    animate={{opacity: 1}}
                     transition={pageTransition}
                 >
                     거래소 정보
                 </motion.div>
                 <motion.div
                     className="exchange-info-content"
-                    initial={{ opacity: 1 }}
-                    animate={{ opacity: 1 }}
+                    initial={{opacity: 1}}
+                    animate={{opacity: 1}}
                     transition={pageTransition}
                 >
                     <div className="symbol-card-inner">
@@ -461,7 +478,8 @@ const SymbolCard = memo(({
                             </div>
                             <div className="symbol-card-row">
                                 <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-value">{trimEndZeros((data.liquidationFee * 100))}%</span>
+                                    <span
+                                        className="symbol-card-value">{trimEndZeros((data.liquidationFee * 100))}%</span>
                                 </div>
                             </div>
                         </div>
@@ -491,7 +509,7 @@ const SymbolCard = memo(({
             // 각 구분선의 너비 업데이트
             separatorRefs.current.forEach((separator) => {
                 if (!separator) return;
-                
+
                 // 스크롤 영역이 컨테이너보다 넓으면 스크롤 너비를, 아니면 컨테이너 너비를 사용
                 const width = Math.max(rightWidth, visibleWidth);
                 separator.style.width = `${width}px`;
@@ -503,11 +521,11 @@ const SymbolCard = memo(({
             if (rightSectionRef.current && leftSectionRef.current) {
                 // 스크롤 위치 동기화
                 leftSectionRef.current.scrollTop = rightSectionRef.current.scrollTop;
-                
+
                 // 가로 스크롤바 공간 보정
                 const hasHorizontalScrollbar = rightSectionRef.current.scrollWidth > rightSectionRef.current.clientWidth;
                 const scrollbarHeight = hasHorizontalScrollbar ? rightSectionRef.current.offsetHeight - rightSectionRef.current.clientHeight : 0;
-                
+
                 if (scrollbarHeight > 0) {
                     // 왼쪽 영역 하단에 스크롤바 높이만큼 패딩 추가
                     leftSectionRef.current.style.paddingBottom = `${scrollbarHeight}px`;
@@ -564,8 +582,8 @@ const SymbolCard = memo(({
         return (
             <motion.div
                 className="leverage-bracket-container symbol-card-container"
-                initial={{ opacity: 1 }}
-                animate={{ opacity: 1 }}
+                initial={{opacity: 1}}
+                animate={{opacity: 1}}
                 transition={pageTransition}
                 onAnimationComplete={() => {
                     // 애니메이션 완료 후 스크롤바 공간 조정
@@ -575,27 +593,27 @@ const SymbolCard = memo(({
                     }, 100);
                 }}
             >
-                <div className="symbol-card-border" />
+                <div className="symbol-card-border"/>
                 <motion.div
                     className="symbol-card-header"
-                    initial={{ opacity: 1 }}
-                    animate={{ opacity: 1 }}
+                    initial={{opacity: 1}}
+                    animate={{opacity: 1}}
                     transition={pageTransition}
                 >
                     레버리지 구간
                 </motion.div>
                 <motion.div
                     className="leverage-bracket-content"
-                    initial={{ opacity: 1 }}
-                    animate={{ opacity: 1 }}
+                    initial={{opacity: 1}}
+                    animate={{opacity: 1}}
                     transition={pageTransition}
                 >
                     <div
                         className="leverage-bracket-scroll"
                         ref={scrollContainerRef}
                     >
-                        <div 
-                            className="leverage-bracket-left" 
+                        <div
+                            className="leverage-bracket-left"
                             ref={leftSectionRef}
                             onScroll={handleLeftSectionScroll}
                         >
@@ -605,9 +623,10 @@ const SymbolCard = memo(({
                                     <span className="symbol-card-label">데이터 경로</span>
                                 </div>
                             </div>
-                            
-                            <div className="leverage-bracket-separator" style={{ marginTop: '15px', marginBottom: '15px' }} />
-                            
+
+                            <div className="leverage-bracket-separator"
+                                 style={{marginTop: '15px', marginBottom: '15px'}}/>
+
                             {data.brackets.map((_, idx) => (
                                 <div key={`left-${idx}`}>
                                     <div className="symbol-card-row">
@@ -640,16 +659,17 @@ const SymbolCard = memo(({
                                             <span className="symbol-card-label">유지 금액</span>
                                         </div>
                                     </div>
-                                    
+
                                     {idx < data.brackets.length - 1 && (
-                                        <div className="leverage-bracket-separator" style={{ marginTop: '15px', marginBottom: '15px' }} />
+                                        <div className="leverage-bracket-separator"
+                                             style={{marginTop: '15px', marginBottom: '15px'}}/>
                                     )}
                                 </div>
                             ))}
                         </div>
 
-                        <div 
-                            className="leverage-bracket-right" 
+                        <div
+                            className="leverage-bracket-right"
                             ref={rightSectionRef}
                             onScroll={() => {
                                 adjustSeparatorWidths();
@@ -661,10 +681,10 @@ const SymbolCard = memo(({
                                     <span className="symbol-card-value">{data.dataPath}</span>
                                 </div>
                             </div>
-                            
-                            <div 
-                                className="leverage-bracket-separator" 
-                                style={{ marginTop: '15px', marginBottom: '15px' }} 
+
+                            <div
+                                className="leverage-bracket-separator"
+                                style={{marginTop: '15px', marginBottom: '15px'}}
                                 ref={(el) => {
                                     if (el && rightSectionRef.current) {
                                         setTimeout(() => {
@@ -678,12 +698,13 @@ const SymbolCard = memo(({
                                     }
                                 }}
                             />
-                            
+
                             {data.brackets.map((bracket, idx) => (
                                 <div key={`right-${idx}`}>
                                     <div className="symbol-card-row">
                                         <div className="symbol-card-row-inner">
-                                            <span className="symbol-card-value">{bracket.bracketNum.toLocaleString()}번</span>
+                                            <span
+                                                className="symbol-card-value">{bracket.bracketNum.toLocaleString()}번</span>
                                         </div>
                                     </div>
                                     <div className="symbol-card-row">
@@ -694,7 +715,8 @@ const SymbolCard = memo(({
                                     </div>
                                     <div className="symbol-card-row">
                                         <div className="symbol-card-row-inner">
-                                            <span className="symbol-card-value">{bracket.maxLeverage.toLocaleString()}x</span>
+                                            <span
+                                                className="symbol-card-value">{bracket.maxLeverage.toLocaleString()}x</span>
                                         </div>
                                     </div>
                                     <div className="symbol-card-row">
@@ -709,12 +731,12 @@ const SymbolCard = memo(({
                                                 className="symbol-card-value">${bracket.maintAmount.toLocaleString()}</span>
                                         </div>
                                     </div>
-                                    
+
                                     {idx < data.brackets.length - 1 && (
-                                        <div 
+                                        <div
                                             className="leverage-bracket-separator"
                                             ref={setSeparatorRef(idx)}
-                                            style={{ marginTop: '15px', marginBottom: '15px' }}
+                                            style={{marginTop: '15px', marginBottom: '15px'}}
                                         />
                                     )}
                                 </div>
@@ -726,8 +748,137 @@ const SymbolCard = memo(({
         )
     }
 
+    // 펀딩 비율 렌더링 함수
+    const renderFundingRates = (data?: FundingRates) => {
+        if (!data) return null;
+
+        return (
+            <motion.div
+                className="symbol-card-container"
+                initial={{opacity: 1}}
+                animate={{opacity: 1}}
+                transition={pageTransition}
+            >
+                <div className="symbol-card-border"/>
+                <motion.div
+                    className="symbol-card-header"
+                    initial={{opacity: 1}}
+                    animate={{opacity: 1}}
+                    transition={pageTransition}
+                >
+                    펀딩 비율
+                </motion.div>
+                <motion.div
+                    className="symbol-card-content"
+                    initial={{opacity: 1}}
+                    animate={{opacity: 1}}
+                    transition={pageTransition}
+                >
+                    <div className="symbol-card-inner">
+                        <div className="symbol-card-left-section">
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span className="symbol-card-bullet">&bull;</span>
+                                    <span className="symbol-card-label">데이터 경로</span>
+                                </div>
+                            </div>
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span className="symbol-card-bullet">&bull;</span>
+                                    <span className="symbol-card-label">데이터 기간</span>
+                                </div>
+                            </div>
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span className="symbol-card-bullet">&bull;</span>
+                                    <span className="symbol-card-label">합계 펀딩 횟수</span>
+                                </div>
+                            </div>
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span className="symbol-card-bullet">&bull;</span>
+                                    <span className="symbol-card-label">양수 펀딩 횟수</span>
+                                </div>
+                            </div>
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span className="symbol-card-bullet">&bull;</span>
+                                    <span className="symbol-card-label">음수 펀딩 횟수</span>
+                                </div>
+                            </div>
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span className="symbol-card-bullet">&bull;</span>
+                                    <span className="symbol-card-label">평균 펀딩 비율</span>
+                                </div>
+                            </div>
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span className="symbol-card-bullet">&bull;</span>
+                                    <span className="symbol-card-label">최고 펀딩 비율</span>
+                                </div>
+                            </div>
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span className="symbol-card-bullet">&bull;</span>
+                                    <span className="symbol-card-label">최저 펀딩 비율</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="symbol-card-right-section">
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span className="symbol-card-path-value">{data.dataPath}</span>
+                                </div>
+                            </div>
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span className="symbol-card-value">{data.period.start} - {data.period.end}</span>
+                                </div>
+                            </div>
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span className="symbol-card-value">{data.totalCount.toLocaleString()}회</span>
+                                </div>
+                            </div>
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span className="symbol-card-value">{data.positiveCount.toLocaleString()}회</span>
+                                </div>
+                            </div>
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span className="symbol-card-value">{data.negativeCount.toLocaleString()}회</span>
+                                </div>
+                            </div>
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span
+                                        className="symbol-card-value">{(data.averageFundingRate * 100).toFixed(6).replace(/\.?0+$/, '')}%</span>
+                                </div>
+                            </div>
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span
+                                        className="symbol-card-value">{trimEndZeros(data.maxFundingRate * 100)}%</span>
+                                </div>
+                            </div>
+                            <div className="symbol-card-row">
+                                <div className="symbol-card-row-inner">
+                                    <span
+                                        className="symbol-card-value">{trimEndZeros(data.minFundingRate * 100)}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </motion.div>
+            </motion.div>
+        )
+    }
+
     // 심볼 아이콘 컴포넌트
-    const SymbolIcon = ({ symbolName, size = 28, isDropdownOption = false, isLarge = false, isSelected = false }: {
+    const SymbolIcon = ({symbolName, size = 28, isDropdownOption = false, isLarge = false, isSelected = false}: {
         symbolName: string,
         size?: number,
         isLarge?: boolean,
@@ -851,8 +1002,8 @@ const SymbolCard = memo(({
     return (
         <motion.div
             className="overflow-hidden relative"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={{opacity: 0}}
+            animate={{opacity: 1}}
             transition={pageTransition}
             exit="exit"
             style={{
@@ -873,12 +1024,12 @@ const SymbolCard = memo(({
                     alignItems: 'center',
                     marginTop: '10px'
                 }}>
-                    <SymbolIcon symbolName={currentData.symbol} size={48} isLarge={true} />
+                    <SymbolIcon symbolName={currentData.symbol} size={48} isLarge={true}/>
                     <div
                         className="text-2xl text-[#FFD700] font-bold"
                     >{currentData.symbol}</div>
                 </div>
-                
+
                 <Box
                     sx={{
                         position: 'absolute',
@@ -893,7 +1044,7 @@ const SymbolCard = memo(({
                         borderRadius: '6px',
                     }}
                 >
-                    <FormControl variant="outlined" size="small" sx={{ minWidth: 120 }}>
+                    <FormControl variant="outlined" size="small" sx={{minWidth: 120}}>
                         <InputLabel id="symbol-label" sx={{
                             color: 'white',
                             fontSize: '16px',
@@ -987,12 +1138,12 @@ const SymbolCard = memo(({
                         >
                             {symbols.map((symbolData: SymbolData) => (
                                 <MenuItem key={symbolData.symbol} value={symbolData.symbol}
-                                    sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center' }}>
-                                        <SymbolIcon 
-                                            symbolName={symbolData.symbol} 
+                                          sx={{display: 'flex', alignItems: 'center'}}>
+                                    <div style={{display: 'flex', alignItems: 'center'}}>
+                                        <SymbolIcon
+                                            symbolName={symbolData.symbol}
                                             size={32}
-                                            isDropdownOption={true} 
+                                            isDropdownOption={true}
                                             isSelected={symbolData.symbol === selectedSymbol}
                                         />
                                         <span>{symbolData.symbol}</span>
@@ -1011,8 +1162,8 @@ const SymbolCard = memo(({
                     backgroundColor: '#111111', // 배경색 지정으로 흰색 깜빡임 방지
                     overflow: 'hidden'
                 }}>
-                    <AnimatePresence 
-                        mode="wait" 
+                    <AnimatePresence
+                        mode="wait"
                         initial={false}
                         onExitComplete={() => {
                             setTimeout(() => {
@@ -1045,9 +1196,10 @@ const SymbolCard = memo(({
                         >
                             {hasExchangeInfo && renderExchangeInfo(currentData.exchangeInfo)}
                             {hasLeverageBrackets && renderLeverageBrackets(currentData.leverageBrackets)}
+                            {hasFundingRates && renderFundingRates(currentData.fundingRates)}
                             {renderBar("트레이딩 바 데이터", currentData.trading)}
                             {hasMagnifier && renderBar("돋보기 바 데이터", currentData.magnifier)}
-                            {currentData.reference && currentData.reference.map((refBar, index) => 
+                            {currentData.reference && currentData.reference.map((refBar, index) =>
                                 renderBar(currentData.reference.length === 1 ? "참조 바 데이터" : `참조 바 데이터 ${index + 1}`, refBar)
                             )}
                             {renderBar("마크 가격 바 데이터", currentData.mark)}
@@ -1088,7 +1240,7 @@ const SymbolCard = memo(({
                     }
                 </style>
                 `
-            }} />
+            }}/>
         </motion.div>
     )
 });

@@ -1,5 +1,4 @@
 // 표준 라이브러리
-#include <cmath>
 #include <format>
 #include <iomanip>
 #include <sstream>

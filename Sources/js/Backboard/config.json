@@ -4,7 +4,6 @@
             "심볼 이름": "BTCUSDT",
             "거래소 정보": {
                 "데이터 경로": "D:/Programming/Backtesting/Data/exchange_info.json",
-                "펀딩비 데이터 경로": "D:/Programming/Backtesting/Data/Funding Rates/BTCUSDT.json",
                 "틱 사이즈": 0.1,
                 "소수점 정밀도": 1,
                 "지정가 최대 수량": 1000.0,
@@ -116,9 +115,22 @@
                     }
                 ]
             },
+            "펀딩 비율": {
+                "데이터 경로": "D:/Programming/Backtesting/Data/Funding Rates/BTCUSDT.json",
+                "데이터 기간": {
+                    "시작": "2019-09-10 08:00:00",
+                    "종료": "2025-07-27 00:00:00"
+                },
+                "합계 펀딩 횟수": 6441,
+                "양수 펀딩 횟수": 5611,
+                "음수 펀딩 횟수": 830,
+                "평균 펀딩 비율": 0.00011942,
+                "최고 펀딩 비율": 0.003,
+                "최저 펀딩 비율": -0.003
+            },
             "트레이딩 바 데이터": {
                 "데이터 경로": "D:/Programming/Backtesting/Data/Continuous Klines/BTCUSDT/1h/1h.parquet",
-                "기간": {
+                "데이터 기간": {
                     "시작": "2019-09-08 17:00:00",
                     "종료": "2025-07-26 03:59:59"
                 },
@@ -131,7 +143,7 @@
             },
             "돋보기 바 데이터": {
                 "데이터 경로": "D:/Programming/Backtesting/Data/Continuous Klines/BTCUSDT/1m/1m.parquet",
-                "기간": {
+                "데이터 기간": {
                     "시작": "2019-09-08 17:57:00",
                     "종료": "2025-07-26 09:47:59"
                 },
@@ -147,7 +159,7 @@
             "참조 바 데이터": [
                 {
                     "데이터 경로": "D:/Programming/Backtesting/Data/Continuous Klines/BTCUSDT/1h/1h.parquet",
-                    "기간": {
+                    "데이터 기간": {
                         "시작": "2019-09-08 17:00:00",
                         "종료": "2025-07-26 03:59:59"
                     },
@@ -160,7 +172,7 @@
                 },
                 {
                     "데이터 경로": "D:/Programming/Backtesting/Data/Continuous Klines/BTCUSDT/1d/1d.parquet",
-                    "기간": {
+                    "데이터 기간": {
                         "시작": "2019-09-08 00:00:00",
                         "종료": "2025-07-25 23:59:59"
                     },
@@ -174,7 +186,7 @@
             ],
             "마크 가격 바 데이터": {
                 "데이터 경로": "D:/Programming/Backtesting/Data/Mark Price Klines/BTCUSDT/1m.parquet",
-                "기간": {
+                "데이터 기간": {
                     "시작": "2019-12-23 11:58:00",
                     "종료": "2025-07-30 14:26:59"
                 },
@@ -194,7 +206,6 @@
             "심볼 이름": "ETHUSDT",
             "거래소 정보": {
                 "데이터 경로": "D:/Programming/Backtesting/Data/exchange_info.json",
-                "펀딩비 데이터 경로": "D:/Programming/Backtesting/Data/Funding Rates/ETHUSDT.json",
                 "틱 사이즈": 0.01,
                 "소수점 정밀도": 2,
                 "지정가 최대 수량": 10000.0,
@@ -306,9 +317,22 @@
                     }
                 ]
             },
+            "펀딩 비율": {
+                "데이터 경로": "D:/Programming/Backtesting/Data/Funding Rates/ETHUSDT.json",
+                "데이터 기간": {
+                    "시작": "2019-11-27 08:00:00",
+                    "종료": "2025-07-27 00:00:00"
+                },
+                "합계 펀딩 횟수": 6207,
+                "양수 펀딩 횟수": 5502,
+                "음수 펀딩 횟수": 705,
+                "평균 펀딩 비율": 0.00014637,
+                "최고 펀딩 비율": 0.00375,
+                "최저 펀딩 비율": -0.00356332
+            },
             "트레이딩 바 데이터": {
                 "데이터 경로": "D:/Programming/Backtesting/Data/Continuous Klines/ETHUSDT/1h/1h.parquet",
-                "기간": {
+                "데이터 기간": {
                     "시작": "2019-11-27 07:00:00",
                     "종료": "2025-07-26 08:59:59"
                 },
@@ -321,7 +345,7 @@
             },
             "돋보기 바 데이터": {
                 "데이터 경로": "D:/Programming/Backtesting/Data/Continuous Klines/ETHUSDT/1m/1m.parquet",
-                "기간": {
+                "데이터 기간": {
                     "시작": "2019-11-27 07:45:00",
                     "종료": "2025-07-26 10:07:59"
                 },
@@ -335,7 +359,7 @@
             "참조 바 데이터": [
                 {
                     "데이터 경로": "D:/Programming/Backtesting/Data/Continuous Klines/ETHUSDT/1h/1h.parquet",
-                    "기간": {
+                    "데이터 기간": {
                         "시작": "2019-11-27 07:00:00",
                         "종료": "2025-07-26 08:59:59"
                     },
@@ -348,7 +372,7 @@
                 },
                 {
                     "데이터 경로": "D:/Programming/Backtesting/Data/Continuous Klines/ETHUSDT/1d/1d.parquet",
-                    "기간": {
+                    "데이터 기간": {
                         "시작": "2019-11-27 00:00:00",
                         "종료": "2025-07-26 23:59:59"
                     },
@@ -362,7 +386,7 @@
             ],
             "마크 가격 바 데이터": {
                 "데이터 경로": "D:/Programming/Backtesting/Data/Mark Price Klines/ETHUSDT/1m.parquet",
-                "기간": {
+                "데이터 기간": {
                     "시작": "2019-12-23 11:58:00",
                     "종료": "2025-07-30 14:13:59"
                 },
@@ -385,16 +409,16 @@
         }
     ],
     "전략": {
-        "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/TestStrategy2.hpp",
-        "소스 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/TestStrategy2.cpp",
+        "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250818_211604/Backboard/Sources/TestStrategy2.hpp",
+        "소스 파일 경로": "D:/Programming/Backtesting/Results/20250818_211604/Backboard/Sources/TestStrategy2.cpp",
         "전략 클래스 이름": "TestStrategy2",
         "전략 이름": "SMA Strategy"
     },
     "지표": [
         {
-            "데이터 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Indicators/Daily Close/Daily Close.parquet",
-            "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/Close.hpp",
-            "소스 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/Close.cpp",
+            "데이터 경로": "D:/Programming/Backtesting/Results/20250818_211604/Backboard/Indicators/Daily Close/Daily Close.parquet",
+            "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250818_211604/Backboard/Sources/Close.hpp",
+            "소스 파일 경로": "D:/Programming/Backtesting/Results/20250818_211604/Backboard/Sources/Close.cpp",
             "지표 클래스 이름": "Close",
             "지표 이름": "Daily Close",
             "타임프레임": "1d",
@@ -411,9 +435,9 @@
             }
         },
         {
-            "데이터 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Indicators/sma1/sma1.parquet",
-            "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/SimpleMovingAverage.hpp",
-            "소스 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/SimpleMovingAverage.cpp",
+            "데이터 경로": "D:/Programming/Backtesting/Results/20250818_211604/Backboard/Indicators/sma1/sma1.parquet",
+            "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250818_211604/Backboard/Sources/SimpleMovingAverage.hpp",
+            "소스 파일 경로": "D:/Programming/Backtesting/Results/20250818_211604/Backboard/Sources/SimpleMovingAverage.cpp",
             "지표 클래스 이름": "SimpleMovingAverage",
             "지표 이름": "sma1",
             "타임프레임": "1d",
@@ -430,9 +454,9 @@
             }
         },
         {
-            "데이터 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Indicators/sma2/sma2.parquet",
-            "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/SimpleMovingAverage.hpp",
-            "소스 파일 경로": "D:/Programming/Backtesting/Results/20250809_030804/Backboard/Sources/SimpleMovingAverage.cpp",
+            "데이터 경로": "D:/Programming/Backtesting/Results/20250818_211604/Backboard/Indicators/sma2/sma2.parquet",
+            "헤더 파일 경로": "D:/Programming/Backtesting/Results/20250818_211604/Backboard/Sources/SimpleMovingAverage.hpp",
+            "소스 파일 경로": "D:/Programming/Backtesting/Results/20250818_211604/Backboard/Sources/SimpleMovingAverage.cpp",
             "지표 클래스 이름": "SimpleMovingAverage",
             "지표 이름": "sma2",
             "타임프레임": "1d",

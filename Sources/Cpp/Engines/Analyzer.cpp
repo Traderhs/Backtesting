@@ -493,7 +493,6 @@ void Analyzer::SaveConfig() {
         const auto tick_size = symbol_info.GetTickSize();
         symbol["거래소 정보"] = {
             {"데이터 경로", symbol_info.GetExchangeInfoPath()},
-            {"펀딩비 데이터 경로", symbol_info.GetFundingRatesPath()},
             {"틱 사이즈", tick_size},
             {"소수점 정밀도", CountDecimalPlaces(tick_size)},
             {"지정가 최대 수량", symbol_info.GetLimitMaxQty()},
@@ -522,6 +521,55 @@ void Analyzer::SaveConfig() {
                {"유지 금액", maintenance_amount}});
         }
 
+        // 펀딩 비율 저장
+        const auto& funding_rates = symbol_info.GetFundingRates();
+        int positive_funding_count = 0, negative_funding_count = 0;
+        double max_funding_rate = 0, min_funding_rate = 0;
+        double total_funding_rate = 0;
+
+        for (const auto& funding_info : funding_rates) {
+          const auto funding_rate = funding_info.funding_rate;
+          total_funding_rate += funding_rate;
+
+          if (funding_rate > 0) {
+            positive_funding_count++;
+
+            if (funding_rate > max_funding_rate) {
+              max_funding_rate = funding_rate;
+            }
+          } else if (funding_rate < 0) {
+            negative_funding_count++;
+
+            if (funding_rate < min_funding_rate) {
+              min_funding_rate = funding_rate;
+            }
+          }
+        }
+
+        // 평균 펀딩 비율 계산 (소수점 8자리에서 반올림)
+        // -> 백보드에서는 100을 곱하므로 6자리로 보임
+        double average_funding_rate = 0;
+        if (!funding_rates.empty()) {
+          average_funding_rate =
+              total_funding_rate / static_cast<double>(funding_rates.size());
+          average_funding_rate =
+              round(average_funding_rate * 1e8) / 1e8;
+        }
+
+        symbol["펀딩 비율"] = {
+            {"데이터 경로", symbol_info.GetFundingRatesPath()},
+            {"데이터 기간",
+             {{"시작",
+               UtcTimestampToUtcDatetime(funding_rates.front().funding_time)},
+              {"종료",
+               UtcTimestampToUtcDatetime(funding_rates.back().funding_time)}}},
+            {"합계 펀딩 횟수", funding_rates.size()},
+            {"양수 펀딩 횟수", positive_funding_count},
+            {"음수 펀딩 횟수", negative_funding_count},
+            {"평균 펀딩 비율", average_funding_rate},
+            {"최고 펀딩 비율", max_funding_rate},
+            {"최저 펀딩 비율", min_funding_rate}};
+
         // 트레이딩 바 정보 저장
         const auto trading_num_bars = trading_bar_data->GetNumBars(symbol_idx);
         const auto& [trading_missing_count, trading_missing_times] =
@@ -530,7 +578,7 @@ void Analyzer::SaveConfig() {
 
         symbol["트레이딩 바 데이터"] = {
             {"데이터 경로", trading_bar_data->GetBarDataPath(symbol_idx)},
-            {"기간",
+            {"데이터 기간",
              {{"시작", UtcTimestampToUtcDatetime(
                            trading_bar_data->GetBar(symbol_idx, 0).open_time)},
               {"종료",
@@ -553,7 +601,7 @@ void Analyzer::SaveConfig() {
 
           symbol["돋보기 바 데이터"] = {
               {"데이터 경로", magnifier_bar_data->GetBarDataPath(symbol_idx)},
-              {"기간",
+              {"데이터 기간",
                {{"시작",
                  UtcTimestampToUtcDatetime(
                      magnifier_bar_data->GetBar(symbol_idx, 0).open_time)},
@@ -582,7 +630,7 @@ void Analyzer::SaveConfig() {
 
           symbol["참조 바 데이터"].push_back(
               {{"데이터 경로", bar_data->GetBarDataPath(symbol_idx)},
-               {"기간",
+               {"데이터 기간",
                 {{"시작", UtcTimestampToUtcDatetime(
                               bar_data->GetBar(symbol_idx, 0).open_time)},
                  {"종료",
@@ -607,7 +655,7 @@ void Analyzer::SaveConfig() {
 
         symbol["마크 가격 바 데이터"] = {
             {"데이터 경로", mark_price_bar_data->GetBarDataPath(symbol_idx)},
-            {"기간",
+            {"데이터 기간",
              {{"시작",
                UtcTimestampToUtcDatetime(
                    mark_price_bar_data->GetBar(symbol_idx, 0).open_time)},

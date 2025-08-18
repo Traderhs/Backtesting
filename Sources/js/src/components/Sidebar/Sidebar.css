@@ -1,0 +1,355 @@
+/* ===== 키프레임 애니메이션 ===== */
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes sparkle {
+    0% {
+        background-position: 0 0, 0 0;
+    }
+    50% {
+        background-position: 11px 11px, 0 0;
+    }
+    100% {
+        background-position: 22px 22px, 0 0;
+    }
+}
+
+/* ===== 아이콘 스타일 ===== */
+.sidebar-icon {
+    width: 27px;
+    height: 27px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+/* ===== 로딩 인디케이터 ===== */
+.chart-loading-indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid rgba(0, 0, 0, 0.1);
+    border-top-color: #FFD700;
+    display: inline-block;
+    animation: spin 1s linear infinite;
+    margin-left: auto;
+}
+
+/* 서브 버튼용 작은 로딩 인디케이터 */
+.symbol-button-container .chart-loading-indicator {
+    width: 16px;
+    height: 16px;
+    border-width: 1.5px;
+    margin-left: 24px;
+}
+
+/* ===== 심볼 로고 관련 ===== */
+.symbol-icon-wrapper {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background-color: rgba(10, 10, 10, 0.3);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-right: 12px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    padding: 2px;
+    position: relative;
+}
+
+.symbol-icon-wrapper-active {
+    box-shadow: 0 0 6px rgba(255, 215, 0, 0.5);
+    border: 1px solid rgba(255, 215, 0, 0.8);
+}
+
+.symbol-icon-small {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    object-fit: cover;
+    transition: all 0.2s ease;
+}
+
+/* ===== 텍스트 스타일 ===== */
+.symbol-text {
+    font-family: 'Inter', 'Pretendard', sans-serif;
+    letter-spacing: 0.5px;
+    font-size: 16px;
+    font-weight: inherit;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 1px;
+}
+
+.symbol-text-limited {
+    max-width: 120px;
+}
+
+.button-text {
+    color: white;
+    font-size: 17px;
+}
+
+.sub-button-text {
+    color: white;
+    font-size: 16px;
+    font-family: 'Inter', 'Pretendard', sans-serif;
+    letter-spacing: 0.5px;
+    font-weight: inherit;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin-top: 1px;
+}
+
+.expand-arrow {
+    margin-left: auto;
+}
+
+.expand-arrow-expanded {
+    color: #FFD700;
+}
+
+.expand-arrow-collapsed {
+    color: white;
+}
+
+/* ===== 헤더 영역 ===== */
+.sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+}
+
+.sidebar-logo {
+    color: white;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    font-size: 2.5rem;
+    margin: 11px 5px 0 -12px;
+    line-height: 50px;
+    font-family: 'Inter', 'Pretendard', sans-serif;
+    font-weight: 700;
+    letter-spacing: 1px;
+}
+
+.icon-placeholder {
+    width: 20px;
+    height: 20px;
+    display: inline-block;
+    margin-right: 11px;
+}
+
+/* ===== 내비게이션 영역 ===== */
+.sidebar-nav {
+    margin-top: 0.5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.nav-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.bottom-nav-section {
+    display: flex;
+    flex-direction: column;
+}
+
+/* ===== 사이드바 컨테이너 ===== */
+.sidebar-container {
+    height: 100vh;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    border-right: 2px solid rgba(255, 215, 0, 0.3);
+    width: 18rem;
+    overflow-y: auto;
+    overflow-x: hidden;
+    top: 0;
+    left: 0;
+    z-index: 40;
+    background-image: radial-gradient(circle, rgba(255,215,0,0.15) 1px, transparent 1px), linear-gradient(180deg, #0b0b0b 0%, #121212 100%);
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
+    position: relative;
+    min-width: 18rem;
+    max-width: 18rem;
+    background-size: 22px 22px, 100% 100%;
+    background-attachment: local, scroll;
+    animation: sparkle 2s linear infinite;
+}
+
+.sidebar-content {
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 10;
+    height: 100%;
+    width: 288px;
+}
+
+/* ===== 버튼 컨테이너 스타일 ===== */
+.main-button-container {
+    width: 200px;
+    margin-left: 20px;
+    border-radius: 8px;
+    overflow: visible;
+}
+
+.plot-expanded-button {
+    background-color: #121212;
+}
+
+.sub-button-container {
+    border-radius: 8px;
+    transition: all 0.2s ease;
+    will-change: transform, box-shadow, background-color;
+    overflow: visible;
+    width: 190px;
+    margin-left: 0.5rem;
+    cursor: pointer;
+    padding: 0;
+    z-index: 20;
+    position: relative;
+}
+
+/* ===== 버튼 기본 스타일 ===== */
+.sidebar-button,
+.symbol-button {
+    border-radius: 8px;
+    font-family: 'Inter', 'Pretendard', sans-serif;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    outline: none;
+    color: white;
+    margin: 0;
+    padding: 10px 16px;
+    cursor: pointer;
+    border: 1px solid rgba(255, 215, 0, 0.4);
+    position: relative;
+    z-index: 5;
+}
+
+/* 메인 버튼 스타일 */
+.sidebar-button {
+    background-color: rgba(17, 17, 17, 1);
+    height: 48px;
+    width: 200px;
+    font-weight: 400;
+    transition: all 0.25s ease;
+}
+
+/* 서브 버튼 스타일 */
+.symbol-button {
+    background-color: rgba(17, 17, 17, 1);
+    height: 44px;
+    width: 100%;
+    font-weight: 400;
+    transition: all 0.2s ease;
+}
+
+/* 활성 버튼 스타일 */
+.sidebar-button.active,
+.symbol-button.active {
+    background-color: rgba(113, 97, 11);
+    border-color: rgba(255, 215, 0, 0.8);
+    font-weight: 600;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.3);
+}
+
+/* 버튼 컨테이너 스타일 */
+.sidebar-button-container,
+.symbol-button-container {
+    position: relative;
+    transition: background-color 0.2s ease;
+    overflow: visible;
+    outline: none;
+    isolation: isolate;
+    z-index: 10;
+}
+
+/* 활성 탭 컨테이너 배경색 */
+.active-sidebar-button,
+.active-symbol-button {
+    background-color: #121212;
+    border-radius: 8px;
+}
+
+/* 호버 효과 */
+.sidebar-button-container:hover button,
+.symbol-button-container:hover button {
+    border-color: rgba(255, 215, 0, 0.8) !important;
+    box-shadow: 0 0 9px rgba(255, 215, 0, 0.5) !important;
+}
+
+.symbol-button-container:hover {
+    z-index: 30;
+}
+
+.symbol-button-container:hover .symbol-icon-wrapper {
+    border-color: rgba(255, 215, 0, 0.8) !important;
+    box-shadow: 0 0 9px rgba(255, 215, 0, 0.5) !important;
+}
+
+.symbol-button-container:hover .symbol-icon-small {
+    filter: brightness(1.1);
+}
+
+/* 활성 상태 강화 */
+.active-sidebar-button button, 
+.active-symbol-button button {
+    border: 1px solid rgba(255, 215, 0, 0.8) !important;
+    box-shadow: 0 0 12px rgba(255, 215, 0, 0.3) !important;
+}
+
+/* 버튼 누름 효과 */
+.sidebar-button-container button:active,
+.symbol-button-container button:active {
+    background-color: rgb(52, 46, 14) !important;
+}
+
+.active-sidebar-button button:active,
+.active-symbol-button button:active {
+    background-color: rgb(76, 67, 20) !important;
+}
+
+/* ===== 서브 섹션 애니메이션 ===== */
+.sub-section-container {
+    margin-left: 2rem;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    z-index: 10;
+    overflow: visible;
+    padding: 0 4px;
+}
+
+.sub-section-item {
+    padding: 6px 0;
+}
+
+/* ===== 마지막 버튼 여백 ===== */
+.last-button {
+    margin-bottom: 50px;
+}
+
+/* ===== 차트 로딩 중 비활성화 스타일 ===== */
+.chart-loading-disabled {
+    filter: brightness(0.7);
+    pointer-events: none;
+}
+
+.chart-loading-disabled.active {
+    background-color: rgba(113, 97, 11, 1) !important;
+}
+
+.chart-loading-disabled:not(.active) {
+    background-color: rgba(17, 17, 17, 1) !important;
+} 

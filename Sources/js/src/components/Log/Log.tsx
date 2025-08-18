@@ -24,7 +24,8 @@ const LogRow: React.FC<{
         searchResults: SearchResult[],
         currentChunkStart: number,
         allLogLinesLength: number,
-        forceRenderKey?: number
+        forceRenderKey?: number,
+        maxTextWidth?: number // 현재 청크의 최대 텍스트 너비
     }
 }> = React.memo(({index, style, data}) => {
     // 인덱스 범위 체크
@@ -66,9 +67,20 @@ const LogRow: React.FC<{
     const isSeparator = /^=+$/.test(line.trim());
 
     if (isSeparator) {
-        // = 문자 개수만큼 - 문자를 연속으로 만들어 텍스트로 처리
-        const equalCount = line.trim().length;
-        const separatorLine = '─'.repeat(equalCount * 0.5);
+        // 현재 청크의 최대 텍스트 너비를 기준으로 구분선 길이 계산
+        const maxTextWidth = data.maxTextWidth || 1000; // 기본값 1000px
+        
+        // 일반 텍스트와 동일한 패딩 사용 (0px 10px 0px 25px)
+        const paddingLeft = 25;
+        const paddingRight = 10;
+        
+        // 실제 텍스트가 차지하는 공간 = 측정된 픽셀 너비
+        // 구분선 문자 개수는 실제 텍스트 영역에만 맞춤
+        const charWidth = 8.4;
+        const minWidth = 1500; // 최소 구분선 너비 (픽셀)
+        const desiredWidth = Math.max(minWidth, maxTextWidth); // 최소 너비 보장
+        const textCharCount = Math.ceil(desiredWidth / charWidth);
+        const separatorLine = '─'.repeat(textCharCount);
 
         return (
             <div
@@ -82,10 +94,14 @@ const LogRow: React.FC<{
                     fontSize: '14px',
                     lineHeight: '1.4',
                     color: 'rgba(255, 215, 0, 0.4)',
-                    padding: '0px 10px 0px 25px',
+                    padding: `0px ${paddingRight}px 0px ${paddingLeft}px`, // 일반 텍스트와 동일한 패딩
                     boxSizing: 'border-box',
                     display: 'flex',
                     alignItems: 'center',
+                    // 계산된 너비 + 패딩으로 정확한 너비 설정
+                    width: `${desiredWidth + paddingLeft + paddingRight}px`,
+                    minWidth: `${desiredWidth + paddingLeft + paddingRight}px`,
+                    overflow: 'hidden',
                     // 추가 안티엘리어싱 설정
                     fontSmooth: 'always',
                     WebkitFontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
@@ -394,6 +410,30 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
         const end = Math.min(start + CHUNK_SIZE, allLogLines.length);
         return allLogLines.slice(start, end);
     }, [allLogLines, currentChunkStart, CHUNK_SIZE]);
+
+    // 현재 청크의 최대 텍스트 너비 계산
+    const maxTextWidth = useMemo(() => {
+        if (logLines.length === 0) return 1000; // 기본값
+
+        // 캔버스를 사용하여 실제 텍스트 너비 측정
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        if (!context) return 1000; // 기본값
+
+        // 로그에서 사용하는 폰트 설정
+        context.font = "14px 'Inter', 'Pretendard', monospace";
+
+        let maxWidth = 0;
+        // 구분선이 아닌 일반 텍스트 라인들만 측정
+        for (const line of logLines) {
+            if (!/^=+$/.test(line.trim())) { // 구분선이 아닌 경우만
+                const textWidth = context.measureText(line).width;
+                maxWidth = Math.max(maxWidth, textWidth);
+            }
+        }
+
+        return maxWidth; 
+    }, [logLines]);
 
     // 청크 관련 계산값들
     const totalChunks = Math.ceil(allLogLines.length / CHUNK_SIZE);
@@ -867,12 +907,14 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
     };
 
     return (
-        <div
+        <motion.div
             ref={containerRef}
             className="h-full w-full flex flex-col p-4 overflow-y-auto log-container"
+            initial={{opacity: 0}}
+            animate={{opacity: 1}}
+            transition={{duration: 0.5}}
             style={{
                 // 뿌옇게 되는 문제 방지를 위한 명시적 스타일 - 강화된 버전
-                opacity: 1,
                 filter: 'none',
                 backfaceVisibility: 'hidden',
                 WebkitBackfaceVisibility: 'hidden',
@@ -904,7 +946,7 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
             >
                 <motion.h2
                     initial={{opacity: 0, x: -20}}
-                    animate={{opacity: 1, x: 0}}
+                    animate={{opacity: loading ? 0 : 1, x: loading ? -20 : 0}}
                     transition={{delay: 0.1, duration: 0.5}}
                     style={{
                         color: 'white',
@@ -922,7 +964,7 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                     {/* 밑줄 */}
                     <motion.span
                         initial={{width: 0}}
-                        animate={{width: '100%'}}
+                        animate={{width: loading ? 0 : '100%'}}
                         transition={{delay: 0.3, duration: 0.5}}
                         style={{
                             position: 'absolute',
@@ -937,7 +979,11 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
             </div>
 
             {/* 검색 영역과 청크 네비게이션 */}
-            <div style={{
+            <motion.div 
+                initial={{opacity: 0, y: -10}}
+                animate={{opacity: loading ? 0 : 1, y: loading ? -10 : 0}}
+                transition={{delay: 0.5, duration: 0.5}}
+                style={{
                 margin: '0 20px 15px 20px',
                 display: 'flex',
                 gap: '15px',
@@ -946,8 +992,8 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                 {/* 검색 영역 */}
                 <motion.div
                     initial={{opacity: 0, y: -10}}
-                    animate={{opacity: 1, y: 0}}
-                    transition={{delay: 0.5, duration: 0.5}}
+                    animate={{opacity: loading ? 0 : 1, y: loading ? -10 : 0}}
+                    transition={{delay: 0.6, duration: 0.5}}
                     style={{
                         padding: '15px 20px',
                         background: '#111111',
@@ -1093,8 +1139,8 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                 {allLogLines.length > CHUNK_SIZE && (
                     <motion.div
                         initial={{opacity: 0, y: -10}}
-                        animate={{opacity: 1, y: 0}}
-                        transition={{delay: 0.6, duration: 0.5}}
+                        animate={{opacity: loading ? 0 : 1, y: loading ? -10 : 0}}
+                        transition={{delay: 0.7, duration: 0.5}}
                         style={{
                             width: '260px',
                             height: '71px',
@@ -1200,12 +1246,12 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                         </div>
                     </motion.div>
                 )}
-            </div>
+            </motion.div>
 
             {/* 컨텐츠 영역 */}
             <motion.div
                 initial={{opacity: 0}}
-                animate={{opacity: 1}}
+                animate={{opacity: loading ? 0 : 1}}
                 transition={{delay: 0.8, duration: 0.5}}
                 style={{
                     flex: 1,
@@ -1307,7 +1353,8 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                                             searchResults,
                                             currentChunkStart,
                                             allLogLinesLength: allLogLines.length,
-                                            forceRenderKey // 강제 리렌더링을 위한 키 추가
+                                            forceRenderKey, // 강제 리렌더링을 위한 키 추가
+                                            maxTextWidth // 최대 텍스트 너비 추가
                                         }}
                                         estimatedItemSize={28}
                                         onItemsRendered={handleItemsRendered}
@@ -1384,7 +1431,7 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                     <NoDataMessage message="로그 데이터가 없습니다."/>
                 )}
             </motion.div>
-        </div>
+        </motion.div>
     );
 };
 

@@ -7,7 +7,33 @@ export default defineConfig({
     plugins: [react()],
     base: './',
     build: {
-        outDir: 'Backboard'
+        outDir: 'Backboard',
+        minify: 'terser',
+        terserOptions: {
+            compress: {
+                drop_console: true,
+                drop_debugger: true,
+            },
+        },
+        rollupOptions: {
+            output: {
+                manualChunks: {
+                    vendor: ['react', 'react-dom'],
+                    charts: ['lightweight-charts', 'react-chartjs-2', 'chart.js'],
+                    plotly: ['react-plotly.js'],
+                    ui: ['@mui/material', '@emotion/react', '@emotion/styled'],
+                },
+            },
+        },
+        chunkSizeWarningLimit: 1000,
+        sourcemap: false,
+        reportCompressedSize: false,
+    },
+    esbuild: {
+        drop: ['console', 'debugger'],
+    },
+    optimizeDeps: {
+        include: ['react', 'react-dom'],
     },
     resolve: {
         alias: {
