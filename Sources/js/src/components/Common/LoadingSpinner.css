@@ -1,0 +1,36 @@
+@keyframes spin {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.loading-screen {
+    isolation: isolate;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.loading-overlay {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    will-change: opacity;
+    transition: opacity 0.3s ease-out;
+}
+
+.chart-loading-indicator {
+    width: 42px;
+    height: 42px;
+    border-radius: 50%;
+    border: 3px solid rgba(20, 20, 20, 0.15);
+    border-top-color: #FFD700;
+    animation: spin 1s cubic-bezier(0.4, 0.1, 0.3, 1) infinite;
+    margin: 0 auto;
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.15);
+    transform: translateZ(0);
+    will-change: transform;
+} 

@@ -1,0 +1,53 @@
+@keyframes shake-x {
+  0%   { transform: translateX(0); }
+  20%  { transform: translateX(-5px); }
+  40%  { transform: translateX(5px); }
+  60%  { transform: translateX(-5px); }
+  80%  { transform: translateX(5px); }
+  100% { transform: translateX(0); }
+}
+
+/* 컨테이너에 흔들림과 box-shadow를 함께 적용 */
+.reset-all-filters-button-active-container {
+  animation: shake-x 0.5s cubic-bezier(0.4,0.1,0.6,0.9);
+  box-shadow: 0 0 5px rgba(255, 215, 0, 0.3) !important;
+  border-radius: 8px;
+}
+
+/* 필터 초기화 버튼 스타일 */
+.reset-all-filters-button {
+    width: 100%;
+    height: 44px;
+    border-radius: 8px;
+    font-family: "'Inter', 'Pretendard'", sans-serif !important;
+    font-size: 15px;
+    font-weight: 400;
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    letter-spacing: 0.3px;
+    outline: none;
+    background-color: rgba(17, 17, 17, 1) !important;
+    box-shadow: none !important;
+    transition: all 0.25s ease;
+    z-index: 50;
+    margin: 0;
+    border: 1px solid rgba(255, 215, 0, 0.4);
+}
+
+/* 필터 초기화 버튼 활성 상태 */
+.reset-all-filters-button.active {
+    background-color: rgba(255, 215, 0, 0.4) !important;
+    border-color: rgba(255, 215, 0, 0.8) !important;
+    font-weight: 600 !important;
+    box-shadow: 0 0 5px rgba(255, 215, 0, 0.3) !important;
+}
+
+/* GPU 가속 클래스 추가 */
+.gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+} 

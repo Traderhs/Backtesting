@@ -1,0 +1,419 @@
+/* SymbolCard 공통 스타일 */
+.symbol-card-container {
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    background: #1A1A1A;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    transition: none;
+    border: 1px solid transparent;
+    max-height: 415px;
+    min-height: 415px;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    will-change: transform, opacity;
+}
+
+.symbol-card-container:hover {
+    background: #222222;
+    transition: background-color 0.2s ease;
+}
+
+.symbol-card-border {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 215, 0, 0.15);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.symbol-card-header {
+    font-family: 'Inter', 'Pretendard', sans-serif;
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    color: rgba(255, 215, 0, 0.8);
+    background-color: #FFD7004D;
+    padding: 10px 18px 10px 24px;
+    margin-left: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    align-items: center;
+}
+
+.symbol-card-header::after {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: rgba(255, 215, 0, 0.13);
+    content: '';
+    width: 100%;
+}
+
+.symbol-card-content {
+    background: #111111;
+    border-radius: 0 0 8px 8px;
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    font-size: 12px;
+    overflow-y: auto;
+    padding-top: 0;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
+.symbol-card-inner {
+    position: relative;
+    display: flex;
+    align-items: stretch;
+    max-width: 100%;
+    overflow-y: visible;
+    z-index: 2;
+    padding: 0;
+    height: 100%;
+    margin-top: 0;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
+.symbol-card-left-section {
+    min-width: fit-content;
+    width: fit-content;
+    max-width: 50%;
+    margin-right: 0;
+    position: relative;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    background-color: rgba(255, 215, 0, 0.1);
+    border-radius: 0;
+    padding: 0;
+    overflow: hidden;
+    top: 0;
+    border-right: 2px solid rgba(255, 215, 0, 0.13);
+    white-space: nowrap;
+    overflow-x: auto;
+    text-overflow: ellipsis;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
+.symbol-card-left-section .symbol-card-row:first-child {
+    margin-top: 20px;
+}
+
+.symbol-card-right-section {
+    min-width: 140px;
+    width: fit-content;
+    max-width: 100%;
+    position: relative;
+    z-index: 3;
+    overflow-y: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding-top: 0;
+    white-space: nowrap;
+    overflow-x: auto;
+    text-overflow: ellipsis;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
+.symbol-card-right-section .symbol-card-row:first-child {
+    margin-top: 20px;
+}
+
+.symbol-card-row {
+    margin-bottom: 12px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    margin-top: 4px;
+    padding-left: 24px;
+    padding-right: 16px;
+}
+
+.symbol-card-row-inner {
+    display: flex;
+    align-items: center;
+    height: 18px;
+}
+
+.symbol-card-bullet {
+    color: rgba(255, 215, 0, 0.8);
+    margin-right: 8px;
+    font-size: 15px;
+    line-height: 18px;
+    margin-top: -3px;
+}
+
+.symbol-card-label {
+    font-weight: 600;
+    color: rgba(255, 215, 0, 0.8);
+    font-size: 15px;
+    line-height: 18px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.symbol-card-value {
+    color: #FFFFFF;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 18px;
+    display: flex;
+    align-items: center;
+}
+
+.symbol-card-path-value {
+    color: #FFFFFF;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 18px;
+    display: flex;
+    align-items: center;
+}
+
+.symbol-card-missing-list {
+    background: transparent;
+    border-radius: 8px;
+    border: 1.2px solid rgba(255, 215, 0, 0.18);
+    padding: 10px 0;
+    max-width: 400px;
+    margin-bottom: 10px;
+    max-height: 155px;
+    overflow-y: auto;
+    overflow-x: auto;
+    margin-left: 24px;
+    margin-top: 5px;
+}
+
+.symbol-card-missing-item {
+    display: flex;
+    align-items: center;
+    padding: 2px 0 2px 20px;
+    margin-left: 0;
+}
+
+.symbol-card-missing-bullet {
+    color: #FFFFFF;
+    margin-right: 8px;
+    font-size: 14px;
+    line-height: 18px;
+    margin-top: -3px;
+}
+
+.symbol-card-missing-text {
+    font-size: 14px;
+    font-weight: 400;
+    color: #FFFFFF;
+}
+
+/* 레버리지 브라켓 전용 스타일 */
+.leverage-bracket-container {
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    background: #1A1A1A;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+    transition: none;
+    border: 1px solid transparent;
+    max-height: 415px;
+    min-height: 415px;
+}
+
+.leverage-bracket-container:hover {
+    background: #222222;
+    transition: background-color 0.2s ease;
+}
+
+.leverage-bracket-content {
+    background: #111111;
+    border-radius: 0 0 8px 8px;
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    font-size: 12px;
+    padding-top: 0;
+}
+
+.leverage-bracket-scroll {
+    height: 100%;
+    max-height: 400px;
+    padding: 0;
+    position: relative;
+    display: flex;
+    overflow: hidden;
+    margin-top: 0;
+}
+
+.leverage-bracket-separator {
+    height: 2px;
+    background: rgba(255, 215, 0, 0.2);
+    min-width: 100%;
+}
+
+/* 왼쪽 영역의 가로선만 투명도 0.13으로 설정 */
+.leverage-bracket-left .leverage-bracket-separator {
+    background: rgba(255, 215, 0, 0.13);
+}
+
+.leverage-bracket-left {
+    width: 154px;
+    min-width: 154px;
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background-color: rgba(255, 215, 0, 0.1);
+    border-radius: 0;
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;  /* IE and Edge */
+    top: 0;
+    border-right: 2px solid rgba(255, 215, 0, 0.13);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+    height: auto;
+    box-sizing: border-box;
+}
+
+/* 왼쪽 영역 스크롤바 숨기기 - WebKit (Chrome, Safari, Edge) */
+.leverage-bracket-left::-webkit-scrollbar {
+    display: none;
+}
+
+.leverage-bracket-left .symbol-card-row:first-child {
+    margin-top: 15px;
+}
+
+.leverage-bracket-right {
+    flex: 1;
+    min-width: 140px;
+    position: relative;
+    z-index: 2;
+    padding-top: 0;
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: auto;
+    text-overflow: ellipsis;
+    height: auto;
+    box-sizing: border-box;
+}
+
+/* 스크롤바 스타일 제거 - 브라우저 기본 스타일 사용 */
+
+.leverage-bracket-right .symbol-card-row:first-child {
+    margin-top: 15px;
+}
+
+/* 레버리지 구간 텍스트 간격 조정 */
+.leverage-bracket-left .symbol-card-row,
+.leverage-bracket-right .symbol-card-row {
+    margin-bottom: 14px;
+}
+
+/* 글로벌 스타일 */
+.symbol-dropdown-menu {
+    z-index: 9999 !important;
+}
+
+.MuiPopover-root {
+    z-index: 9999 !important;
+}
+
+.symbol-dropdown-paper .MuiMenuItem-root {
+    pointer-events: auto !important;
+}
+
+@keyframes sweep {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.symbol-card-header:hover::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: linear-gradient(to right, transparent, rgba(255, 215, 0, 0.2), transparent) !important;
+    animation: sweep 1.5s ease infinite !important;
+    pointer-events: none !important;
+    z-index: 2 !important; /* 높은 z-index로 셀 내용 위에 표시 */
+}
+
+/* 거래소 정보 컨텐츠 스타일 */
+.exchange-info-content {
+    background: #111111;
+    border-radius: 0 0 8px 8px;
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    font-size: 12px;
+    padding-top: 0;
+}
+
+.symbol-card-right-section .symbol-card-row {
+    padding-right: 24px;
+}
+
+.leverage-bracket-right .symbol-card-row {
+    padding-right: 24px;
+}
+
+.symbol-card-right-section .symbol-card-row-inner {
+    padding-right: 8px;
+}
+
+.leverage-bracket-right .symbol-card-row-inner {
+    padding-right: 8px;
+}
+
+/* 가로 스크롤바가 있을 때 더 많은 패딩 추가 */
+.scrollable-x .symbol-card-row-inner {
+    padding-right: 24px;
+}
+
+/* symbol-card-grid 스타일 추가 */
+.symbol-card-grid {
+    background-color: #111111;
+    isolation: isolate;
+}

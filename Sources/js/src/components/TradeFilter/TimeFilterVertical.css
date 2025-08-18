@@ -1,0 +1,109 @@
+/* 세로 배치를 위한 CSS 스타일 */
+.time-filter-vertical-container {
+    width: 100%;
+    display: inline-block;
+    vertical-align: top;
+    margin-bottom: 16px;
+}
+
+.time-filter-column {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: 100%;
+}
+
+.vertical-checkbox {
+    width: fit-content;
+    margin-bottom: 2px !important;
+}
+
+/* 고급 필터 콘텐츠 내의 섹션 레이아웃 수정 */
+.advanced-filter-content {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    overflow-x: hidden;
+    justify-content: flex-start;
+    position: relative;
+    padding-top: 6px;
+    height: auto;
+}
+
+/* 전체 헤더 구분선은 AdvancedFilterModal.css에서 처리 */
+.advanced-filter-content::before {
+    display: none; /* 중복 제거 */
+}
+
+.advanced-filter-row {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    width: 100%;
+}
+
+/* 고급 필터 섹션 스타일 */
+.advanced-filter-section {
+    width: 90px !important;
+    margin-bottom: 3px !important;
+    min-width: 90px;
+    flex: 0 0 auto;
+    position: relative;
+    padding: 0 8px;
+    border-right: none !important; /* 테두리 제거 - after 요소로 처리 */
+}
+
+/* 각 섹션 헤더 스타일 개선 */
+.advanced-filter-section .filter-header-with-checkbox {
+    margin-bottom: 4px;
+    border-bottom: none;
+    padding-bottom: 1px;
+    width: 100%;
+}
+
+/* 모달 크기 조정 */
+.advanced-filter-modal-container {
+    width: 750px !important;
+    max-width: 95vw !important;
+}
+
+/* 체크박스 컨테이너 스타일 조정 */
+.advanced-filter-section .checkbox-container {
+    padding: 1px 5px !important;
+    margin: 1px 0 !important;
+}
+
+/* 체크박스 라벨 텍스트 크기 조정 */
+.advanced-filter-section .checkbox-label {
+    font-size: 13px !important;
+    white-space: nowrap;
+}
+
+/* 시간 섹션의 컨텐츠 영역만 오른쪽으로 5px 이동 */
+.advanced-filter-section:nth-child(5) .time-filter-vertical-container {
+    padding-left: 5px;
+}
+
+/* JavaScript로 최대 높이 계산을 위한 코드 */
+.filter-sections-wrapper {
+    position: relative;
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    width: 100%;
+}
+
+/* GPU 가속 클래스 추가 */
+.gpu-accelerated {
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    perspective: 1000px;
+}
+
+/* 사이드바 버튼 컨테이너 클래스 */
+.sidebar-button-container {
+    position: relative;
+    z-index: 2;
+    overflow: visible !important;
+    will-change: transform;
+}

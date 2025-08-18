@@ -1,0 +1,290 @@
+/* EngineCard 공통 스타일 */
+.engine-card-container {
+    display: flex;
+    flex-direction: column;
+    border-radius: 8px;
+    background: #1A1A1A;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    max-width: 767px;
+    max-height: 500px;
+    position: relative;
+    overflow: hidden;
+    margin-left: 3px;
+    transition: background-color 0.2s ease;
+    border: 1px solid transparent;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    will-change: transform, opacity;
+}
+
+.engine-card-container:hover {
+    background: #222222;
+}
+
+.engine-card-border {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 215, 0, 0.15);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.engine-card-header {
+    font-family: 'Inter', 'Pretendard', sans-serif;
+    font-size: 18px;
+    font-weight: 500;
+    letter-spacing: 0.3px;
+    color: rgba(255, 215, 0, 0.8);
+    background-color: #FFD7004D;
+    padding: 10px 18px 10px 24px;
+    margin-left: 0;
+    margin-top: 0;
+    margin-bottom: 0;
+    position: relative;
+    overflow: hidden;
+    border-radius: 8px 8px 0 0;
+    display: flex;
+    align-items: center;
+}
+
+.engine-card-header::after {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: rgba(255, 215, 0, 0.13);
+    content: '';
+    width: 100%;
+}
+
+.engine-card-content {
+    background: #111111;
+    border-radius: 0 0 8px 8px;
+    position: relative;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow-y: auto;
+    font-size: 12px;
+    padding-top: 0;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
+.engine-card-scroll {
+    height: 100%;
+    padding: 0;
+    position: relative;
+    display: flex;
+    overflow: hidden;
+    margin-top: 0;
+}
+
+.engine-card-left-section {
+    width: 375px;
+    min-width: 375px;
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background-color: rgba(255, 215, 0, 0.1);
+    border-radius: 0;
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: hidden;
+    scrollbar-width: none;  /* Firefox */
+    -ms-overflow-style: none;  /* IE and Edge */
+    top: 0;
+    border-right: 2px solid rgba(255, 215, 0, 0.13);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+    height: auto;
+    box-sizing: border-box;
+}
+
+/* 왼쪽 영역 스크롤바 숨기기 - WebKit (Chrome, Safari, Edge) */
+.engine-card-left-section::-webkit-scrollbar {
+    display: none;
+}
+
+.engine-card-left-section .engine-card-row:first-child {
+    margin-top: 15px;
+}
+
+.engine-card-right-section {
+    flex: 1;
+    min-width: 140px;
+    position: relative;
+    z-index: 2;
+    padding-top: 0;
+    white-space: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
+    text-overflow: ellipsis;
+    height: auto;
+    box-sizing: border-box;
+}
+
+.engine-card-right-section .engine-card-row:first-child {
+    margin-top: 15px;
+}
+
+/* 엔진 카드 텍스트 간격 조정 */
+.engine-card-left-section .engine-card-row,
+.engine-card-right-section .engine-card-row {
+    margin-bottom: 14px;
+}
+
+.engine-card-row {
+    margin-bottom: 12px;
+    height: auto;
+    min-height: 18px;
+    display: flex;
+    align-items: center;
+    margin-top: 4px;
+    padding-left: 24px;
+    padding-right: 16px;
+}
+
+.engine-card-row-inner {
+    display: flex;
+    align-items: center;
+    min-height: 18px;
+    height: auto;
+}
+
+.engine-card-bullet {
+    color: rgba(255, 215, 0, 0.8);
+    margin-right: 8px;
+    font-size: 15px;
+    line-height: 18px;
+    margin-top: -3px;
+}
+
+.engine-card-label {
+    font-weight: 600;
+    color: rgba(255, 215, 0, 0.8);
+    font-size: 15px;
+    line-height: 18px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.engine-card-value {
+    color: #FFFFFF;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 18px;
+    display: flex;
+    align-items: center;
+    padding-right: 18px; /* 값 오른쪽에 여백 추가 */
+}
+
+.engine-card-path-value {
+    color: #FFFFFF;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 18px;
+    display: flex;
+    align-items: center;
+}
+
+/* 중첩된 객체를 위한 스타일 */
+.engine-card-nested-object {
+    display: flex;
+    flex-direction: row; /* 가로 정렬 */
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 4px;
+    padding: 8px 12px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+    border: 1.2px solid rgba(255, 215, 0, 0.18); /* 테두리 색상 일치 */
+}
+
+.engine-card-nested-left,
+.engine-card-nested-right {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between; /* 상하 정렬을 위해 추가 */
+}
+
+.engine-card-nested-left {
+    padding-right: 12px;
+}
+
+.engine-card-nested-right {
+    padding-left: 12px;
+}
+
+.engine-card-separator {
+    width: 1px;
+    background-color: rgba(255, 215, 0, 0.18); /* 테두리 색상과 일치 */
+}
+
+.engine-card-nested-row {
+    display: flex;
+    margin-bottom: 8px; /* 간격 늘림 */
+    align-items: center;
+}
+
+.engine-card-nested-row:last-child {
+    margin-bottom: 0;
+}
+
+.engine-card-nested-key {
+    color: rgba(255, 215, 0, 0.8);
+    font-size: 14px; /* 값과 통일 */
+    font-weight: 400; /* 값과 통일 */
+    line-height: 1.4; /* 상하 정렬을 위해 추가 */
+}
+
+.engine-card-nested-value {
+    color: #FFFFFF;
+    font-size: 14px;
+    font-weight: 400; /* 명시적으로 추가 */
+    line-height: 1.4; /* 상하 정렬을 위해 추가 */
+}
+
+/* 스크롤바 스타일 */
+.engine-card-content.scrollable-y {
+    overflow-y: auto;
+}
+
+.engine-card-left-section.scrollable-x,
+.engine-card-right-section.scrollable-x {
+    overflow-x: auto;
+}
+
+/* 애니메이션 효과 */
+@keyframes sweep {
+    0% {
+        transform: translateX(-100%);
+    }
+
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+.engine-card-header:hover::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: linear-gradient(to right, transparent, rgba(255, 215, 0, 0.2), transparent) !important;
+    animation: sweep 1.5s ease infinite !important;
+    pointer-events: none !important;
+    z-index: 2 !important;
+} 

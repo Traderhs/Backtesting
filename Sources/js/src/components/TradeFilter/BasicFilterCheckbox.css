@@ -1,0 +1,319 @@
+/* 기본 필터 체크박스용 변수 - 실제 스타일을 정의하지 않고 변수만 정의 */
+:root {
+    /* 현재 사용 중인 컬러 변수 보존 */
+    --checkbox-border-color: rgba(255, 215, 0, 0.5);
+    --checkbox-bg-color: rgba(17, 17, 17, 0.8);
+    --checkbox-checked-bg-color: rgba(255, 215, 0, 0.2);
+    --checkbox-checked-border-color: rgba(255, 215, 0, 0.6);
+    --checkbox-check-color: rgba(255, 215, 0, 0.9);
+    --checkbox-hover-bg-color: rgba(255, 215, 0, 0.1);
+}
+
+/* 기본 필터 체크박스 스타일 - 기본 필터에만 적용 */
+
+/* 체크박스 기본 스타일 */
+.custom-checkbox {
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    width: 17px;
+    height: 17px;
+    border: 2px solid rgba(255, 215, 0, 0.5);
+    border-radius: 3px;
+    background-color: rgba(17, 17, 17, 0.8);
+    cursor: pointer;
+    position: relative;
+    transition: all 0.4s ease;
+    margin-right: 7px;
+    flex-shrink: 0;
+    transform-origin: center;
+    will-change: background-color, border-color;
+    transform: translateZ(0);
+}
+
+/* 체크된 상태 */
+.custom-checkbox:checked {
+    background-color: rgba(255, 215, 0, 0.2);
+    border-color: rgba(255, 215, 0, 0.6);
+    transform: translateZ(0);
+}
+
+.custom-checkbox:checked::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 215, 0, 0.9);
+    font-size: 11px;
+    font-weight: bold;
+    animation: checkmarkSlide 0.2s ease-out 0s both;
+    will-change: opacity;
+}
+
+/* 체크 해제 애니메이션 */
+.custom-checkbox:not(:checked)::after,
+.basic-filter-section .custom-checkbox:not(:checked)::after {
+    content: '✓';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: rgba(255, 215, 0, 0.9);
+    font-size: 11px;
+    font-weight: bold;
+    animation: uncheckmarkSlide 0.2s ease-out forwards;
+    will-change: opacity;
+    opacity: 0; /* 초기에는 안 보이게 설정 */
+}
+
+/* 체크 해제 시 체크박스 전체 흔들림 애니메이션 */
+.custom-checkbox:not(:checked),
+.basic-filter-section .custom-checkbox:not(:checked) {
+    animation: shakeCheckbox 0.5s ease-in-out;
+}
+
+/* 불확정 상태 */
+.custom-checkbox:indeterminate,
+.basic-filter-section .custom-checkbox:indeterminate {
+    background-color: rgba(255, 215, 0, 0.2);
+    border-color: rgba(255, 215, 0, 0.6);
+    transform: translateZ(0);
+}
+
+.custom-checkbox:indeterminate::after,
+.basic-filter-section .custom-checkbox:indeterminate::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 8px;
+    height: 2px;
+    background-color: rgba(255, 215, 0, 0.9);
+    border-radius: 1px;
+    will-change: opacity;
+    animation: indeterminateSlide 0.2s ease-out both;
+}
+
+/* 호버 효과 */
+.custom-checkbox:hover {
+    border-color: rgba(255, 215, 0, 0.7);
+}
+
+/* 체크박스 애니메이션 */
+@keyframes checkmarkSlide {
+    0% { 
+        transform: translate(-50%, -50%) rotate(-180deg) translateZ(0);
+        opacity: 0;
+    }
+    100% { 
+        transform: translate(-50%, -50%) rotate(0deg) translateZ(0);
+        opacity: 1;
+    }
+}
+
+/* 체크 해제 애니메이션 - 체크 표시가 회전하면서 사라짐 */
+@keyframes uncheckmarkSlide {
+    0% { 
+        transform: translate(-50%, -50%) rotate(0deg) translateZ(0);
+        opacity: 1;
+    }
+    100% { 
+        transform: translate(-50%, -50%) rotate(180deg) translateZ(0);
+        opacity: 0;
+    }
+}
+
+/* 좌우 45도 떨쳐내는 느낌의 애니메이션 - 흔들림 횟수 감소 */
+@keyframes shakeCheckbox {
+    0% { transform: rotate(0deg); }
+    20% { transform: rotate(-45deg); }
+    40% { transform: rotate(45deg); }
+    60% { transform: rotate(-45deg); }
+    80% { transform: rotate(45deg); }
+    100% { transform: rotate(0deg); }
+}
+
+@keyframes indeterminateSlide {
+    0% { 
+        transform: translate(-50%, -50%) rotateY(-90deg) translateZ(0);
+        opacity: 0;
+    }
+    100% { 
+        transform: translate(-50%, -50%) rotateY(0deg) translateZ(0);
+        opacity: 1;
+    }
+}
+
+/* 체크박스 컨테이너 스타일 */
+.basic-filter-section .checkbox-container {
+    display: flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.4s ease;
+    cursor: pointer;
+    margin: 2px 0;
+    position: relative;
+}
+
+.basic-filter-section .checkbox-container:hover {
+    background-color: rgba(255, 215, 0, 0.1);
+}
+
+/* 체크박스 라벨 스타일 */
+.basic-filter-section .checkbox-label {
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 14px;
+    cursor: pointer;
+    font-family: "'Inter', 'Pretendard'", sans-serif;
+    transition: color 0.4s ease;
+    position: relative;
+    z-index: 1;
+}
+
+.basic-filter-section .checkbox-container:hover .checkbox-label {
+    color: rgba(255, 215, 0, 0.9);
+}
+
+/* 필터 헤더 스타일 */
+.basic-filter-section .filter-header-with-checkbox {
+    display: flex;
+    align-items: center;
+    margin: 0 0 8px 0;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background-color 0.4s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+/* 호버 시 배경색 변경은 after 가상요소를 통해 처리 */
+.basic-filter-section .filter-header-with-checkbox::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: transparent;
+    transition: background-color 0.4s ease;
+    z-index: 0; /* -2에서 0으로 변경 */
+}
+
+.basic-filter-section .filter-header-with-checkbox:hover::after {
+    background-color: rgba(255, 215, 0, 0.1);
+}
+
+/* 세로선을 위한 before 가상요소 */
+.basic-filter-section .filter-header-with-checkbox::before {
+    content: '';
+    position: absolute;
+    z-index: 1; /* -1에서 1로 변경 */
+    pointer-events: none;
+}
+
+.basic-filter-section .filter-section-title {
+    color: #fff;
+    font-size: 15px;
+    font-weight: 500;
+    transition: color 0.4s ease;
+    position: relative;
+    z-index: 2; /* 1에서 2로 변경 */
+}
+
+.basic-filter-section .filter-header-with-checkbox:hover .filter-section-title {
+    color: rgba(255, 215, 0, 0.9);
+}
+
+/* 헤더 체크박스 특별 스타일 */
+.basic-filter-section .header-checkbox {
+    margin-right: 8px;
+    position: relative;
+    z-index: 2; /* 1에서 2로 변경 */
+}
+
+/* 클릭 영역 확장을 위한 가상 요소 - 기본 필터에 적용 */
+.basic-filter-section .checkbox-container::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+    cursor: pointer;
+    background-color: transparent;
+    transition: background-color 0.4s ease;
+    z-index: 0; /* -2에서 0으로 변경 */
+}
+
+.basic-filter-section .checkbox-container:hover::after {
+    background-color: rgba(255, 215, 0, 0.1);
+}
+
+/* 가로선을 위한 before 가상요소 - 필요한 경우 */
+.basic-filter-section .checkbox-container::before {
+    content: '';
+    position: absolute;
+    z-index: 1; /* -1에서 1로 변경 */
+    pointer-events: none;
+}
+
+/* 체크박스는 가상 요소보다 위에 표시 - 기본 필터에 적용 */
+.basic-filter-section .checkbox-container .custom-checkbox {
+    position: relative;
+    z-index: 2; /* 가상 요소 위에 표시되도록 */
+    /* 체크 해제 애니메이션이 제대로 작동하도록 추가 설정 */
+    transition: background-color 0.4s ease, 
+                border-color 0.4s ease;
+}
+
+/* 체크박스 컨테이너 호버 스타일 수정 - 배경색은 ::after에서 처리 */
+.basic-filter-section .checkbox-container:hover {
+    background-color: transparent; /* 배경색 제거 - ::after에서 처리 */
+}
+
+/* 기본 필터 마스터 체크박스 indeterminate -> unchecked 전환 시 애니메이션 */
+@keyframes basicFilterIndeterminateToUnchecked {
+    0% { transform: rotate(0deg); }
+    20% { transform: rotate(-45deg); }
+    40% { transform: rotate(45deg); }
+    60% { transform: rotate(-20deg); }
+    80% { transform: rotate(10deg); }
+    100% { transform: rotate(0deg); }
+}
+
+/* 기본 필터 마스터 체크박스 특별 처리 */
+.basic-filter-section .header-checkbox[data-prev-state="indeterminate"]:not(:checked) {
+    animation: shakeCheckbox 0.5s ease-in-out !important;
+}
+
+/* 체크 -> 중립 상태 변경 시 애니메이션 추가 */
+.basic-filter-section .header-checkbox[data-prev-state="checked"]:indeterminate {
+    animation: shakeCheckbox 0.5s ease-in-out !important;
+}
+
+/* 체크박스 흔들림 애니메이션 우선순위 증가 */
+.basic-filter-section .custom-checkbox:not(:checked) {
+    animation: shakeCheckbox 0.5s ease-in-out !important;
+}
+
+/* 마스터 체크박스와 서브 체크박스 동기화를 위한 CSS */
+.basic-filter-section .checkbox-container:has(> .custom-checkbox:not(:checked)[data-prev-state="indeterminate"]) +
+.basic-filter-section .filter-header-with-checkbox:has(> .header-checkbox:not(:checked)[data-prev-state="indeterminate"]) {
+    animation-delay: 0s !important;
+}
+
+
+/* 모든 마스터 체크박스 추가 선택자 지정 */
+.custom-checkbox.header-checkbox[data-animation-target="true"]:not(:checked):not(.indeterminate-prev) {
+    animation: shakeCheckbox 0.5s ease-in-out !important;
+}

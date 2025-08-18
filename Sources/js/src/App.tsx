@@ -7,6 +7,17 @@ import Sidebar from "@/components/Sidebar/Sidebar";
 import NoDataMessage from '@/components/Common/NoDataMessage';
 import LoadingSpinner from '@/components/Common/LoadingSpinner';
 
+// Plotly 미리 로딩 (앱 시작 시)
+const plotlyPreloadPromise = import('react-plotly.js').then(module => {
+    return module.default;
+}).catch(err => {
+    console.warn('[App] Plotly preload failed:', err);
+    return null;
+});
+
+// 전역에서 Plotly 접근 가능하도록 window 객체에 추가
+(window as any).__plotlyPreload = plotlyPreloadPromise;
+
 // 코드 스플리팅으로 탭 컴포넌트들을 lazy 로딩
 const Overview = lazy(() => import("@/components/Overview/Overview"));
 const Performance = lazy(() => import("@/components/Performance/Performance"));

@@ -6,17 +6,80 @@ const express = require("express");
 const {readFileSync} = require("fs");
 const {Server: WebSocketServer} = require("ws");
 const parquet = require("@dsnp/parquetjs");
-const axios = require('axios');
+const net = require("net");
+
+// PKG 환경에서 axios 로드
+let axios;
+try {
+    if (process.pkg) {
+        // PKG 환경에서는 exports 필드에 정의된 경로 사용
+        axios = require('axios/dist/node/axios.cjs');
+    } else {
+        axios = require('axios');
+    }
+} catch (e) {
+    try {
+        // 메인 axios 경로 시도
+        axios = require('axios');
+    } catch (e2) {
+        console.warn('[WARN] axios 로드 실패, fallback 사용:', e2.message);
+        axios = null;
+    }
+}
 
 const app = express();
-const port = 7777;
+let port = 7777;
+
+// 포트 사용 가능 여부 확인 함수
+function isPortAvailable(port) {
+    return new Promise((resolve) => {
+        const server = net.createServer();
+        server.listen(port, () => {
+            server.once('close', () => {
+                resolve(true);
+            });
+            server.close();
+        });
+        server.on('error', () => {
+            resolve(false);
+        });
+    });
+}
+
+// 사용 가능한 포트 찾기 함수
+async function findAvailablePort(startPort) {
+    let currentPort = startPort;
+    while (!(await isPortAvailable(currentPort))) {
+        console.log(`[INFO] Port ${currentPort} is already in use, trying ${currentPort + 1}`);
+        currentPort++;
+    }
+    return currentPort;
+}
+
+// exe 파일 실행 시 올바른 경로 찾기
+const isDevelopment = !process.pkg;
+let baseDir;
+
+if (isDevelopment) {
+    baseDir = process.cwd();
+} else {
+    // PKG 환경에서 안전한 경로 처리
+    try {
+        baseDir = path.dirname(process.execPath) || process.cwd();
+    } catch (e) {
+        baseDir = process.cwd();
+    }
+}
+
+console.log(`[INFO] Running in ${isDevelopment ? 'development' : 'production'} mode`);
+console.log(`[INFO] Base directory: ${baseDir}`);
 
 // -------------------------------
 // 1. 정적 파일 제공 및 기본 라우팅
 // -------------------------------
-const iconDir = path.join(process.cwd(), "Backboard", "icon");
-app.use("/Backboard", express.static(path.join(process.cwd(), "Backboard")));
-const distPath = path.join(process.cwd(), "Backboard");
+const iconDir = path.join(baseDir, "Backboard", "icon");
+app.use("/Backboard", express.static(path.join(baseDir, "Backboard")));
+const distPath = path.join(baseDir, "Backboard");
 app.use(express.static(distPath));
 
 // -------------------------------
@@ -185,6 +248,11 @@ async function rateLimitedCoinGeckoCall(url) {
     }
 
     lastCoinGeckoCall = Date.now();
+    
+    if (!axios) {
+        throw new Error('axios not available');
+    }
+    
     return axios.get(url, {
         timeout: 15000,
         validateStatus: (status) => status >= 200 && status < 400
@@ -198,6 +266,10 @@ initializeFallbackImage().then();
 async function getBinanceSymbols() {
     if (binanceSymbolCache) return binanceSymbolCache;
     try {
+        if (!axios) {
+            throw new Error('axios not available');
+        }
+        
         const response = await axios.get(BINANCE_24HR_TICKER_URL, {
             timeout: 10000 // 10초 타임아웃
         });
@@ -402,6 +474,10 @@ async function findLogoUrl(symbol) {
         // 각 패턴을 순차적으로 시도 (빠르게 실패하도록 타임아웃 단축)
         for (const pattern of logoPatterns) {
             try {
+                if (!axios) {
+                    throw new Error('axios not available');
+                }
+                
                 // HEAD 요청으로 이미지 존재 여부 확인 (타임아웃 단축)
                 const headResponse = await axios.head(pattern, {
                     timeout: 5000, // 5초로 단축
@@ -582,17 +658,31 @@ app.get("/api/get-source-code", async (req, res) => {
 // -------------------------------
 // 2. 서버 실행 및 브라우저 자동 실행
 // -------------------------------
-const server = app.listen(port, () => {
-    exec(`start http://localhost:${port}`, (err) => {
-        if (err) {
-        }
+async function startServer() {
+    // 사용 가능한 포트 찾기
+    port = await findAvailablePort(port);
+    console.log(`[INFO] Starting server on port ${port}`);
+    
+    const server = app.listen(port, () => {
+        console.log(`[INFO] Server is running on http://localhost:${port}`);
+        
+        // 브라우저 실행
+        exec(`start http://localhost:${port}`, (err) => {
+            if (err) {
+                console.error('[ERROR] Failed to open browser:', err.message);
+            }
+        });
     });
-});
 
-// -------------------------------
-// 3. WebSocket 서버 설정 및 종료 타이머
-// -------------------------------
-const wss = new WebSocketServer({server});
+    return server;
+}
+
+// 서버 시작
+startServer().then(server => {
+    // -------------------------------
+    // 3. WebSocket 서버 설정 및 종료 타이머
+    // -------------------------------
+    const wss = new WebSocketServer({server});
 
 // 서버 종료를 위한 타이머 (모든 클라이언트 연결 종료 후 5초 후 종료)
 let shutdownTimer = null;
@@ -626,7 +716,7 @@ wss.on("connection", (ws) => {
 // -------------------------------
 // 4. config.json 파싱: 캔들스틱 데이터와 지표 데이터 경로 추출
 // -------------------------------
-const configPath = path.join(process.cwd(), "Backboard", "config.json");
+const configPath = path.join(baseDir, "Backboard", "config.json");
 let config;
 try {
     config = JSON.parse(readFileSync(configPath, "utf8"));
@@ -1021,4 +1111,9 @@ app.get("/force-shutdown", (req, res) => {
 // -------------------------------
 app.get("*", (req, res) => {
     res.sendFile(path.join(distPath, "index.html"));
+});
+
+}).catch(err => {
+    console.error('[ERROR] Failed to start server:', err);
+    process.exit(1);
 });

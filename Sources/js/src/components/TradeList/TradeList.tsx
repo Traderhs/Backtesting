@@ -369,12 +369,16 @@ interface TradeRowProps {
     rowHeight: number;
     isActiveRow: boolean;
     hoverTradeNo: number | null;
+    hoverColumn: string | null;
     initialBalance: number;
     config: any;
     isDifferentFromNext: boolean;
     isLastRowOfDataset: boolean;
+    selectedCell: {rowIndex: number, columnKey: string, tradeNo: number} | null;
     onMouseEnter: (tradeNo: number) => void;
     onMouseLeave: () => void;
+    onCellClick: (rowIndex: number, columnKey: string, tradeNo: number) => void;
+    onCellHover: (columnKey: string | null) => void;
 }
 
 const TradeRow = React.memo<TradeRowProps>(({
@@ -385,12 +389,16 @@ const TradeRow = React.memo<TradeRowProps>(({
                                                 rowHeight,
                                                 isActiveRow,
                                                 hoverTradeNo,
+                                                hoverColumn,
                                                 initialBalance,
                                                 config,
                                                 isDifferentFromNext,
                                                 isLastRowOfDataset,
+                                                selectedCell,
                                                 onMouseEnter,
-                                                onMouseLeave
+                                                onMouseLeave,
+                                                onCellClick,
+                                                onCellHover
                                             }) => {
     const currentTradeNo = row["거래 번호"];
     const isHovered = hoverTradeNo === currentTradeNo;
@@ -402,10 +410,15 @@ const TradeRow = React.memo<TradeRowProps>(({
     else if (isDifferentFromNext || isLastRowOfDataset) rowClass += " last-group-row";
 
     if (isActiveRow) rowClass += " active-row";
-
-    const handleMouseEnter = useCallback(() => {
-        onMouseEnter(currentTradeNo);
-    }, [currentTradeNo, onMouseEnter]);
+    
+    // 선택된 셀과 같은 거래번호인지 확인
+    const isSelectedTradeRow = selectedCell && selectedCell.tradeNo === currentTradeNo;
+    if (isSelectedTradeRow) rowClass += " selected-trade-row";
+    
+    // 셀 클릭 핸들러
+    const handleCellClick = useCallback((columnKey: string) => {
+        onCellClick(originalIndex, columnKey, currentTradeNo);
+    }, [originalIndex, currentTradeNo, onCellClick]);
 
     // 각 셀을 미리 계산하여 메모이제이션 최적화
     const cellContents = useMemo(() => {
@@ -453,8 +466,24 @@ const TradeRow = React.memo<TradeRowProps>(({
         <div
             className={rowClass}
             data-trade-no={currentTradeNo}
-            onMouseEnter={handleMouseEnter}
-            onMouseLeave={onMouseLeave}
+            onClick={(e) => e.stopPropagation()} // 컨테이너 클릭 이벤트 방지
+            onContextMenu={(e) => e.stopPropagation()} // 컨테이너 우클릭 이벤트 방지
+            onMouseEnter={() => {
+                if (!selectedCell) {
+                    onMouseEnter(currentTradeNo);
+                }
+            }}
+            onMouseLeave={() => {
+                if (!selectedCell) {
+                    onMouseLeave();
+                }
+            }}
+            onMouseMove={() => {
+                // 선택 해제 직후 마우스가 이미 행 위에 있을 때 호버 상태 즉시 적용
+                if (!selectedCell && hoverTradeNo !== currentTradeNo) {
+                    onMouseEnter(currentTradeNo);
+                }
+            }}
             style={{
                 position: 'absolute',
                 top: `${Math.floor(originalIndex * rowHeight)}px`,
@@ -471,27 +500,75 @@ const TradeRow = React.memo<TradeRowProps>(({
             {cellContents.map((cell, colIndex) => {
                 // 기본 배경색 설정
                 let calculatedBackground;
+                
+                // 선택된 셀인지 확인
+                const isSelectedCell = selectedCell && 
+                    selectedCell.rowIndex === originalIndex && 
+                    selectedCell.columnKey === cell.key;
+                
+                // 선택된 열인지 확인 (헤더는 제외)
+                const isSelectedColumn = selectedCell && 
+                    selectedCell.columnKey === cell.key && 
+                    selectedCell.rowIndex !== originalIndex;
+                
+                // 호버된 열인지 확인 (선택된 셀이 있으면 호버 억제)
+                const hasAnySelectedCell = selectedCell !== null;
+                const isHoverColumn = !hasAnySelectedCell && hoverColumn === cell.key && !isSelectedCell && !isSelectedTradeRow;
 
-                // 호버 상태일 때는 호버 배경색 우선 적용
-                if (isHovered && currentTradeNo === hoverTradeNo) {
-                    calculatedBackground = 'rgba(255, 215, 0, 0.2)';
+                // 선택된 셀에는 가장 진한 배경색 적용
+                if (isSelectedCell) {
+                    calculatedBackground = 'rgba(255, 215, 0, 0.35)';
+                }
+                // 호버 상태일 때는 호버 배경색 우선 적용 (선택된 셀이 있으면 호버 억제)
+                else if (!hasAnySelectedCell && !isSelectedCell && !isSelectedTradeRow && isHovered && currentTradeNo === hoverTradeNo) {
+                    calculatedBackground = 'rgba(255, 215, 0, 0.1)';
                 }
 
                 // 경계선 클래스 결정 - 모듈 레벨 Set 사용
                 const borderClass = colIndex < allHeaders.length - 1 ? 
                     (THICK_BORDER_COLUMNS.has(cell.key) ? 'thick-border' : 'thin-border') : '';
+                
+                // 셀 클래스 결정
+                let cellClass = `td cell-width ${borderClass}`;
+                if (isSelectedCell) cellClass += ' selected-cell';
+                if (isSelectedColumn) cellClass += ' selected-column';
+                if (isHoverColumn) cellClass += ' hover-column';
 
                 return (
                     <div
                         key={cell.key}
-                        className={`td cell-width ${borderClass}`}
+                        className={cellClass}
+                        onClick={(e) => {
+                            e.stopPropagation(); // 컨테이너 클릭 이벤트 방지
+                            handleCellClick(cell.key);
+                        }}
+                        onContextMenu={(e) => {
+                            e.stopPropagation(); // 컨테이너 우클릭 이벤트 방지
+                        }}
+                        onMouseEnter={() => {
+                            if (!hasAnySelectedCell) {
+                                onCellHover(cell.key);
+                            }
+                        }}
+                        onMouseLeave={() => {
+                            if (!hasAnySelectedCell) {
+                                onCellHover(null);
+                            }
+                        }}
+                        onMouseMove={() => {
+                            // 선택 해제 직후 마우스가 이미 셀 위에 있을 때 호버 상태 즉시 적용
+                            if (!hasAnySelectedCell && hoverColumn !== cell.key) {
+                                onCellHover(cell.key);
+                            }
+                        }}
                         style={{
                             color: cell.textColor || 'inherit',
                             background: calculatedBackground,
                             width: columnWidths[cell.key] || 'auto',
                             minWidth: columnWidths[cell.key] || 'auto',
                             maxWidth: columnWidths[cell.key] || 'auto',
-                            flexBasis: columnWidths[cell.key] || 'auto'
+                            flexBasis: columnWidths[cell.key] || 'auto',
+                            cursor: 'pointer'
                         }}
                     >
                         {cell.formattedContent}
@@ -507,6 +584,8 @@ const TradeRow = React.memo<TradeRowProps>(({
         prevProps.originalIndex === nextProps.originalIndex &&
         prevProps.isActiveRow === nextProps.isActiveRow &&
         prevProps.hoverTradeNo === nextProps.hoverTradeNo &&
+        prevProps.hoverColumn === nextProps.hoverColumn &&
+        prevProps.selectedCell === nextProps.selectedCell &&
         prevProps.isDifferentFromNext === nextProps.isDifferentFromNext &&
         prevProps.isLastRowOfDataset === nextProps.isLastRowOfDataset &&
         prevProps.columnWidths === nextProps.columnWidths &&
@@ -567,6 +646,26 @@ export default function TradeList({config}: TradeListProps) {
     const [isLoading, setIsLoading] = useState(true)
     const tableRef = useRef<HTMLDivElement>(null)
     const [hoverTradeNo, setHoverTradeNo] = useState<number | null>(null)
+    const [hoverColumn, setHoverColumn] = useState<string | null>(null)
+    
+    // 선택된 셀 정보
+    const [selectedCell, setSelectedCell] = useState<{rowIndex: number, columnKey: string, tradeNo: number} | null>(null)
+
+    // ESC 키로 선택 해제
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if (event.key === 'Escape' && selectedCell) {
+                setSelectedCell(null);
+                setHoverTradeNo(null);
+                setHoverColumn(null);
+            }
+        };
+
+        document.addEventListener('keydown', handleKeyDown);
+        return () => {
+            document.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [selectedCell]);
 
     // 가상 스크롤 상태 및 설정
     const viewportRef = useRef<HTMLDivElement>(null);
@@ -835,6 +934,38 @@ export default function TradeList({config}: TradeListProps) {
     const handleMouseLeave = useCallback(() => {
         setHoverTradeNo(null);
     }, []);
+    
+    // 셀 호버 핸들러
+    const handleCellHover = useCallback((columnKey: string | null) => {
+        setHoverColumn(columnKey);
+    }, []);
+    
+    // 셀 클릭 핸들러 - 헤더는 제외, 같은 셀 클릭시 선택 해제
+    const handleCellClick = useCallback((rowIndex: number, columnKey: string, tradeNo: number) => {
+        // 현재 선택된 셀과 같은 셀을 클릭하면 선택 해제
+        if (selectedCell && 
+            selectedCell.rowIndex === rowIndex && 
+            selectedCell.columnKey === columnKey && 
+            selectedCell.tradeNo === tradeNo) {
+            setSelectedCell(null);
+            // 선택 해제 시 호버 상태도 초기화
+            setHoverTradeNo(null);
+            setHoverColumn(null);
+        } else {
+            setSelectedCell({rowIndex, columnKey, tradeNo});
+        }
+    }, [selectedCell]);
+
+    // 빈 공간 클릭으로 선택 해제
+    const handleContainerClick = useCallback((event: React.MouseEvent) => {
+        // 이벤트가 셀이나 테이블 요소에서 발생하지 않았을 때만 선택 해제
+        const target = event.target as HTMLElement;
+        if (!target.closest('.td') && !target.closest('.th') && selectedCell) {
+            setSelectedCell(null);
+            setHoverTradeNo(null);
+            setHoverColumn(null);
+        }
+    }, [selectedCell]);
 
     // 거래 데이터가 없으면 메시지만 표시
     if (!allTrades || allTrades.length === 0) {
@@ -858,7 +989,8 @@ export default function TradeList({config}: TradeListProps) {
                 position: 'relative',
                 minWidth: '0'
             }}
-            className="trade-list-container"
+            className={`trade-list-container${selectedCell ? ' has-selected-cell' : ''}`}
+            onClick={handleContainerClick}
         >
             {/* 제목 */}
             <PageTitle/>
@@ -1046,12 +1178,16 @@ export default function TradeList({config}: TradeListProps) {
                                             rowHeight={rowHeight}
                                             isActiveRow={isActiveRow}
                                             hoverTradeNo={hoverTradeNo}
+                                            hoverColumn={hoverColumn}
                                             initialBalance={initialBalance}
                                             config={config}
                                             isDifferentFromNext={isDifferentFromNext}
                                             isLastRowOfDataset={isLastRowOfDataset}
+                                            selectedCell={selectedCell}
                                             onMouseEnter={handleMouseEnter}
                                             onMouseLeave={handleMouseLeave}
+                                            onCellClick={handleCellClick}
+                                            onCellHover={handleCellHover}
                                         />
                                     );
                                 })}

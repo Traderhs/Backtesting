@@ -261,7 +261,6 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
                                   const string& funding_time,
                                   const double funding_price,
                                   const int symbol_idx) {
-  // TODO 펀딩비 로그 체크
   const auto& filled_entries = filled_entries_[symbol_idx];
 
   // 주문마다 펀딩비 정산
@@ -274,8 +273,6 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
     const auto& entry_name = filled_entry->GetEntryName();
 
     // 펀딩비: 펀딩 비율 * 펀딩 가격(마크 가격) * 진입 포지션 잔량
-    // 펀딩 비율 양수: 롱은 지불, 숏은 수령
-    // 펀딩 비율 음수: 롱은 수령, 숏은 지불
     const auto entry_direction = filled_entry->GetEntryDirection();
     const auto current_position_size =
         filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize();
@@ -284,6 +281,8 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
     const double abs_funding_amount = funding_amount;
 
     // 포지션 방향에 따라 지불인지 수령인지 결정
+    // 펀딩 비율 양수: 롱은 지불, 숏은 수령
+    // 펀딩 비율 음수: 롱은 수령, 숏은 지불
     if ((funding_rate > 0 && entry_direction == LONG) ||
         (funding_rate < 0 && entry_direction == SHORT)) {
       funding_amount = -funding_amount;
@@ -1741,7 +1740,6 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
       }
     }
 
-    //  TODO 로그 체크
     LogFormattedInfo(
         INFO_L,
         format(
