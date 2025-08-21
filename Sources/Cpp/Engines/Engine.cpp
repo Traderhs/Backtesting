@@ -101,7 +101,7 @@ void Engine::Backtesting() {
   analyzer_->SaveSourcesAndHeaders();
 
   // 백보드 저장
-  // Analyzer::SaveBackboard(main_directory);
+  analyzer_->SaveBackboard();
 
   LogSeparator(true);
   logger_->Log(INFO_L, "백테스팅이 완료되었습니다.", __FILE__, __LINE__, true);
@@ -118,6 +118,13 @@ void Engine::Backtesting() {
   // 소요 시간까지 확실히 로그로 저장시키기 위해 마지막에 저장하며,
   // 어색함 방지를 위해 저장 완료 로그를 발생시키지 않음
   analyzer_->SaveBacktestingLog();
+
+  // Backboard.exe 자동 실행
+  if (const string backboard_exe_path =
+          analyzer_->GetMainDirectory() + "/Backboard.exe";
+      filesystem::exists(backboard_exe_path)) {
+    system(format("start \"\" \"{}\"", backboard_exe_path).c_str());
+  }
 }
 
 void Engine::SetCurrentStrategyType(const StrategyType strategy_type) {

@@ -81,6 +81,9 @@ class Analyzer {
   /// 거래 내역에 거래를 추가하는 함수
   void AddTrade(Trade& new_trade, int exit_count);
 
+  /// 이번 백테스팅의 결과가 저장될 메인 폴더의 경로를 반환하는 함수
+  string GetMainDirectory() const;
+
   // ===========================================================================
   // 함수 나열 순서는 Backboard 대시보드 순서
 
@@ -100,6 +103,10 @@ class Analyzer {
 
   /// 전략들의 소스 코드를 파일로 저장하는 함수
   void SaveSourcesAndHeaders();
+
+  /// 백보드를 저장하는 함수
+  /// 로컬 저장소에서 찾을 수 없을 때에는 원격 저장소로 fallback
+  void SaveBackboard() const;
 
   /// 해당 회차의 백테스팅의 로그를 지정된 폴더에 저장하는 함수
   void SaveBacktestingLog() const;
@@ -144,6 +151,9 @@ class Analyzer {
   /// Json 객체에 지표의 플롯 정보를 기록하는 함수
   static void ParsePlotInfo(ordered_json& indicator_json,
                             const shared_ptr<Indicator>& indicator);
+
+  /// GitHub 릴리즈에서 백보드를 다운로드하는 함수
+  void DownloadBackboardFromGitHub() const;
 };
 
 }  // namespace backtesting::analyzer
