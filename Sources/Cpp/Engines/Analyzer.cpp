@@ -1,9 +1,13 @@
 // 표준 라이브러리
 #include <algorithm>
+#include <atomic>
+#include <chrono>
+#include <cstdlib>
 #include <execution>
 #include <filesystem>
 #include <format>
 #include <fstream>
+#include <functional>
 #include <numeric>
 #include <ranges>
 #include <set>
@@ -124,6 +128,8 @@ void Analyzer::AddTrade(Trade& new_trade, const int exit_count) {
   }
 }
 
+string Analyzer::GetMainDirectory() const { return main_directory_; }
+
 // =============================================================================
 void Analyzer::CreateDirectories() {
   try {
@@ -185,8 +191,7 @@ void Analyzer::SaveIndicatorData() {
       }
 
       // 중복 제거 및 정렬 (unordered_set 사용으로 최적화)
-      unordered_set<int64_t> unique_times(time_vector.begin(),
-                                          time_vector.end());
+      unordered_set unique_times(time_vector.begin(), time_vector.end());
       time_vector.assign(unique_times.begin(), unique_times.end());
       sort(execution::par_unseq, time_vector.begin(), time_vector.end());
     }
@@ -552,8 +557,7 @@ void Analyzer::SaveConfig() {
         if (!funding_rates.empty()) {
           average_funding_rate =
               total_funding_rate / static_cast<double>(funding_rates.size());
-          average_funding_rate =
-              round(average_funding_rate * 1e8) / 1e8;
+          average_funding_rate = round(average_funding_rate * 1e8) / 1e8;
         }
 
         symbol["펀딩 비율"] = {
@@ -834,6 +838,37 @@ void Analyzer::SaveSourcesAndHeaders() {
   }
 }
 
+void Analyzer::SaveBackboard() const {
+  try {
+    // Backboard Package 경로 설정
+    const string backboard_package_path =
+        Config::GetRootDirectory() + "/Sources/js/Backboard Package";
+
+    // Backboard Package가 존재하는지 확인
+    if (filesystem::exists(backboard_package_path) &&
+        filesystem::is_directory(backboard_package_path)) {
+      // 기존 패키지가 있으면 복사
+      filesystem::copy(backboard_package_path, main_directory_,
+                       filesystem::copy_options::recursive |
+                           filesystem::copy_options::overwrite_existing);
+    } else {
+      // 패키지가 없으면 GitHub 릴리즈에서 다운로드
+      logger_->Log(
+          WARNING_L,
+          "로컬 저장소에서 백보드를 찾을 수 없어 GitHub에서 다운로드합니다.",
+          __FILE__, __LINE__, true);
+
+      DownloadBackboardFromGitHub();
+    }
+
+    logger_->Log(INFO_L, "백보드가 저장되었습니다.", __FILE__, __LINE__, true);
+  } catch (const exception& e) {
+    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
+    Logger::LogAndThrowError("백보드를 저장하는 중 오류가 발생했습니다.",
+                             __FILE__, __LINE__);
+  }
+}
+
 void Analyzer::SaveBacktestingLog() const {
   try {
     logger_->FlushAllBuffers();
@@ -1048,6 +1083,186 @@ void Analyzer::ParsePlotInfo(ordered_json& indicator_json,
     // 값이 없는 경우 심볼 가격 소수점 정밀도 사용
     // (VOLUME은 수량 최소 단위의 정밀도 사용)
     plot_info["소수점 정밀도"] = "기본값";
+  }
+}
+
+void Analyzer::DownloadBackboardFromGitHub() const {
+  try {
+    const string temp_dir = filesystem::temp_directory_path().string();
+    const string backboard_exe_url =
+        "https://github.com/Traderhs/Backtesting/releases/download/Backboard/"
+        "Backboard.exe";
+    const string backboard_zip_url =
+        "https://github.com/Traderhs/Backtesting/releases/download/Backboard/"
+        "Backboard.zip";
+
+    const string exe_temp_path = temp_dir + "/Backboard.exe";
+    const string zip_temp_path = temp_dir + "/Backboard.zip";
+    const string extract_temp_path = temp_dir + "/BackboardExtract";
+
+    // Backboard.exe 다운로드
+    logger_->Log(INFO_L, "Backboard.exe를 다운로드하는 중입니다.", __FILE__,
+                 __LINE__, true);
+
+    const string download_exe_cmd = format(
+        "curl -L --retry 3 --retry-delay 2 --connect-timeout 30 --max-time "
+        "300 --progress-bar "
+        "-o \"{}\" \"{}\" 2>&1",
+        exe_temp_path, backboard_exe_url);
+
+    if (int exe_result = system(download_exe_cmd.c_str()); exe_result != 0) {
+      // curl이 실패하면 PowerShell로 재시도
+      logger_->Log(WARNING_L,
+                   "curl로 다운로드 실패, PowerShell로 재시도합니다.", __FILE__,
+                   __LINE__, true);
+
+      const string fallback_exe_cmd = format(
+          "powershell -Command \"$ProgressPreference = 'Continue'; "
+          "[Net.ServicePointManager]::SecurityProtocol = "
+          "[Net.SecurityProtocolType]::Tls12; "
+          "try {{ Invoke-WebRequest -Uri '{}' -OutFile '{}' -UseBasicParsing "
+          "-TimeoutSec 300 }} "
+          "catch {{ Write-Output $_.Exception.Message; exit 1 }}\" 2>&1",
+          backboard_exe_url, exe_temp_path);
+
+      if (int fallback_result = system(fallback_exe_cmd.c_str());
+          fallback_result != 0) {
+        Logger::LogAndThrowError(
+            "Backboard.exe를 다운로드하는 데 실패했습니다. "
+            "네트워크 연결을 확인하고 다시 시도해주세요.",
+            __FILE__, __LINE__);
+      }
+    }
+
+    // Backboard.zip 다운로드
+    logger_->Log(INFO_L, "Backboard.zip을 다운로드하는 중입니다.", __FILE__,
+                 __LINE__, true);
+
+    const string download_zip_cmd = format(
+        "curl -L --retry 3 --retry-delay 2 --connect-timeout 30 --max-time "
+        "300 --progress-bar "
+        "-o \"{}\" \"{}\" 2>&1",
+        zip_temp_path, backboard_zip_url);
+
+    if (int zip_result = system(download_zip_cmd.c_str()); zip_result != 0) {
+      // curl이 실패하면 PowerShell로 재시도
+      logger_->Log(WARNING_L,
+                   "curl로 다운로드 실패, PowerShell로 재시도합니다.", __FILE__,
+                   __LINE__, true);
+
+      const string fallback_zip_cmd = format(
+          "powershell -Command \"$ProgressPreference = 'Continue'; "
+          "[Net.ServicePointManager]::SecurityProtocol = "
+          "[Net.SecurityProtocolType]::Tls12; "
+          "try {{ Invoke-WebRequest -Uri '{}' -OutFile '{}' -UseBasicParsing "
+          "-TimeoutSec 300 }} "
+          "catch {{ Write-Output $_.Exception.Message; exit 1 }}\" 2>&1",
+          backboard_zip_url, zip_temp_path);
+
+      if (int zip_fallback_result = system(fallback_zip_cmd.c_str());
+          zip_fallback_result != 0) {
+        Logger::LogAndThrowError(
+            "Backboard.zip을 다운로드하는 데 실패했습니다. "
+            "네트워크 연결을 확인하고 다시 시도해주세요.",
+            __FILE__, __LINE__);
+      }
+    }
+
+    // 다운로드된 파일 크기 확인
+    if (!filesystem::exists(exe_temp_path) ||
+        filesystem::file_size(exe_temp_path) == 0) {
+      Logger::LogAndThrowError(
+          "Backboard.exe 파일이 올바르게 다운로드되지 않았습니다.", __FILE__,
+          __LINE__);
+    }
+
+    if (!filesystem::exists(zip_temp_path) ||
+        filesystem::file_size(zip_temp_path) == 0) {
+      Logger::LogAndThrowError(
+          "Backboard.zip 파일이 올바르게 다운로드되지 않았습니다.", __FILE__,
+          __LINE__);
+    }
+
+    // ZIP 파일 압축 해제
+    filesystem::create_directories(extract_temp_path);
+
+    const string extract_cmd = format(
+        "powershell -Command \"try {{ Expand-Archive -Path '{}' "
+        "-DestinationPath '{}' "
+        "-Force }} catch {{ Write-Output $_.Exception.Message; exit 1 }}\" "
+        "2>&1",
+        zip_temp_path, extract_temp_path);
+
+    if (system(extract_cmd.c_str()) != 0) {
+      Logger::LogAndThrowError("Backboard.zip 압축 해제에 실패했습니다.",
+                               __FILE__, __LINE__);
+    }
+
+    // Backboard.exe 복사
+    filesystem::copy_file(exe_temp_path, main_directory_ + "/Backboard.exe",
+                          filesystem::copy_options::overwrite_existing);
+
+    // 압축 해제된 폴더에서 Backboard 폴더 찾기
+    const string backboard_dest_path = main_directory_ + "/Backboard";
+    filesystem::create_directories(backboard_dest_path);
+
+    if (const string backboard_folder_path = extract_temp_path + "/Backboard";
+        filesystem::exists(backboard_folder_path) &&
+        filesystem::is_directory(backboard_folder_path)) {
+      // Backboard 폴더 안쪽 내용을 main_directory_/Backboard로 복사
+      for (const auto& entry :
+           filesystem::recursive_directory_iterator(backboard_folder_path)) {
+        if (entry.is_regular_file()) {
+          const auto relative_path =
+              filesystem::relative(entry.path(), backboard_folder_path);
+          const auto dest_path = backboard_dest_path / relative_path;
+
+          // 목적지 디렉토리 생성
+          filesystem::create_directories(dest_path.parent_path());
+
+          // 파일 복사
+          filesystem::copy_file(entry.path(), dest_path,
+                                filesystem::copy_options::overwrite_existing);
+        }
+      }
+    } else {
+      // Backboard 폴더가 없으면 전체 내용을 main_directory_/Backboard로 복사
+      for (const auto& entry :
+           filesystem::recursive_directory_iterator(extract_temp_path)) {
+        if (entry.is_regular_file()) {
+          const auto relative_path =
+              filesystem::relative(entry.path(), extract_temp_path);
+          const auto dest_path = backboard_dest_path / relative_path;
+
+          // 목적지 디렉토리 생성
+          filesystem::create_directories(dest_path.parent_path());
+
+          // 파일 복사
+          filesystem::copy_file(entry.path(), dest_path,
+                                filesystem::copy_options::overwrite_existing);
+        }
+      }
+    }
+
+    // 임시 파일 정리
+    try {
+      filesystem::remove(exe_temp_path);
+      filesystem::remove(zip_temp_path);
+      filesystem::remove_all(extract_temp_path);
+    } catch (const exception& e) {
+      logger_->Log(WARNING_L,
+                   format("임시 파일 정리 중 오류 발생: {}", e.what()),
+                   __FILE__, __LINE__, true);
+    }
+
+    logger_->Log(INFO_L, "GitHub에서 백보드가 성공적으로 다운로드되었습니다.",
+                 __FILE__, __LINE__, true);
+
+  } catch (const exception& e) {
+    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
+    Logger::LogAndThrowError(
+        "GitHub에서 백보드를 다운로드하는 중 오류가 발생했습니다.", __FILE__,
+        __LINE__);
   }
 }
 
