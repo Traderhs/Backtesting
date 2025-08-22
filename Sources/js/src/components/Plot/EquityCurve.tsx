@@ -318,7 +318,7 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
 
                 const initialBalanceLine = chartRef.current.addSeries(LineSeries, {
                     priceScaleId: 'left', // 스케일 ID 지정 (기본 왼쪽 스케일)
-                    color: 'rgba(255, 255, 255, 0.7)',
+                    color: 'rgb(255, 255, 255)',
                     lineWidth: 2,
                     lineStyle: LineStyle.Dashed,
                     lastValueVisible: false,
