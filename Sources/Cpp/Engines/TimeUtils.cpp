@@ -234,41 +234,45 @@ string FormatTimeDiff(const int64_t diff_ms) {
     return to_string(static_cast<double>(diff_ms) / 1000.0) + "초";
   }
 
-  if (diff_ms >= kYear) {
-    return to_string(diff_ms / kYear) + "년 " +
-           to_string((diff_ms % kYear) / kMonth) + "개월 " +
-           to_string((diff_ms % kMonth) / kDay) + "일";
+  vector<pair<int64_t, string>> units = {
+      {kYear, "년"},   {kMonth, "개월"}, {kWeek, "주"},  {kDay, "일"},
+      {kHour, "시간"}, {kMinute, "분"},  {kSecond, "초"}};
+
+  vector<string> result_units;
+  int64_t remainder = diff_ms;
+
+  // 첫 번째 단위 찾기
+  for (const auto& [unit_value, unit_name] : units) {
+    if (remainder >= unit_value) {
+      const int64_t count = remainder / unit_value;
+      result_units.push_back(to_string(count) + unit_name);
+      remainder %= unit_value;
+      break;
+    }
   }
 
-  if (diff_ms >= kMonth) {
-    return to_string(diff_ms / kMonth) + "개월 " +
-           to_string((diff_ms % kMonth) / kDay) + "일 " +
-           to_string((diff_ms % kDay) / kHour) + "시간";
+  // 2번째 단위 찾기 (0이 아닌 경우만, 최대한 높은 단위)
+  for (const auto& [unit_value, unit_name] : units) {
+    if (remainder >= unit_value) {
+      const int64_t count = remainder / unit_value;
+      if (count > 0) {
+        result_units.push_back(to_string(count) + unit_name);
+        break;
+      }
+    }
   }
 
-  if (diff_ms >= kWeek) {
-    return to_string(diff_ms / kWeek) + "주 " +
-           to_string((diff_ms % kWeek) / kDay) + "일 " +
-           to_string((diff_ms % kDay) / kHour) + "시간";
+  // 결과 조합
+  if (result_units.empty()) {
+    return to_string(diff_ms / kSecond) + "초";
   }
 
-  if (diff_ms >= kDay) {
-    return to_string(diff_ms / kDay) + "일 " +
-           to_string((diff_ms % kDay) / kHour) + "시간 " +
-           to_string((diff_ms % kHour) / kMinute) + "분";
+  string result = result_units[0];
+  for (size_t i = 1; i < result_units.size(); ++i) {
+    result += " " + result_units[i];
   }
 
-  if (diff_ms >= kHour) {
-    return to_string(diff_ms / kHour) + "시간 " +
-           to_string((diff_ms % kHour) / kMinute) + "분";
-  }
-
-  if (diff_ms >= kMinute) {
-    return to_string(diff_ms / kMinute) + "분 " +
-           to_string((diff_ms % kMinute) / kSecond) + "초";
-  }
-
-  return to_string(diff_ms / kSecond) + "초";
+  return result;
 }
 
 bool IsTimestampMs(const int64_t timestamp) {
