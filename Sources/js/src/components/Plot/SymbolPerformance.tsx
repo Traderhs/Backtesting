@@ -845,7 +845,11 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
 
         // 시간 배열로 변환 및 정렬
         const liquidationTimes = Array.from(liquidationTimeSet).sort((a, b) => a - b);
-        const allLiquidationTimes = getTimesWithZeroPoint(liquidationTimes);
+
+        // 강제 청산 데이터가 없으면 일반 청산 시간 사용
+        const allLiquidationTimes = liquidationTimes.length > 0 ?
+            getTimesWithZeroPoint(liquidationTimes) :
+            getTimesWithZeroPoint(preprocessedData.allExitTimes);
 
         // config의 모든 심볼을 미리 초기화하고 0 포인트 명시적 추가
         configSymbols.forEach((symbol: string) => {
@@ -863,10 +867,12 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
 
             if (symbolData) {
                 let liquidationCount = 0;
+                let hasLiquidation = false;
 
                 symbolTrades.forEach((trade: any) => {
                     const exitName = String(trade["청산 이름"] || "");
                     if (exitName.includes("강제 청산")) {
+                        hasLiquidation = true;
                         liquidationCount += 1;
                         const timestamp = new Date(trade["청산 시간"] as string).getTime() / 1000;
 
@@ -876,6 +882,17 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                         });
                     }
                 });
+
+                // 강제 청산이 없는 심볼은 0값으로 채우기
+                if (!hasLiquidation) {
+                    symbolTrades.forEach((trade: any) => {
+                        const timestamp = new Date(trade["청산 시간"] as string).getTime() / 1000;
+                        symbolData.data.push({
+                            time: timestamp,
+                            value: 0
+                        });
+                    });
+                }
             }
         });
 
@@ -1465,88 +1482,6 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                             valueColor = value > 0 ? '#4caf50' : value == 0 ? '#ffffff' : '#f23645';
                         }
 
-                        // 펀딩 관련 추가 정보 계산
-                        let additionalInfo = '';
-                        if (selectedMetric === '펀딩 횟수' || selectedMetric === '펀딩비') {
-                            const currentTime = param.time;
-                            const symbolTrades = preprocessedData.tradesBySymbol.get(symbol) || [];
-
-                            // 현재 시점까지의 거래만 필터링
-                            const tradesUpToNow = symbolTrades.filter((trade: any) => {
-                                const exitTime = new Date(trade["청산 시간"] as string).getTime() / 1000;
-                                return exitTime <= currentTime;
-                            });
-
-                            if (selectedMetric === '펀딩 횟수') {
-                                // 거래 번호별로 그룹화하여 각 거래 번호에서 가장 큰 펀딩 횟수를 가진 거래의 수령/지불 횟수만 누적
-                                let totalReceiveCount = 0;
-                                let totalPayCount = 0;
-
-                                // 거래 번호별로 그룹화
-                                const tradesByNumber = new Map<number, any[]>();
-                                tradesUpToNow.forEach((trade: any) => {
-                                    const tradeNumber = trade["거래 번호"] as number;
-                                    if (!tradesByNumber.has(tradeNumber)) {
-                                        tradesByNumber.set(tradeNumber, []);
-                                    }
-                                    tradesByNumber.get(tradeNumber)!.push(trade);
-                                });
-
-                                // 각 거래 번호별로 최대 펀딩 횟수를 가진 거래의 수령/지불 횟수만 합산
-                                tradesByNumber.forEach((trades: any[]) => {
-                                    if (trades.length === 0) return;
-
-                                    let maxFundingCount = 0;
-                                    let maxFundingTrade = null;
-
-                                    trades.forEach((trade: any) => {
-                                        const fundingCount = Number(trade["펀딩 횟수"] || 0);
-                                        if (fundingCount > maxFundingCount) {
-                                            maxFundingCount = fundingCount;
-                                            maxFundingTrade = trade;
-                                        }
-                                    });
-
-                                    if (maxFundingTrade) {
-                                        const receiveCount = Number(maxFundingTrade["펀딩 수령 횟수"] || 0);
-                                        const payCount = Number(maxFundingTrade["펀딩 지불 횟수"] || 0);
-                                        totalReceiveCount += receiveCount;
-                                        totalPayCount += payCount;
-                                    }
-                                });
-
-                                // 천단위 쉼표 적용
-                                const formatCount = (count: number) => count.toLocaleString('en-US');
-                                additionalInfo = `<div style="margin-top: 2px; font-size: 11px; color: #ccc;">
-                                    수령: ${formatCount(totalReceiveCount)}회, 지불: ${formatCount(totalPayCount)}회
-                                </div>`;
-                            } else if (selectedMetric === '펀딩비') {
-                                // 펀딩비 수령과 펀딩비 지불 누적 계산
-                                let totalReceiveFee = 0;
-                                let totalPayFee = 0;
-
-                                tradesUpToNow.forEach((trade: any) => {
-                                    const receiveFee = Number(trade["펀딩비 수령"] || 0);
-                                    const payFee = Number(trade["펀딩비 지불"] || 0);
-                                    totalReceiveFee += receiveFee;
-                                    totalPayFee += payFee;
-                                });
-
-                                const formatFee = (fee: number) => {
-                                    const absPrice = Math.abs(fee);
-                                    const sign = fee >= 0 ? '$' : '-$';
-                                    return `${sign}${Number(absPrice.toFixed(2)).toLocaleString('en-US', {
-                                        minimumFractionDigits: 2,
-                                        maximumFractionDigits: 2
-                                    })}`;
-                                };
-
-                                additionalInfo = `<div style="margin-top: 2px; font-size: 11px; color: #ccc;">
-                                    수령: ${formatFee(totalReceiveFee)}, 지불: ${formatFee(totalPayFee)}
-                                </div>`;
-                            }
-                        }
-
                         return `
             <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
               <span style="color: ${color}; font-size: 13px; padding: 0 6px; margin-right: 8px; position: relative; left: -6px;">${symbol}</span>
@@ -1863,10 +1798,45 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                 },
             });
 
-            series.setData(interpolatedData.map((item: { time: number; value: number }) => ({
-                time: item.time as any,
-                value: item.value
-            })));
+            // 중복 시간 제거된 데이터 생성
+            const timeValueMap = new Map<number, number>();
+            const timeToTradeMap = new Map<number, any[]>();
+
+            // 해당 심볼의 원본 거래 데이터로부터 거래번호 매핑 생성
+            const symbolTrades = preprocessedData.tradesBySymbol.get(symbol) || [];
+            symbolTrades.forEach((trade: any) => {
+                const timestamp = new Date(trade["청산 시간"] as string).getTime() / 1000;
+                if (!timeToTradeMap.has(timestamp)) {
+                    timeToTradeMap.set(timestamp, []);
+                }
+                timeToTradeMap.get(timestamp)!.push(trade);
+            });
+
+            // interpolatedData에서 중복 시간 처리
+            interpolatedData.forEach((item: { time: number; value: number }) => {
+                const currentTime = item.time;
+                const tradesAtTime = timeToTradeMap.get(currentTime) || [];
+
+                if (tradesAtTime.length <= 1) {
+                    // 중복이 없으면 그대로 사용
+                    timeValueMap.set(currentTime, item.value);
+                } else {
+                    // 중복이 있으면 거래번호가 가장 큰 것만 유지
+                    const maxTradeNumber = Math.max(...tradesAtTime.map(t => t["거래 번호"]));
+                    const maxTrade = tradesAtTime.find(t => t["거래 번호"] === maxTradeNumber);
+
+                    if (maxTrade) {
+                        timeValueMap.set(currentTime, item.value);
+                    }
+                }
+            });
+
+            // Map을 배열로 변환하고 시간순 정렬
+            const finalData = Array.from(timeValueMap.entries())
+                .map(([time, value]) => ({time: time as any, value}))
+                .sort((a, b) => a.time - b.time);
+
+            series.setData(finalData);
 
             // 시리즈 ref 저장
             seriesRefs.current.set(symbol, series);
