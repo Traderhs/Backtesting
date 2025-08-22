@@ -1826,25 +1826,6 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
         const startTime = allTimes[0];
         const endTime = allTimes[allTimes.length - 1];
 
-        // 초기 라인 (0선) 추가
-        const initialLineData = [
-            {time: startTime as any, value: 0},
-            {time: endTime as any, value: 0},
-        ];
-
-        const initialLine = chart.addSeries(LineSeries, {
-            color: 'rgba(255, 255, 255, 0.7)',
-            lineWidth: 2,
-            lineStyle: LineStyle.Dashed,
-            lastValueVisible: false,
-            priceLineVisible: false,
-            crosshairMarkerVisible: false,
-            priceFormat: {
-                type: 'custom',
-                formatter: getFormatFunction(selectedMetric, timeframeStr),
-            },
-        });
-        initialLine.setData(initialLineData);
 
         // 심볼별 라인 시리즈 생성 (보간 적용) - 순서 보장
         const symbols = configSymbols; // config 순서가 보장된 배열 사용
@@ -1853,7 +1834,6 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
         // ref에 저장 (툴팁에서 사용)
         symbolsRef.current = symbols;
         colorsRef.current = colors;
-
 
         symbols.forEach((symbol: string, index: number) => {
             const symbolDataItem = symbolDataArray.find((item: {
@@ -1896,6 +1876,25 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                 mainSeriesRef.current = series;
             }
         });
+
+        // 초기 라인 (0선) 추가 - 항상 제일 위에 그려지도록 마지막에 추가
+        const initialLineData = [
+            {time: startTime as any, value: 0},
+            {time: endTime as any, value: 0},
+        ];
+        const initialLine = chart.addSeries(LineSeries, {
+            color: 'rgb(255, 255, 255)',
+            lineWidth: 2,
+            lineStyle: LineStyle.Dashed,
+            lastValueVisible: false,
+            priceLineVisible: false,
+            crosshairMarkerVisible: false,
+            priceFormat: {
+                type: 'custom',
+                formatter: getFormatFunction(selectedMetric, timeframeStr),
+            },
+        });
+        initialLine.setData(initialLineData);
 
         // Resize observer for responsiveness
         const resizeObserver = new window.ResizeObserver(entries => {
