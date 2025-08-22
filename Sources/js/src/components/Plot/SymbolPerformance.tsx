@@ -1,7 +1,7 @@
-import React, {useEffect, useRef, useCallback, useState, useMemo} from 'react';
-import {createChart, ColorType, PriceScaleMode, LineStyle, LineSeries, CrosshairMode} from 'lightweight-charts';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
+import {ColorType, createChart, CrosshairMode, LineSeries, LineStyle, PriceScaleMode} from 'lightweight-charts';
 import {useTradeFilter} from '@/components/TradeFilter';
-import {Select, FormControl, InputLabel, MenuItem, Box} from '@mui/material';
+import {Box, FormControl, InputLabel, MenuItem, Select} from '@mui/material';
 import {parseHoldingTime} from '@/components/TradeFilter/ParseHoldingTime';
 import {formatDuration} from '@/components/Performance/Utils';
 
@@ -479,13 +479,13 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
     // 승률 데이터 생성 - 최적화된 버전  
     const generateWinRateData = () => {
         const tradeResults = preprocessedData.tradeResults;
-        
+
         // tradeResults에서 실제 시간들만 수집
         const tradeResultTimes = tradeResults.map((result) => {
             const dateObject = new Date(result.exitTime);
             return dateObject.getTime() / 1000;
         }).sort((a, b) => a - b);
-        
+
         const allTradeResultTimes = getTimesWithZeroPoint(tradeResultTimes);
         const symbolDataArray: { symbol: string; data: { time: number; value: number }[] }[] = [];
 
@@ -540,13 +540,13 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
     // 손익비 데이터 생성 - 최적화된 버전
     const generateProfitLossRatioData = () => {
         const tradeResults = preprocessedData.tradeResults;
-        
+
         // tradeResults에서 실제 시간들만 수집
         const tradeResultTimes = tradeResults.map((result) => {
             const dateObject = new Date(result.exitTime);
             return dateObject.getTime() / 1000;
         }).sort((a, b) => a - b);
-        
+
         const allTradeResultTimes = getTimesWithZeroPoint(tradeResultTimes);
         const symbolDataArray: { symbol: string; data: { time: number; value: number }[] }[] = [];
 
@@ -629,13 +629,13 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
     // 기대값 데이터 생성 - 최적화된 버전
     const generateExpectedValueData = () => {
         const tradeResults = preprocessedData.tradeResults;
-        
+
         // tradeResults에서 실제 시간들만 수집
         const tradeResultTimes = tradeResults.map((result) => {
             const dateObject = new Date(result.exitTime);
             return dateObject.getTime() / 1000;
         }).sort((a, b) => a - b);
-        
+
         const allTradeResultTimes = getTimesWithZeroPoint(tradeResultTimes);
         const symbolDataArray: { symbol: string; data: { time: number; value: number }[] }[] = [];
 
@@ -720,7 +720,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
         // 먼저 모든 심볼에서 보유 시간 관련 시간들을 수집
         configSymbols.forEach((symbol: string) => {
             const symbolTrades = preprocessedData.tradesBySymbol.get(symbol) || [];
-            
+
             symbolTrades.forEach((trade: any) => {
                 const holdingTimeStr = String(trade["보유 시간"]);
                 const holdingTimeSeconds = parseHoldingTime(holdingTimeStr);
@@ -770,17 +770,17 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                 sortedTrades.forEach((trade: any) => {
                     const entryTime = new Date(trade["진입 시간"] as string).getTime() / 1000;
                     const exitTime = new Date(trade["청산 시간"] as string).getTime() / 1000;
-                    
+
                     // 새로운 시간 범위
-                    const newRange = { start: entryTime, end: exitTime };
-                    
+                    const newRange = {start: entryTime, end: exitTime};
+
                     // 기존 범위들과 겹치는지 확인하고 병합
                     let overlappingRanges: number[] = [];
-                    let mergedRange = { ...newRange };
-                    
+                    let mergedRange = {...newRange};
+
                     for (let i = 0; i < timeRanges.length; i++) {
                         const existing = timeRanges[i];
-                        
+
                         // 겹치는 경우
                         if (newRange.start <= existing.end && newRange.end >= existing.start) {
                             overlappingRanges.push(i);
@@ -788,7 +788,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                             mergedRange.end = Math.max(mergedRange.end, existing.end);
                         }
                     }
-                    
+
                     // 겹치는 범위들을 제거하고 새로운 병합된 범위 추가
                     if (overlappingRanges.length > 0) {
                         // 겹치는 기존 범위들의 총 시간 계산
@@ -798,10 +798,10 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                             const removedRange = timeRanges.splice(idx, 1)[0];
                             removedTime += (removedRange.end - removedRange.start);
                         }
-                        
+
                         // 병합된 범위 추가
                         timeRanges.push(mergedRange);
-                        
+
                         // 실제 추가된 시간 = 병합된 범위 시간 - 제거된 시간
                         const addedTime = (mergedRange.end - mergedRange.start) - removedTime;
                         totalHoldingTime += addedTime;
@@ -812,9 +812,8 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                     }
 
                     // 각 거래 청산 시점에 누적 보유 시간 추가
-                    const timestamp = exitTime;
                     symbolData.data.push({
-                        time: timestamp,
+                        time: exitTime,
                         value: totalHoldingTime
                     });
                 });
@@ -834,7 +833,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
         // 먼저 모든 심볼에서 강제 청산 관련 시간들을 수집
         configSymbols.forEach((symbol: string) => {
             const symbolTrades = preprocessedData.tradesBySymbol.get(symbol) || [];
-            
+
             symbolTrades.forEach((trade: any) => {
                 const exitName = String(trade["청산 이름"] || "");
                 if (exitName.includes("강제 청산")) {
@@ -893,7 +892,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
         // 먼저 모든 심볼에서 펀딩 관련 시간들을 수집
         configSymbols.forEach((symbol: string) => {
             const symbolTrades = preprocessedData.tradesBySymbol.get(symbol) || [];
-            
+
             // 거래 번호별로 그룹화
             const tradesByNumber = new Map<number, any[]>();
             symbolTrades.forEach((trade: any) => {
@@ -915,9 +914,9 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                 trades.forEach((trade: any) => {
                     const fundingCount = Number(trade["펀딩 횟수"] || 0);
                     const exitTime = new Date(trade["청산 시간"] as string).getTime();
-                    
+
                     // 펀딩 횟수가 더 크거나, 같으면서 청산 시간이 더 늦을 때 업데이트
-                    if (fundingCount > maxFundingCount || 
+                    if (fundingCount > maxFundingCount ||
                         (fundingCount === maxFundingCount && exitTime > latestExitTime)) {
                         maxFundingCount = fundingCount;
                         maxFundingTrade = trade;
@@ -975,9 +974,9 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                     trades.forEach((trade: any) => {
                         const fundingCount = Number(trade["펀딩 횟수"] || 0);
                         const exitTime = new Date(trade["청산 시간"] as string).getTime();
-                        
+
                         // 펀딩 횟수가 더 크거나, 같으면서 청산 시간이 더 늦을 때 업데이트
-                        if (fundingCount > maxFundingCount || 
+                        if (fundingCount > maxFundingCount ||
                             (fundingCount === maxFundingCount && exitTime > latestExitTime)) {
                             maxFundingCount = fundingCount;
                             maxFundingTrade = trade;
@@ -1295,7 +1294,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                             // 해당 시점까지의 실제 거래 데이터로 손익비 계산
                             const currentTime = param.time;
                             const symbolTrades = preprocessedData.tradesBySymbol.get(symbol) || [];
-                            
+
                             // 현재 시점까지의 거래만 필터링
                             const tradesUpToNow = symbolTrades.filter((trade: any) => {
                                 const exitTime = new Date(trade["청산 시간"] as string).getTime() / 1000;
@@ -1347,20 +1346,20 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                             // 손익비일 때는 실제 계산된 displayValue 사용
                             if (selectedMetric === '손익비') {
                                 currentValue = displayValue;
-                                
+
                                 // 이전 시점의 손익비도 실제 계산
                                 const currentTime = param.time;
                                 const symbolTrades = preprocessedData.tradesBySymbol.get(symbol) || [];
-                                
+
                                 // 현재 시점보다 이전의 가장 가까운 거래 시점 찾기
                                 const exitTimes = symbolTrades
                                     .map((trade: any) => new Date(trade["청산 시간"] as string).getTime() / 1000)
                                     .filter((time: number) => time < currentTime)
                                     .sort((a: number, b: number) => b - a); // 내림차순 정렬
-                                
+
                                 if (exitTimes.length > 0) {
                                     const previousTime = exitTimes[0];
-                                    
+
                                     // 이전 시점까지의 거래만 필터링
                                     const tradesUpToPrevious = symbolTrades.filter((trade: any) => {
                                         const exitTime = new Date(trade["청산 시간"] as string).getTime() / 1000;
@@ -1432,7 +1431,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                                 // 무한대 처리를 포함한 비교
                                 let isIncreased = false;
                                 let isDecreased = false;
-                                
+
                                 if (previousValue === Infinity && currentValue === Infinity) {
                                     // 둘 다 무한대면 변화 없음
                                     isIncreased = false;
@@ -1448,7 +1447,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                                     isIncreased = currentValue > previousValue;
                                     isDecreased = currentValue < previousValue;
                                 }
-                                
+
                                 if (isIncreased) {
                                     valueColor = '#4caf50'; // 녹색 (증가)
                                 } else if (isDecreased) {
@@ -1471,7 +1470,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                         if (selectedMetric === '펀딩 횟수' || selectedMetric === '펀딩비') {
                             const currentTime = param.time;
                             const symbolTrades = preprocessedData.tradesBySymbol.get(symbol) || [];
-                            
+
                             // 현재 시점까지의 거래만 필터링
                             const tradesUpToNow = symbolTrades.filter((trade: any) => {
                                 const exitTime = new Date(trade["청산 시간"] as string).getTime() / 1000;
@@ -1595,16 +1594,18 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                         const tooltipWidth = tooltip.offsetWidth;
                         const tooltipHeight = tooltip.offsetHeight;
                         const chartWidth = containerRect.width;
+
                         // 오른쪽 경계 체크 (툴팁이 차트 내부에서만 왼쪽 전환)
                         const rightEdge = finalX + tooltipWidth;
-                        const chartRight = chartWidth;
-                        if (rightEdge > chartRight) {
+                        if (rightEdge > chartWidth) {
                             finalX = leftPriceScaleWidth + pointX - tooltipWidth - 25;
                         }
+
                         // 왼쪽 경계 체크 (툴팁이 y축보다 왼쪽으로 안가게)
                         if (finalX < leftPriceScaleWidth) {
                             finalX = leftPriceScaleWidth;
                         }
+
                         // 아래쪽 경계 체크
                         const bottomEdge = finalY + tooltipHeight;
                         const timeScaleHeight = chartRef.current?.timeScale().height() ?? 0;

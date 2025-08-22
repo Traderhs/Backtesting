@@ -8,17 +8,17 @@ interface Trade {
 
 const parseHoldingTimeToSeconds = (holdingTimeStr: string): number => {
     if (!holdingTimeStr || holdingTimeStr === '-') return 0;
-    
+
     // "동일봉 거래"인 경우 0초로 처리
     if (holdingTimeStr === '동일봉 거래') return 0;
 
     let totalSeconds = 0;
     const units: Record<string, number> = {
-        '년': 31536000, '달': 2592000, '주': 604800, '일': 86400,
+        '년': 31536000, '개월': 2592000, '주': 604800, '일': 86400,
         '시간': 3600, '분': 60, '초': 1,
     };
 
-    const regex = /(\d+)\s*(년|달|주|일|시간|분|초)/g;
+    const regex = /(\d+)\s*(년|개월|주|일|시간|분|초)/g;
     let match;
     while ((match = regex.exec(holdingTimeStr)) !== null) {
         totalSeconds += parseInt(match[1], 10) * (units[match[2]] || 0);
@@ -29,53 +29,75 @@ const parseHoldingTimeToSeconds = (holdingTimeStr: string): number => {
 const formatHoldingTime = (seconds: number): string => {
     if (seconds === 0) return '0초';
 
-    const years = Math.floor(seconds / 31536000);
-    const months = Math.floor((seconds % 31536000) / 2592000);
-    const weeks = Math.floor((seconds % 2592000) / 604800);
-    const days = Math.floor((seconds % 604800) / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
+    const units = [
+        {value: 31536000, name: '년'},      // kYear
+        {value: 2592000, name: '개월'},     // kMonth
+        {value: 604800, name: '주'},        // kWeek
+        {value: 86400, name: '일'},         // kDay
+        {value: 3600, name: '시간'},        // kHour
+        {value: 60, name: '분'},            // kMinute
+        {value: 1, name: '초'}              // kSecond
+    ];
 
-    const parts: string[] = [];
-    if (years > 0) parts.push(`${years}년`);
-    if (months > 0) parts.push(`${months}달`);
-    if (weeks > 0) parts.push(`${weeks}주`);
-    if (days > 0) parts.push(`${days}일`);
-    if (hours > 0) parts.push(`${hours}시간`);
-    if (minutes > 0) parts.push(`${minutes}분`);
-    if (remainingSeconds > 0) parts.push(`${remainingSeconds}초`);
+    const resultUnits: string[] = [];
+    let remainder = seconds;
 
-    return parts.join(' ');
+    // 첫 번째 단위 찾기
+    for (const unit of units) {
+        if (remainder >= unit.value) {
+            const count = Math.floor(remainder / unit.value);
+            resultUnits.push(`${count}${unit.name}`);
+            remainder = remainder % unit.value;
+            break;
+        }
+    }
+
+    // 2번째 단위 찾기 (0이 아닌 경우만, 최대한 높은 단위)
+    for (const unit of units) {
+        if (remainder >= unit.value) {
+            const count = Math.floor(remainder / unit.value);
+            if (count > 0) {
+                resultUnits.push(`${count}${unit.name}`);
+                break;
+            }
+        }
+    }
+
+    // 결과가 없으면 초 단위로 표시
+    if (resultUnits.length === 0) {
+        return `${Math.floor(seconds)}초`;
+    }
+
+    return resultUnits.join(' ');
 };
 
 // 최소 보유 시간의 단위를 찾아서 0초, 0분, 0시간... 식으로 표시하는 함수
 const getMinimalUnitForZero = (nonZeroSeconds: number[]): string => {
     if (nonZeroSeconds.length === 0) return '0초';
-    
+
     const minSeconds = Math.min(...nonZeroSeconds);
-    
+
     if (minSeconds < 60) return '0초';
     if (minSeconds < 3600) return '0분';
     if (minSeconds < 86400) return '0시간';
     if (minSeconds < 604800) return '0일';
     if (minSeconds < 2592000) return '0주';
-    if (minSeconds < 31536000) return '0달';
+    if (minSeconds < 31536000) return '0개월';
     return '0년';
 };
 
 self.onmessage = (e: MessageEvent<{ filteredTrades: Trade[] }>) => {
-    const { filteredTrades } = e.data;
+    const {filteredTrades} = e.data;
 
     if (!filteredTrades || filteredTrades.length === 0) {
-        self.postMessage({ plotData: [], layoutData: null });
+        self.postMessage({plotData: [], layoutData: null});
         return;
     }
 
     const validTrades = filteredTrades.filter(trade => trade["거래 번호"] !== 0);
 
     if (validTrades.length === 0) {
-        self.postMessage({ plotData: [], layoutData: null });
+        self.postMessage({plotData: [], layoutData: null});
         return;
     }
 
@@ -88,9 +110,9 @@ self.onmessage = (e: MessageEvent<{ filteredTrades: Trade[] }>) => {
     const nonZeroSeconds = validTrades
         .map(trade => parseHoldingTimeToSeconds(String(trade["보유 시간"] || '')))
         .filter(seconds => seconds > 0);
-    
+
     const zeroDisplayText = getMinimalUnitForZero(nonZeroSeconds);
-    
+
     // 0이 아닌 값들 중 최소값을 찾아서 0초 거래의 x값 결정
     const minNonZeroValue = nonZeroSeconds.length > 0 ? Math.min(...nonZeroSeconds) : 1;
     const zeroXValue = minNonZeroValue * 0.5; // 최소값의 절반으로 설정
@@ -107,7 +129,7 @@ self.onmessage = (e: MessageEvent<{ filteredTrades: Trade[] }>) => {
 
         // 툴팁 표시용 시간 텍스트
         const formattedTime = holdingTimeSeconds === 0 ? zeroDisplayText : formatHoldingTime(holdingTimeSeconds);
-        
+
         // 거래번호에 천 단위 쉼표 추가
         const tradeNumFormatted = trade["거래 번호"].toLocaleString();
         customData.push([
@@ -199,9 +221,9 @@ self.onmessage = (e: MessageEvent<{ filteredTrades: Trade[] }>) => {
             x: [minX, maxX],
             y: [yStart, yEnd],
             mode: 'lines',
-            type: 'scatter',
+            type: 'scattergl',
             name: '추세선',
-            line: { color: '#ffffff', width: 2, dash: 'dot' },
+            line: {color: '#ffffff', width: 2, dash: 'dot'},
             hoverinfo: 'skip'
         };
     }
@@ -212,7 +234,7 @@ self.onmessage = (e: MessageEvent<{ filteredTrades: Trade[] }>) => {
         mode: 'markers',
         type: 'scattergl',
         name: '거래',
-        marker: { size: 8, color: finalColors, line: { width: 0 }, opacity: 1 },
+        marker: {size: 8, color: finalColors, line: {width: 0}, opacity: 1},
         customdata: customData,
         hovertemplate: '<extra></extra>'
     };
@@ -227,14 +249,14 @@ self.onmessage = (e: MessageEvent<{ filteredTrades: Trade[] }>) => {
     const paddedMaxX = logMaxX + margin;
     const xAxisRange = [paddedMinX, paddedMaxX];
 
-    const tickOptions: {v: number, label: string}[] = [];
+    const tickOptions: { v: number, label: string }[] = [];
     const pushTick = (value: number, lbl: string) => tickOptions.push({v: value, label: lbl});
-    
+
     // 동일봉 거래가 있는지 확인
-    const hasZeroTimeTrades = validTrades.some(trade => 
+    const hasZeroTimeTrades = validTrades.some(trade =>
         parseHoldingTimeToSeconds(String(trade["보유 시간"] || '')) === 0
     );
-    
+
     // 동일봉 거래가 있을 때만 해당 단위의 0 틱 추가
     if (hasZeroTimeTrades) {
         // 0이 아닌 보유 시간들을 다시 수집 (스코프 문제 해결)
@@ -244,18 +266,18 @@ self.onmessage = (e: MessageEvent<{ filteredTrades: Trade[] }>) => {
         const minNonZeroValueForTick = nonZeroSecondsForTick.length > 0 ? Math.min(...nonZeroSecondsForTick) : 1;
         const zeroXValueForTick = minNonZeroValueForTick * 0.5;
         const zeroDisplayTextForTick = getMinimalUnitForZero(nonZeroSecondsForTick);
-        
+
         pushTick(zeroXValueForTick, zeroDisplayTextForTick);
     }
-    
+
     [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 20, 30, 45].forEach(s => pushTick(s, `${s}초`));
     [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 30, 45].forEach(m => pushTick(m * 60, `${m}분`));
     [1, 2, 3, 4, 6, 8, 12, 18].forEach(h => pushTick(h * 3600, `${h}시간`));
     [1, 2, 3, 4, 5, 6].forEach(d => pushTick(d * 86400, `${d}일`));
     [1, 2, 3].forEach(w => pushTick(w * 7 * 86400, `${w}주`));
-    [1, 2, 3, 4, 6, 9].forEach(mo => pushTick(mo * 30 * 86400, `${mo}달`));
+    [1, 2, 3, 4, 6, 9].forEach(mo => pushTick(mo * 30 * 86400, `${mo}개월`));
     [1, 2, 3, 5, 10].forEach(y => pushTick(y * 365 * 86400, `${y}년`));
-    
+
     const axisMinSec = Math.pow(10, xAxisRange[0]);
     const axisMaxSec = Math.pow(10, xAxisRange[1]);
     const filteredTicks = tickOptions.filter(opt => opt.v >= axisMinSec && opt.v <= axisMaxSec);
@@ -268,7 +290,7 @@ self.onmessage = (e: MessageEvent<{ filteredTrades: Trade[] }>) => {
         ticktext = ticktext.filter((_, idx) => idx % step === 0);
     }
 
-    const layoutData = { xAxisRange, tickvals, ticktext };
+    const layoutData = {xAxisRange, tickvals, ticktext};
 
-    self.postMessage({ plotData, layoutData });
+    self.postMessage({plotData, layoutData});
 };
