@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState, useMemo, useCallback} from "react"
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react"
 import {useTradeFilter} from "@/components/TradeFilter/useTradeFilter.ts";
 import {motion} from "framer-motion";
 import LoadingSpinner from "@/components/Common/LoadingSpinner";
@@ -87,6 +87,36 @@ const THICK_BORDER_COLUMNS = new Set([
     "순손익", "전체 순손익률", "최고 자금", "최고 드로우다운", "누적 손익률"
 ]);
 
+// 열 그룹 정의 - 점선으로 연결된 열들을 하나의 그룹으로 묶음
+const COLUMN_GROUPS = [
+    ["거래 번호"],
+    ["전략 이름", "심볼 이름"],
+    ["진입 이름", "청산 이름", "진입 방향"],
+    ["진입 시간", "청산 시간", "보유 시간"],
+    ["레버리지"],
+    ["진입 가격", "진입 수량"],
+    ["청산 가격", "청산 수량"],
+    ["강제 청산 가격"],
+    ["펀딩 수령 횟수", "펀딩비 수령"],
+    ["펀딩 지불 횟수", "펀딩비 지불"],
+    ["펀딩 횟수", "펀딩비", "진입 수수료", "청산 수수료", "강제 청산 수수료"],
+    ["손익", "순손익"],
+    ["개별 순손익률", "전체 순손익률"],
+    ["현재 자금", "최고 자금"],
+    ["드로우다운", "최고 드로우다운"],
+    ["누적 손익", "누적 손익률"]
+];
+
+// 열이 속한 그룹을 찾는 함수
+const getColumnGroup = (columnKey: string): string[] => {
+    for (const group of COLUMN_GROUPS) {
+        if (group.includes(columnKey)) {
+            return group;
+        }
+    }
+    return [columnKey]; // 그룹에 속하지 않으면 자기 자신만 포함
+};
+
 // 천단위 쉼표 포맷 함수 - 숫자 타입 체크 최적화
 const formatWithCommas = (value: string | number, precision: number = 0): string => {
     if (value === undefined || value === null || String(value) === "-") return "-";
@@ -155,14 +185,14 @@ const getSymbolFromTrade = (trade: TradeItem): string => {
     return String(trade["심볼 이름"] || "");
 }
 
-// 너비 측정을 위한 헬퍼 함수 - 메모이제이션
+// 너비 측정을 위한 헬퍼 함수 - formatWithTooltip과 동일한 로직 사용
 const getDisplayStringForMeasuring = (value: string | number | undefined, key: string, config?: any, symbol?: string): string => {
     if (value === undefined || value === null) return "";
     if (key === 'originalIdxForSort') return ""; // 이 키는 표시되지 않음
 
     // 거래 번호
     if (key === "거래 번호") {
-        return `#${value}`;
+        return `#${formatWithCommas(value, 0)}`;
     }
     // 보유 심볼 수
     if (key === "보유 심볼 수") {
@@ -176,7 +206,15 @@ const getDisplayStringForMeasuring = (value: string | number | undefined, key: s
         if (String(value) === "-") {
             return "-";
         }
-        return `${value}회`;
+        return `${formatWithCommas(value, 0)}회`;
+    }
+    // 진입 시간과 청산 시간 처리
+    if (key === "진입 시간" || key === "청산 시간") {
+        if (!value || String(value) === "-") {
+            return "-";
+        }
+        const date = new Date(String(value));
+        return formatDateTimeWithWeekday(date);
     }
 
     // 가격 필드들은 심볼별 precision 사용 + 천단위 쉼표
@@ -202,6 +240,7 @@ const getDisplayStringForMeasuring = (value: string | number | undefined, key: s
     const num = typeof value === "number" ? value : parseFloat(String(value));
     if (isNaN(num)) return String(value);
 
+    // formatWithTooltip과 동일한 방식으로 처리
     const short = num.toFixed(2);
 
     if (DOLLAR_FIELDS.has(key)) {
@@ -213,9 +252,6 @@ const getDisplayStringForMeasuring = (value: string | number | undefined, key: s
         return `${Math.round(num)}x`;
     } else if (COMMA_FIELDS.has(key)) {
         // 천단위 쉼표가 필요한 다른 필드들
-        if (key === "거래 번호") {
-            return `#${formatWithCommas(num, 0)}`;
-        }
         return formatWithCommas(num, 2);
     } else {
         return String(value); // 소수점 자르지 않고 원래 값 표시
@@ -370,11 +406,13 @@ interface TradeRowProps {
     isActiveRow: boolean;
     hoverTradeNo: number | null;
     hoverColumn: string | null;
+    hoverColumnGroup: string[]; // 호버된 열 그룹
+    selectedColumnGroup: string[]; // 선택된 열 그룹
     initialBalance: number;
     config: any;
     isDifferentFromNext: boolean;
     isLastRowOfDataset: boolean;
-    selectedCell: {rowIndex: number, columnKey: string, tradeNo: number} | null;
+    selectedCell: { rowIndex: number, columnKey: string, tradeNo: number } | null;
     onMouseEnter: (tradeNo: number) => void;
     onMouseLeave: () => void;
     onCellClick: (rowIndex: number, columnKey: string, tradeNo: number) => void;
@@ -390,6 +428,8 @@ const TradeRow = React.memo<TradeRowProps>(({
                                                 isActiveRow,
                                                 hoverTradeNo,
                                                 hoverColumn,
+                                                hoverColumnGroup,
+                                                selectedColumnGroup,
                                                 initialBalance,
                                                 config,
                                                 isDifferentFromNext,
@@ -410,11 +450,11 @@ const TradeRow = React.memo<TradeRowProps>(({
     else if (isDifferentFromNext || isLastRowOfDataset) rowClass += " last-group-row";
 
     if (isActiveRow) rowClass += " active-row";
-    
+
     // 선택된 셀과 같은 거래번호인지 확인
     const isSelectedTradeRow = selectedCell && selectedCell.tradeNo === currentTradeNo;
     if (isSelectedTradeRow) rowClass += " selected-trade-row";
-    
+
     // 셀 클릭 핸들러
     const handleCellClick = useCallback((columnKey: string) => {
         onCellClick(originalIndex, columnKey, currentTradeNo);
@@ -499,45 +539,80 @@ const TradeRow = React.memo<TradeRowProps>(({
         >
             {cellContents.map((cell, colIndex) => {
                 // 기본 배경색 설정
-                let calculatedBackground;
-                
-                // 선택된 셀인지 확인
-                const isSelectedCell = selectedCell && 
-                    selectedCell.rowIndex === originalIndex && 
-                    selectedCell.columnKey === cell.key;
-                
-                // 선택된 열인지 확인 (헤더는 제외)
-                const isSelectedColumn = selectedCell && 
-                    selectedCell.columnKey === cell.key && 
-                    selectedCell.rowIndex !== originalIndex;
-                
-                // 호버된 열인지 확인 (선택된 셀이 있으면 호버 억제)
-                const hasAnySelectedCell = selectedCell !== null;
-                const isHoverColumn = !hasAnySelectedCell && hoverColumn === cell.key && !isSelectedCell && !isSelectedTradeRow;
+                let calculatedBackground = 'transparent';
 
-                // 선택된 셀에는 가장 진한 배경색 적용
-                if (isSelectedCell) {
-                    calculatedBackground = 'rgba(255, 215, 0, 0.35)';
+                // 선택된 셀인지 확인
+                const isSelectedCell = selectedCell &&
+                    selectedCell.rowIndex === originalIndex &&
+                    selectedCell.columnKey === cell.key;
+
+                // 선택된 셀과 같은 행인지 확인 (행 그룹)
+                const isSelectedRow = selectedCell &&
+                    selectedCell.tradeNo === currentTradeNo;
+
+                // 선택된 열 그룹에 속하는지 확인
+                // selectedColumnGroup (state) 또는 selectedCell의 columnKey에서 직접 그룹을 계산하여
+                // 상태 업데이트 순서로 인한 일시적 불일치 문제를 방지
+                const isSelectedColumnGroup = selectedColumnGroup.includes(cell.key)
+                    || (selectedCell ? getColumnGroup(selectedCell.columnKey).includes(cell.key) : false);
+
+                // 호버된 열인지 확인
+                const isHoverColumn = hoverColumn === cell.key;
+
+                // 그룹 호버 확인
+                const isHoverColumnGroup = hoverColumnGroup.includes(cell.key);
+
+                // 디버깅: 겹치는 셀 조건 확인
+                const isIntersection = isSelectedRow && isSelectedColumnGroup;
+
+                // 호버 모드 (선택된 셀 없을 때)
+                if (!selectedCell) {
+                    // 행+열 동시 호버: 더 진한 색상 (0.15 투명도)
+                    if (isHovered && (isHoverColumn || isHoverColumnGroup)) {
+                        calculatedBackground = 'rgba(255, 215, 0, 0.15)';
+                    }
+                    // 행 호버: 같은 거래 번호 행 전체에 호버 효과
+                    else if (isHovered) {
+                        calculatedBackground = 'rgba(255, 215, 0, 0.1)';
+                    }
+                    // 열 호버: 같은 열 그룹에 호버 효과
+                    else if (isHoverColumn || isHoverColumnGroup) {
+                        calculatedBackground = 'rgba(255, 215, 0, 0.1)';
+                    }
                 }
-                // 호버 상태일 때는 호버 배경색 우선 적용 (선택된 셀이 있으면 호버 억제)
-                else if (!hasAnySelectedCell && !isSelectedCell && !isSelectedTradeRow && isHovered && currentTradeNo === hoverTradeNo) {
-                    calculatedBackground = 'rgba(255, 215, 0, 0.1)';
+                // 선택 모드 (선택된 셀 있을 때)
+                else {
+                    // 선택한 셀과 같은 행 그룹 및 열 그룹이 겹치는 셀에 강조색 적용
+                    if (isSelectedCell) {
+                        calculatedBackground = 'rgba(255, 215, 0, 0.25)';
+                    } else if (isIntersection) {
+                        calculatedBackground = 'rgba(255, 215, 0, 0.25)';
+                    }
+                    // 행 그룹 및 열 그룹 호버색 고정 (겹치지 않는 부분)
+                    else if (isSelectedRow || isSelectedColumnGroup) {
+                        calculatedBackground = 'rgba(255, 215, 0, 0.1)';
+                    }
                 }
 
                 // 경계선 클래스 결정 - 모듈 레벨 Set 사용
-                const borderClass = colIndex < allHeaders.length - 1 ? 
+                const borderClass = colIndex < allHeaders.length - 1 ?
                     (THICK_BORDER_COLUMNS.has(cell.key) ? 'thick-border' : 'thin-border') : '';
-                
+
                 // 셀 클래스 결정
                 let cellClass = `td cell-width ${borderClass}`;
                 if (isSelectedCell) cellClass += ' selected-cell';
-                if (isSelectedColumn) cellClass += ' selected-column';
+                if (isSelectedRow) cellClass += ' selected-row';
+                if (isSelectedColumnGroup) cellClass += ' selected-column-group';
                 if (isHoverColumn) cellClass += ' hover-column';
+                if (isHoverColumnGroup) cellClass += ' hover-column-group';
+                if (isSelectedRow && isSelectedColumnGroup) cellClass += ' selected-intersection';
 
                 return (
                     <div
                         key={cell.key}
                         className={cellClass}
+                        data-column={cell.key}
+                        data-trade-no={String(currentTradeNo)}
                         onClick={(e) => {
                             e.stopPropagation(); // 컨테이너 클릭 이벤트 방지
                             handleCellClick(cell.key);
@@ -546,29 +621,34 @@ const TradeRow = React.memo<TradeRowProps>(({
                             e.stopPropagation(); // 컨테이너 우클릭 이벤트 방지
                         }}
                         onMouseEnter={() => {
-                            if (!hasAnySelectedCell) {
+                            // 선택된 셀이 있으면 호버 완전 차단
+                            if (!selectedCell) {
                                 onCellHover(cell.key);
                             }
                         }}
                         onMouseLeave={() => {
-                            if (!hasAnySelectedCell) {
+                            // 선택된 셀이 있으면 호버 완전 차단
+                            if (!selectedCell) {
                                 onCellHover(null);
                             }
                         }}
                         onMouseMove={() => {
-                            // 선택 해제 직후 마우스가 이미 셀 위에 있을 때 호버 상태 즉시 적용
-                            if (!hasAnySelectedCell && hoverColumn !== cell.key) {
+                            // 선택된 셀이 있으면 호버 완전 차단
+                            if (!selectedCell && hoverColumn !== cell.key) {
                                 onCellHover(cell.key);
                             }
                         }}
                         style={{
                             color: cell.textColor || 'inherit',
-                            background: calculatedBackground,
+                            // use backgroundColor for more specific control and avoid invalid '!important' strings
+                            backgroundColor: calculatedBackground,
                             width: columnWidths[cell.key] || 'auto',
                             minWidth: columnWidths[cell.key] || 'auto',
                             maxWidth: columnWidths[cell.key] || 'auto',
                             flexBasis: columnWidths[cell.key] || 'auto',
-                            cursor: 'pointer'
+                            cursor: 'pointer',
+                            // selected intersection fallback: provide non-important inline zIndex/position
+                            ...(isIntersection ? {zIndex: 50, position: 'relative'} : {})
                         }}
                     >
                         {cell.formattedContent}
@@ -585,6 +665,8 @@ const TradeRow = React.memo<TradeRowProps>(({
         prevProps.isActiveRow === nextProps.isActiveRow &&
         prevProps.hoverTradeNo === nextProps.hoverTradeNo &&
         prevProps.hoverColumn === nextProps.hoverColumn &&
+        prevProps.hoverColumnGroup === nextProps.hoverColumnGroup &&
+        prevProps.selectedColumnGroup === nextProps.selectedColumnGroup &&
         prevProps.selectedCell === nextProps.selectedCell &&
         prevProps.isDifferentFromNext === nextProps.isDifferentFromNext &&
         prevProps.isLastRowOfDataset === nextProps.isLastRowOfDataset &&
@@ -647,17 +729,53 @@ export default function TradeList({config}: TradeListProps) {
     const tableRef = useRef<HTMLDivElement>(null)
     const [hoverTradeNo, setHoverTradeNo] = useState<number | null>(null)
     const [hoverColumn, setHoverColumn] = useState<string | null>(null)
-    
+    const [hoverColumnGroup, setHoverColumnGroup] = useState<string[]>([]) // 호버된 열 그룹
+
+    // 최근 마우스 위치를 추적하여 ESC 해제 시 해당 위치의 셀을 찾아 하이라이트를 복원
+    const lastMousePos = useRef<{ x: number, y: number } | null>(null);
+
     // 선택된 셀 정보
-    const [selectedCell, setSelectedCell] = useState<{rowIndex: number, columnKey: string, tradeNo: number} | null>(null)
+    const [selectedCell, setSelectedCell] = useState<{
+        rowIndex: number,
+        columnKey: string,
+        tradeNo: number
+    } | null>(null)
+    const [selectedColumnGroup, setSelectedColumnGroup] = useState<string[]>([]) // 선택된 열 그룹
 
     // ESC 키로 선택 해제
     useEffect(() => {
         const handleKeyDown = (event: KeyboardEvent) => {
             if (event.key === 'Escape' && selectedCell) {
                 setSelectedCell(null);
+                setSelectedColumnGroup([]);
+                // 마우스 위치가 있으면 해당 위치의 셀을 찾아 행+열 하이라이트를 복원
+                const pos = lastMousePos.current;
+                if (pos) {
+                    const el = document.elementFromPoint(pos.x, pos.y) as HTMLElement | null;
+                    const cellEl = el ? el.closest('.td') as HTMLElement | null : null;
+                    if (cellEl) {
+                        const col = cellEl.getAttribute('data-column');
+                        const tradeNoAttr = cellEl.getAttribute('data-trade-no');
+                        const tradeNo = tradeNoAttr ? Number(tradeNoAttr) : null;
+                        if (tradeNo !== null && !Number.isNaN(tradeNo)) {
+                            setHoverTradeNo(tradeNo);
+                        } else {
+                            setHoverTradeNo(null);
+                        }
+                        if (col) {
+                            setHoverColumn(col);
+                            setHoverColumnGroup(getColumnGroup(col));
+                        } else {
+                            setHoverColumn(null);
+                            setHoverColumnGroup([]);
+                        }
+                        return;
+                    }
+                }
+                // 위치를 찾지 못하면 기존 동작 (호버 초기화)
                 setHoverTradeNo(null);
                 setHoverColumn(null);
+                setHoverColumnGroup([]);
             }
         };
 
@@ -666,6 +784,15 @@ export default function TradeList({config}: TradeListProps) {
             document.removeEventListener('keydown', handleKeyDown);
         };
     }, [selectedCell]);
+
+    // 전역 마우스 이동을 추적하여 lastMousePos를 갱신
+    useEffect(() => {
+        const handleMouseMove = (e: MouseEvent) => {
+            lastMousePos.current = {x: e.clientX, y: e.clientY};
+        };
+        window.addEventListener('mousemove', handleMouseMove, {passive: true});
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, []);
 
     // 가상 스크롤 상태 및 설정
     const viewportRef = useRef<HTMLDivElement>(null);
@@ -737,7 +864,7 @@ export default function TradeList({config}: TradeListProps) {
         }
 
         const newColumnWidths: { [key: string]: string } = {};
-        const cellPadding = 20;
+        const cellPadding = 16;
         const minCellWidth = 50;
 
         // Canvas context 재사용
@@ -770,22 +897,39 @@ export default function TradeList({config}: TradeListProps) {
 
             let maxDataTextWidth = 0;
             if (trades.length > 0) {
-                // 성능을 위해 훨씬 더 효율적인 샘플링 사용 (최대 15개 항목만 체크)
-                const sampleSize = Math.min(15, trades.length);
+                // 더 많은 샘플을 체크하여 정확한 최대값 찾기 (최대 100개 항목 체크)
+                const sampleSize = Math.min(100, trades.length);
                 const step = Math.max(1, Math.floor(trades.length / sampleSize));
 
-                // 추가 최적화: 최대값 발견 시 조기 종료
-                const maxPossibleWidth = 400; // 합리적인 최대 셀 너비
-                
-                for (let i = 0; i < trades.length && maxDataTextWidth < maxPossibleWidth; i += step) {
+                for (let i = 0; i < trades.length; i += step) {
                     const trade = trades[i];
                     const displayString = getDisplayStringForMeasuring(trade[headerKey], headerKey, config, getSymbolFromTrade(trade));
-                    
+
                     // 빈 문자열이면 스킵
                     if (!displayString) continue;
-                    
+
                     const dataTextMetrics = context.measureText(displayString);
                     maxDataTextWidth = Math.max(maxDataTextWidth, Math.ceil(dataTextMetrics.width));
+                }
+
+                // 추가로 처음 100개와 마지막 100개도 체크하여 극값 놓치지 않기
+                const additionalChecks = Math.min(100, trades.length);
+                for (let i = 0; i < additionalChecks; i++) {
+                    const trade = trades[i];
+                    const displayString = getDisplayStringForMeasuring(trade[headerKey], headerKey, config, getSymbolFromTrade(trade));
+                    if (displayString) {
+                        const dataTextMetrics = context.measureText(displayString);
+                        maxDataTextWidth = Math.max(maxDataTextWidth, Math.ceil(dataTextMetrics.width));
+                    }
+                }
+
+                for (let i = Math.max(0, trades.length - additionalChecks); i < trades.length; i++) {
+                    const trade = trades[i];
+                    const displayString = getDisplayStringForMeasuring(trade[headerKey], headerKey, config, getSymbolFromTrade(trade));
+                    if (displayString) {
+                        const dataTextMetrics = context.measureText(displayString);
+                        maxDataTextWidth = Math.max(maxDataTextWidth, Math.ceil(dataTextMetrics.width));
+                    }
                 }
             }
             const calculatedMaxDataWidth = Math.ceil(maxDataTextWidth + cellPadding);
@@ -855,7 +999,7 @@ export default function TradeList({config}: TradeListProps) {
     }, [scrollTop, trades.length, rowHeight, overscanCount]);
 
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    
+
     const handleScroll = useCallback((event: React.UIEvent<HTMLDivElement>) => {
         const newScrollTop = event.currentTarget.scrollTop;
 
@@ -934,27 +1078,55 @@ export default function TradeList({config}: TradeListProps) {
     const handleMouseLeave = useCallback(() => {
         setHoverTradeNo(null);
     }, []);
-    
-    // 셀 호버 핸들러
+
+    // 셀 호버 핸들러 - 그룹 단위로 호버 처리
     const handleCellHover = useCallback((columnKey: string | null) => {
         setHoverColumn(columnKey);
+        if (columnKey) {
+            const group = getColumnGroup(columnKey);
+            setHoverColumnGroup(group);
+        } else {
+            setHoverColumnGroup([]);
+        }
     }, []);
-    
-    // 셀 클릭 핸들러 - 헤더는 제외, 같은 셀 클릭시 선택 해제
+
+    // 셀 클릭 핸들러 - 헤더는 제외, 같은 셀 또는 선택된 교차 영역 클릭시 선택 해제, 그룹 단위로 선택
     const handleCellClick = useCallback((rowIndex: number, columnKey: string, tradeNo: number) => {
-        // 현재 선택된 셀과 같은 셀을 클릭하면 선택 해제
-        if (selectedCell && 
-            selectedCell.rowIndex === rowIndex && 
-            selectedCell.columnKey === columnKey && 
-            selectedCell.tradeNo === tradeNo) {
+        // 현재 선택된 셀이 있고, 클릭한 셀이
+        //  - 동일한 셀이거나
+        //  - 동일한 거래(행 그룹)이고 선택된 열 그룹에 속하는 열이면 선택 해제
+        const clickedCellIsSame = selectedCell &&
+            selectedCell.rowIndex === rowIndex &&
+            selectedCell.columnKey === columnKey &&
+            selectedCell.tradeNo === tradeNo;
+
+        const clickedCellInSelectedIntersection = selectedCell &&
+            selectedCell.tradeNo === tradeNo &&
+            getColumnGroup(selectedCell.columnKey).includes(columnKey);
+
+        if (clickedCellIsSame || clickedCellInSelectedIntersection) {
+            // 선택 해제
             setSelectedCell(null);
-            // 선택 해제 시 호버 상태도 초기화
-            setHoverTradeNo(null);
-            setHoverColumn(null);
+            setSelectedColumnGroup([]);
+            // 선택 해제 시 현재 클릭한 셀의 행 그룹과 열 그룹을 즉시 복원하여
+            // 마우스 움직임 없이도 하이라이트가 표시되도록 함
+            setHoverTradeNo(tradeNo);
+            setHoverColumn(columnKey);
+            setHoverColumnGroup(getColumnGroup(columnKey));
         } else {
             setSelectedCell({rowIndex, columnKey, tradeNo});
+            // 선택된 열의 그룹도 함께 선택
+            const group = getColumnGroup(columnKey);
+            setSelectedColumnGroup(group);
+
+            // 선택 모드에서 열 그룹 호버 배경색 고정을 위해 현재 호버 상태 유지
+            // 이미 호버된 열이 있으면 그대로 유지, 없으면 클릭한 열로 설정
+            if (!hoverColumn) {
+                setHoverColumn(columnKey);
+                setHoverColumnGroup(group);
+            }
         }
-    }, [selectedCell]);
+    }, [selectedCell, hoverColumn]);
 
     // 빈 공간 클릭으로 선택 해제
     const handleContainerClick = useCallback((event: React.MouseEvent) => {
@@ -962,8 +1134,10 @@ export default function TradeList({config}: TradeListProps) {
         const target = event.target as HTMLElement;
         if (!target.closest('.td') && !target.closest('.th') && selectedCell) {
             setSelectedCell(null);
+            setSelectedColumnGroup([]);
             setHoverTradeNo(null);
             setHoverColumn(null);
+            setHoverColumnGroup([]);
         }
     }, [selectedCell]);
 
@@ -1179,6 +1353,8 @@ export default function TradeList({config}: TradeListProps) {
                                             isActiveRow={isActiveRow}
                                             hoverTradeNo={hoverTradeNo}
                                             hoverColumn={hoverColumn}
+                                            hoverColumnGroup={hoverColumnGroup}
+                                            selectedColumnGroup={selectedColumnGroup}
                                             initialBalance={initialBalance}
                                             config={config}
                                             isDifferentFromNext={isDifferentFromNext}

@@ -40,7 +40,7 @@
     font-weight: 700 !important;
     white-space: nowrap !important; /* 한 줄로 표시 강제 */
     font-size: 14px !important;
-    padding: 10px !important;
+    padding: 10px 8px !important; /* 상하 10px, 좌우 8px */
     border-bottom: 2px solid rgba(255, 215, 0, 0.4) !important;
     transition: background-color 0.2s ease !important;
     display: flex !important; /* table-cell 대신 flex로 변경 */
@@ -64,7 +64,7 @@
 .trade-list-container .td {
     white-space: nowrap !important; /* 한 줄로 표시 강제 */
     font-size: 14px !important;
-    padding: 10px !important;
+    padding: 10px 8px !important; /* 상하 10px, 좌우 8px */
     border-bottom: 1px solid rgba(255, 215, 0, 0.4) !important;
     display: flex !important; /* table-cell 대신 flex로 변경 */
     justify-content: center !important;
@@ -72,6 +72,7 @@
     text-align: center !important;
     vertical-align: middle !important;
     transition: background-color 0.2s ease !important;
+    box-sizing: border-box !important; /* 박스 사이징 추가 */
 }
 
 .trade-list-container .fixed-header {
@@ -129,10 +130,59 @@
     transition: background-color 0.2s ease !important;
 }
 
-/* 열 호버 효과 */
-.trade-list-container .td.hover-column {
+/* 행 그룹 호버 효과 강화 - 선택된 셀이 없을 때만 */
+.trade-list-container:not(.has-selected-cell) .table .tr:hover td {
     background-color: rgba(255, 215, 0, 0.1) !important;
     transition: background-color 0.2s ease !important;
+}
+
+/* 행 그룹 호버 효과 강화 - 선택된 셀이 없을 때만 (더 구체적인 선택자) */
+.trade-list-container:not(.has-selected-cell) .tbody .tr:hover .td {
+    background-color: rgba(255, 215, 0, 0.1) !important;
+}
+
+/* 열 호버: 같은 열 그룹에 호버 효과 */
+.trade-list-container:not(.has-selected-cell) .td.hover-column,
+.trade-list-container:not(.has-selected-cell) .td.hover-column-group {
+    background-color: rgba(255, 215, 0, 0.1) !important;
+}
+
+/* 행+열 동시 호버: 더 진한 색상 (0.15 투명도) */
+.trade-list-container:not(.has-selected-cell) .tbody .tr:hover .td.hover-column,
+.trade-list-container:not(.has-selected-cell) .tbody .tr:hover .td.hover-column-group {
+    background-color: rgba(255, 215, 0, 0.15) !important;
+}
+
+/* 선택 모드 (선택된 셀 있을 때) */
+
+/* 겹치는 셀만 강조 - 행과 열이 교차하는 부분 (최고 우선순위) */
+.trade-list-container.has-selected-cell .td.selected-intersection {
+    background-color: rgba(255, 215, 0, 0.25) !important;
+    z-index: 50 !important;
+    position: relative !important;
+}
+
+/* 추가: inline 스타일보다 우선 적용되도록 좀 더 구체적인 선택자 추가 */
+.trade-list-container.has-selected-cell .table .tr .td.selected-intersection {
+    background-color: rgba(255, 215, 0, 0.25) !important;
+}
+
+/* 선택된 셀 스타일 */
+.trade-list-container.has-selected-cell .td.selected-cell {
+    background-color: rgba(255, 215, 0, 0.25) !important;
+    z-index: 30 !important;
+    position: relative !important;
+}
+
+/* 행 그룹 및 열 그룹 호버색 고정 (겹치지 않는 부분) */
+.trade-list-container.has-selected-cell .td.selected-row:not(.selected-intersection),
+.trade-list-container.has-selected-cell .td.selected-column-group:not(.selected-intersection) {
+    background-color: rgba(255, 215, 0, 0.1) !important;
+}
+
+/* 선택 모드에서 호버 완전 차단 */
+.trade-list-container.has-selected-cell .tbody .tr:hover .td:not(.selected-cell):not(.selected-intersection):not(.selected-row):not(.selected-column-group) {
+    background-color: transparent !important;
 }
 
 .trade-list-container .table .tr.same-trade.last-group-row {
@@ -179,7 +229,7 @@
 
 /* 성능 최적화를 위한 새로운 클래스들 */
 .trade-list-container .cell-width {
-    padding: 3px 10px !important;
+    padding: 3px 8px !important; /* 상하 3px 유지, 좌우만 8px로 변경 */
     white-space: nowrap !important;
     text-align: center !important;
     vertical-align: middle !important;
@@ -210,8 +260,15 @@
 
 /* 선택된 셀 스타일 - 더 구체적인 선택자로 우선순위 확보 */
 .trade-list-container .table .tr .td.selected-cell {
-    background-color: rgba(255, 215, 0, 0.2) !important; /* 더 진하게 */
+    background-color: rgba(255, 215, 0, 0.25) !important; /* 강조색 */
     z-index: 30 !important; /* 점선보다 높은 z-index */
+    position: relative !important;
+}
+
+/* 선택된 셀과 같은 행의 모든 셀 스타일 */
+.trade-list-container .table .tr .td.selected-row {
+    background-color: rgba(255, 215, 0, 0.25) !important; /* 강조색 */
+    z-index: 25 !important;
     position: relative !important;
 }
 
@@ -230,12 +287,7 @@
     background-color: rgba(255, 215, 0, 0.1) !important;
 }
 
-/* 선택된 셀이 있을 때 호버 억제 */
-.trade-list-container.has-selected-cell .table .tr:hover td,
-.trade-list-container.has-selected-cell .table .tr.hover td {
-    background-color: transparent !important;
-}
-
-.trade-list-container.has-selected-cell .td.hover-column {
-    background-color: transparent !important;
+/* 선택된 열 그룹 스타일 */
+.trade-list-container .td.selected-column-group:not(.selected-cell) {
+    background-color: rgba(255, 215, 0, 0.1) !important;
 } 
