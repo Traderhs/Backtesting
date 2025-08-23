@@ -189,6 +189,11 @@
     border-bottom: 2px solid rgb(155, 132, 7) !important;
 }
 
+/* 호버 교차(행+열)용 클래스: 더 진한 색상 적용 */
+.trade-list-container .table .tr .td.hover-intersection {
+    background-color: rgba(255, 215, 0, 0.15) !important;
+}
+
 /* 가상 스크롤 행 스타일 */
 .trade-list-container .tbody .tr {
     position: absolute !important; /* 가상 스크롤을 위해 추가 */

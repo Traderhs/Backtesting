@@ -565,10 +565,16 @@ const TradeRow = React.memo<TradeRowProps>(({
                 // 디버깅: 겹치는 셀 조건 확인
                 const isIntersection = isSelectedRow && isSelectedColumnGroup;
 
+                // 호버 교차(행+열 동시 호버) 확인 - 선택 모드가 아닌 경우에만 적용
+                const isHoverIntersection = !selectedCell && isHovered && (isHoverColumn || isHoverColumnGroup);
+
                 // 호버 모드 (선택된 셀 없을 때)
                 if (!selectedCell) {
                     // 행+열 동시 호버: 더 진한 색상 (0.15 투명도)
-                    if (isHovered && (isHoverColumn || isHoverColumnGroup)) {
+                    if (isHoverIntersection) {
+                        calculatedBackground = 'rgba(255, 215, 0, 0.15)';
+                    } else if (isHovered && (isHoverColumn || isHoverColumnGroup)) {
+                        // fallback, though isHoverIntersection should cover the usual case
                         calculatedBackground = 'rgba(255, 215, 0, 0.15)';
                     }
                     // 행 호버: 같은 거래 번호 행 전체에 호버 효과
@@ -600,6 +606,7 @@ const TradeRow = React.memo<TradeRowProps>(({
 
                 // 셀 클래스 결정
                 let cellClass = `td cell-width ${borderClass}`;
+                if (isHoverIntersection) cellClass += ' hover-intersection';
                 if (isSelectedCell) cellClass += ' selected-cell';
                 if (isSelectedRow) cellClass += ' selected-row';
                 if (isSelectedColumnGroup) cellClass += ' selected-column-group';
