@@ -141,11 +141,38 @@ class CandleStickRenderer {
         try {
             // 볼륨 데이터 업데이트
             if (this.volumeSeries) {
-                this.volumeSeries.setData(data.map(bar => ({
-                    time: bar.time,
-                    value: bar.volume === null ? NaN : bar.volume,
-                    color: (bar.close === null || bar.open === null) ? "#08998180" : (bar.close >= bar.open ? "#08998180" : "#ef535080")
-                })));
+                this.volumeSeries.setData(data.map((bar, index) => {
+                    if (bar.close === null || bar.open === null) {
+                        return {
+                            time: bar.time,
+                            value: bar.volume === null ? NaN : bar.volume,
+                            color: "#08998180"
+                        };
+                    }
+                    
+                    let color: string;
+                    
+                    // 시가 == 종가인 경우 (도지 캔들)
+                    if (bar.open === bar.close) {
+                        // 첫 번째 캔들이거나 이전 종가가 없으면 기본 캔들 색상 로직 사용
+                        if (index === 0 || data[index - 1].close === null) {
+                            color = bar.close >= bar.open ? "#08998180" : "#ef535080";
+                        } else {
+                            // 이전 종가와 비교
+                            const previousClose = data[index - 1].close;
+                            color = bar.close >= previousClose ? "#08998180" : "#ef535080";
+                        }
+                    } else {
+                        // 기존 방식: 시가 vs 종가
+                        color = bar.close >= bar.open ? "#08998180" : "#ef535080";
+                    }
+                    
+                    return {
+                        time: bar.time,
+                        value: bar.volume === null ? NaN : bar.volume,
+                        color: color
+                    };
+                }));
             }
 
             // 캔들스틱 데이터 업데이트
@@ -179,11 +206,38 @@ class CandleStickRenderer {
 
                     // 시리즈 재생성 후 데이터 다시 업데이트
                     if (this.mainSeries && this.volumeSeries) {
-                        this.volumeSeries.setData(data.map(bar => ({
-                            time: bar.time,
-                            value: bar.volume,
-                            color: bar.close >= bar.open ? "#08998180" : "#ef535080"
-                        })));
+                        this.volumeSeries.setData(data.map((bar, index) => {
+                            if (bar.close === null || bar.open === null) {
+                                return {
+                                    time: bar.time,
+                                    value: bar.volume,
+                                    color: "#08998180"
+                                };
+                            }
+                            
+                            let color: string;
+                            
+                            // 시가 == 종가인 경우 (도지 캔들)
+                            if (bar.open === bar.close) {
+                                // 첫 번째 캔들이거나 이전 종가가 없으면 기본 캔들 색상 로직 사용
+                                if (index === 0 || data[index - 1].close === null) {
+                                    color = bar.close >= bar.open ? "#08998180" : "#ef535080";
+                                } else {
+                                    // 이전 종가와 비교
+                                    const previousClose = data[index - 1].close;
+                                    color = bar.close >= previousClose ? "#08998180" : "#ef535080";
+                                }
+                            } else {
+                                // 기존 방식: 시가 vs 종가
+                                color = bar.close >= bar.open ? "#08998180" : "#ef535080";
+                            }
+                            
+                            return {
+                                time: bar.time,
+                                value: bar.volume,
+                                color: color
+                            };
+                        }));
 
                         this.mainSeries.setData(data.map(bar => ({
                             time: bar.time,
