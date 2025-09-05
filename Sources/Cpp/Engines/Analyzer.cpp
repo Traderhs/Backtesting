@@ -1114,10 +1114,10 @@ void Analyzer::DownloadBackboardFromGitHub() const {
   try {
     const string temp_dir = filesystem::temp_directory_path().string();
     const string backboard_exe_url =
-        "https://github.com/Traderhs/Backtesting/releases/download/Backboard/"
+        "https://github.com/Traderhs/Backtesting/releases/latest/download/"
         "Backboard.exe";
     const string backboard_zip_url =
-        "https://github.com/Traderhs/Backtesting/releases/download/Backboard/"
+        "https://github.com/Traderhs/Backtesting/releases/latest/download/"
         "Backboard.zip";
 
     const string exe_temp_path = temp_dir + "/Backboard.exe";
