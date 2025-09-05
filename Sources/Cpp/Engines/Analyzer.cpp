@@ -251,6 +251,7 @@ void Analyzer::SaveIndicatorData() {
           const size_t num_ref_bars = reference_bar->GetNumBars(symbol_idx);
           auto& ref_close_times = ref_close_times_cache[symbol_idx];
           ref_close_times.reserve(num_ref_bars);
+
           for (size_t i = 0; i < num_ref_bars; i++) {
             ref_close_times.push_back(
                 reference_bar->GetBar(symbol_idx, i).close_time);
@@ -351,29 +352,24 @@ void Analyzer::SaveIndicatorData() {
             // 값 배열 생성
             shared_ptr<arrow::Array> value_array;
 
-            // Decimal128 타입 정의 (38자리 정밀도, 소수점 19자리)
-            auto decimal_type = arrow::decimal128(38, 19);
-            arrow::Decimal128Builder value_builder(decimal_type, pool);
+            // 문자열 빌더 사용 (long double을 문자열로 저장)
+            arrow::StringBuilder value_builder(pool);
 
-            // long double 값들을 Decimal128로 변환
+            // long double 값들을 문자열로 변환
             for (const auto& value : value_vector) {
               if (isnan(value)) {
-                if (auto status = value_builder.AppendNull(); !status.ok()) {
+                // NaN일 때는 "NaN" 문자열로 저장
+                if (auto status = value_builder.Append("NaN"); !status.ok()) {
                   throw runtime_error(status.message());
                 }
               } else {
-                // long double를 높은 정밀도 문자열로 변환 후 Decimal128로 변환
+                // long double를 문자열로 변환 (최대 정밀도 유지)
                 ostringstream oss;
-                oss << fixed << setprecision(19) << value;
+                oss << fixed << setprecision(21)
+                    << value;  // long double 최대 정밀도
                 string value_str = oss.str();
 
-                auto decimal_value = arrow::Decimal128::FromString(value_str);
-                if (!decimal_value.ok()) {
-                  throw runtime_error(decimal_value.status().message());
-                }
-
-                if (auto status =
-                        value_builder.Append(decimal_value.ValueOrDie());
+                if (auto status = value_builder.Append(value_str);
                     !status.ok()) {
                   throw runtime_error(status.message());
                 }
@@ -391,8 +387,8 @@ void Analyzer::SaveIndicatorData() {
 
       // 테이블에 컬럼 추가
       for (const auto& [symbol_name, value_array] : symbol_arrays) {
-        auto decimal_type = arrow::decimal128(38, 19);  // Decimal128 타입 사용
-        auto value_field = field(symbol_name, decimal_type);
+        auto value_field =
+            field(symbol_name, arrow::utf8());  // 문자열 타입 사용
         table = table
                     ->AddColumn(table->num_columns(), value_field,
                                 make_shared<arrow::ChunkedArray>(value_array))
