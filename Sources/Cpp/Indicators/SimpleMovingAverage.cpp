@@ -1,3 +1,6 @@
+// 표준 라이브러리
+#include <algorithm>
+
 // 파일 헤더
 #include "Indicators/SimpleMovingAverage.hpp"
 
@@ -9,34 +12,50 @@ SimpleMovingAverage::SimpleMovingAverage(const string& name,
       source_(source),
       count_(0),
       sum_(0),
-      can_calculate_(false) {
+      can_calculate_(false),
+      buffer_(sizet_period_, 0.0),
+      buffer_idx_(0) {
   // 타입 안정성과 속도를 위해 미리 변환
   double_period_ = period;
   sizet_period_ = static_cast<size_t>(period);
+
+  buffer_.assign(sizet_period_, 0.0);
+  buffer_idx_ = 0;
 }
 
 void SimpleMovingAverage::Initialize() {
   count_ = 0;
   sum_ = 0;
   can_calculate_ = false;
+
+  ranges::fill(buffer_, 0.0);
+  buffer_idx_ = 0;
 }
 
 Numeric<long double> SimpleMovingAverage::Calculate() {
-  // 가장 최근 데이터를 추가
-  sum_ += source_[0];
+  // 현재 값 읽기
+  const double value = source_[0];
+
+  // 원형 버퍼에서 이전 값을 제거하고 새로운 값을 추가
+  const double old = buffer_[buffer_idx_];
+  buffer_[buffer_idx_] = value;
+  buffer_idx_ = (buffer_idx_ + 1) % sizet_period_;
+
+  // 합 업데이트
+  sum_ += value;
 
   if (!can_calculate_) {
+    // 충분한 데이터가 모이지 않았으므로 NaN 리턴
     if (count_++ < sizet_period_ - 1) {
-      // 아직 계산할 수 있는 데이터 부족
       return nan("");
     }
 
-    // 처음으로 계산 가능해졌을 때 단순히 합을 지표 기간으로 나눠서 계산
     can_calculate_ = true;
-    return sum_ / double_period_;
+    // 첫 윈도우 완성 시에는 old는 0으로 초기화되어 있으므로 이전값 제거 불필요
+  } else {
+    // 윈도우 이동: 이전값 제거
+    sum_ -= old;
   }
 
-  // 첫 계산 외에는 가장 오래된 데이터를 제거
-  sum_ -= source_[sizet_period_];
   return sum_ / double_period_;
 }
