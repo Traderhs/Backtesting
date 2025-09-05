@@ -14,6 +14,6 @@ void Open::Initialize() {
   symbol_idx_ = bar_->GetCurrentSymbolIndex();
 }
 
-Numeric<double> Open::Calculate() {
+Numeric<long double> Open::Calculate() {
   return reference_bar_->GetBar(symbol_idx_, bar_->GetCurrentBarIndex()).open;
 }

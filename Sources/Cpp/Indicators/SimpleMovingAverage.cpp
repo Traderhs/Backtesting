@@ -1,6 +1,3 @@
-// 표준 라이브러리
-#include <cmath>
-
 // 파일 헤더
 #include "Indicators/SimpleMovingAverage.hpp"
 
@@ -8,7 +5,11 @@ SimpleMovingAverage::SimpleMovingAverage(const string& name,
                                          const string& timeframe,
                                          const Plot& plot, Indicator& source,
                                          const double period)
-    : Indicator(name, timeframe, plot), source_(source) {
+    : Indicator(name, timeframe, plot),
+      source_(source),
+      count_(0),
+      sum_(0),
+      can_calculate_(false) {
   // 타입 안정성과 속도를 위해 미리 변환
   double_period_ = period;
   sizet_period_ = static_cast<size_t>(period);
@@ -20,7 +21,7 @@ void SimpleMovingAverage::Initialize() {
   can_calculate_ = false;
 }
 
-Numeric<double> SimpleMovingAverage::Calculate() {
+Numeric<long double> SimpleMovingAverage::Calculate() {
   // 가장 최근 데이터를 추가
   sum_ += source_[0];
 

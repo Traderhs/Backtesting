@@ -14,6 +14,6 @@ void Close::Initialize() {
   symbol_idx_ = bar_->GetCurrentSymbolIndex();
 }
 
-Numeric<double> Close::Calculate() {
+Numeric<long double> Close::Calculate() {
   return reference_bar_->GetBar(symbol_idx_, bar_->GetCurrentBarIndex()).close;
 }
