@@ -14,6 +14,6 @@ void Low::Initialize() {
   symbol_idx_ = bar_->GetCurrentSymbolIndex();
 }
 
-Numeric<double> Low::Calculate() {
+Numeric<long double> Low::Calculate() {
   return reference_bar_->GetBar(symbol_idx_, bar_->GetCurrentBarIndex()).low;
 }

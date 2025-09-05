@@ -14,6 +14,6 @@ void High::Initialize() {
   symbol_idx_ = bar_->GetCurrentSymbolIndex();
 }
 
-Numeric<double> High::Calculate() {
+Numeric<long double> High::Calculate() {
   return reference_bar_->GetBar(symbol_idx_, bar_->GetCurrentBarIndex()).high;
 }

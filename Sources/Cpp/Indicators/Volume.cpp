@@ -14,6 +14,6 @@ void Volume::Initialize() {
   symbol_idx_ = bar_->GetCurrentSymbolIndex();
 }
 
-Numeric<double> Volume::Calculate() {
+Numeric<long double> Volume::Calculate() {
   return reference_bar_->GetBar(symbol_idx_, bar_->GetCurrentBarIndex()).volume;
 }

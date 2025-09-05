@@ -96,7 +96,7 @@ class Indicator {
 
   /// 지표의 계산된 값을 반환하는 연산자 오버로딩.
   /// 사용법: 지표 클래스 객체[n개 바 전 인덱스]
-  [[nodiscard]] Numeric<double> operator[](size_t index);
+  [[nodiscard]] Numeric<long double> operator[](size_t index);
 
   /// 모든 심볼의 모든 바에 해당되는 지표 값을 계산하는 함수
   void CalculateIndicator();
@@ -197,7 +197,7 @@ class Indicator {
   virtual void Initialize() = 0;
 
   /// 각 바에서 지표를 계산하는 함수. 메인 로직을 작성.
-  virtual Numeric<double> Calculate() = 0;
+  virtual Numeric<long double> Calculate() = 0;
 
  private:
   // 카운터는 커스텀 지표 생성 시 Strategy 클래스의 AddIndicator 함수 사용을
@@ -214,7 +214,7 @@ class Indicator {
   string timeframe_;                        // 지표의 타임프레임
   string class_name_;                       // 지표의 클래스 이름
   vector<double> input_;                    // 지표의 파라미터
-  vector<vector<Numeric<double>>> output_;  // 지표의 계산된 값: 심볼<값>
+  vector<vector<Numeric<long double>>> output_;  // 지표의 계산된 값: 심볼<값>
   bool is_calculated_;                 // 지표가 계산되었는지 확인하는 플래그
   vector<size_t> reference_num_bars_;  /// 지표의 타임프레임에 해당되는
                                        /// 참조 바 데이터의 심볼별 바 개수
