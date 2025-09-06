@@ -88,8 +88,8 @@ struct alignas(64) FastLogBuffer {
      * @param len 메시지 길이
      * @return 성공 여부
      */
-    [[nodiscard]] FORCE_INLINE bool try_write(const char* RESTRICT msg,
-                                              const size_t len) noexcept {
+    [[nodiscard]] bool try_write(const char* RESTRICT msg,
+                                 const size_t len) noexcept {
       PREFETCH_WRITE(this);
 
       if (const size_t current_pos = write_pos.load(memory_order_relaxed);
@@ -116,7 +116,7 @@ struct alignas(64) FastLogBuffer {
     /**
      * 버퍼 리셋 함수
      */
-    FORCE_INLINE void reset() noexcept {
+    void reset() noexcept {
       write_pos.store(0, memory_order_relaxed);
       ready_to_flush.store(false, memory_order_relaxed);
     }
@@ -134,8 +134,8 @@ struct alignas(64) FastLogBuffer {
    * @param len 메시지 길이
    * @return 성공 여부
    */
-  [[nodiscard]] FORCE_INLINE bool write_message(const char* RESTRICT msg,
-                                                const size_t len) noexcept {
+  [[nodiscard]] bool write_message(const char* RESTRICT msg,
+                                   const size_t len) noexcept {
     PREFETCH_READ(this);
     const size_t buf_idx = current_buffer.load(memory_order_relaxed);
     Buffer& buffer = buffers[buf_idx];

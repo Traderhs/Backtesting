@@ -6,7 +6,8 @@ Lowest::Lowest(const string& name, const string& timeframe, const Plot& plot,
     : Indicator(name, timeframe, plot),
       source_(source),
       count_(0),
-      can_calculate_(false) {
+      can_calculate_(false),
+      current_idx_(0) {
   double_period_ = period;
   sizet_period_ = static_cast<size_t>(period);
 }
@@ -19,7 +20,7 @@ void Lowest::Initialize() {
   current_idx_ = 0;
 }
 
-Numeric<long double> Lowest::Calculate() {
+Numeric<double> Lowest::Calculate() {
   double value = source_[0];
 
   // deque는 값이 증가하는 순서로 유지 (앞에는 최솟값)

@@ -21,8 +21,8 @@ class Highest final : public Indicator {
   bool can_calculate_;
 
   deque<pair<double, size_t>> dq_;
-  size_t current_idx_{};
+  size_t current_idx_;
 
   void Initialize() override;
-  Numeric<long double> Calculate() override;
+  Numeric<double> Calculate() override;
 };

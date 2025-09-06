@@ -20,7 +20,6 @@
 #include "arrow/array/builder_decimal.h"
 #include "arrow/array/builder_primitive.h"
 #include "arrow/table.h"
-#include "arrow/util/decimal.h"
 #include "nlohmann/json.hpp"
 
 // 파일 헤더
@@ -271,7 +270,7 @@ void Analyzer::SaveIndicatorData() {
       for_each(
           execution::par_unseq, symbol_indices.begin(), symbol_indices.end(),
           [&](const int symbol_idx) {
-            vector<long double> value_vector(total_rows);
+            vector<double> value_vector(total_rows);
 
             if (is_indicator_timeframe_larger) {
               // 지표의 타임프레임이 트레이딩 바보다 큰 경우 특별 처리
@@ -351,33 +350,14 @@ void Analyzer::SaveIndicatorData() {
 
             // 값 배열 생성
             shared_ptr<arrow::Array> value_array;
+            arrow::DoubleBuilder value_builder(pool);
+            auto status = value_builder.AppendValues(value_vector);
 
-            // 문자열 빌더 사용 (long double을 문자열로 저장)
-            arrow::StringBuilder value_builder(pool);
-
-            // long double 값들을 문자열로 변환
-            for (const auto& value : value_vector) {
-              if (isnan(value)) {
-                // NaN일 때는 "NaN" 문자열로 저장
-                if (auto status = value_builder.Append("NaN"); !status.ok()) {
-                  throw runtime_error(status.message());
-                }
-              } else {
-                // long double를 문자열로 변환 (최대 정밀도 유지)
-                ostringstream oss;
-                oss << fixed << setprecision(21)
-                    << value;  // long double 최대 정밀도
-                string value_str = oss.str();
-
-                if (auto status = value_builder.Append(value_str);
-                    !status.ok()) {
-                  throw runtime_error(status.message());
-                }
-              }
+            if (status.ok()) {
+              status = value_builder.Finish(&value_array);
             }
 
-            if (auto status = value_builder.Finish(&value_array);
-                !status.ok()) {
+            if (!status.ok()) {
               throw runtime_error(status.message());
             }
 
@@ -387,8 +367,7 @@ void Analyzer::SaveIndicatorData() {
 
       // 테이블에 컬럼 추가
       for (const auto& [symbol_name, value_array] : symbol_arrays) {
-        auto value_field =
-            field(symbol_name, arrow::utf8());  // 문자열 타입 사용
+        auto value_field = field(symbol_name, arrow::float64());
         table = table
                     ->AddColumn(table->num_columns(), value_field,
                                 make_shared<arrow::ChunkedArray>(value_array))
