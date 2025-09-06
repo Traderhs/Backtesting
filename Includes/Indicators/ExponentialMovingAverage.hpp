@@ -25,5 +25,5 @@ class ExponentialMovingAverage final : public Indicator {
   double alpha_;  // EMA 가중치
 
   void Initialize() override;
-  Numeric<long double> Calculate() override;
+  Numeric<double> Calculate() override;
 };

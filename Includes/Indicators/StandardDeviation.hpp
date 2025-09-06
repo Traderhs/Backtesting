@@ -24,5 +24,5 @@ class StandardDeviation final : public Indicator {
   size_t buffer_idx_;
 
   void Initialize() override;
-  Numeric<long double> Calculate() override;
+  Numeric<double> Calculate() override;
 };

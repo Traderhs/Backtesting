@@ -14,5 +14,5 @@ class Volume final : public Indicator {
   int symbol_idx_;
 
   void Initialize() override;
-  Numeric<long double> Calculate() override;
+  Numeric<double> Calculate() override;
 };

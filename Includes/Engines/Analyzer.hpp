@@ -82,7 +82,7 @@ class Analyzer {
   void AddTrade(Trade& new_trade, int exit_count);
 
   /// 이번 백테스팅의 결과가 저장될 메인 폴더의 경로를 반환하는 함수
-  string GetMainDirectory() const;
+  [[nodiscard]] string GetMainDirectory() const;
 
   // ===========================================================================
   // 함수 나열 순서는 Backboard 대시보드 순서

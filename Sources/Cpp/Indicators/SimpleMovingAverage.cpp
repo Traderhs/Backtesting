@@ -32,7 +32,7 @@ void SimpleMovingAverage::Initialize() {
   buffer_idx_ = 0;
 }
 
-Numeric<long double> SimpleMovingAverage::Calculate() {
+Numeric<double> SimpleMovingAverage::Calculate() {
   // 현재 값 읽기
   const double value = source_[0];
 

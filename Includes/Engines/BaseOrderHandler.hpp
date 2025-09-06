@@ -210,7 +210,7 @@ class BaseOrderHandler {
   void IsValidEntryName(const string& entry_name) const;
 
   /// 청산 주문 시 청산 이름이 유효한지 확인하는 함수
-  static void IsValidExitName(const string& exit_name) ;
+  static void IsValidExitName(const string& exit_name);
 
   /// 지정가 주문 가격이 유효한 가격인지 확인하는 함수
   static void IsValidLimitOrderPrice(double limit_price, double base_price,

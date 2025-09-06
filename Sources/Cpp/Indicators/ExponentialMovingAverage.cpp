@@ -28,7 +28,7 @@ void ExponentialMovingAverage::Initialize() {
   prev_ = 0.0;
 }
 
-Numeric<long double> ExponentialMovingAverage::Calculate() {
+Numeric<double> ExponentialMovingAverage::Calculate() {
   // 기준 지표의 현재 값을 읽음
   const double value = source_[0];
 

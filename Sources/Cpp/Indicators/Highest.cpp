@@ -6,7 +6,8 @@ Highest::Highest(const string& name, const string& timeframe, const Plot& plot,
     : Indicator(name, timeframe, plot),
       source_(source),
       count_(0),
-      can_calculate_(false) {
+      can_calculate_(false),
+      current_idx_(0) {
   double_period_ = period;
   sizet_period_ = static_cast<size_t>(period);
 }
@@ -19,7 +20,7 @@ void Highest::Initialize() {
   current_idx_ = 0;
 }
 
-Numeric<long double> Highest::Calculate() {
+Numeric<double> Highest::Calculate() {
   double value = source_[0];
 
   // 윈도우이 채워질 때까지 인덱스 증가 및 데크에 추가

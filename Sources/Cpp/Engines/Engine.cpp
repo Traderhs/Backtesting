@@ -123,7 +123,7 @@ void Engine::Backtesting() {
   if (const string backboard_exe_path =
           analyzer_->GetMainDirectory() + "/Backboard.exe";
       filesystem::exists(backboard_exe_path)) {
-    system(format("start \"\" \"{}\"", backboard_exe_path).c_str());
+    system(format(R"(start "" "{}")", backboard_exe_path).c_str());
   }
 }
 
@@ -1800,12 +1800,21 @@ void Engine::ExecuteStrategy(const shared_ptr<Strategy>& strategy,
   try {
     current_strategy_type_ = strategy_type;
 
-    if (strategy_type == ON_CLOSE) {
-      strategy->ExecuteOnClose();
-    } else if (strategy_type == AFTER_ENTRY) {
-      strategy->ExecuteAfterEntry();
-    } else if (strategy_type == AFTER_EXIT) {
-      strategy->ExecuteAfterExit();
+    switch (strategy_type) {
+      case ON_CLOSE: {
+        strategy->ExecuteOnClose();
+        break;
+      }
+
+      case AFTER_ENTRY: {
+        strategy->ExecuteAfterEntry();
+        break;
+      }
+
+      case AFTER_EXIT: {
+        strategy->ExecuteAfterExit();
+        break;
+      }
     }
   } catch ([[maybe_unused]] const Bankruptcy& e) {
     SetBankruptcy();

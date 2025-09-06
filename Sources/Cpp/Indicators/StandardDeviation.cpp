@@ -33,7 +33,7 @@ void StandardDeviation::Initialize() {
   buffer_idx_ = 0;
 }
 
-Numeric<long double> StandardDeviation::Calculate() {
+Numeric<double> StandardDeviation::Calculate() {
   // 현재 값 읽기
   const double value = source_[0];
 

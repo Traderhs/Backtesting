@@ -74,7 +74,7 @@ string Indicator::calculating_name_;
 string Indicator::calculating_timeframe_;
 vector<string> Indicator::saved_indicator_classes_;
 
-Numeric<long double> Indicator::operator[](const size_t index) {
+Numeric<double> Indicator::operator[](const size_t index) {
   // =========================================================================
   // 사전 검증
   // =========================================================================

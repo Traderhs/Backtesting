@@ -15,8 +15,8 @@ using namespace chrono;
 namespace backtesting::utils {
 
 // Thread-local 시간 캐시 (1초 단위로 캐싱)
-thread_local char time_cache_[32];
-thread_local int64_t last_cached_second_ = 0;
+thread_local char time_cache[32];
+thread_local int64_t last_cached_second = 0;
 
 int64_t GetCurrentLocalTimestamp() { return time(nullptr) * 1000; }
 
@@ -32,10 +32,10 @@ size_t FormatCurrentTimeFast(char* buffer) {
   const time_t now_time_t = system_clock::to_time_t(now);
 
   // 1초 단위로 캐싱
-  if (now_time_t == last_cached_second_) {
+  if (now_time_t == last_cached_second) {
     // 캐시된 시간 복사
     char* p = buffer;
-    const char* cached = time_cache_;
+    const char* cached = time_cache;
     while (*cached) *p++ = *cached++;
     return p - buffer;
   }
@@ -92,11 +92,11 @@ size_t FormatCurrentTimeFast(char* buffer) {
   *p = '\0';
 
   // 캐시 업데이트
-  char* cache_p = time_cache_;
+  char* cache_p = time_cache;
   const char* temp_p = buffer;
   while (*temp_p) *cache_p++ = *temp_p++;
   *cache_p = '\0';
-  last_cached_second_ = now_time_t;
+  last_cached_second = now_time_t;
 
   return p - buffer;
 }
@@ -254,8 +254,7 @@ string FormatTimeDiff(const int64_t diff_ms) {
   // 2번째 단위 찾기 (0이 아닌 경우만, 최대한 높은 단위)
   for (const auto& [unit_value, unit_name] : units) {
     if (remainder >= unit_value) {
-      const int64_t count = remainder / unit_value;
-      if (count > 0) {
+      if (const int64_t count = remainder / unit_value; count > 0) {
         result_units.push_back(to_string(count) + unit_name);
         break;
       }
