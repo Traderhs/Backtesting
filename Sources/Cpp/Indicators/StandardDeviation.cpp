@@ -16,7 +16,7 @@ StandardDeviation::StandardDeviation(const string& name,
       sum_(0.0),
       sum_sq_(0.0),
       can_calc_(false),
-      buffer_(sizet_period_, 0.0),
+      buffer_(period, 0.0),
       buffer_idx_(0) {
   if (period <= 0) {
     Logger::LogAndThrowError(
