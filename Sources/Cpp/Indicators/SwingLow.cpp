@@ -46,13 +46,14 @@ Numeric<double> SwingLow::Calculate() {
   const double center_low = reference_bar_->GetBar(symbol_idx_, check_idx).low;
 
   // 좌측과 우측 len개씩 비교
-  for (int i = 1; i <= period_; i++) {
-    const int left_idx = check_idx - i;   // low[len - i]
-    const int right_idx = check_idx + i;  // low[len + i]
+  for (size_t i = 1; i <= period_; i++) {
+    const auto left_idx = check_idx - i;   // low[len - i]
+    const auto right_idx = check_idx + i;  // low[len + i]
 
     // low[len + i] >= low[len] and low[len] <= low[len - i]가
     // 유지되지 않으면 Swing Low 갱신 실패
     const double left_low = reference_bar_->GetBar(symbol_idx_, left_idx).low;
+    // ReSharper disable once CppTooWideScopeInitStatement
     const double right_low = reference_bar_->GetBar(symbol_idx_, right_idx).low;
 
     if (right_low < center_low || center_low > left_low) {

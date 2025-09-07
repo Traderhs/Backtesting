@@ -47,9 +47,9 @@ Numeric<double> SwingHigh::Calculate() {
       reference_bar_->GetBar(symbol_idx_, check_idx).high;
 
   // 좌측과 우측 len개씩 비교
-  for (int i = 1; i <= period_; i++) {
-    const int left_idx = check_idx - i;   // high[len - i]
-    const int right_idx = check_idx + i;  // high[len + i]
+  for (size_t i = 1; i <= period_; i++) {
+    const auto left_idx = check_idx - i;   // high[len - i]
+    const auto right_idx = check_idx + i;  // high[len + i]
 
     // high[len + i] <= high[len] and high[len] >= high[len - i]가
     // 유지되지 않으면 Swing High 갱신 실패
