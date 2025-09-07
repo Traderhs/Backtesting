@@ -4,14 +4,14 @@
 namespace backtesting::order {
 
 SymbolInfo::SymbolInfo()
-    : tick_size_(nan("")),
-      limit_max_qty_(nan("")),
-      limit_min_qty_(nan("")),
-      market_max_qty_(nan("")),
-      market_min_qty_(nan("")),
-      qty_step_(nan("")),
-      min_notional_value_(nan("")),
-      liquidation_fee_rate_(nan("")) {}
+    : tick_size_(NAN),
+      limit_max_qty_(NAN),
+      limit_min_qty_(NAN),
+      market_max_qty_(NAN),
+      market_min_qty_(NAN),
+      qty_step_(NAN),
+      min_notional_value_(NAN),
+      liquidation_fee_rate_(NAN) {}
 SymbolInfo::~SymbolInfo() = default;
 
 SymbolInfo& SymbolInfo::SetExchangeInfoPath(const string& exchange_info_path) {

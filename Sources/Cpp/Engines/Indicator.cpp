@@ -112,7 +112,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
 
     // 범위 검사
     if (index > bar_idx) [[unlikely]] {
-      return nanf("");
+      return NAN;
     }
 
     const auto target_bar_idx = bar_idx - index;
@@ -131,7 +131,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
 
     // 범위 검사
     if (index > bar_idx) [[unlikely]] {
-      return nanf("");
+      return NAN;
     }
 
     const auto target_bar_idx = bar_idx - index;
@@ -154,7 +154,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
 
   // 범위 검사
   if (index > trading_bar_idx) [[unlikely]] {
-    return nanf("");
+    return NAN;
   }
 
   const size_t target_trading_bar_idx = trading_bar_idx - index;
@@ -165,7 +165,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
       cached_target_bar_idx_ == target_trading_bar_idx) [[likely]] {
     // 캐시된 결과가 NaN인 경우 (해당되는 Close Time이 없는 경우)
     if (cached_ref_bar_idx_ == SIZE_MAX) [[unlikely]] {
-      return nanf("");
+      return NAN;
     }
 
     return output_[symbol_idx][cached_ref_bar_idx_];
@@ -218,7 +218,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
     // 원래 데이터 환경 복구
     bar_->SetCurrentBarType(TRADING, "");
 
-    return nanf("");
+    return NAN;
   }
 
   // =========================================================================

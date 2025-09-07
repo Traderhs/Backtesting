@@ -55,51 +55,34 @@ int main() {
   Backtesting::FetchExchangeInfo();
   Backtesting::FetchLeverageBracket();
 
-  /*
-    Backtesting::AddBarDataBatch(
-        {"BTCUSDT",  "APTUSDT", "ETHUSDT",  "BNBUSDT",  "SOLUSDT",
-         "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT",  "XRPUSDT",
-         "LINKUSDT", "TRXUSDT", "LTCUSDT",  "ATOMUSDT", "NEARUSDT",
-         "ETCUSDT",  "FILUSDT", "INJUSDT",  "SUIUSDT",  "ARBUSDT"},
-        "1h", "D:/Programming/Backtesting/Data/Continuous Klines", TRADING);
-
-    Backtesting::AddBarDataBatch(
-        {"BTCUSDT",  "APTUSDT", "ETHUSDT",  "BNBUSDT",  "SOLUSDT",
-         "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT",  "XRPUSDT",
-         "LINKUSDT", "TRXUSDT", "LTCUSDT",  "ATOMUSDT", "NEARUSDT",
-         "ETCUSDT",  "FILUSDT", "INJUSDT",  "SUIUSDT",  "ARBUSDT"},
-        "1m", "D:/Programming/Backtesting/Data/Continuous Klines", MAGNIFIER);
-
-    Backtesting::AddBarDataBatch(
-        {"BTCUSDT",  "APTUSDT", "ETHUSDT",  "BNBUSDT",  "SOLUSDT",
-         "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT",  "XRPUSDT",
-         "LINKUSDT", "TRXUSDT", "LTCUSDT",  "ATOMUSDT", "NEARUSDT",
-         "ETCUSDT",  "FILUSDT", "INJUSDT",  "SUIUSDT",  "ARBUSDT"},
-        "1m", "D:/Programming/Backtesting/Data/Mark Price Klines",
-    MARK_PRICE);*/
-  
-  Backtesting::AddBarDataBatch(
-      {"BTCUSDT", "ETHUSDT"}, "1h",
-      "D:/Programming/Backtesting/Data/Continuous Klines", TRADING);
+  const vector<string>& symbol_list = {
+      "BTCUSDT",  "APTUSDT", "ETHUSDT",  "BNBUSDT",  "SOLUSDT",
+      "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT",  "XRPUSDT",
+      "LINKUSDT", "TRXUSDT", "LTCUSDT",  "ATOMUSDT", "NEARUSDT",
+      "ETCUSDT",  "FILUSDT", "INJUSDT",  "SUIUSDT",  "ARBUSDT"};
 
   Backtesting::AddBarDataBatch(
-      {"BTCUSDT", "ETHUSDT"}, "1d",
-      "D:/Programming/Backtesting/Data/Continuous Klines", REFERENCE);
+      symbol_list, "1h", "D:/Programming/Backtesting/Data/Continuous Klines",
+      TRADING);
 
   Backtesting::AddBarDataBatch(
-     {"BTCUSDT", "ETHUSDT"}, "1m",
-     "D:/Programming/Backtesting/Data/Continuous Klines", MAGNIFIER);
-  
+      symbol_list, "1m", "D:/Programming/Backtesting/Data/Continuous Klines",
+      MAGNIFIER);
+
   Backtesting::AddBarDataBatch(
-      {"BTCUSDT", "ETHUSDT"}, "1m",
-      "D:/Programming/Backtesting/Data/Mark Price Klines", MARK_PRICE);
+      symbol_list, "1d", "D:/Programming/Backtesting/Data/Continuous Klines",
+      REFERENCE);
+
+  Backtesting::AddBarDataBatch(
+      symbol_list, "1m", "D:/Programming/Backtesting/Data/Mark Price Klines",
+      MARK_PRICE);
 
   Backtesting::AddExchangeInfo(
       "D:/Programming/Backtesting/Data/exchange_info.json");
   Backtesting::AddLeverageBracket(
       "D:/Programming/Backtesting/Data/leverage_bracket.json");
 
-  Backtesting::AddFundingRates({"BTCUSDT", "ETHUSDT"},
+  Backtesting::AddFundingRates(symbol_list,
                                "D:/Programming/Backtesting/Data/Funding Rates");
 
   Backtesting::SetConfig()

@@ -380,7 +380,7 @@ double GetDoubleFromJson(const json& data, const string& key) {
     throw;
   }
 
-  return nan("");
+  return NAN;
 }
 
 void TableToParquet(const shared_ptr<arrow::Table>& table,

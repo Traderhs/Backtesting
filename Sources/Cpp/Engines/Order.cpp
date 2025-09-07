@@ -10,7 +10,7 @@ Order::Order()
     : leverage_(-1),
       entry_margin_(0),
       left_margin_(0),
-      liquidation_price_(nan("")),
+      liquidation_price_(NAN),
       liquidation_fee_(0),
       received_funding_count_(0),
       received_funding_amount_(0),
@@ -21,36 +21,36 @@ Order::Order()
 
       entry_order_type_(ORDER_NONE),
       entry_direction_(DIRECTION_NONE),
-      entry_fee_(nan("")),
+      entry_fee_(NAN),
 
-      entry_touch_price_(nan("")),
+      entry_touch_price_(NAN),
       entry_touch_direction_(DIRECTION_NONE),
-      entry_extreme_price_(nan("")),
-      entry_trail_point_(nan("")),
+      entry_extreme_price_(NAN),
+      entry_trail_point_(NAN),
 
       entry_order_time_(-1),
-      entry_order_price_(nan("")),
+      entry_order_price_(NAN),
       entry_order_size_(0),
 
       entry_filled_time_(-1),
-      entry_filled_price_(nan("")),
+      entry_filled_price_(NAN),
       entry_filled_size_(0),
 
       exit_order_type_(ORDER_NONE),
       exit_direction_(DIRECTION_NONE),
-      exit_fee_(nan("")),
+      exit_fee_(NAN),
 
-      exit_touch_price_(nan("")),
+      exit_touch_price_(NAN),
       exit_touch_direction_(DIRECTION_NONE),
-      exit_extreme_price_(nan("")),
-      exit_trail_point_(nan("")),
+      exit_extreme_price_(NAN),
+      exit_trail_point_(NAN),
 
       exit_order_time_(-1),
-      exit_order_price_(nan("")),
+      exit_order_price_(NAN),
       exit_order_size_(0),
 
       exit_filled_time_(-1),
-      exit_filled_price_(nan("")),
+      exit_filled_price_(NAN),
       exit_filled_size_(0) {}
 Order::~Order() = default;
 

@@ -7,11 +7,11 @@
 namespace backtesting::engine {
 
 Config::Config()
-    : initial_balance_(nan("")),
-      taker_fee_percentage_(nan("")),
-      maker_fee_percentage_(nan("")),
-      taker_slippage_percentage_(nan("")),
-      maker_slippage_percentage_(nan("")),
+    : initial_balance_(NAN),
+      taker_fee_percentage_(NAN),
+      maker_fee_percentage_(NAN),
+      taker_slippage_percentage_(NAN),
+      maker_slippage_percentage_(NAN),
       check_same_bar_data_(4, true),
       check_same_bar_data_with_target_(true) {
   // 증가 카운터는 SetConfig 함수로만 증가하는데 SetConfig 없이 직접 생성자

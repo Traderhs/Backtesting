@@ -318,7 +318,7 @@ void Analyzer::SaveIndicatorData() {
                 // 아직 첫 번째 지표 바가 완성되지 않은 경우 또는
                 // 지표 바를 찾지 못한 경우
                 if (!found || ref_bar_idx >= output.size()) {
-                  value_vector[row_idx] = nanf("");
+                  value_vector[row_idx] = NAN;
                   continue;
                 }
 
@@ -340,10 +340,10 @@ void Analyzer::SaveIndicatorData() {
                     value_vector[row_idx] = output[bar_idx];
                     bar_idx++;
                   } else {
-                    value_vector[row_idx] = nanf("");
+                    value_vector[row_idx] = NAN;
                   }
                 } else {
-                  value_vector[row_idx] = nanf("");
+                  value_vector[row_idx] = NAN;
                 }
               }
             }

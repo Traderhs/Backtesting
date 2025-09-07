@@ -21,7 +21,7 @@ if "!RES!"=="GTR" (
 :TW_DONE
 if "%NEEDS_TW_BUILD%"=="true" (
   echo [Tailwind] 빌드를 시작합니다.
-  call "C:\Users\0908r\AppData\Roaming\JetBrains\WebStorm2025.1\node\versions\22.14.0\npx.cmd" tailwindcss-cli -i src\index.css -o src\output.css
+  call "C:\Users\0908r\AppData\Roaming\JetBrains\WebStorm2025.1\node\versions\22.18.0\npx.cmd" tailwindcss-cli -i src\index.css -o src\output.css
   if errorlevel 1 (
     echo [Tailwind] 빌드가 실패했습니다.
     exit /b 1

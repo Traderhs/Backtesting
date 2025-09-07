@@ -26,11 +26,11 @@ BaseEngine::BaseEngine()
       trading_bar_num_symbols_(0),
       trading_bar_time_diff_(0),
       magnifier_bar_time_diff_(0),
-      wallet_balance_(nan("")),
+      wallet_balance_(NAN),
       used_margin_(0),
-      available_balance_(nan("")),
+      available_balance_(NAN),
       is_bankruptcy_(false),
-      max_wallet_balance_(nan("")),
+      max_wallet_balance_(NAN),
       drawdown_(0),
       max_drawdown_(0) {}
 BaseEngine::~BaseEngine() = default;

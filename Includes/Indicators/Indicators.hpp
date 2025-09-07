@@ -10,4 +10,6 @@
 #include "Open.hpp"
 #include "SimpleMovingAverage.hpp"
 #include "StandardDeviation.hpp"
+#include "SwingHigh.hpp"
+#include "SwingLow.hpp"
 #include "Volume.hpp"

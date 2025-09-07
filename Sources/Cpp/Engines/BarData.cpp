@@ -131,7 +131,7 @@ void BarData::IsValidIndex(const int symbol_idx, const size_t bar_idx) const {
   IsValidBarIndex(symbol_idx, bar_idx);
 }
 
-void BarData::IsValidSymbolIndex(int symbol_idx) const {
+void BarData::IsValidSymbolIndex(const int symbol_idx) const {
   if (symbol_idx > num_symbols_ - 1 || symbol_idx < 0) {
     throw IndexOutOfRange(
         format("지정된 심볼 인덱스 [{}]은(는) 최대값 [{}]을(를)"
@@ -140,7 +140,8 @@ void BarData::IsValidSymbolIndex(int symbol_idx) const {
   }
 }
 
-void BarData::IsValidBarIndex(int symbol_idx, size_t bar_idx) const {
+void BarData::IsValidBarIndex(const int symbol_idx,
+                              const size_t bar_idx) const {
   // 0보다 작은 조건은 size_t이므로 제외
   if (bar_idx > num_bars_[symbol_idx] - 1) {
     throw IndexOutOfRange(

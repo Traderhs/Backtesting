@@ -1059,7 +1059,7 @@ void Engine::InitializeSymbolInfo() {
         funding_rates_vector[idx] = {
             stod(funding_rate.at("fundingRate").get<string>()),
             funding_rate.at("fundingTime").get<int64_t>(),
-            mark_price.empty() ? nanf("") : stod(mark_price)};
+            mark_price.empty() ? NAN : stod(mark_price)};
       }
 
       // 첫 펀딩 비율 및 시간 캐시

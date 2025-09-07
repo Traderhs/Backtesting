@@ -34,7 +34,7 @@ Numeric<double> Highest::Calculate() {
   if (!can_calculate_) {
     if (count_++ < sizet_period_ - 1) {
       current_idx_++;
-      return nan("");
+      return NAN;
     }
 
     can_calculate_ = true;

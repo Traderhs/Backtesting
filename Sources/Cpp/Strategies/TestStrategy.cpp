@@ -1,7 +1,8 @@
+// 내부 헤더
+#include "Engines/BarHandler.hpp"
+
 // 파일 헤더
 #include "Strategies/TestStrategy.hpp"
-
-#include "Engines/BarHandler.hpp"
 
 TestStrategy::TestStrategy(const string& name)
     : Strategy(name),

@@ -15,9 +15,12 @@ class TestStrategy2 final : public Strategy {
 
  private:
   Close& daily_close_;
+
+  // ReSharper disable once CppInconsistentNaming
+  ExponentialMovingAverage& sma1;
+  // ReSharper disable once CppInconsistentNaming
+  ExponentialMovingAverage& sma2;
   
-  // ReSharper disable once CppInconsistentNaming
-  SimpleMovingAverage& sma1;
-  // ReSharper disable once CppInconsistentNaming
-  SimpleMovingAverage& sma2;
+  SwingHigh& highest_;
+  SwingLow& lowest_;
 };
