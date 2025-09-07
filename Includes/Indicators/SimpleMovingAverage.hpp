@@ -19,7 +19,7 @@ class SimpleMovingAverage final : public Indicator {
   size_t sizet_period_;
 
   int count_;
-  long double sum_;
+  double sum_;
   bool can_calculate_;
 
   vector<double> buffer_;

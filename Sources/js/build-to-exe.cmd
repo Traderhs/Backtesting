@@ -1,6 +1,6 @@
 @echo off
 
-set PATH=D:\node.js;%PATH%
+set PATH=C:\Users\0908r\AppData\Roaming\JetBrains\WebStorm2025.1\node\versions\22.18.0;%PATH%
 
 echo [Build] PKG 기반 단일 EXE 빌드를 시작합니다.
 

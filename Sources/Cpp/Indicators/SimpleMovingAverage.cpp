@@ -47,7 +47,7 @@ Numeric<double> SimpleMovingAverage::Calculate() {
   if (!can_calculate_) {
     // 충분한 데이터가 모이지 않았으므로 NaN 리턴
     if (count_++ < sizet_period_ - 1) {
-      return nan("");
+      return NAN;
     }
 
     can_calculate_ = true;

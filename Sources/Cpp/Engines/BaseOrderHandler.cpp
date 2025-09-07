@@ -64,8 +64,8 @@ void BaseOrderHandler::Initialize(const int num_symbols) {
   last_exit_prices_.resize(num_symbols);
 
   // 아직 진입 및 청산이 없었던 심볼은 NaN을 가짐
-  ranges::fill(last_entry_prices_, nan(""));
-  ranges::fill(last_exit_prices_, nan(""));
+  ranges::fill(last_entry_prices_, NAN);
+  ranges::fill(last_exit_prices_, NAN);
 
   // 레버리지 벡터를 심볼 개수로 초기화
   // 초기 레버리지는 1
@@ -367,7 +367,7 @@ double BaseOrderHandler::BarsSinceEntry() const {
 
   if (last_entry_bar_index == SIZE_MAX) {
     // 아직 진입이 없었던 심볼은 NaN을 반환 (기본 SIZE_MAX로 초기화 됨)
-    return nan("");
+    return NAN;
   }
 
   // 진입이 있었던 심볼은 현재 바 인덱스와의 차이를 구해 반환
@@ -381,7 +381,7 @@ double BaseOrderHandler::BarsSinceExit() const {
 
   if (last_exit_bar_index == SIZE_MAX) {
     // 아직 진입이 없었던 심볼은 NaN을 반환 (기본 SIZE_MAX로 초기화 됨)
-    return nan("");
+    return NAN;
   }
 
   // 진입이 있었던 심볼은 현재 바 인덱스와의 차이를 구해 반환
@@ -486,7 +486,7 @@ double BaseOrderHandler::CalculateTradingFee(const OrderType order_type,
     }
 
     default: {
-      return nan("");
+      return NAN;
     }
   }
 }
@@ -561,7 +561,7 @@ double BaseOrderHandler::CalculatePnl(const Direction entry_direction,
   }
 
   Logger::LogAndThrowError("방향 오지정", __FILE__, __LINE__);
-  return nan("");
+  return NAN;
 }
 
 void BaseOrderHandler::IsValidDirection(const Direction direction) {

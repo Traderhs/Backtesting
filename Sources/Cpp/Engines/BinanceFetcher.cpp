@@ -466,7 +466,8 @@ void BinanceFetcher::FetchFundingRates(const string& symbol) const {
   json output_json = json::array();
   for (const auto& funding_rate : funding_rates) {
     json transformed_rate = funding_rate;
-    transformed_rate["fundingRate"] = stod(funding_rate["fundingRate"].get<string>());
+    transformed_rate["fundingRate"] =
+        stod(funding_rate["fundingRate"].get<string>());
     output_json.push_back(transformed_rate);
   }
 
@@ -548,7 +549,8 @@ void BinanceFetcher::UpdateFundingRates(const string& symbol) const {
     // 기존 데이터에 새로운 데이터 추가 (fundingRate를 double로 변환)
     for (const auto& new_funding_rate : fetch_result) {
       json transformed_rate = new_funding_rate;
-      transformed_rate["fundingRate"] = stod(new_funding_rate["fundingRate"].get<string>());
+      transformed_rate["fundingRate"] =
+          stod(new_funding_rate["fundingRate"].get<string>());
       funding_rates.push_back(transformed_rate);
     }
 

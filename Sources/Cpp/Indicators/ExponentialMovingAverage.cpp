@@ -37,7 +37,7 @@ Numeric<double> ExponentialMovingAverage::Calculate() {
     sum_ += value;
     if (count_++ < sizet_period_ - 1) {
       // 아직 period 미만: 유효값 없음
-      return nan("");
+      return NAN;
     }
 
     // period 도달: 초기 SMA 계산
