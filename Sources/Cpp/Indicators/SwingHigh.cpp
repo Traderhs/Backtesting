@@ -1,6 +1,9 @@
 // 파일 헤더
 #include "Indicators/SwingHigh.hpp"
 
+// 내부 헤더
+#include "Engines/Logger.hpp"
+
 SwingHigh::SwingHigh(const string& name, const string& timeframe,
                      const Plot& plot, const double period)
     : Indicator(name, timeframe, plot),
@@ -8,6 +11,12 @@ SwingHigh::SwingHigh(const string& name, const string& timeframe,
       count_(0),
       can_calculate_(false),
       last_swing_high_(NAN) {
+  if (period <= 0) {
+    Logger::LogAndThrowError(
+        format("SwingHigh 지표의 Period [{}]은(는) 0보다 커야 합니다.", period),
+        __FILE__, __LINE__);
+  }
+
   period_ = static_cast<size_t>(period);
 }
 

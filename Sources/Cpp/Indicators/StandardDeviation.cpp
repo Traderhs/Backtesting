@@ -4,6 +4,9 @@
 // 파일 헤더
 #include "Indicators/StandardDeviation.hpp"
 
+// 내부 헤더
+#include "Engines/Logger.hpp"
+
 StandardDeviation::StandardDeviation(const string& name,
                                      const string& timeframe, const Plot& plot,
                                      Indicator& source, const double period)
@@ -15,6 +18,13 @@ StandardDeviation::StandardDeviation(const string& name,
       can_calc_(false),
       buffer_(sizet_period_, 0.0),
       buffer_idx_(0) {
+  if (period <= 0) {
+    Logger::LogAndThrowError(
+        format("StandardDeviation 지표의 Period [{}]은(는) 0보다 커야 합니다.",
+               period),
+        __FILE__, __LINE__);
+  }
+
   double_period_ = period;
   sizet_period_ = static_cast<size_t>(period);
 

@@ -1,6 +1,9 @@
 // 파일 헤더
 #include "Indicators/Lowest.hpp"
 
+// 내부 헤더
+#include "Engines/Logger.hpp"
+
 Lowest::Lowest(const string& name, const string& timeframe, const Plot& plot,
                Indicator& source, const double period)
     : Indicator(name, timeframe, plot),
@@ -8,6 +11,12 @@ Lowest::Lowest(const string& name, const string& timeframe, const Plot& plot,
       count_(0),
       can_calculate_(false),
       current_idx_(0) {
+  if (period <= 0) {
+    Logger::LogAndThrowError(
+        format("Lowest 지표의 Period [{}]은(는) 0보다 커야 합니다.", period),
+        __FILE__, __LINE__);
+  }
+
   double_period_ = period;
   sizet_period_ = static_cast<size_t>(period);
 }
