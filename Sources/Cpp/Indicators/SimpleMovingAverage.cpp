@@ -4,6 +4,9 @@
 // 파일 헤더
 #include "Indicators/SimpleMovingAverage.hpp"
 
+// 내부 헤더
+#include "Engines/Logger.hpp"
+
 SimpleMovingAverage::SimpleMovingAverage(const string& name,
                                          const string& timeframe,
                                          const Plot& plot, Indicator& source,
@@ -15,6 +18,14 @@ SimpleMovingAverage::SimpleMovingAverage(const string& name,
       can_calculate_(false),
       buffer_(sizet_period_, 0.0),
       buffer_idx_(0) {
+  if (period <= 0) {
+    Logger::LogAndThrowError(
+        format(
+            "SimpleMovingAverage 지표의 Period [{}]은(는) 0보다 커야 합니다.",
+            period),
+        __FILE__, __LINE__);
+  }
+
   // 타입 안정성과 속도를 위해 미리 변환
   double_period_ = period;
   sizet_period_ = static_cast<size_t>(period);

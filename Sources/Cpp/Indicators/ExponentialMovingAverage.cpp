@@ -1,6 +1,9 @@
 // 파일 헤더
 #include "Indicators/ExponentialMovingAverage.hpp"
 
+// 내부 헤더
+#include "Engines/Logger.hpp"
+
 ExponentialMovingAverage::ExponentialMovingAverage(const string& name,
                                                    const string& timeframe,
                                                    const Plot& plot,
@@ -12,6 +15,13 @@ ExponentialMovingAverage::ExponentialMovingAverage(const string& name,
       sum_(0.0),
       can_calculate_(false),
       prev_(0.0) {
+  if (period <= 0) {
+    Logger::LogAndThrowError(format("ExponentialMovingAverage 지표의 Period "
+                                    "[{}]은(는) 0보다 커야 합니다.",
+                                    period),
+                             __FILE__, __LINE__);
+  }
+
   // 타입 안정성과 속도를 위해 미리 변환
   double_period_ = period;
   sizet_period_ = static_cast<size_t>(period);

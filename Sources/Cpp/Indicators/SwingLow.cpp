@@ -1,13 +1,22 @@
 // 파일 헤더
 #include "Indicators/SwingLow.hpp"
 
-SwingLow::SwingLow(const string& name, const string& timeframe, const Plot& plot,
-                   const double period)
+// 내부 헤더
+#include "Engines/Logger.hpp"
+
+SwingLow::SwingLow(const string& name, const string& timeframe,
+                   const Plot& plot, const double period)
     : Indicator(name, timeframe, plot),
       symbol_idx_(-1),
       count_(0),
       can_calculate_(false),
       last_swing_low_(NAN) {
+  if (period <= 0) {
+    Logger::LogAndThrowError(
+        format("SwingLow 지표의 Period [{}]은(는) 0보다 커야 합니다.", period),
+        __FILE__, __LINE__);
+  }
+
   period_ = static_cast<size_t>(period);
 }
 
@@ -34,8 +43,7 @@ Numeric<double> SwingLow::Calculate() {
   const size_t check_idx = current_bar_idx - period_;
 
   bool is_swing_low = true;
-  const double center_low =
-      reference_bar_->GetBar(symbol_idx_, check_idx).low;
+  const double center_low = reference_bar_->GetBar(symbol_idx_, check_idx).low;
 
   // 좌측과 우측 len개씩 비교
   for (int i = 1; i <= period_; i++) {
@@ -45,8 +53,7 @@ Numeric<double> SwingLow::Calculate() {
     // low[len + i] >= low[len] and low[len] <= low[len - i]가
     // 유지되지 않으면 Swing Low 갱신 실패
     const double left_low = reference_bar_->GetBar(symbol_idx_, left_idx).low;
-    const double right_low =
-        reference_bar_->GetBar(symbol_idx_, right_idx).low;
+    const double right_low = reference_bar_->GetBar(symbol_idx_, right_idx).low;
 
     if (right_low < center_low || center_low > left_low) {
       is_swing_low = false;
