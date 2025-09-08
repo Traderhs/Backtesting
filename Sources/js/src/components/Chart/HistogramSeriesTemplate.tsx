@@ -15,6 +15,8 @@ export interface HistogramSeriesProps {
     chart: IChartApi;
     paneIndex: number;
     baseValue: number;
+    color: string;
+    bearishColor?: string;
     indicatorName: string;
     initialData?: HistogramDataPoint[];
     tickSize: number;
@@ -31,6 +33,8 @@ const HistogramSeriesTemplate = forwardRef<HistogramSeriesHandle, HistogramSerie
         chart,
         paneIndex,
         baseValue,
+        color,
+        bearishColor,
         indicatorName,
         initialData = [],
         tickSize,
@@ -43,11 +47,24 @@ const HistogramSeriesTemplate = forwardRef<HistogramSeriesHandle, HistogramSerie
     const isUpdatingRef = useRef<boolean>(false);
     const pendingUpdateRef = useRef<{ data: HistogramDataPoint[] } | null>(null);
 
+    // 값에 따라 적절한 색상을 반환하는 함수
+    const getColorForValue = (value: number | null): string | undefined => {
+        if (value === null || isNaN(value)) return undefined;
+        
+        if (bearishColor) {
+            // baseValue보다 낮으면 bearishColor, 높으면 기본 color
+            return value < baseValue ? bearishColor : color;
+        }
+        
+        return undefined; // 기본 시리즈 색상 사용
+    };
+
     useEffect(() => {
         if (!chart) return;
 
         seriesRef.current = chart.addSeries(HistogramSeries, {
             base: baseValue,
+            color: color,
             priceFormat: {
                 type: 'price',
                 minMove: tickSize,
@@ -58,11 +75,25 @@ const HistogramSeriesTemplate = forwardRef<HistogramSeriesHandle, HistogramSerie
         }, paneIndex);
 
         if (initialData.length > 0) {
-            const formattedData = initialData.map(pt => ({
-                time: pt.time,
-                value: pt.value === null ? NaN : pt.value,
-                color: pt.color,
-            }));
+            const formattedData = initialData.map(pt => {
+                const value = pt.value === null ? NaN : pt.value;
+                const result: any = {
+                    time: pt.time,
+                    value: value,
+                };
+                
+                // 기존 색상이 있으면 사용, 없으면 값에 따라 색상 결정
+                if (pt.color) {
+                    result.color = pt.color;
+                } else {
+                    const autoColor = getColorForValue(pt.value);
+                    if (autoColor) {
+                        result.color = autoColor;
+                    }
+                }
+                
+                return result;
+            });
 
             seriesRef.current.setData(formattedData);
 
@@ -95,6 +126,8 @@ const HistogramSeriesTemplate = forwardRef<HistogramSeriesHandle, HistogramSerie
         chart,
         paneIndex,
         baseValue,
+        color,
+        bearishColor,
         indicatorName,
         tickSize,
         precision
@@ -137,11 +170,25 @@ const HistogramSeriesTemplate = forwardRef<HistogramSeriesHandle, HistogramSerie
                     return;
                 }
 
-                const formattedData = dataCacheRef.current.map(pt => ({
-                    time: pt.time,
-                    value: pt.value === null ? NaN : pt.value,
-                    color: pt.color
-                }));
+                const formattedData = dataCacheRef.current.map(pt => {
+                    const value = pt.value === null ? NaN : pt.value;
+                    const result: any = {
+                        time: pt.time,
+                        value: value,
+                    };
+                    
+                    // 기존 색상이 있으면 사용, 없으면 값에 따라 색상 결정
+                    if (pt.color) {
+                        result.color = pt.color;
+                    } else {
+                        const autoColor = getColorForValue(pt.value);
+                        if (autoColor) {
+                            result.color = autoColor;
+                        }
+                    }
+                    
+                    return result;
+                });
 
                 // 차트 데이터 업데이트
                 seriesRef.current.setData(formattedData);

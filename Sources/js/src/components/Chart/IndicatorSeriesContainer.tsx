@@ -232,7 +232,7 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
                         }}
                         chart={chart}
                         paneIndex={paneIndex}
-                        baseValue={plot["기준값"]}
+                        baseValue={plot["위/아래 영역을 나눌 기준값"]}
                         topFillColor1={plot["기준값보다 높은 값 영역의 위쪽 그라데이션 색상"]}
                         topFillColor2={plot["기준값보다 높은 값 영역의 아래쪽 그라데이션 색상"]}
                         topLineColor={plot["기준값보다 높은 값에 대한 선 색상"]}
@@ -261,6 +261,8 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
                         chart={chart}
                         paneIndex={paneIndex}
                         baseValue={plot["기준값"]}
+                        color={plot["양봉일 때 히스토그램 색상"]}
+                        bearishColor={plot["음봉일 때 히스토그램 색상"]}
                         indicatorName={indicatorName}
                         initialData={indicatorDataMap[indicatorName] || []}
                         tickSize={tickSize}

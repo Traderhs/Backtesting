@@ -47,18 +47,18 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
     const dataCacheRef = useRef<DataPoint[]>(initialData);
     const isInitializedRef = useRef<boolean>(false);
     const isUpdatingRef = useRef<boolean>(false);
-    const pendingUpdateRef = useRef<{data: DataPoint[]} | null>(null);
+    const pendingUpdateRef = useRef<{ data: DataPoint[] } | null>(null);
 
     useEffect(() => {
         if (!chart) return;
 
         seriesRef.current = chart.addSeries(LineSeries, {
             color: lineColor,
-            lineStyle,
-            lineWidth,
-            lineType,
-            pointMarkersVisible,
-            ...(pointMarkersVisible ? { pointMarkersRadius } : {}),
+            lineStyle: lineStyle,
+            lineWidth: lineWidth,
+            lineType: lineType,
+            pointMarkersVisible: pointMarkersVisible,
+            pointMarkersRadius: pointMarkersRadius,
             priceFormat: {
                 type: 'price',
                 minMove: tickSize,
@@ -74,9 +74,9 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
                 time: pt.time,
                 value: pt.value === null ? NaN : pt.value,
             }));
-            
+
             seriesRef.current.setData(formattedData);
-            
+
             // window.indicatorData 업데이트 (중요: 병합된 전체 데이터를 설정)
             if (typeof window !== 'undefined') {
                 if (!window.indicatorData) {
@@ -84,7 +84,7 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
                 }
                 // 병합된 전체 데이터를 window.indicatorData에 설정
                 window.indicatorData[indicatorName] = [...initialData];
-                
+
                 // window.indicatorSeriesInfo 설정도 유지
                 if (!window.indicatorSeriesInfo) {
                     window.indicatorSeriesInfo = {};
@@ -95,7 +95,7 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
                     seriesType: "Line",
                     lineColor: lineColor
                 };
-                
+
                 // 한 번만 초기화
                 if (!isInitializedRef.current) {
                     isInitializedRef.current = true;
@@ -119,7 +119,7 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
     // 대기 중인 업데이트가 있으면 처리하는 함수
     const processPendingUpdate = () => {
         if (pendingUpdateRef.current && !isUpdatingRef.current) {
-            const { data } = pendingUpdateRef.current;
+            const {data} = pendingUpdateRef.current;
             pendingUpdateRef.current = null;
             updateDataInternal(data).then();
         }
@@ -129,7 +129,7 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
     const updateDataInternal = async (newIndicatorData: DataPoint[], reset = false) => {
         if (isUpdatingRef.current) {
             // 이미 업데이트 중이면 나중에 처리하도록 보관
-            pendingUpdateRef.current = { data: newIndicatorData };
+            pendingUpdateRef.current = {data: newIndicatorData};
             return;
         }
 
@@ -144,7 +144,7 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
                     dataCacheRef.current = dataCacheRef.current.concat(newIndicatorData);
                 }
             }
-            
+
             // 레이아웃 계산 최적화를 위해 requestAnimationFrame 사용
             requestAnimationFrame(() => {
                 if (!seriesRef.current) {
@@ -152,15 +152,15 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
                     processPendingUpdate();
                     return;
                 }
-                
+
                 const formattedData = dataCacheRef.current.map(pt => ({
                     time: pt.time,
                     value: pt.value === null ? NaN : pt.value,
                 }));
-                
+
                 // 차트 데이터 업데이트
                 seriesRef.current.setData(formattedData);
-                
+
                 // window.indicatorData 업데이트 (중요: 병합된 전체 데이터를 설정)
                 if (typeof window !== 'undefined') {
                     if (!window.indicatorData) {
@@ -168,7 +168,7 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
                     }
                     // 병합된 전체 데이터를 window.indicatorData에 설정
                     window.indicatorData[indicatorName] = [...dataCacheRef.current];
-                    
+
                     // window.indicatorSeriesInfo 설정도 유지
                     if (!window.indicatorSeriesInfo) {
                         window.indicatorSeriesInfo = {};
@@ -180,7 +180,7 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
                         lineColor: lineColor
                     };
                 }
-                
+
                 isUpdatingRef.current = false;
                 processPendingUpdate();
             });
@@ -196,7 +196,7 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
             const reset = options?.reset || false;
             updateDataInternal(newIndicatorData, reset).then();
         },
-        
+
         // getDataCache 메서드 추가 - TopInfo에서 최신 데이터를 얻을 수 있도록
         getDataCache() {
             return [...dataCacheRef.current];

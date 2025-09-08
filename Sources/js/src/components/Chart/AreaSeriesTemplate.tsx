@@ -58,14 +58,14 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
         if (!chart) return;
 
         seriesRef.current = chart.addSeries(AreaSeries, {
-            topColor,
-            bottomColor,
-            lineColor,
-            lineStyle,
-            lineWidth,
-            lineType,
-            pointMarkersVisible,
-            ...(pointMarkersVisible ? { pointMarkersRadius } : {}),
+            topColor: topColor,
+            bottomColor: bottomColor,
+            lineColor: lineColor,
+            lineStyle: lineStyle,
+            lineWidth: lineWidth,
+            lineType: lineType,
+            pointMarkersVisible: pointMarkersVisible,
+            pointMarkersRadius: pointMarkersRadius,
             priceFormat: {
                 type: 'price',
                 minMove: tickSize,
