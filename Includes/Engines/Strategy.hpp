@@ -14,7 +14,7 @@
 #include "Engines/Order.hpp"  // 커스텀 전략에서 사용 편의성을 위해 직접 포함
 #include "Engines/OrderHandler.hpp"  // 커스텀 전략에서 사용 편의성을 위해 직접 포함
 #include "Engines/Plot.hpp"
-#include "Indicators/Indicators.hpp"
+#include "Indicators/Indicators.hpp"  // 커스텀 전략에서 사용 편의성을 위해 직접 포함
 
 // 전방 선언
 namespace engine {
