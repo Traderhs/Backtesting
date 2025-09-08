@@ -988,9 +988,6 @@ void Analyzer::ParsePlotInfo(ordered_json& indicator_json,
     plot_info["음봉일 때 히스토그램 색상"] =
         histogram->bearish_color_.RgbaToHex();
 
-    // Histogram은 공통 정보 불필요
-    return;
-
   } else if (plot_type == "Line") {
     const shared_ptr<Line>& line = dynamic_pointer_cast<Line>(plot);
 
@@ -1004,56 +1001,59 @@ void Analyzer::ParsePlotInfo(ordered_json& indicator_json,
     return;
   }
 
-  // 공통 정보 기록
-  plot_info["선 굵기"] = plot->line_width_;
+  // Area와 Line의 공통 정보 기록
+  if (plot_type == "Area" || plot_type == "Line") {
+    plot_info["선 굵기"] = plot->line_width_;
 
-  auto& line_style = plot_info["선 모양"];
-  switch (plot->line_style_) {
-    case SOLID: {
-      line_style = "실선";
-      break;
+    auto& line_style = plot_info["선 모양"];
+    switch (plot->line_style_) {
+      case SOLID: {
+        line_style = "실선";
+        break;
+      }
+      case DOTTED: {
+        line_style = "점선";
+        break;
+      }
+      case DASHED: {
+        line_style = "파선";
+        break;
+      }
+      case WIDE_DOTTED: {
+        line_style = "넓은 점선";
+        break;
+      }
+      case WIDE_DASHED: {
+        line_style = "넓은 파선";
+        break;
+      }
     }
-    case DOTTED: {
-      line_style = "점선";
-      break;
+
+    auto& line_type = plot_info["선 종류"];
+    switch (plot->line_type_) {
+      case SIMPLE: {
+        line_type = "직선";
+        break;
+      }
+      case STEPPED: {
+        line_type = "계단선";
+        break;
+      }
+      case CURVED: {
+        line_type = "곡선";
+        break;
+      }
     }
-    case DASHED: {
-      line_style = "파선";
-      break;
-    }
-    case WIDE_DOTTED: {
-      line_style = "넓은 점선";
-      break;
-    }
-    case WIDE_DASHED: {
-      line_style = "넓은 파선";
-      break;
+
+    if (plot->plot_point_markers_) {
+      plot_info["선 위 값에 마커 표시"] = "활성화";
+      plot_info["마커 반지름"] = plot->point_markers_radius_;
+    } else {
+      plot_info["선 위 값에 마커 표시"] = "비활성화";
     }
   }
 
-  auto& line_type = plot_info["선 종류"];
-  switch (plot->line_type_) {
-    case SIMPLE: {
-      line_type = "직선";
-      break;
-    }
-    case STEPPED: {
-      line_type = "계단선";
-      break;
-    }
-    case CURVED: {
-      line_type = "곡선";
-      break;
-    }
-  }
-
-  if (plot->plot_point_markers_) {
-    plot_info["선 위 값에 마커 표시"] = "활성화";
-    plot_info["마커 반지름"] = plot->point_markers_radius_;
-  } else {
-    plot_info["선 위 값에 마커 표시"] = "비활성화";
-  }
-
+  // Null을 제외한 모든 플롯 공통 정보 기록
   if (plot->overlay_) {
     plot_info["메인 차트에 지표 겹치기"] = "활성화";
   } else {
