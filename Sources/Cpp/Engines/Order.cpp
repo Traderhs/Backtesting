@@ -116,8 +116,8 @@ Order& Order::SetEntryName(const string& entry_name) {
   return *this;
 }
 
-Order& Order::SetEntryOrderType(const OrderType order_type) {
-  entry_order_type_ = order_type;
+Order& Order::SetEntryOrderType(const OrderType entry_order_type) {
+  entry_order_type_ = entry_order_type;
   return *this;
 }
 
@@ -131,23 +131,23 @@ Order& Order::SetEntryFee(const double entry_fee) {
   return *this;
 }
 
-Order& Order::SetEntryTouchPrice(const double touch_price) {
-  entry_touch_price_ = touch_price;
+Order& Order::SetEntryTouchPrice(const double entry_touch_price) {
+  entry_touch_price_ = entry_touch_price;
   return *this;
 }
 
-Order& Order::SetEntryTouchDirection(const Direction touch_direction) {
-  exit_touch_direction_ = touch_direction;
+Order& Order::SetEntryTouchDirection(const Direction entry_touch_direction) {
+  entry_touch_direction_ = entry_touch_direction;
   return *this;
 }
 
-Order& Order::SetEntryExtremePrice(const double extreme_price) {
-  entry_extreme_price_ = extreme_price;
+Order& Order::SetEntryExtremePrice(const double entry_extreme_price) {
+  entry_extreme_price_ = entry_extreme_price;
   return *this;
 }
 
-Order& Order::SetEntryTrailPoint(const double trail_point) {
-  entry_trail_point_ = trail_point;
+Order& Order::SetEntryTrailPoint(const double entry_trail_point) {
+  entry_trail_point_ = entry_trail_point;
   return *this;
 }
 
@@ -187,8 +187,8 @@ Order& Order::SetExitName(const string& exit_name) {
   return *this;
 }
 
-Order& Order::SetExitOrderType(const OrderType order_type) {
-  exit_order_type_ = order_type;
+Order& Order::SetExitOrderType(const OrderType exit_order_type) {
+  exit_order_type_ = exit_order_type;
   return *this;
 }
 
@@ -202,23 +202,23 @@ Order& Order::SetExitFee(const double exit_fee) {
   return *this;
 }
 
-Order& Order::SetExitTouchPrice(const double touch_price) {
-  exit_touch_price_ = touch_price;
+Order& Order::SetExitTouchPrice(const double exit_touch_price) {
+  exit_touch_price_ = exit_touch_price;
   return *this;
 }
 
-Order& Order::SetExitTouchDirection(const Direction touch_direction) {
-  exit_touch_direction_ = touch_direction;
+Order& Order::SetExitTouchDirection(const Direction exit_touch_direction) {
+  exit_touch_direction_ = exit_touch_direction;
   return *this;
 }
 
-Order& Order::SetExitExtremePrice(const double extreme_price) {
-  exit_extreme_price_ = extreme_price;
+Order& Order::SetExitExtremePrice(const double exit_extreme_price) {
+  exit_extreme_price_ = exit_extreme_price;
   return *this;
 }
 
-Order& Order::SetExitTrailPoint(const double trail_point) {
-  exit_trail_point_ = trail_point;
+Order& Order::SetExitTrailPoint(const double exit_trail_point) {
+  exit_trail_point_ = exit_trail_point;
   return *this;
 }
 
