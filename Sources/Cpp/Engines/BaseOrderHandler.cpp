@@ -29,6 +29,7 @@ BaseOrderHandler::BaseOrderHandler()
       just_entered_(false),
       just_exited_(false),
       is_reverse_exit_(false),
+      reverse_exit_price_(NAN),
       is_initialized_(false) {}
 BaseOrderHandler::~BaseOrderHandler() = default;
 
@@ -613,8 +614,10 @@ void BaseOrderHandler::IsValidPositionSize(const double position_size,
                      "최소 수량 [{}] 이상)",
                      position_size, max_qty, min_qty));
         }
+
         break;
       }
+
       case LIMIT:
         [[fallthrough]];
       case LIT: {
@@ -629,6 +632,7 @@ void BaseOrderHandler::IsValidPositionSize(const double position_size,
                      "최소 수량 [{}] 이상)",
                      position_size, max_qty, min_qty));
         }
+
         break;
       }
 
@@ -685,11 +689,18 @@ void BaseOrderHandler::IsValidEntryName(const string& entry_name) const {
   }
 }
 
-void BaseOrderHandler::IsValidExitName(const string& exit_name) {
+void BaseOrderHandler::IsValidExitName(const string& exit_name) const {
   // 강제 청산을 청산 이름으로 사용하면 혼선이 있을 수 있으며,
   // 백보드에서 강제 청산 카운트에서 오류가 생기므로 원칙적 금지
   if (exit_name.find("강제 청산") != string::npos) {
     throw InvalidValue("청산 이름에 \"강제 청산\" 단어 포함 금지");
+  }
+
+  // 리버스는 리버스 청산을 위한 시스템 이름이므로 사용 금지
+  if (!is_reverse_exit_) {
+    if (exit_name.find("리버스") != string::npos) {
+      throw InvalidValue("청산 이름에 \"리버스\" 단어 포함 금지");
+    }
   }
 }
 

@@ -199,9 +199,15 @@ class OrderHandler final : public BaseOrderHandler {
   void ExecuteMarketEntry(const shared_ptr<Order>& market_entry,
                           PriceType price_type);
 
-  /// 현재 사용 중인 심볼에서 지정된 방향과 반대 방향의 진입 체결 주문이 있으면
-  /// 모두 청산하는 함수
-  void ExitOppositeFilledEntries(Direction direction);
+  /**
+   * 현재 사용 중인 심볼에서 지정된 방향과 반대 방향의 진입 체결 주문이 있으면
+   * 모두 청산하는 함수
+   *
+   * 진입 주문 가격에서 청산을 해야 그 가격에서 동시에 진입 체결이 가능하므로
+   * 진입 주문 가격의 지정이 필요
+   */
+  void ExitOppositeFilledEntries(Direction target_entry_direction,
+                                 double entry_order_price);
 
   /// 청산 시 자금, 통계 관련 처리를 하는 함수
   void ExecuteExit(const shared_ptr<Order>& exit_order);

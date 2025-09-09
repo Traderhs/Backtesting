@@ -150,6 +150,10 @@ class BaseOrderHandler {
   /// 검사로 진입이 막히면 방법이 없으므로 이 방법으로 간략화
   bool is_reverse_exit_;
 
+  /// 리버스 청산을 진행할 때 청산 가격을 지정하기 위한 변수.
+  /// MarketExit은 청산 가격의 별도 지정이 불가능하기 때문에 클래스 변수를 사용
+  double reverse_exit_price_;
+
   /// 전략 이름과 심볼 이름으로 포맷된 로그를 발생시키는 함수
   static void LogFormattedInfo(LogLevel log_level,
                                const string& formatted_message,
@@ -210,7 +214,7 @@ class BaseOrderHandler {
   void IsValidEntryName(const string& entry_name) const;
 
   /// 청산 주문 시 청산 이름이 유효한지 확인하는 함수
-  static void IsValidExitName(const string& exit_name);
+  void IsValidExitName(const string& exit_name) const;
 
   /// 지정가 주문 가격이 유효한 가격인지 확인하는 함수
   static void IsValidLimitOrderPrice(double limit_price, double base_price,

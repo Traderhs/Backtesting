@@ -963,8 +963,7 @@ void OrderHandler::MarketExit(const string& exit_name,
     const auto market_exit_on_close = [&] {
       const auto& current_bar =
           bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
-              ->GetBar(bar_->GetCurrentSymbolIndex(),
-                       bar_->GetCurrentBarIndex());
+              ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
 
       order_time = current_bar.close_time;
       order_price = current_bar.close;
@@ -973,14 +972,23 @@ void OrderHandler::MarketExit(const string& exit_name,
     };
 
     // 청산 시간 및 청산 가격을 결정
-    // 모든 심볼의 트레이딩이 끝나지 않았다면 세부 로직에 따라 처리
-    // 끝났다면 종가에 청산
+    // 모든 심볼의 트레이딩이 끝나지 않았다면 세부 로직에 따라 처리.
+    // 끝났다면 종가에 청산.
     if (!engine_->IsAllTradingEnded()) {
       try {
-        // On Close 전략일 시 주문 시간과 주문 가격은 다음 봉의 Open Time과
-        // Open
-        if (const auto& strategy_type = engine_->GetCurrentStrategyType();
-            strategy_type == ON_CLOSE) {
+        // 리버스 청산일 시 주문 시간과 주문 가격은 현재 봉의 Open Time과
+        // 리버스 목표 진입 주문의 진입 주문 가격
+        if (is_reverse_exit_) {
+          order_time = engine_->GetCurrentOpenTime();
+          order_price = reverse_exit_price_;
+
+          exit_now = true;
+
+        } else if (const auto& strategy_type =
+                       engine_->GetCurrentStrategyType();
+                   strategy_type == ON_CLOSE) {
+          // On Close 전략일 시 주문 시간과 주문 가격은
+          // 다음 봉의 Open Time과 Open
           const auto& next_bar =
               bar_->GetBarData(bar_->GetCurrentBarType(), "NONE")
                   ->SafeGetBar(bar_->GetCurrentSymbolIndex(),
@@ -989,10 +997,10 @@ void OrderHandler::MarketExit(const string& exit_name,
           order_price = next_bar.open;
 
           exit_now = false;
-        } else {
-          // After Entry, After Exit 전략일 시 주문 시간은 현재 바의 Open
-          // Time, 주문 가격은 마지막 진입 가격 혹은 마지막 청산 가격
 
+        } else {
+          // After Entry, After Exit 전략일 시 주문 시간은 현재 바의
+          // Open Time, 주문 가격은 마지막 진입 가격 혹은 마지막 청산 가격
           order_time = engine_->GetCurrentOpenTime();
 
           if (strategy_type == AFTER_ENTRY) {
@@ -1003,10 +1011,12 @@ void OrderHandler::MarketExit(const string& exit_name,
 
           exit_now = true;
         }
+
       } catch ([[maybe_unused]] const IndexOutOfRange& e) {
         // 마지막 바인 경우 현재 바 종가에 청산
         market_exit_on_close();
       }
+
     } else {
       market_exit_on_close();
     }
@@ -1024,7 +1034,7 @@ void OrderHandler::MarketExit(const string& exit_name,
       throw OrderFailed("시장가 청산 실패");
     }
 
-    // 시장가에서 주문 가격은 항상 바 데이터 가격이므로 조정 불필요
+    // 시장가에서 주문 가격은 항상 바 데이터 가격이므로 틱 사이즈로 조정 불필요
 
     // 총 청산 주문 수량이 진입 체결 수량보다 크지 않게 조정
     order_size = GetAdjustedExitSize(order_size, entry_order);
@@ -1600,7 +1610,8 @@ void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry,
   }
 
   // 해당 주문과 반대 방향의 체결 주문이 있으면 모두 청산
-  ExitOppositeFilledEntries(entry_direction);
+  ExitOppositeFilledEntries(entry_direction,
+                            market_entry->GetEntryOrderPrice());
 
   // 지갑 자금에서 진입 수수료 차감
   engine_->DecreaseWalletBalance(entry_fee);
@@ -1631,18 +1642,22 @@ void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry,
   engine_->LogBalance();
 }
 
-void OrderHandler::ExitOppositeFilledEntries(const Direction direction) {
-  // 여러 주문이 청산될 수도 있으므로 역순으로 순회
-  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+void OrderHandler::ExitOppositeFilledEntries(
+    const Direction target_entry_direction, const double entry_order_price) {
   is_reverse_exit_ = true;
+  reverse_exit_price_ = entry_order_price;
 
+  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+
+  // 여러 주문이 청산될 수도 있으므로 역순으로 순회
   for (int order_idx = static_cast<int>(filled_entries_[symbol_idx].size()) - 1;
        order_idx >= 0; order_idx--) {
     const auto& filled_entry = filled_entries_[symbol_idx][order_idx];
 
-    if (const auto entry_direction = filled_entry->GetEntryDirection();
-        direction != entry_direction) {
-      MarketExit(entry_direction == LONG ? "리버스 매도" : "리버스 매수",
+    if (const auto filled_entry_direction = filled_entry->GetEntryDirection();
+        target_entry_direction != filled_entry_direction) {
+      MarketExit(filled_entry_direction == LONG ? "매수 청산 (리버스)"
+                                                : "매도 청산 (리버스)",
                  filled_entry->GetEntryName(),
                  filled_entry->GetEntryFilledSize() -
                      filled_entry->GetExitFilledSize());
@@ -1650,6 +1665,7 @@ void OrderHandler::ExitOppositeFilledEntries(const Direction direction) {
   }
 
   is_reverse_exit_ = false;
+  reverse_exit_price_ = NAN;
 }
 
 void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
@@ -2110,7 +2126,7 @@ void OrderHandler::FillPendingLimitEntry(const int symbol_idx,
   }
 
   // 해당 주문과 반대 방향의 체결 주문이 있으면 모두 청산
-  ExitOppositeFilledEntries(entry_direction);
+  ExitOppositeFilledEntries(entry_direction, limit_entry->GetEntryOrderPrice());
 
   // 지갑 자금에서 진입 수수료 차감
   engine_->DecreaseWalletBalance(entry_fee);
@@ -2460,7 +2476,7 @@ double OrderHandler::GetAdjustedExitSize(const double exit_size,
   // 청산 수량 + 분할 청산한 수량이 진입 수량보다 많다면
   if (const auto total_exit_size = exit_size + exit_filled_size;
       IsGreater(total_exit_size, entry_filled_size)) {
-    // 최대값으로 조정하여 반환
+    // 청산 가능한 최대값으로 조정하여 반환
     return entry_filled_size - exit_filled_size;
   }
 
