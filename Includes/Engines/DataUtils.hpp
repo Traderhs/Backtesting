@@ -180,7 +180,7 @@ template <typename T, typename U>
 
   const CommonType diff =
       std::fabs(static_cast<CommonType>(a) - static_cast<CommonType>(b));
-  constexpr CommonType tolerance = 1e-8;  // 소수점 10자리까지 비교
+  constexpr CommonType tolerance = 1e-8;  // 소수점 8자리까지 비교
 
   return diff <= tolerance;
 }
@@ -218,7 +218,7 @@ template <typename T, typename U>
 
   const CommonType diff =
       static_cast<CommonType>(a) - static_cast<CommonType>(b);
-  constexpr CommonType tolerance = 1e-8;  // 소수점 10자리까지 비교
+  constexpr CommonType tolerance = 1e-8;  // 소수점 8자리까지 비교
 
   return diff >=
          -tolerance;  // 차이가 tolerance보다 크거나 같으면 a가 크거나 같음
@@ -236,7 +236,11 @@ template <typename T, typename U>
     return false;
   }
 
-  return !utils::IsGreaterOrEqual(a, b);
+  const CommonType diff =
+      static_cast<CommonType>(a) - static_cast<CommonType>(b);
+  constexpr CommonType tolerance = 1e-8;  // 소수점 8자리까지 비교
+
+  return diff < -tolerance;  // 차이가 -tolerance보다 작으면 a가 더 작음
 }
 
 /// 부동 소수점 크기 비교를 위한 함수.
@@ -251,7 +255,11 @@ template <typename T, typename U>
     return false;
   }
 
-  return !utils::IsGreater(a, b);
+  const CommonType diff =
+      static_cast<CommonType>(a) - static_cast<CommonType>(b);
+  constexpr CommonType tolerance = 1e-8;  // 소수점 8자리까지 비교
+
+  return diff <= tolerance;  // 차이가 tolerance보다 작거나 같으면 a가 작거나 같음
 }
 
 }  // namespace backtesting::utils
