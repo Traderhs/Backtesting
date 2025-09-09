@@ -37,14 +37,14 @@ class Order {
 
   // ===========================================================================
   Order& SetEntryName(const string& entry_name);
-  Order& SetEntryOrderType(OrderType order_type);
+  Order& SetEntryOrderType(OrderType entry_order_type);
   Order& SetEntryDirection(Direction entry_direction);
   Order& SetEntryFee(double entry_fee);
 
-  Order& SetEntryTouchPrice(double touch_price);
-  Order& SetEntryTouchDirection(Direction touch_direction);
-  Order& SetEntryExtremePrice(double extreme_price);
-  Order& SetEntryTrailPoint(double trail_point);
+  Order& SetEntryTouchPrice(double entry_touch_price);
+  Order& SetEntryTouchDirection(Direction entry_touch_direction);
+  Order& SetEntryExtremePrice(double entry_extreme_price);
+  Order& SetEntryTrailPoint(double entry_trail_point);
 
   Order& SetEntryOrderTime(int64_t entry_order_time);
   Order& SetEntryOrderPrice(double entry_order_price);
@@ -56,14 +56,14 @@ class Order {
 
   // ===========================================================================
   Order& SetExitName(const string& exit_name);
-  Order& SetExitOrderType(OrderType order_type);
+  Order& SetExitOrderType(OrderType exit_order_type);
   Order& SetExitDirection(Direction exit_direction);
   Order& SetExitFee(double exit_fee);
 
-  Order& SetExitTouchPrice(double touch_price);
-  Order& SetExitTouchDirection(Direction touch_direction);
-  Order& SetExitExtremePrice(double extreme_price);
-  Order& SetExitTrailPoint(double trail_point);
+  Order& SetExitTouchPrice(double exit_touch_price);
+  Order& SetExitTouchDirection(Direction exit_touch_direction);
+  Order& SetExitExtremePrice(double exit_extreme_price);
+  Order& SetExitTrailPoint(double exit_trail_point);
 
   Order& SetExitOrderTime(int64_t exit_order_time);
   Order& SetExitOrderPrice(double exit_order_price);
