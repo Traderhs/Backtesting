@@ -487,8 +487,8 @@ FORCE_INLINE void Logger::WriteToBuffersFast(const LogLevel log_level,
       target_buffer = &info_buffer;
       PREFETCH_WRITE(target_buffer);
       break;
-    case DEBUG_L:
-      target_buffer = &debug_buffer;
+    case BALANCE_L:
+      target_buffer = &info_buffer;  // BALANCE는 INFO와 같은 버퍼 사용
       PREFETCH_WRITE(target_buffer);
       break;
     case WARNING_L:
@@ -499,8 +499,8 @@ FORCE_INLINE void Logger::WriteToBuffersFast(const LogLevel log_level,
       target_buffer = &error_buffer;
       PREFETCH_WRITE(target_buffer);
       break;
-    case BALANCE_L:
-      target_buffer = &info_buffer;  // BALANCE는 INFO와 같은 버퍼 사용
+    case DEBUG_L:
+      target_buffer = &debug_buffer;
       PREFETCH_WRITE(target_buffer);
       break;
     default:
@@ -535,7 +535,8 @@ FORCE_INLINE void Logger::WriteToBuffersFast(const LogLevel log_level,
         error_log_.write(data, static_cast<streamsize>(len));
         break;
       case BALANCE_L:
-        info_log_.write(data, static_cast<streamsize>(len));  // BALANCE는 INFO 로그에 쓰기
+        info_log_.write(
+            data, static_cast<streamsize>(len));  // BALANCE는 INFO 로그에 쓰기
         break;
     }
   }
