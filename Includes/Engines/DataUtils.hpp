@@ -64,7 +64,8 @@ namespace backtesting::utils {
  * @param file_paths 읽을 Parquet 파일들의 경로 목록
  * @return 변환된 테이블들을 포함하는 vector
  */
-[[nodiscard]] vector<shared_ptr<arrow::Table>> ReadParquetBatch(const vector<string>& file_paths);
+[[nodiscard]] vector<shared_ptr<arrow::Table>> ReadParquetBatch(
+    const vector<string>& file_paths);
 
 /**
  * Parquet 파일 메타데이터 캐시를 정리하는 함수
@@ -180,7 +181,7 @@ template <typename T, typename U>
 
   const CommonType diff =
       std::fabs(static_cast<CommonType>(a) - static_cast<CommonType>(b));
-  constexpr CommonType tolerance = 1e-8;  // 소수점 8자리까지 비교
+  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
 
   return diff <= tolerance;
 }
@@ -199,7 +200,7 @@ template <typename T, typename U>
 
   const CommonType diff =
       static_cast<CommonType>(a) - static_cast<CommonType>(b);
-  constexpr CommonType tolerance = 1e-8;  // 소수점 8자리까지 비교
+  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
 
   return diff > tolerance;  // 차이가 tolerance보다 크면 a가 더 큼
 }
@@ -218,7 +219,7 @@ template <typename T, typename U>
 
   const CommonType diff =
       static_cast<CommonType>(a) - static_cast<CommonType>(b);
-  constexpr CommonType tolerance = 1e-8;  // 소수점 8자리까지 비교
+  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
 
   return diff >=
          -tolerance;  // 차이가 tolerance보다 크거나 같으면 a가 크거나 같음
@@ -238,7 +239,7 @@ template <typename T, typename U>
 
   const CommonType diff =
       static_cast<CommonType>(a) - static_cast<CommonType>(b);
-  constexpr CommonType tolerance = 1e-8;  // 소수점 8자리까지 비교
+  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
 
   return diff < -tolerance;  // 차이가 -tolerance보다 작으면 a가 더 작음
 }
@@ -257,9 +258,10 @@ template <typename T, typename U>
 
   const CommonType diff =
       static_cast<CommonType>(a) - static_cast<CommonType>(b);
-  constexpr CommonType tolerance = 1e-8;  // 소수점 8자리까지 비교
+  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
 
-  return diff <= tolerance;  // 차이가 tolerance보다 작거나 같으면 a가 작거나 같음
+  return diff <=
+         tolerance;  // 차이가 tolerance보다 작거나 같으면 a가 작거나 같음
 }
 
 }  // namespace backtesting::utils
