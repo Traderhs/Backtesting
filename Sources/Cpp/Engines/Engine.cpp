@@ -1180,6 +1180,7 @@ void Engine::BacktestingMain() {
     // 트레이딩이 모두 끝났으면 백테스팅 종료
     if (ranges::all_of(trading_ended_,
                        [](const bool is_end) { return is_end; })) {
+      // 종료 플래그 설정
       if (!all_trading_ended_) {
         all_trading_ended_ = true;
       }
@@ -1289,30 +1290,30 @@ void Engine::BacktestingMain() {
     for (const auto symbol_idx : activated_symbol_indices_) {
       ExecuteStrategy(strategy_, ON_CLOSE, symbol_idx);
 
-      // On Close 전략 실행 후 진입/청산이 있었을 경우
-      // After Entry, After Exit 전략 실행
-      // After Entry, After Exit 전략 실행 후 추가 진입 혹은 추가 청산
-      // 가능성이 있으므로 추가 진입 및 청산이 없을 때까지 전략 실행
-      bool just_entered = order_handler_->IsJustEntered();
-      bool just_exited = order_handler_->IsJustExited();
-
-      do {
-        if (just_entered) {
-          order_handler_->InitializeJustEntered();
-          ExecuteStrategy(strategy_, AFTER_ENTRY, symbol_idx);
-        }
-
-        if (just_exited) {
+      // On Close 전략 실행 후 연쇄반응 완전 처리
+      // ProcessOhlc와 동일한 로직으로 모든 즉시 체결과 연쇄반응을 처리
+      while (true) {
+        // 1. 청산이 존재했다면 After Exit 전략 실행
+        if (order_handler_->IsJustExited()) {
           order_handler_->InitializeJustExited();
           ExecuteStrategy(strategy_, AFTER_EXIT, symbol_idx);
+
+          // After Exit에서 즉시 체결된 주문이 있을 수 있으므로 다시 확인
+          continue;
         }
 
-        // After Entry, After Exit 전략 실행 시 추가 진입 혹은 추가 청산
-        // 가능성이 있으므로 상태를 다시 업데이트
+        // 2. 진입이 존재했다면 After Entry 전략 실행
+        if (order_handler_->IsJustEntered()) {
+          order_handler_->InitializeJustEntered();
+          ExecuteStrategy(strategy_, AFTER_ENTRY, symbol_idx);
 
-        // 진입 및 청산 체결이 없는 경우 체결 확인 및 전략 실행 종료
-      } while (((just_entered = order_handler_->IsJustEntered())) ||
-               ((just_exited = order_handler_->IsJustExited())));
+          // After Entry에서 즉시 체결된 주문이 있을 수 있으므로 다시 확인
+          continue;
+        }
+
+        // 청산 및 진입 체결이 없는 경우 연쇄반응 처리 종료
+        break;
+      }
     }
 
     // =========================================================================
@@ -1652,7 +1653,7 @@ void Engine::ProcessOhlc(const BarType bar_type,
   const auto [mark_price_queue, market_price_queue] =
       move(GetPriceQueue(bar_type, symbol_indices));
 
-  // 순서: 한 가격에서 전략 실행 후 다음 심볼 및 가격으로 넘어감
+  // 순서: 한 가격에서 가격 확인 후 다음 심볼 및 가격으로 넘어감
   // 한 심볼에서 모든 가격 체크 후 다음 가격 체크하면 논리상 시간을 한 번
   // 거슬러 올라가는 것이므로 옳지 않음
   for (int queue_idx = 0; queue_idx < mark_price_queue.size(); queue_idx++) {
@@ -1670,31 +1671,53 @@ void Engine::ProcessOhlc(const BarType bar_type,
     order_handler_->CheckLiquidation(mark_price, mark_price_type,
                                      mark_price_symbol_idx, bar_type);
 
-    // 정해진 순서대로 진입 및 청산 대기 주문의 체결을 확인
-    do {
-      // CheckPending 함수가 루프에 포함되어 여러 번 체결을 확인하는 이유는,
-      // After Entry, After Exit 전략에서의 주문도 체결될 수도 있기 때문
-
-      // 진입 대기 주문의 체결 확인 후 체결이 존재할 시 After Entry 전략 실행
-      order_handler_->CheckPendingEntries(market_price, market_price_type,
-                                          market_price_symbol_idx);
-
-      if (order_handler_->IsJustEntered()) {
-        order_handler_->InitializeJustEntered();
-        ExecuteStrategy(strategy_, AFTER_ENTRY, market_price_symbol_idx);
-      }
-
-      // 청산 대기 주문의 체결 확인 후 체결이 존재할 시 After Exit 전략 실행
-      order_handler_->CheckPendingExits(market_price, market_price_type,
-                                        market_price_symbol_idx);
-
+    // 통합된 연쇄반응 처리: 강제청산, 일반청산, 진입을 순서대로 완전히 처리
+    // CheckPending 함수가 while 루프에 포함되어 한 가격 내에서 여러 번 체결을
+    // 확인하는 이유는, After Exit/After Entry 전략에서의 주문도 체결될 수
+    // 있기 때문
+    //
+    // 청산을 먼저 확인하는 이유는, 청산 후 바로 진입하는 경우 명시적인 청산
+    // 주문 대신 리버스 청산이 실행되는 것을 방지하기 위함
+    while (true) {
+      // 1. 청산이 존재했다면 After Exit 전략 실행
       if (order_handler_->IsJustExited()) {
         order_handler_->InitializeJustExited();
         ExecuteStrategy(strategy_, AFTER_EXIT, market_price_symbol_idx);
+
+        // After Exit에서 즉시 체결된 주문이 있을 수 있으므로 다시 확인
+        continue;
       }
 
-      // 진입 및 청산 체결이 없는 경우 체결 확인 및 전략 실행 종료
-    } while (order_handler_->IsJustEntered() || order_handler_->IsJustExited());
+      // 2. 진입이 존재했다면 After Entry 전략 실행
+      if (order_handler_->IsJustEntered()) {
+        order_handler_->InitializeJustEntered();
+        ExecuteStrategy(strategy_, AFTER_ENTRY, market_price_symbol_idx);
+
+        // After Entry에서 즉시 체결된 주문이 있을 수 있으므로 다시 확인
+        continue;
+      }
+
+      // 3. 청산 대기 주문의 체결 확인
+      order_handler_->CheckPendingExits(market_price, market_price_type,
+                                        market_price_symbol_idx);
+
+      // 청산이 체결됐다면 After Exit부터 다시 처리
+      if (order_handler_->IsJustExited()) {
+        continue;
+      }
+
+      // 4. 진입 대기 주문의 체결 확인
+      order_handler_->CheckPendingEntries(market_price, market_price_type,
+                                          market_price_symbol_idx);
+
+      // 진입이 체결됐다면 After Entry부터 다시 처리
+      if (order_handler_->IsJustEntered()) {
+        continue;
+      }
+
+      // 청산 및 진입 체결이 없는 경우 체결 확인 및 전략 실행 종료
+      break;
+    }
   }
 }
 
@@ -1782,14 +1805,14 @@ void Engine::ExecuteStrategy(const shared_ptr<Strategy>& strategy,
                              const int symbol_index) {
   // = 원본 설정을 저장 =
   // 종가 전략 실행인 경우 트레이딩 바
-  // (ON_CLOSE, AFTER ENTRY, AFTER EXIT)
+  // (ON_CLOSE, AFTER EXIT, AFTER ENTRY)
   //
   // ProcessOhlc에서 전략 실행인 경우 트레이딩 바 혹은 돋보기 바
-  // (AFTER ENTRY, AFTER EXIT)
+  // (AFTER EXIT, AFTER ENTRY)
   const auto original_bar_type = bar_->GetCurrentBarType();
 
   // 트레이딩 바의 지정된 심볼에서 전략 실행
-  // 돋보기 바에서 AFTER ENTRY, AFTER EXIT가 실행되더라도 전략은 종가 기준으로
+  // 돋보기 바에서 AFTER EXIT, AFTER ENTRY가 실행되더라도 전략은 종가 기준으로
   // 하는 것이 참조 측면에서 올바름
   bar_->SetCurrentBarType(TRADING, "");
   bar_->SetCurrentSymbolIndex(symbol_index);
@@ -1806,13 +1829,13 @@ void Engine::ExecuteStrategy(const shared_ptr<Strategy>& strategy,
         break;
       }
 
-      case AFTER_ENTRY: {
-        strategy->ExecuteAfterEntry();
+      case AFTER_EXIT: {
+        strategy->ExecuteAfterExit();
         break;
       }
 
-      case AFTER_EXIT: {
-        strategy->ExecuteAfterExit();
+      case AFTER_ENTRY: {
+        strategy->ExecuteAfterEntry();
         break;
       }
     }

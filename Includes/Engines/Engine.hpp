@@ -47,7 +47,7 @@ struct PriceData {
 };
 
 // 전략 타입을 지정하는 열거형 클래스
-enum class StrategyType { ON_CLOSE, AFTER_ENTRY, AFTER_EXIT };
+enum class StrategyType { ON_CLOSE, AFTER_EXIT, AFTER_ENTRY };
 using enum StrategyType;
 
 /**
