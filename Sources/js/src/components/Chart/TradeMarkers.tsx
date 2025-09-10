@@ -600,6 +600,9 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
             return x >= clipX && x <= clipWidth && y >= clipY && y <= clipHeight;
         };
 
+        // === 삼각형 마커를 먼저 그리기 위한 캐시된 마커 위치 저장용 배열 ===
+        const triangleMarkersToRender: Array<{ x: number, y: number, color: string, isEntry: boolean }> = [];
+
         // 진입 삼각형 마커 처리 최적화
         const cachedEntryMarkers = cachedMarkerPositionsRef.current.entryMarkers;
         for (const markerInfo of entryMarkers) {
@@ -607,39 +610,39 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
             if (time < visibleStartTime || time > (visibleEndTime + candleInterval - 1)) {
                 continue;
             }
-            
+
             const tradeNumber = Number(trade["거래 번호"]);
             const tradeKey = `e_${tradeNumber}`;
-            
+
             // 캐시된 마커 정보가 있는지 확인
             let markerPosition = cachedEntryMarkers.get(tradeKey);
-            
+
             if (!markerPosition || rangeChanged) {
                 const nearestCandle = findNearestCandleUsingLightweightAPI(time);
                 if (!nearestCandle) continue;
-                
+
                 const entryDirection = String(trade["진입 방향"]);
                 const entryPrice = parseFloat(String(trade["진입 가격"]));
-                
+
                 const x = timeScale.timeToCoordinate(nearestCandle.time as Time);
                 const y = mainSeries.priceToCoordinate(entryPrice);
-                
+
                 if (x === null || y === null) continue;
-                
+
                 // 새 위치 정보 캐시
                 markerPosition = {x, y, tradeNumber, entryDirection};
                 cachedEntryMarkers.set(tradeKey, markerPosition);
-                
+
                 // 텍스트 마커 그룹화 위한 정보 저장
                 const key = `${nearestCandle.time}_${entryDirection}`;
                 if (!groupedEntryMarkers.has(key)) groupedEntryMarkers.set(key, []);
                 groupedEntryMarkers.get(key)?.push({trade, candle: nearestCandle});
             }
-            
-            // 마커가 클립 영역 내에 있고 아직 그려지지 않았으면 그리기
+
+            // 마커가 클립 영역 내에 있고 아직 그려지지 않았으면 렌더링 목록에 추가
             if (isInClipArea(markerPosition.x, markerPosition.y) && !renderedTradeNumbers.current.has(tradeNumber)) {
                 const color = markerPosition.entryDirection === "매수" ? "#388e3c" : "#d32f2f";
-                drawTriangleMarker(ctx, markerPosition.x, markerPosition.y, color, true);
+                triangleMarkersToRender.push({x: markerPosition.x, y: markerPosition.y, color, isEntry: true});
                 renderedTradeNumbers.current.add(tradeNumber);
             }
         }
@@ -680,88 +683,93 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
             }
             if (isInClipArea(markerPosition.x, markerPosition.y)) {
                 const color = markerPosition.entryDirection === "매수" ? "#d32f2f" : "#388e3c";
-                drawTriangleMarker(ctx, markerPosition.x, markerPosition.y, color, false);
+                triangleMarkersToRender.push({x: markerPosition.x, y: markerPosition.y, color, isEntry: false});
             }
         }
 
         // === 텍스트 및 연결선 조건부 렌더링 ===
         if (!drawOnlyTriangles) {
-            // --- 진입 텍스트 마커 ---
+            // === 모든 텍스트를 하나로 통합해서 처리 (위/아래 스택 2개만 사용) ===
+            const allTexts: Array<{
+                x: number;
+                y: number;
+                text: string;
+                tradeNumber: number;
+                candleTime: Time;
+                stackType: 'top' | 'bottom';
+            }> = [];
+
+            // 진입 텍스트 수집
             for (const [_, markersGroup] of groupedEntryMarkers.entries()) {
-                markersGroup.sort((a: MarkerItem, b: MarkerItem) => Number(a.trade["거래 번호"]) - Number(b.trade["거래 번호"]));
-                const drawnTextTrades = new Set<number>();
-                markersGroup.forEach((item: MarkerItem, index: number) => {
+                markersGroup.forEach((item: MarkerItem) => {
                     const {trade, candle} = item;
                     const tradeNumber = Number(trade["거래 번호"]);
-                    if (drawnTextTrades.has(tradeNumber)) return;
-                    drawnTextTrades.add(tradeNumber);
-
                     const direction = String(trade["진입 방향"]);
                     const entryName = String(trade["진입 이름"]);
-                    const price = direction === '매수' ? candle.low : candle.high;
-                    const y = mainSeries.priceToCoordinate(price);
+                    const basePrice = direction === '매수' ? candle.low : candle.high;
+                    const y = mainSeries.priceToCoordinate(basePrice);
                     const x = timeScale.timeToCoordinate(candle.time as Time);
-
                     if (x !== null && y !== null) {
-                        // 클립 영역 체크: 텍스트가 클립 영역을 벗어나면 그리지 않음
-                        const baseYOffset = direction === '매수' ? 20 : -20;
-                        const stackOffset = index * 25;
-                        const textYOffset = direction === '매수' ? baseYOffset + stackOffset : baseYOffset - stackOffset;
-                        const textY = y + textYOffset;
-
-                        if (isInClipArea(x, textY)) {
-                            // 성능 최적화: batch drawing
-                            ctx.font = '12px "Inter", "Pretendard", sans-serif';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-
-                            // 텍스트 그림자와 텍스트 배치 그리기
-                            ctx.fillStyle = '#000000'; // 그림자
-                            ctx.fillText(entryName, x - 1, textY - 1);
-                            ctx.fillText(entryName, x + 1, textY - 1);
-                            ctx.fillText(entryName, x - 1, textY + 1);
-                            ctx.fillText(entryName, x + 1, textY + 1);
-                            ctx.fillStyle = '#ffffff'; // 텍스트
-                            ctx.fillText(entryName, x, textY);
-                        }
+                        // 매수 진입(아래), 매도 진입(위)
+                        allTexts.push({
+                            x, y, text: entryName, tradeNumber, candleTime: candle.time,
+                            stackType: direction === '매수' ? 'bottom' : 'top'
+                        });
                     }
                 });
             }
-
-            // --- 청산 텍스트 마커 ---
+            // 청산 텍스트 수집
             for (const [_, markersGroup] of groupedExitMarkers.entries()) {
-                markersGroup.sort((a: MarkerItem, b: MarkerItem) => Number(a.trade["거래 번호"]) - Number(b.trade["거래 번호"]));
-                markersGroup.forEach((item: MarkerItem, index: number) => {
+                markersGroup.forEach((item: MarkerItem) => {
                     const {trade, candle} = item;
+                    const tradeNumber = Number(trade["거래 번호"]);
                     const direction = String(trade["진입 방향"]);
                     const exitName = String(trade["청산 이름"]);
-                    const price = direction === '매수' ? candle.high : candle.low;
-                    const y = mainSeries.priceToCoordinate(price);
+                    const basePrice = direction === '매수' ? candle.high : candle.low;
+                    const y = mainSeries.priceToCoordinate(basePrice);
                     const x = timeScale.timeToCoordinate(candle.time as Time);
-
                     if (x !== null && y !== null) {
-                        // 클립 영역 체크: 텍스트가 클립 영역을 벗어나면 그리지 않음
-                        const baseYOffset = direction === '매수' ? -20 : 20;
-                        const stackOffset = index * 25;
-                        const textYOffset = direction === '매수' ? baseYOffset - stackOffset : baseYOffset + stackOffset;
-                        const textY = y + textYOffset;
-
-                        if (isInClipArea(x, textY)) {
-                            ctx.font = '12px "Inter", "Pretendard", sans-serif';
-                            ctx.textAlign = 'center';
-                            ctx.textBaseline = 'middle';
-
-                            ctx.fillStyle = '#000000'; // 그림자
-                            ctx.fillText(exitName, x - 1, textY - 1);
-                            ctx.fillText(exitName, x + 1, textY - 1);
-                            ctx.fillText(exitName, x - 1, textY + 1);
-                            ctx.fillText(exitName, x + 1, textY + 1);
-                            ctx.fillStyle = '#ffffff'; // 텍스트
-                            ctx.fillText(exitName, x, textY);
-                        }
+                        // 매수 청산(위), 매도 청산(아래)
+                        allTexts.push({
+                            x, y, text: exitName, tradeNumber, candleTime: candle.time,
+                            stackType: direction === '매수' ? 'top' : 'bottom'
+                        });
                     }
                 });
             }
+            // 거래 번호 순으로 정렬
+            allTexts.sort((a, b) => a.tradeNumber - b.tradeNumber);
+            // 캔들별 위/아래 스택 관리
+            const candleStacks = new Map<string, { top: number; bottom: number }>();
+            // 각 텍스트의 최종 위치 계산 및 그리기
+            allTexts.forEach(textInfo => {
+                const candleKey = `${textInfo.candleTime}`;
+                if (!candleStacks.has(candleKey)) {
+                    candleStacks.set(candleKey, {top: 0, bottom: 0});
+                }
+                const stack = candleStacks.get(candleKey)!;
+                let finalY: number;
+                if (textInfo.stackType === 'top') {
+                    finalY = textInfo.y - 15 - (stack.top * 20);
+                    stack.top++;
+                } else {
+                    finalY = textInfo.y + 15 + (stack.bottom * 20);
+                    stack.bottom++;
+                }
+                // 텍스트 그리기
+                if (isInClipArea(textInfo.x, finalY)) {
+                    ctx.font = '12px "Inter", "Pretendard", sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillStyle = '#000000';
+                    ctx.fillText(textInfo.text, textInfo.x - 1, finalY - 1);
+                    ctx.fillText(textInfo.text, textInfo.x + 1, finalY - 1);
+                    ctx.fillText(textInfo.text, textInfo.x - 1, finalY + 1);
+                    ctx.fillText(textInfo.text, textInfo.x + 1, finalY + 1);
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillText(textInfo.text, textInfo.x, finalY);
+                }
+            });
 
             // --- 연결선 그리기 (라인 좌표 저장 및 성능 최적화) ---
             ctx.save();
@@ -860,6 +868,11 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
             ctx.restore();
         }
         // === 끝: 텍스트 및 연결선 조건부 렌더링 ===
+
+        // === 삼각형 마커를 마지막에 그리기 (점선 위에 그려지도록) ===
+        triangleMarkersToRender.forEach(marker => {
+            drawTriangleMarker(ctx, marker.x, marker.y, marker.color, marker.isEntry);
+        });
 
         // 클리핑 컨텍스트 복원
         ctx.restore();
@@ -1129,7 +1142,7 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
                                     key !== "심볼 이름" &&
                                     key !== "진입 방향"
                                 );
-                            
+
                             const midPoint = Math.ceil(entries.length / 2);
                             const leftEntries = entries.slice(0, midPoint);
                             const rightEntries = entries.slice(midPoint);
@@ -1214,14 +1227,14 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
                                             );
                                         })}
                                     </div>
-                                    
+
                                     {/* 세로 구분선 */}
                                     <div style={{
                                         width: '1px',
                                         backgroundColor: 'rgba(255, 215, 0, 0.3)',
                                         alignSelf: 'stretch'
                                     }}></div>
-                                    
+
                                     {/* 오른쪽 열 */}
                                     <div style={{flex: '1 1 auto', minWidth: '200px', maxWidth: 'none'}}>
                                         {rightEntries.map(([key, value]) => {
