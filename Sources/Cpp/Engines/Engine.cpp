@@ -1676,10 +1676,10 @@ void Engine::ProcessOhlc(const BarType bar_type,
     // 확인하는 이유는, After Exit/After Entry 전략에서의 주문도 체결될 수
     // 있기 때문
     //
-    // 청산을 먼저 확인하는 이유는, 청산 후 바로 진입하는 경우 명시적인 청산
-    // 주문 대신 리버스 청산이 실행되는 것을 방지하기 위함
+    // 청산을 먼저 확인하는 이유는, 청산 후 바로 진입하는 경우
+    // 명시적인 청산 주문 대신 리버스 청산이 실행되는 것을 방지하기 위함
     while (true) {
-      // 1. 청산이 존재했다면 After Exit 전략 실행
+      // 1. 청산이 존재했다면 After Exit 전략 실행 (강제 청산 포함)
       if (order_handler_->IsJustExited()) {
         order_handler_->InitializeJustExited();
         ExecuteStrategy(strategy_, AFTER_EXIT, market_price_symbol_idx);
