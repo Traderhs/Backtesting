@@ -69,6 +69,8 @@ const char* Logger::GetLevelString(const LogLevel level) {
       return "WARNING";
     case ERROR_L:
       return "ERROR";
+    case BALANCE_L:
+      return "BALANCE";
     default:
       return "UNKNOWN";
   }
@@ -420,6 +422,9 @@ FORCE_INLINE void Logger::Log(const LogLevel& log_level, const string& message,
       case ERROR_L:
         level_str = "ERROR_L";
         break;
+      case BALANCE_L:
+        level_str = "BALANCE_L";
+        break;
       default:
         level_str = "INFO_L";
         break;
@@ -452,6 +457,9 @@ void Logger::LogNoFormat(const LogLevel& log_level, const string& message,
         break;
       case ERROR_L:
         level_str = "ERROR_L";
+        break;
+      case BALANCE_L:
+        level_str = "BALANCE_L";
         break;
       default:
         level_str = "INFO_L";
@@ -491,6 +499,10 @@ FORCE_INLINE void Logger::WriteToBuffersFast(const LogLevel log_level,
       target_buffer = &error_buffer;
       PREFETCH_WRITE(target_buffer);
       break;
+    case BALANCE_L:
+      target_buffer = &info_buffer;  // BALANCE는 INFO와 같은 버퍼 사용
+      PREFETCH_WRITE(target_buffer);
+      break;
     default:
       target_buffer = &info_buffer;  // 기본값
       PREFETCH_WRITE(target_buffer);
@@ -522,6 +534,9 @@ FORCE_INLINE void Logger::WriteToBuffersFast(const LogLevel log_level,
       case ERROR_L:
         error_log_.write(data, static_cast<streamsize>(len));
         break;
+      case BALANCE_L:
+        info_log_.write(data, static_cast<streamsize>(len));  // BALANCE는 INFO 로그에 쓰기
+        break;
     }
   }
 
@@ -545,6 +560,8 @@ void Logger::ConsoleLog(const string& level, const string& message) {
     cout << "\033[33m" << message << "\033[0m" << endl;  // Yellow
   } else if (level == "ERROR_L") {
     cout << "\033[31m" << message << "\033[0m" << endl;  // Red
+  } else if (level == "BALANCE_L") {
+    cout << "\033[90m" << message << "\033[0m" << endl;  // Gray (same as DEBUG)
   }
 }
 

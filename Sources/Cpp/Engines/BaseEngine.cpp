@@ -286,7 +286,7 @@ void BaseEngine::UpdateStatistics() {
 }
 
 void BaseEngine::LogBalance() {
-  logger_->Log(INFO_L,
+  logger_->Log(BALANCE_L,
                format("지갑 자금 [{}] | 사용한 마진 [{}] | 사용 가능 자금 [{}]",
                       FormatDollar(wallet_balance_, true),
                       FormatDollar(used_margin_, true),
