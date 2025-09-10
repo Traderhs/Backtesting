@@ -108,6 +108,94 @@ void OrderHandler::CheckLiquidation(const double price,
   }
 }
 
+void OrderHandler::CheckPendingExits(const double price,
+                                     const PriceType price_type,
+                                     const int symbol_idx) {
+  const auto& pending_exits = pending_exits_[symbol_idx];
+  long long order_idx = 0;
+
+  while (order_idx < pending_exits.size()) {
+    // 현재 인덱스의 주문 포인터를 저장
+    const auto current_order = pending_exits[order_idx];
+
+    // 주문 확인 함수가 반환하는 값은
+    // 현재 주문 처리 도중 현재 인덱스보다 낮은 위치의 주문이 삭제된 개수
+    int deleted_below_count = -1;
+
+    switch (pending_exits[order_idx]->GetExitOrderType()) {
+      case MARKET: {
+        // 시장가 대기 주문은 ON_CLOSE 주문에서만 생기므로, 이 함수에 들어온
+        // 타이밍은 무조건 시가이기 때문에 즉시 체결하면 됨
+        try {
+          deleted_below_count =
+              FillPendingExitOrder(symbol_idx, order_idx, price);
+        } catch ([[maybe_unused]] const OrderFailed& e) {
+          // 청산 주문은 파산이 아닌 이상 체결되므로 엔진 오류
+          LogFormattedInfo(ERROR_L,
+                           format("엔진 오류: 시장가 [{}] 체결 실패",
+                                  current_order->GetExitName()),
+                           __FILE__, __LINE__);
+          throw;
+        }
+
+        break;
+      }
+
+      case LIMIT: {
+        deleted_below_count =
+            CheckPendingLimitExits(symbol_idx, order_idx, price, price_type);
+        break;
+      }
+
+      case MIT: {
+        deleted_below_count =
+            CheckPendingMitExits(symbol_idx, order_idx, price, price_type);
+        break;
+      }
+
+      case LIT: {
+        deleted_below_count =
+            CheckPendingLitExits(symbol_idx, order_idx, price, price_type);
+        break;
+      }
+
+      case TRAILING: {
+        deleted_below_count =
+            CheckPendingTrailingExits(symbol_idx, order_idx, price, price_type);
+        break;
+      }
+
+      case ORDER_NONE: {
+        LogFormattedInfo(WARNING_L, "청산 대기 주문에 NONE 주문 존재", __FILE__,
+                         __LINE__);
+        throw;
+      }
+    }
+
+    // deleted_below_count가 -1이면, 주문 처리 중 체결이 없었으므로
+    // 다음 주문으로 넘어가기 위해 인덱스를 증가
+    if (deleted_below_count == -1) {
+      order_idx++;
+      continue;
+    }
+
+    // deleted_below_count가 0이면, 현재 주문은 무조건 삭제되고 order_idx보다 큰
+    // 인덱스의 주문도 삭제될 수 있지만, order_idx보다 작은 인덱스의 주문은
+    // 삭제되지 않음.
+    // 따라서 현재 인덱스에 다음 주문이 채워지므로 현재 인덱스로 재검사
+    // (만약 다음 주문이 없다면 자연스럽게 그대로 루프 종료)
+    if (deleted_below_count == 0) {
+      continue;
+    }
+
+    // 만약 deleted_below_count가 0보다 크면,
+    // 현재 order_idx 앞쪽의 주문들이 삭제되어 컨테이너가 앞으로 당겨짐.
+    // 따라서 원래 인덱스에서 삭제된 개수만큼 인덱스를 빼주어 당겨진 위치의
+    // 주문부터 다시 검사
+    order_idx -= deleted_below_count;
+  }
+}
+
 void OrderHandler::CheckPendingEntries(const double price,
                                        const PriceType price_type,
                                        const int symbol_idx) {
@@ -167,93 +255,6 @@ void OrderHandler::CheckPendingEntries(const double price,
     }
     // 만약 주문이 체결되어 삭제되었다면 다음 주문이 현재 order_idx 위치로
     // 이동했으므로 그대로 반복
-  }
-}
-
-void OrderHandler::CheckPendingExits(const double price,
-                                     const PriceType price_type,
-                                     const int symbol_idx) {
-  const auto& pending_exits = pending_exits_[symbol_idx];
-  long long order_idx = 0;
-
-  while (order_idx < pending_exits.size()) {
-    // 현재 인덱스의 주문 포인터를 저장
-    const auto current_order = pending_exits[order_idx];
-
-    // 주문 확인 함수가 반환하는 값은
-    // 현재 주문 처리 도중 현재 인덱스보다 낮은 위치의 주문이 삭제된 개수
-    int deleted_below_count = -1;
-
-    switch (pending_exits[order_idx]->GetExitOrderType()) {
-      case MARKET: {
-        // 시장가 대기 주문은 ON_CLOSE 주문에서만 생기므로, 이 함수에 들어온
-        // 타이밍은 무조건 시가이기 때문에 즉시 체결하면 됨
-        try {
-          deleted_below_count =
-              FillPendingExitOrder(symbol_idx, order_idx, price);
-        } catch ([[maybe_unused]] const OrderFailed& e) {
-          // 청산 주문은 파산이 아닌 이상 체결되므로 엔진 오류
-          LogFormattedInfo(ERROR_L,
-                           format("엔진 오류: 시장가 [{}] 체결 실패",
-                                  current_order->GetExitName()),
-                           __FILE__, __LINE__);
-          throw;
-        }
-        break;
-      }
-
-      case LIMIT: {
-        deleted_below_count =
-            CheckPendingLimitExits(symbol_idx, order_idx, price, price_type);
-        break;
-      }
-
-      case MIT: {
-        deleted_below_count =
-            CheckPendingMitExits(symbol_idx, order_idx, price, price_type);
-        break;
-      }
-
-      case LIT: {
-        deleted_below_count =
-            CheckPendingLitExits(symbol_idx, order_idx, price, price_type);
-        break;
-      }
-
-      case TRAILING: {
-        deleted_below_count =
-            CheckPendingTrailingExits(symbol_idx, order_idx, price, price_type);
-        break;
-      }
-
-      case ORDER_NONE: {
-        LogFormattedInfo(WARNING_L, "청산 대기 주문에 NONE 주문 존재", __FILE__,
-                         __LINE__);
-        throw;
-      }
-    }
-
-    // deleted_below_count가 -1이면, 주문 처리 중 체결이 없었으므로
-    // 다음 주문으로 넘어가기 위해 인덱스를 증가
-    if (deleted_below_count == -1) {
-      order_idx++;
-      continue;
-    }
-
-    // deleted_below_count가 0이면, 현재 주문은 무조건 삭제되고 order_idx보다 큰
-    // 인덱스의 주문도 삭제될 수 있지만, order_idx보다 작은 인덱스의 주문은
-    // 삭제되지 않음.
-    // 따라서 현재 인덱스에 다음 주문이 채워지므로 현재 인덱스로 재검사
-    // (만약 다음 주문이 없다면 자연스럽게 그대로 루프 종료)
-    if (deleted_below_count == 0) {
-      continue;
-    }
-
-    // 만약 deleted_below_count가 0보다 크면,
-    // 현재 order_idx 앞쪽의 주문들이 삭제되어 컨테이너가 앞으로 당겨짐.
-    // 따라서 원래 인덱스에서 삭제된 개수만큼 인덱스를 빼주어 당겨진 위치의
-    // 주문부터 다시 검사
-    order_idx -= deleted_below_count;
   }
 }
 
