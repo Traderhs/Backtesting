@@ -123,6 +123,8 @@ const LogRow: React.FC<{
             return 'rgb(229, 192, 123)';
         } else if (line.includes('[ERROR]')) {
             return 'rgb(224, 108, 117)';
+        } else if (line.includes('[BALANCE]')) {
+            return 'rgb(128, 128, 128)';
         }
         return '#ffffff';
     };
