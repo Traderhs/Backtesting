@@ -47,13 +47,13 @@ class OrderHandler final : public BaseOrderHandler {
   void CheckLiquidation(double price, PriceType price_type, int symbol_idx,
                         BarType market_bar_type);
 
-  /// 트레이딩 중인 심볼에서 지정된 가격을 기준으로 진입 대기 주문들이
-  /// 체결됐는지 확인하고 실행하는 함수
-  void CheckPendingEntries(double price, PriceType price_type, int symbol_idx);
-
   /// 트레이딩 중인 심볼에서 지정된 가격을 기준으로 청산 대기 주문들이
   /// 체결됐는지 확인하고 실행하는 함수
   void CheckPendingExits(double price, PriceType price_type, int symbol_idx);
+
+  /// 트레이딩 중인 심볼에서 지정된 가격을 기준으로 진입 대기 주문들이
+  /// 체결됐는지 확인하고 실행하는 함수
+  void CheckPendingEntries(double price, PriceType price_type, int symbol_idx);
 
   /// 체결된 진입 주문에서 펀딩비를 정산하는 함수
   void ExecuteFunding(double funding_rate, const string& funding_time,

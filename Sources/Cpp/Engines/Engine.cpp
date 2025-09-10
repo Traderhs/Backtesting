@@ -1667,7 +1667,7 @@ void Engine::ProcessOhlc(const BarType bar_type,
     bar_->SetCurrentSymbolIndex(mark_price_symbol_idx);
 
     // 정해진 순서대로 강제 청산을 확인
-    // 강제 청산의 경우 After Exit 전략이 실행됨
+    // 강제 청산도 After Exit 전략이 실행됨
     order_handler_->CheckLiquidation(mark_price, mark_price_type,
                                      mark_price_symbol_idx, bar_type);
 
