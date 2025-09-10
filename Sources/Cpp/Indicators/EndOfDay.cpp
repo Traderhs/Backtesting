@@ -7,6 +7,7 @@
 
 // 내부 헤더
 #include "Engines/Logger.hpp"
+#include "Engines/TimeUtils.hpp"
 
 EndOfDay::EndOfDay(const string& name, const string& timeframe,
                    const Plot& plot, const string& market_close_time)
@@ -36,12 +37,29 @@ void EndOfDay::Initialize() {
 }
 
 Numeric<double> EndOfDay::Calculate() {
-  // 장 마감 시간인지 확인
-  return IsEndOfDay(
-             reference_bar_->GetBar(symbol_idx_, bar_->GetCurrentBarIndex())
-                 .close_time)
-             ? 1.0
-             : 0.0;
+  // 시간 부분만 추출 (HH:MM:SS 형태)
+  if (const string& datetime_str = UtcTimestampToUtcDatetime(
+          reference_bar_->GetBar(symbol_idx_, bar_->GetCurrentBarIndex())
+              .close_time);
+      datetime_str.length() >= 19) {  // "YYYY-MM-DD HH:MM:SS" 최소 길이
+    const string time_part = datetime_str.substr(11, 8);  // "HH:MM:SS" 추출
+
+    // 시간, 분, 초 파싱
+    const int bar_hour = stoi(time_part.substr(0, 2));
+    const int bar_minute = stoi(time_part.substr(3, 2));
+    const int bar_second = stoi(time_part.substr(6, 2));
+
+    // 초 단위로 변환하여 비교
+    const int total_close_seconds =
+        close_hour_ * 3600 + close_minute_ * 60 + close_second_;
+    const int total_bar_close_seconds =
+        bar_hour * 3600 + bar_minute * 60 + bar_second;
+
+    // 바의 종료 시간이 지정된 시간 이상인지 확인
+    return total_bar_close_seconds >= total_close_seconds ? 1.0 : 0.0;
+  }
+
+  return 0.0;  // 파싱 실패 시 false(0.0) 반환
 }
 
 void EndOfDay::ValidateAndParseTime(const string& time_str) {
@@ -88,30 +106,4 @@ void EndOfDay::ValidateAndParseTime(const string& time_str) {
                close_second_),
         __FILE__, __LINE__);
   }
-}
-
-bool EndOfDay::IsEndOfDay(const int64_t bar_close_time) const {
-  // 타임스탬프를 날짜시간 문자열로 변환 (YYYY-MM-DD HH:MM:SS 형식)
-
-  // 시간 부분만 추출 (HH:MM:SS 형태)
-  if (const string& datetime_str = UtcTimestampToUtcDatetime(bar_close_time);
-      datetime_str.length() >= 19) {  // "YYYY-MM-DD HH:MM:SS" 최소 길이
-    const string time_part = datetime_str.substr(11, 8);  // "HH:MM:SS" 추출
-
-    // 시간, 분, 초 파싱
-    const int bar_hour = stoi(time_part.substr(0, 2));
-    const int bar_minute = stoi(time_part.substr(3, 2));
-    const int bar_second = stoi(time_part.substr(6, 2));
-
-    // 초 단위로 변환하여 비교
-    const int total_close_seconds =
-        close_hour_ * 3600 + close_minute_ * 60 + close_second_;
-    const int total_bar_close_seconds =
-        bar_hour * 3600 + bar_minute * 60 + bar_second;
-
-    // 바의 종료 시간이 지정된 시간 이상인지 확인
-    return total_bar_close_seconds >= total_close_seconds;
-  }
-
-  return false;  // 파싱 실패 시 false 반환
 }

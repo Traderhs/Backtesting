@@ -5,7 +5,6 @@
 
 // 내부 헤더
 #include "Engines/Indicator.hpp"
-#include "Engines/TimeUtils.hpp"
 
 /// 해당 봉이 당일 마지막 봉인지 판단하는 지표
 class EndOfDay final : public Indicator {
@@ -32,7 +31,4 @@ class EndOfDay final : public Indicator {
 
   /// 시간 문자열 형식 검증 및 파싱
   void ValidateAndParseTime(const string& time_str);
-
-  /// 주어진 시간이 장 마감 시간인지 확인
-  bool IsEndOfDay(int64_t bar_close_time) const;
 };
