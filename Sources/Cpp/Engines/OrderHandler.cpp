@@ -1591,7 +1591,11 @@ void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry,
   const string& entry_name = market_entry->GetEntryName();
   const auto entry_fee = market_entry->GetEntryFee();
 
-  // 시장가 진입 마진 계산
+  // 해당 주문과 반대 방향의 체결 주문이 있으면 모두 청산
+  ExitOppositeFilledEntries(entry_direction,
+                            market_entry->GetEntryOrderPrice());
+
+  // 시장가 진입 마진을 계산 후 설정
   const double entry_margin =
       CalculateMargin(entry_filled_price, entry_filled_size, price_type);
   market_entry->SetEntryMargin(entry_margin).SetLeftMargin(entry_margin);
@@ -1609,10 +1613,6 @@ void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry,
     LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
     throw OrderFailed("시장가 진입 실패");
   }
-
-  // 해당 주문과 반대 방향의 체결 주문이 있으면 모두 청산
-  ExitOppositeFilledEntries(entry_direction,
-                            market_entry->GetEntryOrderPrice());
 
   // 지갑 자금에서 진입 수수료 차감
   engine_->DecreaseWalletBalance(entry_fee);
@@ -2105,18 +2105,23 @@ void OrderHandler::FillPendingLimitEntry(const int symbol_idx,
       CalculateTradingFee(LIMIT, slippage_filled_price, entry_filled_size);
   limit_entry->SetEntryFee(entry_fee);
 
+  // ===========================================================================
+  // 해당 주문과 반대 방향의 체결 주문이 있으면 모두 청산
+  ExitOppositeFilledEntries(entry_direction, limit_entry->GetEntryOrderPrice());
+
   // 현재 미실현 손실을 반영한 지정가 진입 마진 재계산
   const auto entry_margin =
       CalculateMargin(slippage_filled_price, entry_filled_size, price_type);
 
-  // 강제 청산 가격
-  limit_entry->SetLiquidationPrice(CalculateLiquidationPrice(
-      entry_direction, slippage_filled_price, entry_filled_size, entry_margin));
-
-  // 마진 재설정 후 진입 가능 자금과 재비교
+  // 지정가 예약 마진을 감소 후 재설정
   engine_->DecreaseUsedMargin(limit_entry->GetEntryMargin());
   limit_entry->SetEntryMargin(entry_margin).SetLeftMargin(entry_margin);
 
+  // 강제 청산 가격 계산
+  limit_entry->SetLiquidationPrice(CalculateLiquidationPrice(
+      entry_direction, slippage_filled_price, entry_filled_size, entry_margin));
+
+  // 진입 가능 여부 체크 (사용 가능 자금 >= 지정가 진입 마진 + 진입 수수료)
   try {
     HasEnoughBalance(engine_->GetAvailableBalance(), entry_margin + entry_fee,
                      "사용 가능",
@@ -2125,9 +2130,6 @@ void OrderHandler::FillPendingLimitEntry(const int symbol_idx,
     LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
     throw OrderFailed("지정가 진입 실패");
   }
-
-  // 해당 주문과 반대 방향의 체결 주문이 있으면 모두 청산
-  ExitOppositeFilledEntries(entry_direction, limit_entry->GetEntryOrderPrice());
 
   // 지갑 자금에서 진입 수수료 차감
   engine_->DecreaseWalletBalance(entry_fee);
