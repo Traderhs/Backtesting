@@ -663,7 +663,7 @@ async function startServer() {
     port = await findAvailablePort(port);
     console.log(`[INFO] Starting server on port ${port}`);
 
-    const server = app.listen(port, () => {
+    return app.listen(port, () => {
         console.log(`[INFO] Server is running on http://localhost:${port}`);
 
         // 브라우저 실행
@@ -673,8 +673,6 @@ async function startServer() {
             }
         });
     });
-
-    return server;
 }
 
 // 서버 시작
