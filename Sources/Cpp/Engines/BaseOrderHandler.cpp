@@ -267,27 +267,21 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
   // 진입 대기 주문 확인
   for (const auto& pending_entry : pending_entries_[symbol_idx]) {
     try {
-      double target_price = 0;
+      double order_price = 0;
 
       // 주문 타입별로 체결 예상 시의 명목 가치를 계산하는 가격이 다르므로 분기
       switch (pending_entry->GetEntryOrderType()) {
-        case MARKET: {
-          // 시장가는 대기 주문이 없음
-          break;
-        }
-
-        case LIMIT: {
-          target_price = pending_entry->GetEntryOrderPrice();
+        case MARKET:
+        [[fallthrough]]
+        case LIMIT:
+        [[fallthrough]]
+        case LIT: {
+          order_price = pending_entry->GetEntryOrderPrice();
           break;
         }
 
         case MIT: {
-          target_price = pending_entry->GetEntryTouchPrice();
-          break;
-        }
-
-        case LIT: {
-          target_price = pending_entry->GetEntryOrderPrice();
+          order_price = pending_entry->GetEntryTouchPrice();
           break;
         }
 
@@ -304,18 +298,19 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
 
           // 진입 방향별로 가장 불리한 진입가를 기준으로 명목 가치를 평가
           const auto trail_point = pending_entry->GetEntryTrailPoint();
-          target_price = pending_entry->GetEntryDirection() == LONG
-                             ? start_price + trail_point
-                             : start_price - trail_point;
+          order_price = pending_entry->GetEntryDirection() == LONG
+                            ? start_price + trail_point
+                            : start_price - trail_point;
 
           break;
         }
+
         default:;
       }
 
       // 현재 주문의 명목 가치에 해당되는 레버리지 구간의 레버리지 최대값보다
       // 변경된 레버리지가 크면 대기 주문 유지 불가
-      IsValidLeverage(target_price, pending_entry->GetEntryOrderSize());
+      IsValidLeverage(order_price, pending_entry->GetEntryOrderSize());
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
 
@@ -794,7 +789,7 @@ void BaseOrderHandler::ExecuteCancelEntry(
     const shared_ptr<Order>& cancel_order) {
   switch (cancel_order->GetEntryOrderType()) {
     case MARKET: {
-      // 시장가는 바로 체결하므로 대기 주문이 없음
+      // 시장가는 예약 증거금이 없음
       return;
     }
 
