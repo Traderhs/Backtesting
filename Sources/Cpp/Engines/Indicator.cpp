@@ -116,9 +116,8 @@ Numeric<double> Indicator::operator[](const size_t index) {
     }
 
     const auto target_bar_idx = bar_idx - index;
-    const auto symbol_idx = bar_->GetCurrentSymbolIndex();
 
-    return output_[symbol_idx][target_bar_idx];
+    return output_[bar_->GetCurrentSymbolIndex()][target_bar_idx];
   }
 
   // =========================================================================
@@ -135,9 +134,8 @@ Numeric<double> Indicator::operator[](const size_t index) {
     }
 
     const auto target_bar_idx = bar_idx - index;
-    const auto symbol_idx = bar_->GetCurrentSymbolIndex();
 
-    return output_[symbol_idx][target_bar_idx];
+    return output_[bar_->GetCurrentSymbolIndex()][target_bar_idx];
   }
 
   // =========================================================================
@@ -149,6 +147,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // =========================================================================
 
   // 호출 시점의 데이터 환경 정보 저장
+  const auto original_bar_type = bar_->GetCurrentBarType();
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
   const auto trading_bar_idx = bar_->GetCurrentBarIndex();
 
@@ -216,7 +215,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
     cached_ref_bar_idx_ = SIZE_MAX;  // NaN 표시
 
     // 원래 데이터 환경 복구
-    bar_->SetCurrentBarType(TRADING, "");
+    bar_->SetCurrentBarType(original_bar_type, "");
 
     return NAN;
   }
@@ -250,8 +249,8 @@ Numeric<double> Indicator::operator[](const size_t index) {
   cached_target_bar_idx_ = target_trading_bar_idx;
   cached_ref_bar_idx_ = ref_bar_idx;
 
-  // 원래 데이터 환경 복구 (전략 실행 중)
-  bar_->SetCurrentBarType(TRADING, "");
+  // 원래 데이터 환경 복구
+  bar_->SetCurrentBarType(original_bar_type, "");
 
   return output_[symbol_idx][ref_bar_idx];
 }
@@ -299,7 +298,7 @@ void Indicator::CalculateIndicator() {
     reference_num_bars_.reserve(num_symbols);
     reference_num_bars_.resize(num_symbols);
 
-    // 바 타입 한 번만 설정
+    // 지표 설정에 맞게 바 타입 설정
     bar_->SetCurrentBarType(REFERENCE, timeframe_);
 
     // 전체 트레이딩 심볼들을 순회하며 지표 계산
@@ -326,7 +325,7 @@ void Indicator::CalculateIndicator() {
         // 현재 심볼의 바 인덱스를 증가시키며 지표 계산
         bar_->SetCurrentBarIndex(bar_idx);
 
-        // 지표 계산 - 메모리 접근 최적화
+        // 지표 계산
         symbol_output[bar_idx] = this->Calculate();
       }
 
