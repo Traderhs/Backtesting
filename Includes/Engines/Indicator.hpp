@@ -94,7 +94,7 @@ class Indicator {
   Indicator(const Indicator&) = delete;
   Indicator& operator=(const Indicator&) = delete;
 
-  /// 지표의 계산된 값을 반환하는 연산자 오버로딩.
+  /// 지표의 계산된 값을 반환하는 연산자 오버로딩.\n\n
   /// 사용법: 지표 클래스 객체[n개 바 전 인덱스]
   [[nodiscard]] Numeric<double> operator[](size_t index);
 
