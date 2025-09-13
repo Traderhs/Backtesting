@@ -109,8 +109,6 @@ class Engine final : public BaseEngine {
   vector<size_t>* mark_price_indices_;  // 각 심볼의 마크 가격 바 인덱스
 
   // ===========================================================================
-  vector<SymbolInfo> symbol_info_;  // 심볼 정보
-
   vector<size_t> funding_rates_indices_;     // 각 심볼의 펀딩 비율 인덱스
   vector<double> next_funding_rates_;        // 다음 펀딩 비율
   vector<int64_t> next_funding_times_;       // 다음 펀딩 시간

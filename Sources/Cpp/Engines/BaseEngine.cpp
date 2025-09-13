@@ -258,7 +258,19 @@ void BaseEngine::DecreaseUsedMargin(const double decrease_margin) {
 
 void BaseEngine::SetBankruptcy() { is_bankruptcy_ = true; }
 
-shared_ptr<Config>& BaseEngine::GetConfig() { return config_; }
+const SymbolInfo& BaseEngine::GetSymbolInfo(int symbol_idx) const {
+  if (symbol_idx < 0 || symbol_idx >= trading_bar_num_symbols_) {
+    Logger::LogAndThrowError(
+        format("심볼 정보를 얻기 위하여 지정된 심볼 인덱스 [{}]이(가) 0 "
+               "미만이거나 최대 인덱스 [{}]을(를) 초과했습니다.",
+               symbol_idx, trading_bar_num_symbols_ - 1),
+        __FILE__, __LINE__);
+  }
+
+  return symbol_info_[symbol_idx];
+}
+
+const shared_ptr<Config>& BaseEngine::GetConfig() { return config_; }
 
 double BaseEngine::GetWalletBalance() const { return wallet_balance_; }
 
