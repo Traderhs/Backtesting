@@ -25,7 +25,7 @@ using namespace utils;
 namespace backtesting::order {
 
 BaseOrderHandler::BaseOrderHandler()
-    : current_position_size(0),
+    : current_position_size_(0),
       just_entered_(false),
       just_exited_(false),
       is_reverse_exit_(false),
@@ -35,7 +35,7 @@ BaseOrderHandler::~BaseOrderHandler() = default;
 
 shared_ptr<Analyzer>& BaseOrderHandler::analyzer_ = Analyzer::GetAnalyzer();
 shared_ptr<BarHandler>& BaseOrderHandler::bar_ = BarHandler::GetBarHandler();
-shared_ptr<Config>& BaseOrderHandler::config_ = Engine::GetConfig();
+shared_ptr<Config> BaseOrderHandler::config_ = Engine::GetConfig();
 shared_ptr<Engine>& BaseOrderHandler::engine_ = Engine::GetEngine();
 shared_ptr<Logger>& BaseOrderHandler::logger_ = Logger::GetLogger();
 vector<SymbolInfo> BaseOrderHandler::symbol_info_;
@@ -98,7 +98,11 @@ void BaseOrderHandler::UpdateCurrentPositionSize() {
     sum_position_size += position_size;
   }
 
-  current_position_size = sum_position_size;
+  current_position_size_ = sum_position_size;
+}
+
+double BaseOrderHandler::GetCurrentPositionSize() const {
+  return current_position_size_;
 }
 
 void BaseOrderHandler::InitializeJustEntered() { just_entered_ = false; }
@@ -397,6 +401,45 @@ double BaseOrderHandler::LastExitPrice() const {
   return last_exit_prices_[bar_->GetCurrentSymbolIndex()];
 }
 
+double BaseOrderHandler::CalculateMargin(const double price,
+                                         const double entry_size,
+                                         const PriceType price_type) const {
+  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+
+  // 가격 * 수량 / 레버리지 + 해당 심볼의 미실현 손실의 절댓값
+  return price * entry_size / leverages_[symbol_idx] +
+         GetUnrealizedLoss(symbol_idx, price_type);
+}
+
+double BaseOrderHandler::CalculateLiquidationPrice(
+    const Direction entry_direction, const double order_price,
+    const double position_size, const double margin) {
+  // 청산 가격
+  // = (마진 + 유지 금액 - (진입 가격 * 포지션 크기: 롱 양수, 숏 음수))
+  //    / (포지션 크기 절댓값 * 유지 증거금율 - (포지션 크기: 롱 양수, 숏 음수))
+
+  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+  const auto abs_position_size = abs(position_size);
+  const auto signed_position_size =
+      entry_direction == LONG ? abs_position_size : -abs_position_size;
+  const auto& leverage_bracket =
+      GetLeverageBracket(symbol_idx, order_price, abs_position_size);
+
+  const double numerator = margin + leverage_bracket.maintenance_amount -
+                           order_price * signed_position_size;
+  const double denominator =
+      abs_position_size * leverage_bracket.maintenance_margin_rate -
+      signed_position_size;
+
+  if (const double result = numerator / denominator;
+      IsLessOrEqual(result, 0.0)) {
+    // 롱의 경우, 강제 청산 가격이 0 이하면 절대 청산되지 않음
+    return 0;
+  } else {
+    return RoundToTickSize(result, symbol_info_[symbol_idx].GetTickSize());
+  }
+}
+
 void BaseOrderHandler::LogFormattedInfo(const LogLevel log_level,
                                         const string& formatted_message,
                                         const char* file, const int line) {
@@ -492,35 +535,6 @@ double BaseOrderHandler::CalculateTradingFee(const OrderType order_type,
   }
 }
 
-double BaseOrderHandler::CalculateLiquidationPrice(
-    const Direction entry_direction, const double order_price,
-    const double position_size, const double margin) {
-  // 청산 가격
-  // = (마진 + 유지 금액 - (진입 가격 * 포지션 크기: 롱 양수, 숏 음수))
-  //    / (포지션 크기 절댓값 * 유지 증거금율 - (포지션 크기: 롱 양수, 숏 음수))
-
-  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
-  const auto abs_position_size = abs(position_size);
-  const auto signed_position_size =
-      entry_direction == LONG ? abs_position_size : -abs_position_size;
-  const auto& leverage_bracket =
-      GetLeverageBracket(symbol_idx, order_price, abs_position_size);
-
-  const double numerator = margin + leverage_bracket.maintenance_amount -
-                           order_price * signed_position_size;
-  const double denominator =
-      abs_position_size * leverage_bracket.maintenance_margin_rate -
-      signed_position_size;
-
-  if (const double result = numerator / denominator;
-      IsLessOrEqual(result, 0.0)) {
-    // 롱의 경우, 강제 청산 가격이 0 이하면 절대 청산되지 않음
-    return 0;
-  } else {
-    return RoundToTickSize(result, symbol_info_[symbol_idx].GetTickSize());
-  }
-}
-
 LeverageBracket BaseOrderHandler::GetLeverageBracket(
     const int symbol_idx, const double order_price,
     const double position_size) {
@@ -537,16 +551,6 @@ LeverageBracket BaseOrderHandler::GetLeverageBracket(
 
   throw InvalidValue(format("명목 가치 [{}]에 해당되는 레버리지 구간 미존재",
                             FormatDollar(notional_value, true)));
-}
-
-double BaseOrderHandler::CalculateMargin(const double price,
-                                         const double entry_size,
-                                         const PriceType price_type) const {
-  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
-
-  // 가격 * 수량 / 레버리지 + 해당 심볼의 미실현 손실의 절댓값
-  return price * entry_size / leverages_[symbol_idx] +
-         GetUnrealizedLoss(symbol_idx, price_type);
 }
 
 double BaseOrderHandler::CalculatePnl(const Direction entry_direction,

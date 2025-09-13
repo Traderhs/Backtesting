@@ -51,10 +51,6 @@ namespace backtesting::order {
 /// 주문, 포지션 등과 관련된 기본적인 작업을 처리하는 클래스
 class BaseOrderHandler {
  public:
-  // ReSharper disable once CppInconsistentNaming
-  /// 현재 심볼의 포지션 사이즈. 양수면 매수 진입, 음수면 매도 진입.
-  double current_position_size;
-
   /// 엔진 설정을 불러오고 주문들과 기타 설정을 초기화하는 함수
   void Initialize(int num_symbols);
 
@@ -63,6 +59,12 @@ class BaseOrderHandler {
 
   /// 현재 심볼의 포지션 사이즈 합계를 최신 상태로 업데이트하는 함수
   void UpdateCurrentPositionSize();
+
+  /// 현재 심볼의 포지션 사이즈를 단순 반환하는 함수.\n
+  /// 전략 실횅 시점에 무조건 값을 업데이트하기 때문에 전략 내에서는 이 함수로
+  /// 값을 사용하면 됨.\n
+  /// 양수면 매수 진입, 음수면 매도 진입.
+  [[nodiscard]] double GetCurrentPositionSize() const;
 
   /// 현재 심볼과 바에서 진입이 이루어졌는지를 결정하는 플래그를 초기화하는 함수
   void InitializeJustEntered();
@@ -115,13 +117,27 @@ class BaseOrderHandler {
   /// 현재 심볼의 마지막 청산 가격을 반환하는 함수
   [[nodiscard]] double LastExitPrice() const;
 
+  // ===========================================================================
+  // OrderHandler 및 전략에서 사용하는 함수들
+  // ===========================================================================
+  /// 진입 마진을 계산하여 반환하는 함수
+  ///
+  /// price_type은 미실현 손실을 계산하는 가격 기준을 지정
+  [[nodiscard]] double CalculateMargin(double price, double entry_size,
+                                       PriceType price_type) const;
+
+  /// 주문 정보에 따라 강제 청산 가격을 계산하여 반환하는 함수
+  [[nodiscard]] static double CalculateLiquidationPrice(
+      Direction entry_direction, double order_price, double position_size,
+      double margin);
+
  protected:
   BaseOrderHandler();
   ~BaseOrderHandler();
 
   static shared_ptr<Analyzer>& analyzer_;
   static shared_ptr<BarHandler>& bar_;
-  static shared_ptr<Config>& config_;
+  static shared_ptr<Config> config_;
   static shared_ptr<Engine>& engine_;
   static shared_ptr<Logger>& logger_;
 
@@ -132,6 +148,9 @@ class BaseOrderHandler {
   vector<deque<shared_ptr<Order>>> pending_entries_;  // 대기 중인 진입 주문
   vector<deque<shared_ptr<Order>>> filled_entries_;   // 체결된 진입 주문
   vector<deque<shared_ptr<Order>>> pending_exits_;    // 대기 중인 청산 주문
+
+  /// 현재 심볼의 포지션 사이즈. 양수면 매수 진입, 음수면 매도 진입.
+  double current_position_size_;
 
   /// 현재 심볼과 바에서 진입 혹은 청산이 이루어졌는지를 결정하는 플래그
   bool just_entered_;
@@ -172,21 +191,10 @@ class BaseOrderHandler {
                                                   double filled_price,
                                                   double filled_size);
 
-  /// 주문 정보에 따라 강제 청산 가격을 계산하여 반환하는 함수
-  [[nodiscard]] static double CalculateLiquidationPrice(
-      Direction entry_direction, double order_price, double position_size,
-      double margin);
-
   /// 지정된 심볼과 명목 가치에 해당되는 레버리지 구간을 찾아 반환하는 함수
   [[nodiscard]] static LeverageBracket GetLeverageBracket(int symbol_idx,
                                                           double order_price,
                                                           double position_size);
-
-  /// 진입 마진을 계산하여 반환하는 함수
-  ///
-  /// price_type은 미실현 손실을 계산하는 가격 기준을 지정
-  [[nodiscard]] double CalculateMargin(double price, double entry_size,
-                                       PriceType price_type) const;
 
   /// 진입 정보에 따라 PnL을 계산하는 함수
   [[nodiscard]] static double CalculatePnl(Direction entry_direction,
