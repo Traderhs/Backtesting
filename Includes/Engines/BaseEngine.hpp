@@ -35,6 +35,9 @@ using namespace logger;
 namespace backtesting::engine {
 /// 엔진의 기본적인 설정, 초기화를 담당하는 클래스
 class BaseEngine {
+  // config_ 접근용
+  friend class Config;
+
  public:
   /// 거래소 정보를 엔진에 추가하는 함수.
   static void AddExchangeInfo(const string& exchange_info_path);
@@ -133,7 +136,6 @@ class BaseEngine {
 
   /// 엔진의 사전 설정 항목
   static shared_ptr<Config> config_;
-  friend class Config;
 
   /// 엔진에 추가된 전략
   shared_ptr<Strategy> strategy_;

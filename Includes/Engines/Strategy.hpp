@@ -37,12 +37,14 @@ namespace backtesting::strategy {
  *
  * ※ 커스텀 전략 생성 시 유의 사항 ※\n
  * 1. Strategy 클래스를 Public 상속 후
- *    Initialize, ExecuteOnClose, ExecuteAfterEntry, ExecuteAfterExit
- *    함수들을 오버라이드해서 제작\n
+ *    Initialize, ExecuteOnClose, ExecuteAfterEntry, ExecuteAfterExit,
+ *    ExecuteBeforeEntry, ExecuteBeforeExit 함수들을 오버라이드해서 제작\n
  *
  *    Initialize → 엔진 초기화 시 최초 1회 실행\n
  *    ExecuteOnCLose → 트레이딩 바 종가마다 모든 심볼에서 실행\n
+ *    ExecuteBeforeEntry → 진입 체결 직전에 해당 심볼에서만 실행\n
  *    ExecuteAfterEntry → 진입 체결이 있었다면 해당 심볼에서만 즉시 실행\n
+ *    ExecuteBeforeExit → 청산 체결 직전에 해당 심볼에서만 실행\n
  *    ExecuteAfterExit → 청산 체결이 있었다면 해당 심볼에서만 즉시 실행\n
  *
  * 2. 헤더 파일 및 소스 파일은 자동으로 탐색하여 저장.
@@ -80,7 +82,7 @@ namespace backtesting::strategy {
  */
 class Strategy {
   // config.json 저장 시 OHLCV 지표 이름 접근용
-  friend class backtesting::analyzer::Analyzer;
+  friend class Analyzer;
 
  public:
   // 전략을 팩토리로 우회하여 생성하고 strategy_에 추가하고 반환하는 함수
@@ -113,8 +115,14 @@ class Strategy {
   /// 모든 바의 종가에서 전략을 실행하는 함수
   virtual void ExecuteOnClose() = 0;
 
+  /// 특정 심볼의 진입 체결 직전에 전략을 실행하는 함수
+  virtual void ExecuteBeforeEntry() = 0;
+
   /// 특정 심볼의 진입 직후 전략을 실행하는 함수
   virtual void ExecuteAfterEntry() = 0;
+
+  /// 특정 심볼의 청산 체결 직전에 전략을 실행하는 함수
+  virtual void ExecuteBeforeExit() = 0;
 
   /// 특정 심볼의 청산 직후 전략을 실행하는 함수
   virtual void ExecuteAfterExit() = 0;

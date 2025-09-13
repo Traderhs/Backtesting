@@ -79,16 +79,14 @@ namespace backtesting::indicator {
  *     루트 폴더/Sources/cpp/Indicators/클래스명.cpp)\n
  */
 class Indicator {
-  // friend는 using 영향 받지 않으므로 모든 네임 스페이스를 작성
-
   // 생성자 및 IncreaseCreationCounter 함수 접근용
-  friend class backtesting::strategy::Strategy;
+  friend class Strategy;
 
   // Plot 유효성 검사 시 plot_ 접근용
-  friend class backtesting::engine::Engine;
+  friend class Engine;
 
   // 지표 및 설정 저장 시 output_ 및 plot_ 접근용
-  friend class backtesting::analyzer::Analyzer;
+  friend class Analyzer;
 
  public:
   // 지표 반환 시 참조 타입으로 받는 것을 강요하기 위하여

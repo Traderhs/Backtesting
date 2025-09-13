@@ -1535,6 +1535,9 @@ void OrderHandler::ExecuteLiquidation(const string& exit_name,
   // 바 정보 로딩
   const auto current_open_time = engine_->GetCurrentOpenTime();
 
+  // 강제 청산 직전 전략 실행
+  engine_->ExecuteStrategy(BEFORE_EXIT, symbol_idx);
+
   // 진입 체결 주문을 받아오고 진입 체결 주문에서 삭제
   auto& filled_entries = filled_entries_[symbol_idx];
   const auto entry_order = filled_entries[order_idx];
@@ -2041,6 +2044,9 @@ void OrderHandler::FillPendingMarketEntry(const int symbol_idx,
     throw OrderFailed("시장가 대기 주문 체결 실패");
   }
 
+  // 진입 체결 직전 전략 실행
+  engine_->ExecuteStrategy(BEFORE_ENTRY, symbol_idx);
+
   // 주문 정보 로딩
   const auto entry_filled_size = market_entry->GetEntryOrderSize();
   const auto entry_direction = market_entry->GetEntryDirection();
@@ -2085,6 +2091,9 @@ void OrderHandler::FillPendingLimitEntry(const int symbol_idx,
     throw OrderFailed("지정가 대기 주문 체결 실패");
   }
 
+  // 진입 체결 직전 전략 실행
+  engine_->ExecuteStrategy(BEFORE_ENTRY, symbol_idx);
+
   // 주문 정보 로딩
   const auto& order_type_str =
       Order::OrderTypeToString(limit_entry->GetEntryOrderType());
@@ -2127,6 +2136,7 @@ void OrderHandler::FillPendingLimitEntry(const int symbol_idx,
                      "사용 가능",
                      format("{} 진입 마진 및 수수료", order_type_str));
   } catch (const InsufficientBalance& e) {
+    // 사용한 마진(예약 증거금)은 위에서 이미 감소시켰으므로 감소시키지 않음
     LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
     throw OrderFailed("지정가 진입 실패");
   }
@@ -2377,6 +2387,9 @@ int OrderHandler::FillPendingExitOrder(const int symbol_idx,
   const auto& target_entry_name = exit_order->GetEntryName();
   const auto order_type = exit_order->GetExitOrderType();
   const auto exit_direction = exit_order->GetExitDirection();
+
+  // 청산 체결 직전 전략 실행
+  engine_->ExecuteStrategy(BEFORE_EXIT, symbol_idx);
 
   // 원본 진입 주문 찾기
   shared_ptr<Order> entry_order;

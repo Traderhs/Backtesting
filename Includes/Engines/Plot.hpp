@@ -111,10 +111,8 @@ using enum Format;
 
 /// 지표의 플롯 스타일을 설정하는 가상 클래스
 class Plot {
-  // friend는 using 영향 받지 않으므로 모든 네임 스페이스를 작성
-
   // 차트 작성 정보 참조 시 사용
-  friend class backtesting::analyzer::Analyzer;
+  friend class Analyzer;
 
  public:
   // Plot을 복사해 동적 생성한 뒤 shared_ptr<Plot>로 리턴하는 함수
@@ -162,7 +160,7 @@ class Plot {
 /// 영역으로 플롯하는 설정을 생성하는 클래스
 class Area final : public Plot {
   // 차트 작성 정보 참조 시 사용
-  friend class backtesting::analyzer::Analyzer;
+  friend class Analyzer;
 
  public:
   Area() = delete;
@@ -204,7 +202,7 @@ class Area final : public Plot {
 /// 기준선으로 플롯하는 설정을 생성하는 클래스
 class Baseline final : public Plot {
   // 차트 작성 정보 참조 시 사용
-  friend class backtesting::analyzer::Analyzer;
+  friend class Analyzer;
 
  public:
   Baseline() = delete;
@@ -275,7 +273,7 @@ class Baseline final : public Plot {
 /// 히스토그램으로 플롯하는 설정을 생성하는 클래스
 class Histogram final : public Plot {
   // 차트 작성 정보 참조 시 사용
-  friend class backtesting::analyzer::Analyzer;
+  friend class Analyzer;
 
  public:
   Histogram() = delete;
@@ -310,7 +308,7 @@ class Histogram final : public Plot {
 /// 선으로 플롯하는 설정을 생성하는 클래스
 class Line final : public Plot {
   // 차트 작성 정보 참조 시 사용
-  friend class backtesting::analyzer::Analyzer;
+  friend class Analyzer;
 
  public:
   Line() = delete;

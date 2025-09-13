@@ -28,6 +28,9 @@ class Analyzer;
 
 // 네임 스페이스
 using namespace std;
+namespace backtesting {
+using namespace analyzer;
+}
 
 namespace backtesting::logger {
 
@@ -164,7 +167,7 @@ struct alignas(64) FastLogBuffer {
  * 하드웨어 레벨 최적화된 비동기 로깅 시스템
  */
 class Logger final {
-  friend class backtesting::analyzer::Analyzer;
+  friend class Analyzer;
 
  public:
   // 싱글톤 특성 유지
