@@ -47,7 +47,13 @@ struct PriceData {
 };
 
 // 전략 타입을 지정하는 열거형 클래스
-enum class StrategyType { ON_CLOSE, AFTER_EXIT, AFTER_ENTRY };
+enum class StrategyType {
+  ON_CLOSE,
+  BEFORE_ENTRY,
+  AFTER_ENTRY,
+  BEFORE_EXIT,
+  AFTER_EXIT,
+};
 using enum StrategyType;
 
 /**
@@ -55,7 +61,10 @@ using enum StrategyType;
  */
 class Engine final : public BaseEngine {
   // 전략, TimeDiff 등 접근용
-  friend class backtesting::analyzer::Analyzer;
+  friend class Analyzer;
+
+  // ExecuteStrategy 접근용
+  friend class OrderHandler;
 
  public:
   // 싱글톤 특성 유지
@@ -202,9 +211,8 @@ class Engine final : public BaseEngine {
   [[nodiscard]] pair<vector<PriceData>, vector<PriceData>> GetPriceQueue(
       BarType market_bar_type, const vector<int>& symbol_indices) const;
 
-  /// 지정된 전략과 심볼에서 전략을 실행하는 함수
-  void ExecuteStrategy(const shared_ptr<Strategy>& strategy,
-                       StrategyType strategy_type, int symbol_index);
+  /// 지정된 심볼에서 전략을 실행하는 함수
+  void ExecuteStrategy(StrategyType strategy_type, int symbol_index);
 };
 
 }  // namespace backtesting::engine

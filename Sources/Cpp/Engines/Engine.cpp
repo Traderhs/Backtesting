@@ -1288,7 +1288,7 @@ void Engine::BacktestingMain() {
     // =========================================================================
     // 활성화된 심볼들의 트레이딩 바에서 전략 실행
     for (const auto symbol_idx : activated_symbol_indices_) {
-      ExecuteStrategy(strategy_, ON_CLOSE, symbol_idx);
+      ExecuteStrategy(ON_CLOSE, symbol_idx);
 
       // On Close 전략 실행 후 연쇄반응 완전 처리
       // ProcessOhlc와 동일한 로직으로 모든 즉시 체결과 연쇄반응을 처리
@@ -1296,7 +1296,7 @@ void Engine::BacktestingMain() {
         // 1. 청산이 존재했다면 After Exit 전략 실행
         if (order_handler_->IsJustExited()) {
           order_handler_->InitializeJustExited();
-          ExecuteStrategy(strategy_, AFTER_EXIT, symbol_idx);
+          ExecuteStrategy(AFTER_EXIT, symbol_idx);
 
           // After Exit에서 즉시 체결된 주문이 있을 수 있으므로 다시 확인
           continue;
@@ -1305,7 +1305,7 @@ void Engine::BacktestingMain() {
         // 2. 진입이 존재했다면 After Entry 전략 실행
         if (order_handler_->IsJustEntered()) {
           order_handler_->InitializeJustEntered();
-          ExecuteStrategy(strategy_, AFTER_ENTRY, symbol_idx);
+          ExecuteStrategy(AFTER_ENTRY, symbol_idx);
 
           // After Entry에서 즉시 체결된 주문이 있을 수 있으므로 다시 확인
           continue;
@@ -1682,7 +1682,7 @@ void Engine::ProcessOhlc(const BarType bar_type,
       // 1. 청산이 존재했다면 After Exit 전략 실행 (강제 청산 포함)
       if (order_handler_->IsJustExited()) {
         order_handler_->InitializeJustExited();
-        ExecuteStrategy(strategy_, AFTER_EXIT, market_price_symbol_idx);
+        ExecuteStrategy(AFTER_EXIT, market_price_symbol_idx);
 
         // After Exit에서 즉시 체결된 주문이 있을 수 있으므로 다시 확인
         continue;
@@ -1691,7 +1691,7 @@ void Engine::ProcessOhlc(const BarType bar_type,
       // 2. 진입이 존재했다면 After Entry 전략 실행
       if (order_handler_->IsJustEntered()) {
         order_handler_->InitializeJustEntered();
-        ExecuteStrategy(strategy_, AFTER_ENTRY, market_price_symbol_idx);
+        ExecuteStrategy(AFTER_ENTRY, market_price_symbol_idx);
 
         // After Entry에서 즉시 체결된 주문이 있을 수 있으므로 다시 확인
         continue;
@@ -1800,15 +1800,12 @@ pair<vector<PriceData>, vector<PriceData>> Engine::GetPriceQueue(
   return {move(mark_queue), move(market_queue)};
 }
 
-void Engine::ExecuteStrategy(const shared_ptr<Strategy>& strategy,
-                             const StrategyType strategy_type,
+void Engine::ExecuteStrategy(const StrategyType strategy_type,
                              const int symbol_index) {
-  // = 원본 설정을 저장 =
-  // 종가 전략 실행인 경우 트레이딩 바
-  // (ON_CLOSE, AFTER EXIT, AFTER ENTRY)
+  // = 원본 바 타입을 저장 =
+  // 종가 전략 실행인 경우 원본 바 타입은 트레이딩 바
   //
-  // ProcessOhlc에서 전략 실행인 경우 트레이딩 바 혹은 돋보기 바
-  // (AFTER EXIT, AFTER ENTRY)
+  // ProcessOhlc에서 전략 실행인 경우 원본 바 타입은 트레이딩 바 혹은 돋보기 바
   const auto original_bar_type = bar_->GetCurrentBarType();
 
   // 트레이딩 바의 지정된 심볼에서 전략 실행
@@ -1825,17 +1822,27 @@ void Engine::ExecuteStrategy(const shared_ptr<Strategy>& strategy,
 
     switch (strategy_type) {
       case ON_CLOSE: {
-        strategy->ExecuteOnClose();
+        strategy_->ExecuteOnClose();
         break;
       }
 
-      case AFTER_EXIT: {
-        strategy->ExecuteAfterExit();
+      case BEFORE_ENTRY: {
+        strategy_->ExecuteBeforeEntry();
         break;
       }
 
       case AFTER_ENTRY: {
-        strategy->ExecuteAfterEntry();
+        strategy_->ExecuteAfterEntry();
+        break;
+      }
+
+      case BEFORE_EXIT: {
+        strategy_->ExecuteBeforeExit();
+        break;
+      }
+
+      case AFTER_EXIT: {
+        strategy_->ExecuteAfterExit();
         break;
       }
     }
