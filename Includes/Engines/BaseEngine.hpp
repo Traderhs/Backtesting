@@ -65,8 +65,11 @@ class BaseEngine {
   /// 파산을 당했을 때 설정하는 함수
   void SetBankruptcy();
 
+  /// 해당되는 심볼 인덱스의 거래소 정보를 반환하는 함수
+  [[nodiscard]] const SymbolInfo& GetSymbolInfo(int symbol_idx) const;
+
   /// 엔진 설정값을 반환하는 함수
-  [[nodiscard]] static shared_ptr<Config>& GetConfig();
+  [[nodiscard]] static const shared_ptr<Config>& GetConfig();
 
   /// 지갑 자금을 반환하는 함수
   [[nodiscard]] double GetWalletBalance() const;
@@ -120,6 +123,9 @@ class BaseEngine {
   /// 레버리지 구간
   static json leverage_bracket_;
   static string leverage_bracket_path_;
+
+  // 심볼별 거래소 정보
+  vector<SymbolInfo> symbol_info_;
 
   /// 펀딩 비율 (벡터는 심볼 순서)
   static vector<json> funding_rates_;
