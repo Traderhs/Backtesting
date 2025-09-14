@@ -495,7 +495,7 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
 
 void OrderHandler::MarketEntry(const string& entry_name,
                                const Direction entry_direction,
-                               const double order_size) {
+                               const double order_size, const int leverage) {
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
 
   try {
@@ -541,7 +541,7 @@ void OrderHandler::MarketEntry(const string& entry_name,
       IsValidDirection(entry_direction);
       IsValidPositionSize(order_size, MARKET);
       IsValidNotionalValue(order_price, order_size);
-      IsValidLeverage(order_price, order_size);
+      IsValidLeverage(leverage, order_price, order_size);
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
       throw OrderFailed("시장가 진입 실패");
@@ -549,7 +549,7 @@ void OrderHandler::MarketEntry(const string& entry_name,
 
     // 주문 생성
     const auto market_entry = make_shared<Order>();
-    market_entry->SetLeverage(GetLeverage(symbol_idx))
+    market_entry->SetLeverage(leverage)
         .SetWbWhenEntryOrder(engine_->GetWalletBalance())
         .SetEntryName(entry_name)
         .SetEntryOrderType(MARKET)
@@ -587,7 +587,8 @@ void OrderHandler::MarketEntry(const string& entry_name,
 
 void OrderHandler::LimitEntry(const string& entry_name,
                               const Direction entry_direction,
-                              double order_price, const double order_size) {
+                              double order_price, const double order_size,
+                              const int leverage) {
   const int symbol_idx = bar_->GetCurrentSymbolIndex();
 
   try {
@@ -627,7 +628,7 @@ void OrderHandler::LimitEntry(const string& entry_name,
 
     // 주문 생성
     const auto limit_entry = make_shared<Order>();
-    limit_entry->SetLeverage(GetLeverage(symbol_idx))
+    limit_entry->SetLeverage(leverage)
         .SetWbWhenEntryOrder(engine_->GetWalletBalance())
         .SetEntryName(entry_name)
         .SetEntryOrderType(LIMIT)
@@ -643,14 +644,16 @@ void OrderHandler::LimitEntry(const string& entry_name,
       IsValidLimitOrderPrice(order_price, base_price, entry_direction);
       IsValidPositionSize(order_size, LIMIT);
       IsValidNotionalValue(order_price, order_size);
-      IsValidLeverage(order_price, order_size);
+      IsValidLeverage(leverage, order_price, order_size);
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
       throw OrderFailed("지정가 진입 실패");
     }
 
     // 예약 증거금 계산
-    const double entry_margin = CalculateMargin(order_price, order_size, CLOSE);
+    const double entry_margin =
+        CalculateMargin(order_price, order_size, CLOSE, symbol_idx);
+
     limit_entry->SetEntryMargin(entry_margin).SetLeftMargin(entry_margin);
 
     // 주문 가능 여부 체크
@@ -684,7 +687,7 @@ void OrderHandler::LimitEntry(const string& entry_name,
 
 void OrderHandler::MitEntry(const string& entry_name,
                             const Direction entry_direction, double touch_price,
-                            const double order_size) {
+                            const double order_size, const int leverage) {
   const int symbol_idx = bar_->GetCurrentSymbolIndex();
 
   try {
@@ -719,7 +722,7 @@ void OrderHandler::MitEntry(const string& entry_name,
 
     // 주문 생성
     const auto mit_entry = make_shared<Order>();
-    mit_entry->SetLeverage(GetLeverage(symbol_idx))
+    mit_entry->SetLeverage(leverage)
         .SetWbWhenEntryOrder(engine_->GetWalletBalance())
         .SetEntryName(entry_name)
         .SetEntryOrderType(MIT)
@@ -735,7 +738,7 @@ void OrderHandler::MitEntry(const string& entry_name,
       IsValidPrice(touch_price);
       IsValidPositionSize(order_size, MIT);
       IsValidNotionalValue(touch_price, order_size);
-      IsValidLeverage(touch_price, order_size);
+      IsValidLeverage(leverage, touch_price, order_size);
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
       throw OrderFailed("MIT 진입 실패");
@@ -759,7 +762,8 @@ void OrderHandler::MitEntry(const string& entry_name,
 
 void OrderHandler::LitEntry(const string& entry_name,
                             const Direction entry_direction, double touch_price,
-                            double order_price, const double order_size) {
+                            double order_price, const double order_size,
+                            const int leverage) {
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
 
   try {
@@ -795,7 +799,7 @@ void OrderHandler::LitEntry(const string& entry_name,
 
     // 주문 생성
     const auto lit_entry = make_shared<Order>();
-    lit_entry->SetLeverage(GetLeverage(symbol_idx))
+    lit_entry->SetLeverage(leverage)
         .SetWbWhenEntryOrder(engine_->GetWalletBalance())
         .SetEntryName(entry_name)
         .SetEntryOrderType(LIT)
@@ -814,7 +818,7 @@ void OrderHandler::LitEntry(const string& entry_name,
       IsValidLimitOrderPrice(order_price, touch_price, entry_direction);
       IsValidPositionSize(order_size, LIT);
       IsValidNotionalValue(order_price, order_size);
-      IsValidLeverage(order_price, order_size);
+      IsValidLeverage(leverage, order_price, order_size);
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
       throw OrderFailed("LIT 진입 실패");
@@ -840,7 +844,7 @@ void OrderHandler::LitEntry(const string& entry_name,
 void OrderHandler::TrailingEntry(const string& entry_name,
                                  const Direction entry_direction,
                                  double touch_price, const double trail_point,
-                                 const double order_size) {
+                                 const double order_size, const int leverage) {
   const int symbol_idx = bar_->GetCurrentSymbolIndex();
 
   try {
@@ -875,7 +879,7 @@ void OrderHandler::TrailingEntry(const string& entry_name,
 
     // 주문 생성
     const auto trailing_entry = make_shared<Order>();
-    trailing_entry->SetLeverage(GetLeverage(symbol_idx))
+    trailing_entry->SetLeverage(leverage)
         .SetWbWhenEntryOrder(engine_->GetWalletBalance())
         .SetEntryName(entry_name)
         .SetEntryOrderType(TRAILING)
@@ -910,7 +914,7 @@ void OrderHandler::TrailingEntry(const string& entry_name,
                                   : start_price - trail_point;
 
       IsValidNotionalValue(target_price, order_size);
-      IsValidLeverage(target_price, order_size);
+      IsValidLeverage(leverage, target_price, order_size);
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
       throw OrderFailed("트레일링 진입 실패");
@@ -1598,9 +1602,18 @@ void OrderHandler::ExecuteMarketEntry(const shared_ptr<Order>& market_entry,
   ExitOppositeFilledEntries(entry_direction,
                             market_entry->GetEntryOrderPrice());
 
+  // 레버리지 설정
+  try {
+    AdjustLeverage(market_entry->GetLeverage());
+  } catch (const InvalidValue& e) {
+    LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
+    throw OrderFailed("시장가 진입 실패");
+  }
+
   // 시장가 진입 마진을 계산 후 설정
-  const double entry_margin =
-      CalculateMargin(entry_filled_price, entry_filled_size, price_type);
+  const double entry_margin = CalculateMargin(
+      entry_filled_price, entry_filled_size, price_type, symbol_idx);
+
   market_entry->SetEntryMargin(entry_margin).SetLeftMargin(entry_margin);
 
   // 강제 청산 가격 계산
@@ -2118,9 +2131,20 @@ void OrderHandler::FillPendingLimitEntry(const int symbol_idx,
   // 해당 주문과 반대 방향의 체결 주문이 있으면 모두 청산
   ExitOppositeFilledEntries(entry_direction, limit_entry->GetEntryOrderPrice());
 
+  // 레버리지 설정
+  try {
+    AdjustLeverage(limit_entry->GetLeverage());
+  } catch (const InvalidValue& e) {
+    // 유효성 검증 실패 시 사용한 마진(예약 증거금) 감소
+    engine_->DecreaseUsedMargin(limit_entry->GetEntryMargin());
+
+    LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
+    throw OrderFailed("지정가 대기 주문 체결 실패");
+  }
+
   // 현재 미실현 손실을 반영한 지정가 진입 마진 재계산
-  const auto entry_margin =
-      CalculateMargin(slippage_filled_price, entry_filled_size, price_type);
+  const auto entry_margin = CalculateMargin(
+      slippage_filled_price, entry_filled_size, price_type, symbol_idx);
 
   // 지정가 예약 마진을 감소 후 재설정
   engine_->DecreaseUsedMargin(limit_entry->GetEntryMargin());
@@ -2184,7 +2208,7 @@ void OrderHandler::OrderPendingLitEntry(const int symbol_idx,
 
   // 예약 증거금 계산
   const double entry_margin =
-      CalculateMargin(order_price, order_size, price_type);
+      CalculateMargin(order_price, order_size, price_type, symbol_idx);
 
   lit_entry->SetEntryMargin(entry_margin).SetLeftMargin(entry_margin);
 

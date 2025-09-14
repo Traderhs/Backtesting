@@ -94,11 +94,6 @@ class BaseOrderHandler {
   /// order_name이 진입 대기 주문과 청산 대기 주문에 동시에 존재하면 모두 취소.
   void Cancel(const string& order_name);
 
-  /// 현재 심볼의 레버리지를 변경하는 함수
-  ///
-  /// 현재 심볼에 체결된 주문이 없는 경우에만 변경 가능
-  void AdjustLeverage(int leverage);
-
   /// 현재 심볼 마지막 진입으로부터 몇 개의 트레이딩 바가 지났는지 계산하여
   /// 반환하는 함수
   ///
@@ -124,7 +119,8 @@ class BaseOrderHandler {
   ///
   /// price_type은 미실현 손실을 계산하는 가격 기준을 지정
   [[nodiscard]] double CalculateMargin(double price, double entry_size,
-                                       PriceType price_type) const;
+                                       PriceType price_type,
+                                       int symbol_idx) const;
 
   /// 주문 정보에 따라 강제 청산 가격을 계산하여 반환하는 함수
   [[nodiscard]] static double CalculateLiquidationPrice(
@@ -178,6 +174,11 @@ class BaseOrderHandler {
                                const string& formatted_message,
                                const char* file, int line);
 
+  /// 현재 심볼의 레버리지를 변경하는 함수
+  ///
+  /// 현재 심볼에 체결된 주문이 없는 경우에만 변경 가능
+  void AdjustLeverage(int leverage);
+
   // 지정된 심볼의 설정된 레버리지를 반환하는 함수
   [[nodiscard]] int GetLeverage(int symbol_idx) const;
 
@@ -215,8 +216,10 @@ class BaseOrderHandler {
   // 유효한 값인지 확인하는 함수
   static void IsValidNotionalValue(double order_price, double position_size);
 
-  // 레버리지가 현재 브라켓의 최대 레버리지 이하인지 확인하는 함수
-  void IsValidLeverage(double order_price, double position_size) const;
+  // 지정된 레버리지가 1 이상이고 명목 가치에 해당되는 브라켓의 최대 레버리지
+  // 이하인지 확인하는 함수
+  static void IsValidLeverage(int leverage, double order_price,
+                              double position_size);
 
   /// 진입 체결 시 진입 이름이 유효한지 확인하는 함수
   void IsValidEntryName(const string& entry_name) const;
