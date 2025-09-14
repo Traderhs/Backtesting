@@ -72,8 +72,9 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param entry_name 진입 이름
   /// @param entry_direction 진입 방향
   /// @param order_size 진입 수량
+  /// @param leverage 레버리지
   void MarketEntry(const string& entry_name, Direction entry_direction,
-                   double order_size);
+                   double order_size, int leverage);
 
   /// 지정가 진입 주문을 위해 사용하는 함수
   ///
@@ -81,8 +82,9 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param entry_direction 진입 방향
   /// @param order_price 지정가 진입 주문 가격
   /// @param order_size 진입 수량
+  /// @param leverage 레버리지
   void LimitEntry(const string& entry_name, Direction entry_direction,
-                  double order_price, double order_size);
+                  double order_price, double order_size, int leverage);
 
   /// Market if Touched 진입 주문을 위해 사용하는 함수.
   /// touch_price에 닿으면 시장가 진입 주문 접수.
@@ -91,8 +93,9 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param entry_direction 진입 방향
   /// @param touch_price 시장가 주문을 접수할 시점의 가격
   /// @param order_size 진입 수량
+  /// @param leverage 레버리지
   void MitEntry(const string& entry_name, Direction entry_direction,
-                double touch_price, double order_size);
+                double touch_price, double order_size, int leverage);
 
   /// Limit if Touched 진입 주문을 위해 사용하는 함수.
   /// touch_price에 닿으면 order_price에 지정가 진입 주문 접수.
@@ -102,8 +105,10 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param touch_price 지정가 주문을 접수할 시점의 가격
   /// @param order_price 지정가 진입 주문 가격
   /// @param order_size 진입 수량
+  /// @param leverage 레버리지
   void LitEntry(const string& entry_name, Direction entry_direction,
-                double touch_price, double order_price, double order_size);
+                double touch_price, double order_price, double order_size,
+                int leverage);
 
   /// 트레일링 진입 주문을 위해 사용하는 함수.
   /// touch_price에 닿으면 진입 방향에 따라 최고저가를 추적하며, 최고저가 대비
@@ -116,8 +121,10 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param trail_point 최고저가로부터 어느정도 움직였을 때 진입할지 결정하는
   ///                    포인트
   /// @param order_size 진입 수량
+  /// @param leverage 레버리지
   void TrailingEntry(const string& entry_name, Direction entry_direction,
-                     double touch_price, double trail_point, double order_size);
+                     double touch_price, double trail_point, double order_size,
+                     int leverage);
 
   // ===========================================================================
   // 전략 Strategy 구현부에서 사용하는 청산 함수들

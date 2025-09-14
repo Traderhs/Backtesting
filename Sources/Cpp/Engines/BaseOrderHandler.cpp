@@ -222,6 +222,91 @@ void BaseOrderHandler::Cancel(const string& order_name) {
   }
 }
 
+double BaseOrderHandler::BarsSinceEntry() const {
+  // 전략 실행 시 무조건 트레이딩 바를 사용하므로 원본 바 타입은 저장하지 않음
+  const auto last_entry_bar_index =
+      last_entry_bar_indices_[bar_->GetCurrentSymbolIndex()];
+
+  if (last_entry_bar_index == SIZE_MAX) {
+    // 아직 진입이 없었던 심볼은 NaN을 반환 (기본 SIZE_MAX로 초기화 됨)
+    return NAN;
+  }
+
+  // 진입이 있었던 심볼은 현재 바 인덱스와의 차이를 구해 반환
+  return static_cast<double>(bar_->GetCurrentBarIndex() - last_entry_bar_index);
+}
+
+double BaseOrderHandler::BarsSinceExit() const {
+  // 전략 실행 시 무조건 트레이딩 바를 사용하므로 원본 바 타입은 저장하지 않음
+  const auto last_exit_bar_index =
+      last_exit_bar_indices_[bar_->GetCurrentSymbolIndex()];
+
+  if (last_exit_bar_index == SIZE_MAX) {
+    // 아직 진입이 없었던 심볼은 NaN을 반환 (기본 SIZE_MAX로 초기화 됨)
+    return NAN;
+  }
+
+  // 진입이 있었던 심볼은 현재 바 인덱스와의 차이를 구해 반환
+  return static_cast<double>(bar_->GetCurrentBarIndex() - last_exit_bar_index);
+}
+
+double BaseOrderHandler::LastEntryPrice() const {
+  return last_entry_prices_[bar_->GetCurrentSymbolIndex()];
+}
+
+double BaseOrderHandler::LastExitPrice() const {
+  return last_exit_prices_[bar_->GetCurrentSymbolIndex()];
+}
+
+double BaseOrderHandler::CalculateMargin(const double price,
+                                         const double entry_size,
+                                         const PriceType price_type,
+                                         const int symbol_idx) const {
+  // 가격 * 수량 / 레버리지 + 해당 심볼의 미실현 손실의 절댓값
+  return price * entry_size / leverages_[symbol_idx] +
+         GetUnrealizedLoss(symbol_idx, price_type);
+}
+
+double BaseOrderHandler::CalculateLiquidationPrice(
+    const Direction entry_direction, const double order_price,
+    const double position_size, const double margin) {
+  // 청산 가격
+  // = (마진 + 유지 금액 - (진입 가격 * 포지션 크기: 롱 양수, 숏 음수))
+  //    / (포지션 크기 절댓값 * 유지 증거금율 - (포지션 크기: 롱 양수, 숏 음수))
+
+  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+  const auto abs_position_size = abs(position_size);
+  const auto signed_position_size =
+      entry_direction == LONG ? abs_position_size : -abs_position_size;
+  const auto& leverage_bracket =
+      GetLeverageBracket(symbol_idx, order_price, abs_position_size);
+
+  const double numerator = margin + leverage_bracket.maintenance_amount -
+                           order_price * signed_position_size;
+  const double denominator =
+      abs_position_size * leverage_bracket.maintenance_margin_rate -
+      signed_position_size;
+
+  if (const double result = numerator / denominator;
+      IsLessOrEqual(result, 0.0)) {
+    // 롱의 경우, 강제 청산 가격이 0 이하면 절대 청산되지 않음
+    return 0;
+  } else {
+    return RoundToTickSize(result, symbol_info_[symbol_idx].GetTickSize());
+  }
+}
+
+void BaseOrderHandler::LogFormattedInfo(const LogLevel log_level,
+                                        const string& formatted_message,
+                                        const char* file, const int line) {
+  logger_->Log(log_level,
+               format("[{}] {}",
+                      bar_->GetBarData(bar_->GetCurrentBarType())
+                          ->GetSymbolName(bar_->GetCurrentSymbolIndex()),
+                      formatted_message),
+               file, line);
+}
+
 void BaseOrderHandler::AdjustLeverage(const int leverage) {
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
   const auto current_leverage = leverages_[symbol_idx];
@@ -233,28 +318,9 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
 
   // 체결된 진입 주문이 존재하면 레버리지 변경 불가
   if (!filled_entries_[symbol_idx].empty()) {
-    LogFormattedInfo(
-        WARNING_L,
+    throw InvalidValue(
         format("레버리지 [{}] → [{}] 변경 불가 (체결된 진입 주문 존재)",
-               current_leverage, leverage),
-        __FILE__, __LINE__);
-    return;
-  }
-
-  // 레버리지가 유효한 값인지 확인
-  // 최대 레버리지는 브라켓 첫 요소의 레버리지
-  if (const auto max_leverage =
-          symbol_info_[symbol_idx].GetLeverageBracket().front().max_leverage;
-      IsLess(leverage, 1.0) || IsGreater(leverage, max_leverage)) {
-    LogFormattedInfo(
-        WARNING_L,
-        format("레버리지 [{}] → [{}] 변경 불가 "
-               "(조건: [1] 이상 및 {}의 최대 레버리지 [{}] 이하)",
-               current_leverage, leverage,
-               bar_->GetBarData(TRADING)->GetSymbolName(symbol_idx),
-               max_leverage),
-        __FILE__, __LINE__);
-    return;
+               current_leverage, leverage));
   }
 
   // 레버리지 변경
@@ -310,7 +376,8 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
 
       // 현재 주문의 명목 가치에 해당되는 레버리지 구간의 레버리지 최대값보다
       // 변경된 레버리지가 크면 대기 주문 유지 불가
-      IsValidLeverage(order_price, pending_entry->GetEntryOrderSize());
+      IsValidLeverage(leverage, order_price,
+                      pending_entry->GetEntryOrderSize());
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
 
@@ -327,7 +394,7 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
       // 초기 마진 계산 시 미실현 손실을 계산하는 기준 가격 타입은 '시가'로 통일
       const auto updated_margin =
           CalculateMargin(pending_entry->GetEntryOrderPrice(),
-                          pending_entry->GetEntryOrderSize(), OPEN);
+                          pending_entry->GetEntryOrderSize(), OPEN, symbol_idx);
 
       // 마진 재설정 후 진입 가능 자금과 재비교
       engine_->DecreaseUsedMargin(entry_margin);
@@ -358,92 +425,6 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
     // 최종적으로 문제가 없다면 현재 주문의 레버리지 재설정
     pending_entry->SetLeverage(leverage);
   }
-}
-
-double BaseOrderHandler::BarsSinceEntry() const {
-  // 전략 실행 시 무조건 트레이딩 바를 사용하므로 원본 바 타입은 저장하지 않음
-  const auto last_entry_bar_index =
-      last_entry_bar_indices_[bar_->GetCurrentSymbolIndex()];
-
-  if (last_entry_bar_index == SIZE_MAX) {
-    // 아직 진입이 없었던 심볼은 NaN을 반환 (기본 SIZE_MAX로 초기화 됨)
-    return NAN;
-  }
-
-  // 진입이 있었던 심볼은 현재 바 인덱스와의 차이를 구해 반환
-  return static_cast<double>(bar_->GetCurrentBarIndex() - last_entry_bar_index);
-}
-
-double BaseOrderHandler::BarsSinceExit() const {
-  // 전략 실행 시 무조건 트레이딩 바를 사용하므로 원본 바 타입은 저장하지 않음
-  const auto last_exit_bar_index =
-      last_exit_bar_indices_[bar_->GetCurrentSymbolIndex()];
-
-  if (last_exit_bar_index == SIZE_MAX) {
-    // 아직 진입이 없었던 심볼은 NaN을 반환 (기본 SIZE_MAX로 초기화 됨)
-    return NAN;
-  }
-
-  // 진입이 있었던 심볼은 현재 바 인덱스와의 차이를 구해 반환
-  return static_cast<double>(bar_->GetCurrentBarIndex() - last_exit_bar_index);
-}
-
-double BaseOrderHandler::LastEntryPrice() const {
-  return last_entry_prices_[bar_->GetCurrentSymbolIndex()];
-}
-
-double BaseOrderHandler::LastExitPrice() const {
-  return last_exit_prices_[bar_->GetCurrentSymbolIndex()];
-}
-
-double BaseOrderHandler::CalculateMargin(const double price,
-                                         const double entry_size,
-                                         const PriceType price_type) const {
-  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
-
-  // 가격 * 수량 / 레버리지 + 해당 심볼의 미실현 손실의 절댓값
-  return price * entry_size / leverages_[symbol_idx] +
-         GetUnrealizedLoss(symbol_idx, price_type);
-}
-
-double BaseOrderHandler::CalculateLiquidationPrice(
-    const Direction entry_direction, const double order_price,
-    const double position_size, const double margin) {
-  // 청산 가격
-  // = (마진 + 유지 금액 - (진입 가격 * 포지션 크기: 롱 양수, 숏 음수))
-  //    / (포지션 크기 절댓값 * 유지 증거금율 - (포지션 크기: 롱 양수, 숏 음수))
-
-  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
-  const auto abs_position_size = abs(position_size);
-  const auto signed_position_size =
-      entry_direction == LONG ? abs_position_size : -abs_position_size;
-  const auto& leverage_bracket =
-      GetLeverageBracket(symbol_idx, order_price, abs_position_size);
-
-  const double numerator = margin + leverage_bracket.maintenance_amount -
-                           order_price * signed_position_size;
-  const double denominator =
-      abs_position_size * leverage_bracket.maintenance_margin_rate -
-      signed_position_size;
-
-  if (const double result = numerator / denominator;
-      IsLessOrEqual(result, 0.0)) {
-    // 롱의 경우, 강제 청산 가격이 0 이하면 절대 청산되지 않음
-    return 0;
-  } else {
-    return RoundToTickSize(result, symbol_info_[symbol_idx].GetTickSize());
-  }
-}
-
-void BaseOrderHandler::LogFormattedInfo(const LogLevel log_level,
-                                        const string& formatted_message,
-                                        const char* file, const int line) {
-  logger_->Log(log_level,
-               format("[{}] {}",
-                      bar_->GetBarData(bar_->GetCurrentBarType())
-                          ->GetSymbolName(bar_->GetCurrentSymbolIndex()),
-                      formatted_message),
-               file, line);
 }
 
 int BaseOrderHandler::GetLeverage(const int symbol_idx) const {
@@ -656,20 +637,20 @@ void BaseOrderHandler::IsValidNotionalValue(const double order_price,
   }
 }
 
-void BaseOrderHandler::IsValidLeverage(const double order_price,
-                                       const double position_size) const {
+void BaseOrderHandler::IsValidLeverage(const int leverage,
+                                       const double order_price,
+                                       const double position_size) {
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
-  const auto current_leverage = leverages_[symbol_idx];
 
   if (const auto max_leverage =
           GetLeverageBracket(symbol_idx, order_price, position_size)
               .max_leverage;
-      IsGreater(current_leverage, max_leverage)) {
-    throw InvalidValue(
-        format("레버리지 미달 (레버리지 [{}] | 조건: 명목 가치 [{}] 레버리지 "
-               "구간의 최대 레버리지 [{}] 이하)",
-               current_leverage,
-               FormatDollar(order_price * position_size, true), max_leverage));
+      leverage < 1 || leverage > max_leverage) {
+    throw InvalidValue(format(
+        "레버리지 [{}] 조건 미만족 (조건: [1] 이상 및 명목 가치 [{}] 레버리지 "
+        "구간의 최대 레버리지 [{}] 이하)",
+        leverage, FormatDollar(order_price * position_size, true),
+        max_leverage));
   }
 }
 
