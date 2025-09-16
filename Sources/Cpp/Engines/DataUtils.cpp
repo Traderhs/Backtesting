@@ -530,15 +530,15 @@ pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>> SplitTable(
           arrow::Table::Make(table->schema(), second_chunked_arrays)};
 }
 
-double RoundToTickSize(const double price, const double tick_size) {
-  if (IsLessOrEqual(tick_size, 0.0)) {
+double RoundToStep(const double value, const double step) {
+  if (IsLessOrEqual(step, 0.0)) {
     Logger::LogAndThrowError(
-        format("주어진 틱 사이즈 {}은(는) 0보다 커야합니다.",
-               to_string(tick_size)),
+        format("반올림을 위하여 주어진 스텝 {}은(는) 0보다 커야합니다.",
+               to_string(step)),
         __FILE__, __LINE__);
   }
 
-  const double result = round(price / tick_size) * tick_size;
+  const double result = round(value / step) * step;
 
   // 부동 소수점 정밀도 보정
   return round(result * 1e10) / 1e10;

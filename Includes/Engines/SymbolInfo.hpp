@@ -13,7 +13,7 @@ using namespace nlohmann;
 
 namespace backtesting::order {
 
-/// 하나의 레버리지 브라켓을 나타내는 구조
+/// 하나의 레버리지 브라켓을 나타내는 구조체
 struct LeverageBracket {
   double min_notional_value;       // 해당 구간의 최소 명목 가치
   double max_notional_value;       // 해당 구간의 최대 명목 가치
