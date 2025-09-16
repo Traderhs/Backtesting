@@ -69,10 +69,10 @@ class BaseEngine {
   void SetBankruptcy();
 
   /// 해당되는 심볼 인덱스의 거래소 정보를 반환하는 함수
-  [[nodiscard]] const SymbolInfo& GetSymbolInfo(int symbol_idx) const;
+  [[nodiscard]] SymbolInfo GetSymbolInfo(int symbol_idx) const;
 
   /// 엔진 설정값을 반환하는 함수
-  [[nodiscard]] static const shared_ptr<Config>& GetConfig();
+  [[nodiscard]] static shared_ptr<Config>& GetConfig();
 
   /// 지갑 자금을 반환하는 함수
   [[nodiscard]] double GetWalletBalance() const;

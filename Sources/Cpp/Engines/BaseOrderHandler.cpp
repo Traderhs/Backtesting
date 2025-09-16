@@ -35,7 +35,7 @@ BaseOrderHandler::~BaseOrderHandler() = default;
 
 shared_ptr<Analyzer>& BaseOrderHandler::analyzer_ = Analyzer::GetAnalyzer();
 shared_ptr<BarHandler>& BaseOrderHandler::bar_ = BarHandler::GetBarHandler();
-shared_ptr<Config> BaseOrderHandler::config_ = Engine::GetConfig();
+shared_ptr<Config>& BaseOrderHandler::config_ = Engine::GetConfig();
 shared_ptr<Engine>& BaseOrderHandler::engine_ = Engine::GetEngine();
 shared_ptr<Logger>& BaseOrderHandler::logger_ = Logger::GetLogger();
 vector<SymbolInfo> BaseOrderHandler::symbol_info_;
@@ -338,9 +338,9 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
       // 주문 타입별로 체결 예상 시의 명목 가치를 계산하는 가격이 다르므로 분기
       switch (pending_entry->GetEntryOrderType()) {
         case MARKET:
-        [[fallthrough]]
+          [[fallthrough]];
         case LIMIT:
-        [[fallthrough]]
+          [[fallthrough]];
         case LIT: {
           order_price = pending_entry->GetEntryOrderPrice();
           break;
@@ -646,11 +646,11 @@ void BaseOrderHandler::IsValidLeverage(const int leverage,
           GetLeverageBracket(symbol_idx, order_price, position_size)
               .max_leverage;
       leverage < 1 || leverage > max_leverage) {
-    throw InvalidValue(format(
-        "레버리지 [{}x] 조건 미만족 (조건: [1x] 이상 및 명목 가치 [{}] 레버리지 "
-        "구간의 최대 레버리지 [{}x] 이하)",
-        leverage, FormatDollar(order_price * position_size, true),
-        max_leverage));
+    throw InvalidValue(
+        format("레버리지 [{}x] 조건 미만족 (조건: [1x] 이상 및 명목 가치 [{}] "
+               "레버리지 구간의 최대 레버리지 [{}x] 이하)",
+               leverage, FormatDollar(order_price * position_size, true),
+               max_leverage));
   }
 }
 

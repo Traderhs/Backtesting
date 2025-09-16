@@ -54,7 +54,7 @@ mutex Analyzer::mutex_;
 shared_ptr<Analyzer> Analyzer::instance_;
 
 shared_ptr<BarHandler>& Analyzer::bar_ = BarHandler::GetBarHandler();
-shared_ptr<Config> Analyzer::config_ = Engine::GetConfig();
+shared_ptr<Config>& Analyzer::config_ = Engine::GetConfig();
 shared_ptr<Engine>& Analyzer::engine_ = Engine::GetEngine();
 shared_ptr<Logger>& Analyzer::logger_ = Logger::GetLogger();
 vector<SymbolInfo> Analyzer::symbol_info_;
