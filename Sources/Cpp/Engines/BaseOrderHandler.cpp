@@ -161,13 +161,13 @@ double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
   for (const auto& filled_entry : filled_entries_[symbol_idx]) {
     // 진입 방향에 따라 손실 합산
     // 부분 청산 시 남은 진입 물량만 미실현 손실에 포함됨
-    const auto loss = CalculatePnl(
+    const auto pnl = CalculatePnl(
         filled_entry->GetEntryDirection(), base_price,
         filled_entry->GetEntryFilledPrice(),
         filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize());
 
-    if (IsLess(loss, 0.0)) {
-      sum_loss += abs(loss);
+    if (IsLess(pnl, 0.0)) {
+      sum_loss += abs(pnl);
     }
   }
 
@@ -258,6 +258,17 @@ double BaseOrderHandler::LastExitPrice() const {
   return last_exit_prices_[bar_->GetCurrentSymbolIndex()];
 }
 
+void BaseOrderHandler::LogFormattedInfo(const LogLevel log_level,
+                                        const string& formatted_message,
+                                        const char* file, const int line) {
+  logger_->Log(log_level,
+               format("[{}] {}",
+                      bar_->GetBarData(bar_->GetCurrentBarType())
+                          ->GetSymbolName(bar_->GetCurrentSymbolIndex()),
+                      formatted_message),
+               file, line);
+}
+
 double BaseOrderHandler::CalculateMargin(const double price,
                                          const double entry_size,
                                          const PriceType price_type,
@@ -294,17 +305,6 @@ double BaseOrderHandler::CalculateLiquidationPrice(
   } else {
     return RoundToTickSize(result, symbol_info_[symbol_idx].GetTickSize());
   }
-}
-
-void BaseOrderHandler::LogFormattedInfo(const LogLevel log_level,
-                                        const string& formatted_message,
-                                        const char* file, const int line) {
-  logger_->Log(log_level,
-               format("[{}] {}",
-                      bar_->GetBarData(bar_->GetCurrentBarType())
-                          ->GetSymbolName(bar_->GetCurrentSymbolIndex()),
-                      formatted_message),
-               file, line);
 }
 
 void BaseOrderHandler::AdjustLeverage(const int leverage) {
