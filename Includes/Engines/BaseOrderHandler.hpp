@@ -115,6 +115,11 @@ class BaseOrderHandler {
   // ===========================================================================
   // OrderHandler 및 전략에서 사용하는 함수들
   // ===========================================================================
+  /// 심볼 이름으로 포맷된 로그를 발생시키는 함수
+  static void LogFormattedInfo(LogLevel log_level,
+                               const string& formatted_message,
+                               const char* file, int line);
+
   /// 진입 마진을 계산하여 반환하는 함수
   ///
   /// price_type은 미실현 손실을 계산하는 가격 기준을 지정
@@ -168,11 +173,6 @@ class BaseOrderHandler {
   /// 리버스 청산을 진행할 때 청산 가격을 지정하기 위한 변수.
   /// MarketExit은 청산 가격의 별도 지정이 불가능하기 때문에 클래스 변수를 사용
   double reverse_exit_price_;
-
-  /// 전략 이름과 심볼 이름으로 포맷된 로그를 발생시키는 함수
-  static void LogFormattedInfo(LogLevel log_level,
-                               const string& formatted_message,
-                               const char* file, int line);
 
   /// 현재 심볼의 레버리지를 변경하는 함수
   ///
