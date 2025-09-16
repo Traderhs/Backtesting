@@ -14,6 +14,7 @@
 #include "Engines/DataUtils.hpp"
 #include "Engines/Exception.hpp"
 #include "Engines/Logger.hpp"
+#include "Engines/SymbolInfo.hpp"
 
 // 네임 스페이스
 using namespace std;
@@ -258,7 +259,7 @@ void BaseEngine::DecreaseUsedMargin(const double decrease_margin) {
 
 void BaseEngine::SetBankruptcy() { is_bankruptcy_ = true; }
 
-const SymbolInfo& BaseEngine::GetSymbolInfo(int symbol_idx) const {
+SymbolInfo BaseEngine::GetSymbolInfo(const int symbol_idx) const {
   if (symbol_idx < 0 || symbol_idx >= trading_bar_num_symbols_) {
     Logger::LogAndThrowError(
         format("심볼 정보를 얻기 위하여 지정된 심볼 인덱스 [{}]이(가) 0 "
@@ -270,7 +271,7 @@ const SymbolInfo& BaseEngine::GetSymbolInfo(int symbol_idx) const {
   return symbol_info_[symbol_idx];
 }
 
-const shared_ptr<Config>& BaseEngine::GetConfig() { return config_; }
+shared_ptr<Config>& BaseEngine::GetConfig() { return config_; }
 
 double BaseEngine::GetWalletBalance() const { return wallet_balance_; }
 

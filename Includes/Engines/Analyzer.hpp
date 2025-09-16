@@ -123,7 +123,7 @@ class Analyzer {
   static shared_ptr<Analyzer> instance_;
 
   static shared_ptr<BarHandler>& bar_;
-  static shared_ptr<Config> config_;
+  static shared_ptr<Config>& config_;
   static shared_ptr<Engine>& engine_;
   static shared_ptr<Logger>& logger_;
 
