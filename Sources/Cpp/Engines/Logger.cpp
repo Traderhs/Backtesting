@@ -263,11 +263,11 @@ void Logger::SetLogDirectory(const string& log_directory) {
       instance_->warning_log_.rdbuf()->pubsetbuf(nullptr, 0);
       instance_->error_log_.rdbuf()->pubsetbuf(nullptr, 0);
 
-      // 백테스팅 로그 경로 업데이트
+      // 백테스팅 로그 경로 업데이트 (기존 내용 삭제하고 새로 시작)
       instance_->backtesting_log_temp_path_ =
           log_directory + "/" + backtesting_name;
       instance_->backtesting_log_.open(instance_->backtesting_log_temp_path_,
-                                       ios::app);
+                                       ios::out | ios::trunc);
       instance_->backtesting_log_.rdbuf()->pubsetbuf(nullptr, 0);
     }
   } catch (const exception& e) {
