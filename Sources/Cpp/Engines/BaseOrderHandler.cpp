@@ -69,7 +69,7 @@ void BaseOrderHandler::Initialize(const int num_symbols) {
   ranges::fill(last_exit_prices_, NAN);
 
   // 레버리지 벡터를 심볼 개수로 초기화
-  // 초기 레버리지는 1
+  // 초기 레버리지는 1x
   leverages_.resize(num_symbols, 1);
 
   is_initialized_ = true;
@@ -319,7 +319,7 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
   // 체결된 진입 주문이 존재하면 레버리지 변경 불가
   if (!filled_entries_[symbol_idx].empty()) {
     throw InvalidValue(
-        format("레버리지 [{}] → [{}] 변경 불가 (체결된 진입 주문 존재)",
+        format("레버리지 [{}x] → [{}x] 변경 불가 (체결된 진입 주문 존재)",
                current_leverage, leverage));
   }
 
@@ -327,7 +327,7 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
   leverages_[symbol_idx] = leverage;
 
   LogFormattedInfo(
-      INFO_L, format("레버리지 [{}] → [{}] 변경", current_leverage, leverage),
+      INFO_L, format("레버리지 [{}x] → [{}x] 변경", current_leverage, leverage),
       __FILE__, __LINE__);
 
   // 진입 대기 주문 확인
@@ -647,8 +647,8 @@ void BaseOrderHandler::IsValidLeverage(const int leverage,
               .max_leverage;
       leverage < 1 || leverage > max_leverage) {
     throw InvalidValue(format(
-        "레버리지 [{}] 조건 미만족 (조건: [1] 이상 및 명목 가치 [{}] 레버리지 "
-        "구간의 최대 레버리지 [{}] 이하)",
+        "레버리지 [{}x] 조건 미만족 (조건: [1x] 이상 및 명목 가치 [{}] 레버리지 "
+        "구간의 최대 레버리지 [{}x] 이하)",
         leverage, FormatDollar(order_price * position_size, true),
         max_leverage));
   }
