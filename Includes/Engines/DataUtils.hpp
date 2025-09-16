@@ -142,8 +142,8 @@ void JsonToFile(future<json> data, const string& file_path);
 [[nodiscard]] pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>>
 SplitTable(const shared_ptr<arrow::Table>& table, double split_ratio);
 
-/// 최소 틱 크기로 가격을 반올림하여 반환하는 함수
-[[nodiscard]] double RoundToTickSize(double price, double tick_size);
+/// 최소 스텝 크기로 값을 반올림하여 반환하는 함수
+[[nodiscard]] double RoundToStep(double value, double step);
 
 // FormatDollar에서 사용하는 공통 Locale 설정
 static locale global_locale("en_US.UTF-8");

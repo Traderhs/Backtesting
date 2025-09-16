@@ -624,7 +624,7 @@ void OrderHandler::LimitEntry(const string& entry_name,
 
     // 주문 가격을 틱 사이즈로 반올림
     order_price =
-        RoundToTickSize(order_price, symbol_info_[symbol_idx].GetTickSize());
+        RoundToStep(order_price, symbol_info_[symbol_idx].GetTickSize());
 
     // 주문 생성
     const auto limit_entry = make_shared<Order>();
@@ -718,7 +718,7 @@ void OrderHandler::MitEntry(const string& entry_name,
 
     // 터치 가격을 틱 사이즈로 반올림
     touch_price =
-        RoundToTickSize(touch_price, symbol_info_[symbol_idx].GetTickSize());
+        RoundToStep(touch_price, symbol_info_[symbol_idx].GetTickSize());
 
     // 주문 생성
     const auto mit_entry = make_shared<Order>();
@@ -794,8 +794,8 @@ void OrderHandler::LitEntry(const string& entry_name,
 
     // 터치 가격과 주문 가격을 틱 사이즈로 반올림
     const auto tick_size = symbol_info_[symbol_idx].GetTickSize();
-    touch_price = RoundToTickSize(touch_price, tick_size);
-    order_price = RoundToTickSize(order_price, tick_size);
+    touch_price = RoundToStep(touch_price, tick_size);
+    order_price = RoundToStep(order_price, tick_size);
 
     // 주문 생성
     const auto lit_entry = make_shared<Order>();
@@ -875,7 +875,7 @@ void OrderHandler::TrailingEntry(const string& entry_name,
 
     // 터치 가격을 틱 사이즈로 반올림
     touch_price =
-        RoundToTickSize(touch_price, symbol_info_[symbol_idx].GetTickSize());
+        RoundToStep(touch_price, symbol_info_[symbol_idx].GetTickSize());
 
     // 주문 생성
     const auto trailing_entry = make_shared<Order>();
@@ -1160,7 +1160,7 @@ void OrderHandler::LimitExit(const string& exit_name, const string& target_name,
 
     // 주문 가격을 틱 사이즈로 반올림
     order_price =
-        RoundToTickSize(order_price, symbol_info_[symbol_idx].GetTickSize());
+        RoundToStep(order_price, symbol_info_[symbol_idx].GetTickSize());
 
     // 총 청산 주문 수량이 진입 체결 수량보다 크지 않게 조정
     order_size = GetAdjustedExitSize(order_size, entry_order);
@@ -1246,7 +1246,7 @@ void OrderHandler::MitExit(const string& exit_name, const string& target_name,
 
     // 터치 가격을 틱 사이즈로 반올림
     touch_price =
-        RoundToTickSize(touch_price, symbol_info_[symbol_idx].GetTickSize());
+        RoundToStep(touch_price, symbol_info_[symbol_idx].GetTickSize());
 
     // 총 청산 주문 수량이 진입 체결 수량보다 크지 않게 조정
     order_size = GetAdjustedExitSize(order_size, entry_order);
@@ -1331,8 +1331,8 @@ void OrderHandler::LitExit(const string& exit_name, const string& target_name,
 
     // 터치 가격과 주문 가격을 틱 사이즈로 반올림
     const auto tick_size = symbol_info_[symbol_idx].GetTickSize();
-    touch_price = RoundToTickSize(touch_price, tick_size);
-    order_price = RoundToTickSize(order_price, tick_size);
+    touch_price = RoundToStep(touch_price, tick_size);
+    order_price = RoundToStep(order_price, tick_size);
 
     // 총 청산 주문 수량이 진입 체결 수량보다 크지 않게 조정
     order_size = GetAdjustedExitSize(order_size, entry_order);
@@ -1422,7 +1422,7 @@ void OrderHandler::TrailingExit(const string& exit_name,
 
     // 터치 가격을 틱 사이즈로 반올림
     touch_price =
-        RoundToTickSize(touch_price, symbol_info_[symbol_idx].GetTickSize());
+        RoundToStep(touch_price, symbol_info_[symbol_idx].GetTickSize());
 
     // 총 청산 주문 수량이 진입 체결 수량보다 크지 않게 조정
     order_size = GetAdjustedExitSize(order_size, entry_order);
@@ -1831,8 +1831,8 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order) {
              order_type_str, exit_name,
              Order::OrderTypeToString(exit_order->GetEntryOrderType()),
              entry_name, exit_filled_price,
-             RoundToTickSize(exit_order->GetExitFilledSize(),
-                             symbol_info_[symbol_idx].GetQtyStep()),
+             RoundToStep(exit_order->GetExitFilledSize(),
+                         symbol_info_[symbol_idx].GetQtyStep()),
              FormatDollar(left_margin, true),
              FormatDollar(calculated_pnl, true),
              FormatDollar(realized_pnl, true)),
@@ -2584,10 +2584,10 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
           .SetLeverage(exit_order->GetLeverage())
           .SetEntryPrice(exit_order->GetEntryFilledPrice())
           .SetEntrySize(  // 부동 소수점 오류 방지를 위해 반올림
-              RoundToTickSize(exit_order->GetEntryFilledSize(), qty_step))
+              RoundToStep(exit_order->GetEntryFilledSize(), qty_step))
           .SetExitPrice(exit_order->GetExitFilledPrice())
           .SetExitSize(  // 부동 소수점 오류 방지를 위해 반올림
-              RoundToTickSize(exit_order->GetExitFilledSize(), qty_step))
+              RoundToStep(exit_order->GetExitFilledSize(), qty_step))
           .SetLiquidationPrice(exit_order->GetLiquidationPrice())
           .SetReceivedFundingCount(received_funding_count)
           .SetReceivedFundingAmount(received_funding_amount)

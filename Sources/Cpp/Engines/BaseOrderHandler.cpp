@@ -303,7 +303,7 @@ double BaseOrderHandler::CalculateLiquidationPrice(
     // 롱의 경우, 강제 청산 가격이 0 이하면 절대 청산되지 않음
     return 0;
   } else {
-    return RoundToTickSize(result, symbol_info_[symbol_idx].GetTickSize());
+    return RoundToStep(result, symbol_info_[symbol_idx].GetTickSize());
   }
 }
 
@@ -470,13 +470,13 @@ double BaseOrderHandler::CalculateSlippagePrice(const OrderType order_type,
 
   // 방향에 따라 덧셈과 뺄셈이 달라짐
   if (direction == LONG) {
-    return RoundToTickSize(
+    return RoundToStep(
         order_price + slippage_points,
         symbol_info_[bar_->GetCurrentSymbolIndex()].GetTickSize());
   }
 
   if (direction == SHORT) {
-    return RoundToTickSize(
+    return RoundToStep(
         order_price - slippage_points,
         symbol_info_[bar_->GetCurrentSymbolIndex()].GetTickSize());
   }
