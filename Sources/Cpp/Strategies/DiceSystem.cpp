@@ -56,7 +56,7 @@ void DiceSystem::ExecuteOnClose() {
                           position_size, leverage);
         } else {
           // 문제가 있다면 기존 진입 주문 취소
-          order->LogFormattedInfo(
+          OrderHandler::LogFormattedInfo(
               WARNING_L,
               "매수 진입 주문 포지션 크기 및 레버리지 계산 중 문제 발생",
               __FILE__, __LINE__);
@@ -80,7 +80,7 @@ void DiceSystem::ExecuteOnClose() {
                           position_size, leverage);
         } else {
           // 문제가 있다면 기존 진입 주문 취소
-          order->LogFormattedInfo(
+          OrderHandler::LogFormattedInfo(
               WARNING_L,
               "매도 진입 주문 포지션 크기 및 레버리지 계산 중 문제 발생",
               __FILE__, __LINE__);
@@ -92,10 +92,10 @@ void DiceSystem::ExecuteOnClose() {
       }
 
     } else {
-      order->LogFormattedInfo(WARNING_L,
-                              "지갑 자금의 90% 이상을 마진으로 사용 중이므로 "
-                              "모든 진입 대기 주문 취소",
-                              __FILE__, __LINE__);
+      OrderHandler::LogFormattedInfo(WARNING_L,
+                                     "지갑 자금의 90% 이상을 마진으로 사용 "
+                                     "중이므로 모든 진입 대기 주문 취소",
+                                     __FILE__, __LINE__);
       engine->LogBalance();
 
       order->Cancel("매수 진입");
@@ -160,6 +160,31 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
     return make_pair(0, 0);
   }
 
+  if (isnan(stop_loss_points)) {
+    OrderHandler::LogFormattedInfo(WARNING_L,
+                                   "스톱 로스 포인트가 NaN이므로 계산 실패",
+                                   __FILE__, __LINE__);
+    return make_pair(0, 0);
+  }
+
+  if (isnan(order_price)) {
+    OrderHandler::LogFormattedInfo(WARNING_L, "진입 가격이 NaN이므로 계산 실패",
+                                   __FILE__, __LINE__);
+    return make_pair(0, 0);
+  }
+
+  if (stop_loss_points == 0) {
+    OrderHandler::LogFormattedInfo(
+        WARNING_L, "스톱 로스 포인트가 0이므로 계산 실패", __FILE__, __LINE__);
+    return make_pair(0, 0);
+  }
+
+  if (order_price == 0) {
+    OrderHandler::LogFormattedInfo(WARNING_L, "진입 가격이 0이므로 계산 실패",
+                                   __FILE__, __LINE__);
+    return make_pair(0, 0);
+  }
+
   auto& symbol_info = symbol_info_[bar->GetCurrentSymbolIndex()];
 
   // 지갑 자금 = 13,800 USDT, 거래당 리스크 = 2%, 심볼당 할당 자금 = 5%,
@@ -195,7 +220,7 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
   // ceil(5,753 USDT / 690 USDT) = 8.3376...x → 9x 레버리지
   int leverage = ceil(notional_value / available_margin);
   if (leverage < 1) {
-    order->LogFormattedInfo(
+    OrderHandler::LogFormattedInfo(
         WARNING_L,
         format("계산된 레버리지 [{}x]이(가) 1 미만이므로 [{}x] → [1x]로 조정",
                leverage, leverage),
@@ -248,7 +273,7 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
     notional_value = position_size * order_price;
     entry_margin = notional_value / leverage;
 
-    order->LogFormattedInfo(
+    OrderHandler::LogFormattedInfo(
         WARNING_L,
         format("계산된 진입 마진 [{}]가 심볼당 할당 마진 [{}]를 초과하므로 "
                "포지션 크기 [{}] → [{}]로 조정 (명목 가치 [{}] → [{}] | 진입 "
@@ -320,7 +345,7 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
     leverage = safe_leverage;
     entry_margin = notional_value / leverage;
 
-    order->LogFormattedInfo(
+    OrderHandler::LogFormattedInfo(
         WARNING_L,
         format("청산가 [{}]이(가) 손절가 [{}]보다 진입가 [{}]에 가까우므로 "
                "레버리지 [{}x] → [{}x]로 조정 (청산가 [{}] → [{}] | 진입 마진 "
@@ -352,7 +377,7 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
       notional_value = position_size * order_price;
       entry_margin = notional_value / leverage;
 
-      order->LogFormattedInfo(
+      OrderHandler::LogFormattedInfo(
           WARNING_L,
           format("조정된 진입 마진 [{}]가 심볼당 할당 마진 [{}]를 초과하므로 "
                  "포지션 크기 [{}] → [{}]로 조정 (명목 가치 [{}] → [{}] | 진입 "
@@ -375,7 +400,7 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
   // 0.11 BTC는 0.001 BTC ~ 1000 BTC 범위 내이므로 통과
   if (position_size < min_qty) {
     // 예: 계산된 포지션이 0.0005 BTC < 0.001 BTC (최소 수량) → 진입 불가
-    order->LogFormattedInfo(
+    OrderHandler::LogFormattedInfo(
         WARNING_L,
         format(
             "계산된 포지션 크기 [{}]이(가) 시장가의 최소 포지션 크기 [{}]보다 "
@@ -386,7 +411,7 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
     position_size = 0;  // 최소 수량보다 작으면 진입하지 않음
   } else if (position_size > max_qty) {
     // 예: 계산된 포지션이 1500 BTC > 1000 BTC(최대 수량) → 1000 BTC로 제한
-    order->LogFormattedInfo(
+    OrderHandler::LogFormattedInfo(
         WARNING_L,
         format(
             "계산된 포지션 크기 [{}]이(가) 시장가의 최대 포지션 크기 [{}]보다 "
@@ -404,12 +429,13 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
   if (const double min_notional_value = symbol_info.GetMinNotionalValue();
       final_notional_value < min_notional_value) {
     // 예: 0.001 BTC × 5,000 USDT = 5 USDT < 10 USDT(최소 명목 가치) → 진입 불가
-    order->LogFormattedInfo(WARNING_L,
-                            format("계산된 명목 가치 [{}]가 해당 심볼의 최소 "
-                                   "명목 가치 [{}]보다 적으므로 진입 불가",
-                                   FormatDollar(final_notional_value, true),
-                                   FormatDollar(min_notional_value, true)),
-                            __FILE__, __LINE__);
+    OrderHandler::LogFormattedInfo(
+        WARNING_L,
+        format("계산된 명목 가치 [{}]가 해당 심볼의 최소 명목 가치 [{}]보다 "
+               "적으므로 진입 불가",
+               FormatDollar(final_notional_value, true),
+               FormatDollar(min_notional_value, true)),
+        __FILE__, __LINE__);
 
     position_size = 0;
   }
