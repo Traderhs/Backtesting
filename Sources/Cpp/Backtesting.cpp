@@ -41,8 +41,7 @@
 #include "Backtesting.hpp"
 
 // 내부 헤더
-#include "Strategies/TestStrategy.hpp"
-#include "Strategies/TestStrategy2.hpp"
+#include "Strategies/DiceSystem.hpp"
 
 string Backtesting::market_data_directory_;
 string Backtesting::api_key_env_var_;
@@ -54,12 +53,14 @@ int main() {
   Backtesting::SetMarketDataDirectory("D:/Programming/Backtesting/Data");
   Backtesting::FetchExchangeInfo();
   Backtesting::FetchLeverageBracket();
-
+  const vector<string>& symbol_list = {"BTCUSDT"};
+  
+/*
   const vector<string>& symbol_list = {
       "BTCUSDT",  "APTUSDT", "ETHUSDT",  "BNBUSDT",  "SOLUSDT",
       "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT",  "XRPUSDT",
       "LINKUSDT", "TRXUSDT", "LTCUSDT",  "ATOMUSDT", "NEARUSDT",
-      "ETCUSDT",  "FILUSDT", "INJUSDT",  "SUIUSDT",  "ARBUSDT"};
+      "ETCUSDT",  "FILUSDT", "INJUSDT",  "SUIUSDT",  "ARBUSDT"};*/
 
   Backtesting::AddBarDataBatch(
       symbol_list, "1h", "D:/Programming/Backtesting/Data/Continuous Klines",
@@ -95,7 +96,7 @@ int main() {
       .SetTakerSlippagePercentage(0.1)
       .SetMakerSlippagePercentage(0);
 
-  Backtesting::AddStrategy<TestStrategy2>("SMA Strategy");
+  Backtesting::AddStrategy<DiceSystem>("Dice System");
 
   Backtesting::Run();
 }
