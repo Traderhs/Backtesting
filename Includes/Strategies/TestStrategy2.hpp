@@ -23,4 +23,6 @@ class TestStrategy2 final : public Strategy {
   
   SwingHigh& highest_;
   SwingLow& lowest_;
+
+  StandardDeviation& std_;
 };

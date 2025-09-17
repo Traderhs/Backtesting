@@ -9,5 +9,20 @@
     "notebook.markup.fontSize": 13,
     "notebook.output.fontSize": 13,
     "editor.codeLensFontSize": 13,
-    "editor.minimap.sectionHeaderFontSize": 13
+    "editor.minimap.sectionHeaderFontSize": 13,
+    "files.associations": {
+        "cctype": "cpp",
+        "clocale": "cpp",
+        "cmath": "cpp",
+        "csetjmp": "cpp",
+        "csignal": "cpp",
+        "cstdarg": "cpp",
+        "cstddef": "cpp",
+        "cstdio": "cpp",
+        "cstdlib": "cpp",
+        "cstring": "cpp",
+        "ctime": "cpp",
+        "cwchar": "cpp",
+        "cwctype": "cpp"
+    }
 }
