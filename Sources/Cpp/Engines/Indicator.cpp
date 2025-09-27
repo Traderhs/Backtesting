@@ -83,19 +83,31 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // 특정 지표 계산 중 다른 지표 참조하는데 참조 지표의 정의 순서가 더 늦는 경우
   if (!is_calculated_) [[unlikely]] {
     throw runtime_error(
-        format("[{} {}] 지표 계산에 사용하는 [{} {}] 지표가 [{} {}] 지표보다 "
-               "먼저 정의되지 않아 계산되지 않았으므로 참조할 수 없습니다.",
-               calculating_name_, calculating_timeframe_, name_, timeframe_,
-               calculating_name_, calculating_timeframe_));
+        format("[{} {}] 지표가 계산되지 않았으므로 참조할 수 없습니다.", name_,
+               timeframe_));
   }
 
-  // 특정 지표 계산 중 해당 지표와 다른 타임프레임의 지표 사용 시 에러 발생
+  // 다른 지표 계산 중 해당 지표와 다른 타임프레임의 이 지표를 사용 시 에러 발생
   if (is_calculating_ && timeframe_ != calculating_timeframe_) [[unlikely]] {
     throw runtime_error(
         format("[{} {}] 지표 계산에 사용하는 [{} {}] 지표의 타임프레임은 "
                "[{} {}] 지표의 타임프레임과 동일해야 합니다.",
                calculating_name_, calculating_timeframe_, name_, timeframe_,
                calculating_name_, calculating_timeframe_));
+  }
+
+  // BEFORE/AFTER 전략에서 현재 인덱스 값 참조 시 에러 발생
+  // 봉 완성은 CLOSE에서 되는데, 해당 전략들은 봉 중간에 실행되므로 현재 인덱스
+  // 값 참조 시 미래의 값을 참조하게 되는 것이므로 논리에 맞지 않음
+  // (current_strategy_type의 초기값은 ON_CLOSE이므로 계산 중에는 관계 없음)
+  if (index == 0 && engine_->GetCurrentStrategyType() != ON_CLOSE)
+      [[unlikely]] {
+    Logger::LogAndThrowError(
+        format("Before/After 전략에서는 [0]을 이용하여 [{} {}] 지표의 현재 "
+               "인덱스의 값을 참조할 수 없습니다.",
+               name_, timeframe_),
+        __FILE__, __LINE__);
+    throw;
   }
 
   // 음수 index는 size_t 타입이므로 검사하지 않음
@@ -223,7 +235,8 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // =========================================================================
   // 2단계: 순방향 검색 (과거 -> 현재)
   // target_close_time과 정확히 일치하는 다음 바가 있는지 확인
-  // 정확히 일치하는 바가 있다면 그 바를 사용 (더 정확한 시점)
+  // 정확히 일치하는 바가 있다면 그 바를 사용
+  // (1단계에서 목표 시간보다 과거로 갔을 수도 있으므로 정확한 시점을 찾기 위함)
   // =========================================================================
   const auto num_bars = reference_num_bars_[symbol_idx];
   while (ref_bar_idx + 1 < num_bars) [[likely]] {
@@ -337,13 +350,9 @@ void Indicator::CalculateIndicator() {
     is_calculated_ = true;
     is_calculating_ = false;
 
-    // 로그 출력 - 성공 메시지
     logger_->Log(INFO_L, format("[{} {}] 지표 계산 완료", name_, timeframe_),
                  __FILE__, __LINE__, true);
   } catch (const exception& e) {
-    // 예외 발생 시 상태 정리 - 안전한 상태 복구
-    is_calculating_ = false;
-
     logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
     Logger::LogAndThrowError(
         format("[{} {}] 지표 계산 중 오류가 발생했습니다.", name_, timeframe_),
