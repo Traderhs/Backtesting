@@ -22,18 +22,17 @@ EndOfDay::EndOfDay(const string& name, const string& timeframe,
 }
 
 void EndOfDay::Initialize() {
-  // 지표가 각 심볼별로 재초기화될 때 호출됨
-  reference_bar_ = bar_->GetBarData(REFERENCE, this->GetTimeframe());
-  symbol_idx_ = bar_->GetCurrentSymbolIndex();
-
-  // Initialize 때 하는 이유는, timeframe으로 TRADING_TIMEFRAME 문자열을 사용할
-  // 수 있기 때문에 엔진 초기화 후 지표 초기화 때 초기화 해야함
+  // Initialize 때 파싱하는 이유는, timeframe으로 TRADING_TIMEFRAME 문자열을
+  // 사용할 수 있기 때문에 엔진 초기화 후 지표 초기화 때 하는 것
   try {
     timeframe_minutes_ =
         static_cast<int>(ParseTimeframe(GetTimeframe()) / kMinute);
   } catch (const exception& e) {
     Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
   }
+
+  reference_bar_ = bar_->GetBarData(REFERENCE, this->GetTimeframe());
+  symbol_idx_ = bar_->GetCurrentSymbolIndex();
 }
 
 Numeric<double> EndOfDay::Calculate() {
@@ -63,16 +62,14 @@ Numeric<double> EndOfDay::Calculate() {
 }
 
 void EndOfDay::ValidateAndParseTime(const string& time_str) {
-  // HH:MM:SS 형식 검증 (정규표현식)
-  const regex time_pattern(
-      R"(^([01]?[0-9]|2[0-3]):([0-5]?[0-9]):([0-5]?[0-9])$)");
+  // HH:MM:SS 형식 검증
+  const regex time_pattern(R"(^(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$)");
   smatch matches;
 
   if (!regex_match(time_str, matches, time_pattern)) {
     Logger::LogAndThrowError(
         format(
-            "EndOfDay 지표의 장 마감 시간 [{}]이(가) HH:MM:SS 형식이 아닙니다. "
-            "(예시: \"15:30:00\")",
+            "EndOfDay 지표의 장 마감 시간 [{}]이(가) HH:MM:SS 형식이 아닙니다.",
             time_str),
         __FILE__, __LINE__);
   }
