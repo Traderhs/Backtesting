@@ -179,11 +179,26 @@ template <typename T, typename U>
     return false;
   }
 
-  const CommonType diff =
-      std::fabs(static_cast<CommonType>(a) - static_cast<CommonType>(b));
-  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
+  const auto ca = static_cast<CommonType>(a);
+  const auto cb = static_cast<CommonType>(b);
 
-  return diff <= tolerance;
+  // 절대적 오차 (매우 작은 값들을 위해) - double precision 기준
+  constexpr CommonType abs_tolerance =
+      std::numeric_limits<CommonType>::epsilon() * 100;
+
+  // 상대적 오차
+  constexpr CommonType rel_tolerance = 1e-12;
+
+  const CommonType diff = std::fabs(ca - cb);
+
+  // 절대적 오차 체크 (0에 가까운 값들)
+  if (diff <= abs_tolerance) {
+    return true;
+  }
+
+  // 상대적 오차 체크 (큰 값들)
+  const CommonType max_val = (std::max)(std::fabs(ca), std::fabs(cb));
+  return diff <= rel_tolerance * max_val;
 }
 
 /// 부동 소수점 크기 비교를 위한 함수.
@@ -198,11 +213,28 @@ template <typename T, typename U>
     return false;
   }
 
-  const CommonType diff =
-      static_cast<CommonType>(a) - static_cast<CommonType>(b);
-  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
+  const auto ca = static_cast<CommonType>(a);
+  const auto cb = static_cast<CommonType>(b);
 
-  return diff > tolerance;  // 차이가 tolerance보다 크면 a가 더 큼
+  // 절대적 오차
+  constexpr CommonType abs_tolerance =
+      std::numeric_limits<CommonType>::epsilon() * 100;
+  constexpr CommonType rel_tolerance = 1e-12;
+
+  const CommonType diff = ca - cb;
+  const CommonType abs_diff = std::fabs(diff);
+
+  // 같은 값인지 체크
+  if (abs_diff <= abs_tolerance) {
+    return false;
+  }
+
+  const CommonType max_val = (std::max)(std::fabs(ca), std::fabs(cb));
+  if (abs_diff <= rel_tolerance * max_val) {
+    return false;
+  }
+
+  return diff > 0;
 }
 
 /// 부동 소수점 크기 비교를 위한 함수.
@@ -217,12 +249,28 @@ template <typename T, typename U>
     return false;
   }
 
-  const CommonType diff =
-      static_cast<CommonType>(a) - static_cast<CommonType>(b);
-  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
+  const auto ca = static_cast<CommonType>(a);
+  const auto cb = static_cast<CommonType>(b);
 
-  return diff >=
-         -tolerance;  // 차이가 tolerance보다 크거나 같으면 a가 크거나 같음
+  // 절대적 오차
+  constexpr CommonType abs_tolerance =
+      std::numeric_limits<CommonType>::epsilon() * 100;
+  constexpr CommonType rel_tolerance = 1e-12;
+
+  const CommonType diff = ca - cb;
+  const CommonType abs_diff = std::fabs(diff);
+
+  // 같은 값인지 체크
+  if (abs_diff <= abs_tolerance) {
+    return true;
+  }
+
+  const CommonType max_val = (std::max)(std::fabs(ca), std::fabs(cb));
+  if (abs_diff <= rel_tolerance * max_val) {
+    return true;
+  }
+
+  return diff > 0;
 }
 
 /// 부동 소수점 크기 비교를 위한 함수.
@@ -237,11 +285,28 @@ template <typename T, typename U>
     return false;
   }
 
-  const CommonType diff =
-      static_cast<CommonType>(a) - static_cast<CommonType>(b);
-  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
+  const auto ca = static_cast<CommonType>(a);
+  const auto cb = static_cast<CommonType>(b);
 
-  return diff < -tolerance;  // 차이가 -tolerance보다 작으면 a가 더 작음
+  // 절대적 오차
+  constexpr CommonType abs_tolerance =
+      std::numeric_limits<CommonType>::epsilon() * 100;
+  constexpr CommonType rel_tolerance = 1e-12;
+
+  const CommonType diff = ca - cb;
+  const CommonType abs_diff = std::fabs(diff);
+
+  // 같은 값인지 체크
+  if (abs_diff <= abs_tolerance) {
+    return false;
+  }
+
+  const CommonType max_val = (std::max)(std::fabs(ca), std::fabs(cb));
+  if (abs_diff <= rel_tolerance * max_val) {
+    return false;
+  }
+
+  return diff < 0;
 }
 
 /// 부동 소수점 크기 비교를 위한 함수.
@@ -256,12 +321,28 @@ template <typename T, typename U>
     return false;
   }
 
-  const CommonType diff =
-      static_cast<CommonType>(a) - static_cast<CommonType>(b);
-  constexpr CommonType tolerance = 1e-10;  // 소수점 10자리까지 비교
+  const auto ca = static_cast<CommonType>(a);
+  const auto cb = static_cast<CommonType>(b);
 
-  return diff <=
-         tolerance;  // 차이가 tolerance보다 작거나 같으면 a가 작거나 같음
+  // 절대적 오차
+  constexpr CommonType abs_tolerance =
+      std::numeric_limits<CommonType>::epsilon() * 100;
+  constexpr CommonType rel_tolerance = 1e-12;
+
+  const CommonType diff = ca - cb;
+  const CommonType abs_diff = std::fabs(diff);
+
+  // 같은 값인지 체크
+  if (abs_diff <= abs_tolerance) {
+    return true;
+  }
+
+  const CommonType max_val = (std::max)(std::fabs(ca), std::fabs(cb));
+  if (abs_diff <= rel_tolerance * max_val) {
+    return true;
+  }
+
+  return diff < 0;
 }
 
 }  // namespace backtesting::utils
