@@ -45,7 +45,8 @@ namespace backtesting::strategy {
  *    ExecuteBeforeEntry → 진입 체결 직전에 해당 심볼에서만 실행\n
  *    ExecuteAfterEntry → 진입 체결이 있었다면 해당 심볼에서만 즉시 실행\n
  *    ExecuteBeforeExit → 청산 체결 직전에 해당 심볼에서만 실행\n
- *    ExecuteAfterExit → 청산 체결이 있었다면 해당 심볼에서만 즉시 실행\n
+ *    ExecuteAfterExit → 청산 체결이 있었다면 해당 심볼에서만 즉시 실행
+ *                       ExecuteAfterEntry보다 우선 순위가 높음\n
  *
  * 2. 헤더 파일 및 소스 파일은 자동으로 탐색하여 저장.
  *    파일명과 클래스명이 동일하고, 지정된 경로에 존재할 때만 소스 파일 탐지.
@@ -73,9 +74,9 @@ namespace backtesting::strategy {
  *    지표 바의 Close Time이 트레이딩 바의 Close Time이 동일해진 순간,
  *    다음 Close Time이 동일해지기 전까지 지표의 전 바의 값이 참조됨\n
  *
- * 9. ※ 매우 중요 ※
- *     지표 값은 완성되지 않은 현재 바의 값을 참조하므로, ExecuteAfterEntry,
- *     ExecuteAfterExit 함수에서는 되도록이면 [1] 이상의 값을 참조할 것
+ * 9. 지표 값은 종가에서 완성되는데 BEFORE/AFTER 전략에서는 완성되지 않은
+ *    현재 바의 중간 값을 참조하므로,
+ *    BEFORE/AFTER 전략에서는 [0]으로 현재의 값을 참조할 수 없음 ([1] 이상 가능)
  *
  * 10. 부가 기능으로, 진입 잔량을 전량 청산하고 싶으면 left_size 변수를
  *     청산 수량에 사용하면 됨.\n
