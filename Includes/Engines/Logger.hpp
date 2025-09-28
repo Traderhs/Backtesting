@@ -268,7 +268,7 @@ class Logger final {
   ofstream backtesting_log_;
 
   // 백그라운드 스레드 관리
-  atomic<bool> stop_logging_;
+  atomic<bool> stop_logging_{false};
   thread logging_thread_;
 
   // 고성능 쓰기를 위한 내부 구조체
