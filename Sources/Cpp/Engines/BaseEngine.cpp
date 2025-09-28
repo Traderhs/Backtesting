@@ -18,7 +18,10 @@
 
 // 네임 스페이스
 using namespace std;
-using namespace backtesting::utils;
+namespace backtesting {
+using namespace exception;
+using namespace utils;
+}  // namespace backtesting
 
 namespace backtesting::engine {
 
@@ -200,7 +203,7 @@ void BaseEngine::DecreaseWalletBalance(const double decrease_balance) {
                FormatDollar(decrease_balance, true),
                FormatDollar(wallet_balance_, true)),
         __FILE__, __LINE__, true);
-    throw exception::Bankruptcy("지갑 자금 감소 실패");
+    throw Bankruptcy("지갑 자금 감소 실패");
   }
 
   wallet_balance_ -= decrease_balance;
