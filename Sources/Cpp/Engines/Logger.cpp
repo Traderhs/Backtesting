@@ -251,6 +251,10 @@ void Logger::SetLogDirectory(const string& log_directory) {
     // 현재 디렉토리의 로그 파일들을 새 디렉토리로 이동
     if (instance_) {
       // 파일을 전부 닫음
+      if (instance_->debug_log_.is_open()) {
+        instance_->debug_log_.close();
+      }
+
       if (instance_->info_log_.is_open()) {
         instance_->info_log_.close();
       }
