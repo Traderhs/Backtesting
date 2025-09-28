@@ -43,7 +43,7 @@ using namespace backtesting::utils;
 namespace backtesting::logger {
 
 // Thread-local 변수 정의
-thread_local char Logger::format_cache_[2048];  // 시간 추가로 인한 크기 증가
+thread_local char Logger::format_cache_[2048];
 thread_local char Logger::filename_cache_[256];
 
 // 파일별 전용 버퍼 - 전역 static 변수
@@ -61,18 +61,29 @@ string Logger::log_directory_;
 // 빠른 레벨 문자열 반환 - 브랜치 예측 최적화
 const char* Logger::GetLevelString(const LogLevel level) {
   switch (level) {
-    case DEBUG_L:
+    case DEBUG_L: {
       return "DEBUG";
-    case INFO_L:
+    }
+
+    case INFO_L: {
       return "INFO";
-    case WARNING_L:
+    }
+
+    case WARNING_L: {
       return "WARNING";
-    case ERROR_L:
+    }
+
+    case ERROR_L: {
       return "ERROR";
-    case BALANCE_L:
+    }
+
+    case BALANCE_L: {
       return "BALANCE";
-    default:
+    }
+
+    default: {
       return "UNKNOWN";
+    }
   }
 }
 
@@ -115,7 +126,9 @@ size_t Logger::FormatMessageFast(char* buffer, const LogLevel level,
 
   // 레벨 복사
   const char* lvl = level_str;
-  while (*lvl) *p++ = *lvl++;
+  while (*lvl) {
+    *p++ = *lvl++;
+  }
 
   *p++ = ']';
   *p++ = ' ';
@@ -123,7 +136,9 @@ size_t Logger::FormatMessageFast(char* buffer, const LogLevel level,
 
   // 파일명 복사
   const char* fn = filename;
-  while (*fn) *p++ = *fn++;
+  while (*fn) {
+    *p++ = *fn++;
+  }
 
   *p++ = ':';
 
@@ -153,7 +168,9 @@ size_t Logger::FormatMessageFast(char* buffer, const LogLevel level,
 
   // 메시지 복사
   const char* msg = message;
-  while (*msg) *p++ = *msg++;
+  while (*msg) {
+    *p++ = *msg++;
+  }
 
   *p++ = '\n';
   *p = '\0';
@@ -198,12 +215,28 @@ void Logger::Deleter::operator()(Logger* p) const {
     if (p->logging_thread_.joinable()) {
       p->logging_thread_.join();
     }
+
     p->FlushAllBuffers();
-    if (p->debug_log_.is_open()) p->debug_log_.close();
-    if (p->info_log_.is_open()) p->info_log_.close();
-    if (p->warning_log_.is_open()) p->warning_log_.close();
-    if (p->error_log_.is_open()) p->error_log_.close();
-    if (p->backtesting_log_.is_open()) p->backtesting_log_.close();
+    if (p->debug_log_.is_open()) {
+      p->debug_log_.close();
+    }
+
+    if (p->info_log_.is_open()) {
+      p->info_log_.close();
+    }
+
+    if (p->warning_log_.is_open()) {
+      p->warning_log_.close();
+    }
+
+    if (p->error_log_.is_open()) {
+      p->error_log_.close();
+    }
+
+    if (p->backtesting_log_.is_open()) {
+      p->backtesting_log_.close();
+    }
+
     delete p;
   }
 }
@@ -218,12 +251,21 @@ void Logger::SetLogDirectory(const string& log_directory) {
     // 현재 디렉토리의 로그 파일들을 새 디렉토리로 이동
     if (instance_) {
       // 파일을 전부 닫음
-      if (instance_->debug_log_.is_open()) instance_->debug_log_.close();
-      if (instance_->info_log_.is_open()) instance_->info_log_.close();
-      if (instance_->warning_log_.is_open()) instance_->warning_log_.close();
-      if (instance_->error_log_.is_open()) instance_->error_log_.close();
-      if (instance_->backtesting_log_.is_open())
+      if (instance_->info_log_.is_open()) {
+        instance_->info_log_.close();
+      }
+
+      if (instance_->warning_log_.is_open()) {
+        instance_->warning_log_.close();
+      }
+
+      if (instance_->error_log_.is_open()) {
+        instance_->error_log_.close();
+      }
+
+      if (instance_->backtesting_log_.is_open()) {
         instance_->backtesting_log_.close();
+      }
 
       // 기본 파일 이름 설정
       const string& debug_name = "debug.log";
@@ -410,24 +452,35 @@ FORCE_INLINE void Logger::Log(const LogLevel& log_level, const string& message,
     // 브랜치 예측 최적화된 레벨 문자열 선택
     const char* level_str;
     switch (log_level) {
-      case INFO_L:
+      case INFO_L: {
         level_str = "INFO_L";
         break;
-      case DEBUG_L:
+      }
+
+      case DEBUG_L: {
         level_str = "DEBUG_L";
         break;
-      case WARNING_L:
+      }
+
+      case WARNING_L: {
         level_str = "WARNING_L";
         break;
-      case ERROR_L:
+      }
+
+      case ERROR_L: {
         level_str = "ERROR_L";
         break;
-      case BALANCE_L:
+      }
+
+      case BALANCE_L: {
         level_str = "BALANCE_L";
         break;
-      default:
+      }
+
+      default: {
         level_str = "INFO_L";
         break;
+      }
     }
 
     format_cache_[msg_len - 1] = '\0';  // \n 제거
@@ -484,29 +537,36 @@ FORCE_INLINE void Logger::WriteToBuffersFast(const LogLevel log_level,
   FastLogBuffer* target_buffer;
   switch (log_level) {
     case INFO_L:  // 가장 자주 사용되는 케이스를 맨 위로
-      target_buffer = &info_buffer;
-      PREFETCH_WRITE(target_buffer);
-      break;
-    case BALANCE_L:
+      [[fallthrough]];
+    case BALANCE_L: {
       target_buffer = &info_buffer;  // BALANCE는 INFO와 같은 버퍼 사용
       PREFETCH_WRITE(target_buffer);
       break;
-    case WARNING_L:
+    }
+
+    case WARNING_L: {
       target_buffer = &warning_buffer;
       PREFETCH_WRITE(target_buffer);
       break;
-    case ERROR_L:
+    }
+
+    case ERROR_L: {
       target_buffer = &error_buffer;
       PREFETCH_WRITE(target_buffer);
       break;
-    case DEBUG_L:
+    }
+
+    case DEBUG_L: {
       target_buffer = &debug_buffer;
       PREFETCH_WRITE(target_buffer);
       break;
-    default:
+    }
+
+    default: {
       target_buffer = &info_buffer;  // 기본값
       PREFETCH_WRITE(target_buffer);
       break;
+    }
   }
 
   // 백테스팅 버퍼 프리페치
@@ -522,22 +582,28 @@ FORCE_INLINE void Logger::WriteToBuffersFast(const LogLevel log_level,
   // 극한 상황에서만 직접 파일 쓰기 (매우 드물어야 함)
   if (UNLIKELY(!level_written)) {
     switch (log_level) {
-      case DEBUG_L:
-        debug_log_.write(data, static_cast<streamsize>(len));
-        break;
       case INFO_L:
-        info_log_.write(data, static_cast<streamsize>(len));
-        break;
-      case WARNING_L:
-        warning_log_.write(data, static_cast<streamsize>(len));
-        break;
-      case ERROR_L:
-        error_log_.write(data, static_cast<streamsize>(len));
-        break;
-      case BALANCE_L:
+        [[fallthrough]];
+      case BALANCE_L: {
         info_log_.write(
             data, static_cast<streamsize>(len));  // BALANCE는 INFO 로그에 쓰기
         break;
+      }
+
+      case WARNING_L: {
+        warning_log_.write(data, static_cast<streamsize>(len));
+        break;
+      }
+
+      case ERROR_L: {
+        error_log_.write(data, static_cast<streamsize>(len));
+        break;
+      }
+
+      case DEBUG_L: {
+        debug_log_.write(data, static_cast<streamsize>(len));
+        break;
+      }
     }
   }
 
@@ -553,7 +619,7 @@ void Logger::LogAndThrowError(const string& message, const string& file,
 }
 
 void Logger::ConsoleLog(const string& level, const string& message) {
-  if (level == "DEBUG_L") {
+  if (level == "BALANCE_L" || level == "DEBUG_L") {
     cout << "\033[90m" << message << "\033[0m" << endl;  // Gray
   } else if (level == "INFO_L") {
     cout << "\033[38;2;200;200;200m" << message << "\033[0m" << endl;  // White
@@ -561,8 +627,6 @@ void Logger::ConsoleLog(const string& level, const string& message) {
     cout << "\033[33m" << message << "\033[0m" << endl;  // Yellow
   } else if (level == "ERROR_L") {
     cout << "\033[31m" << message << "\033[0m" << endl;  // Red
-  } else if (level == "BALANCE_L") {
-    cout << "\033[90m" << message << "\033[0m" << endl;  // Gray (same as DEBUG)
   }
 }
 
