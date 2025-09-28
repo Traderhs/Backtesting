@@ -57,10 +57,10 @@ int main() {
   
 /*
   const vector<string>& symbol_list = {
-      "BTCUSDT",  "APTUSDT", "ETHUSDT",  "BNBUSDT",  "SOLUSDT",
-      "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT",  "XRPUSDT",
-      "LINKUSDT", "TRXUSDT", "LTCUSDT",  "ATOMUSDT", "NEARUSDT",
-      "ETCUSDT",  "FILUSDT", "INJUSDT",  "SUIUSDT",  "ARBUSDT"};*/
+    "BTCUSDT",  "APTUSDT", "ETHUSDT",  "BNBUSDT",  "SOLUSDT",
+    "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT",  "XRPUSDT",
+    "LINKUSDT", "TRXUSDT", "LTCUSDT",  "ATOMUSDT", "NEARUSDT",
+    "ETCUSDT",  "FILUSDT", "INJUSDT",  "SUIUSDT",  "ARBUSDT"};*/
 
   Backtesting::AddBarDataBatch(
       symbol_list, "1h", "D:/Programming/Backtesting/Data/Continuous Klines",

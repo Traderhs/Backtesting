@@ -12,6 +12,8 @@ class TestStrategy final : public Strategy {
   void ExecuteOnClose() override;
   void ExecuteAfterEntry() override;
   void ExecuteAfterExit() override;
+  void ExecuteBeforeEntry() override;
+  void ExecuteBeforeExit() override;
 
  private:
   // ReSharper disable once CppInconsistentNaming
