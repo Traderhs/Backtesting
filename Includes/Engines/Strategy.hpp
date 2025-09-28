@@ -97,13 +97,46 @@ class Strategy {
 
     used_creation_function_ = true;
 
-    strategy_ =
-        std::make_shared<CustomStrategy>(name, std::forward<Args>(args)...);
+    try {
+      strategy_ =
+          std::make_shared<CustomStrategy>(name, std::forward<Args>(args)...);
+    } catch (const std::exception& e) {
+      // 지표 관련 오류면 이미 로깅 됐으므로 간단하게,
+      // 전략 생성자의 다른 오류면 상세하게
+      if (const string& error_msg = e.what();
+          error_msg.find("지표 생성자에서 오류가 발생했습니다.") !=
+          string::npos) {
+        Logger::LogAndThrowError(
+            format("[{}] 전략 생성자에서 오류가 발생했습니다.", name), __FILE__,
+            __LINE__);
+      } else {
+        Logger::LogAndThrowError(
+            format("[{}] 전략 생성자에서 오류가 발생했습니다.: {}", name,
+                   error_msg),
+            __FILE__, __LINE__);
+      }
+    } catch (...) {
+      Logger::LogAndThrowError(
+          format("[{}] 전략 생성자에서 알 수 없는 오류가 발생했습니다.", name),
+          __FILE__, __LINE__);
+    }
 
     // 전략의 헤더 파일 및 소스 파일 경로 자동 설정
     if (strategy_->cpp_file_path_.empty() &&
         strategy_->header_file_path_.empty()) {
-      strategy_->AutoDetectSourcePaths<CustomStrategy>();
+      try {
+        strategy_->AutoDetectSourcePaths<CustomStrategy>();
+      } catch (const std::exception& e) {
+        logger->Log(
+            WARNING_L,
+            format("[{}] 소스 파일 경로 자동 탐지 실패: {}", name, e.what()),
+            __FILE__, __LINE__, false);
+      } catch (...) {
+        logger->Log(
+            WARNING_L,
+            format("[{}] 소스 파일 경로 자동 탐지에서 알 수 없는 오류", name),
+            __FILE__, __LINE__, false);
+      }
     }
 
     logger->Log(INFO_L, format("[{}] 전략이 엔진에 추가되었습니다.", name),
@@ -246,12 +279,37 @@ class Strategy {
     // AddIndicator 함수를 통할 때만 생성 카운터 증가
     Indicator::IncreaseCreationCounter();
 
-    const auto& indicator = std::make_shared<CustomIndicator>(
-        name, timeframe, plot, std::forward<Args>(args)...);
+    shared_ptr<CustomIndicator> indicator;
+    try {
+      indicator = std::make_shared<CustomIndicator>(
+          name, timeframe, plot, std::forward<Args>(args)...);
+    } catch (const std::exception& e) {
+      Logger::LogAndThrowError(
+          format("[{}] 지표 생성자에서 오류가 발생했습니다.: {}", name,
+                 e.what()),
+          __FILE__, __LINE__);
+    } catch (...) {
+      Logger::LogAndThrowError(
+          format("[{}] 지표 생성자에서 알 수 없는 오류가 발생했습니다.", name),
+          __FILE__, __LINE__);
+    }
 
     // 지표의 소스 파일 경로 자동 설정
     // (같은 클래스 이름의 지표가 저장되지 않았을 경우에만)
-    indicator->template AutoDetectSourcePaths<CustomIndicator>();
+    try {
+      indicator->template AutoDetectSourcePaths<CustomIndicator>();
+    } catch (const std::exception& e) {
+      logger->Log(
+          WARNING_L,
+          format("[{}] 지표 소스 파일 경로 자동 탐지 실패: {}", name, e.what()),
+          __FILE__, __LINE__, false);
+    } catch (...) {
+      logger->Log(
+          WARNING_L,
+          format("[{}] 지표 소스 파일 경로 자동 탐지에서 알 수 없는 오류",
+                 name),
+          __FILE__, __LINE__, false);
+    }
 
     if (const string& class_name = indicator->GetClassName();
         !Indicator::IsIndicatorClassSaved(class_name) &&
