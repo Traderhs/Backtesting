@@ -63,7 +63,7 @@ Numeric<double> EndOfDay::Calculate() {
 
 void EndOfDay::ValidateAndParseTime(const string& time_str) {
   // HH:MM:SS 형식 검증
-  const regex time_pattern(R"(^(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$)");
+  const regex time_pattern(R"(^([01][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$)");
   smatch matches;
 
   if (!regex_match(time_str, matches, time_pattern)) {

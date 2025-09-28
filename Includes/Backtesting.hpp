@@ -273,11 +273,12 @@ class Backtesting {
   /// 엔진에 전략을 추가하는 함수.
   ///
   /// 템플릿에 생성한 커스텀 전략을 추가하고 이름을 넣으면 됨.
-  template <typename CustomStrategy>
-  static void AddStrategy(const string& name) {
+  template <typename CustomStrategy, typename... Args>
+  static void AddStrategy(const string& name, Args&&... args) {
     try {
-      Strategy::AddStrategy<CustomStrategy>(name);
+      Strategy::AddStrategy<CustomStrategy>(name, std::forward<Args>(args)...);
     } catch (...) {
+      // 하위에서 이미 상세 로그를 남겼으므로 여기서는 간단하게
       Logger::LogAndThrowError(
           format("[{}] 전략을 엔진에 추가하는 데 실패했습니다.", name),
           __FILE__, __LINE__);
