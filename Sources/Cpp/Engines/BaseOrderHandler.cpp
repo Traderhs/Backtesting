@@ -85,16 +85,16 @@ void BaseOrderHandler::SetSymbolInfo(const vector<SymbolInfo>& symbol_info) {
   }
 }
 
-void BaseOrderHandler::UpdateCurrentPositionSize() {
+void BaseOrderHandler::UpdateCurrentPositionSize(const int symbol_idx) {
   double sum_position_size = 0;
 
-  for (const auto& filled_entry :
-       filled_entries_[bar_->GetCurrentSymbolIndex()]) {
+  for (const auto& filled_entry : filled_entries_[symbol_idx]) {
     double position_size =
         filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize();
 
-    position_size = filled_entry->GetEntryDirection() == LONG ? position_size
-                                                              : -position_size;
+    position_size = filled_entry->GetEntryDirection() == LONG
+                        ? fabs(position_size)
+                        : -fabs(position_size);
     sum_position_size += position_size;
   }
 
@@ -167,7 +167,7 @@ double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
         filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize());
 
     if (IsLess(pnl, 0.0)) {
-      sum_loss += abs(pnl);
+      sum_loss += fabs(pnl);
     }
   }
 
@@ -181,6 +181,7 @@ bool BaseOrderHandler::IsJustExited() const { return just_exited_; }
 void BaseOrderHandler::Cancel(const string& order_name) {
   const int symbol_idx = bar_->GetCurrentSymbolIndex();
   auto& pending_entries = pending_entries_[symbol_idx];
+  auto& pending_exits = pending_exits_[symbol_idx];
 
   // 진입 대기 주문에서 같은 이름이 존재할 시 삭제
   for (int order_idx = 0; order_idx < pending_entries.size(); order_idx++) {
@@ -197,13 +198,14 @@ void BaseOrderHandler::Cancel(const string& order_name) {
                  order_name),
           __FILE__, __LINE__);
       engine_->LogBalance();
-      break;  // 동일한 진입 이름으로 진입 대기 불가능하므로 찾으면 바로 break
+
+      // 동일한 진입 이름으로 진입 대기 불가능하므로 찾으면 바로 break
+      // (동일한 진입 이름으로 주문 시 기존 주문이 수정됨)
+      break;
     }
   }
 
   // 청산 대기 주문에서 같은 이름이 존재할 시 삭제
-  auto& pending_exits = pending_exits_[symbol_idx];
-
   for (int order_idx = 0; order_idx < pending_exits.size(); order_idx++) {
     if (const auto pending_exit = pending_exits[order_idx];
         order_name == pending_exit->GetExitName()) {
@@ -217,7 +219,10 @@ void BaseOrderHandler::Cancel(const string& order_name) {
                  order_name, FormatDollar(engine_->GetUsedMargin(), true),
                  FormatDollar(engine_->GetAvailableBalance(), true)),
           __FILE__, __LINE__);
-      break;  // 동일한 청산 이름으로 청산 대기 불가능하므로 찾으면 바로 break
+
+      // 동일한 청산 이름으로 청산 대기 불가능하므로 찾으면 바로 break
+      // (동일한 청산 이름으로 주문 시 기존 주문이 수정됨)
+      break;
     }
   }
 }
@@ -280,13 +285,12 @@ double BaseOrderHandler::CalculateMargin(const double price,
 
 double BaseOrderHandler::CalculateLiquidationPrice(
     const Direction entry_direction, const double order_price,
-    const double position_size, const double margin) {
+    const double position_size, const double margin, const int symbol_idx) {
   // 청산 가격
   // = (마진 + 유지 금액 - (진입 가격 * 포지션 크기: 롱 양수, 숏 음수))
   //    / (포지션 크기 절댓값 * 유지 증거금율 - (포지션 크기: 롱 양수, 숏 음수))
 
-  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
-  const auto abs_position_size = abs(position_size);
+  const auto abs_position_size = fabs(position_size);
   const auto signed_position_size =
       entry_direction == LONG ? abs_position_size : -abs_position_size;
   const auto& leverage_bracket =
@@ -307,8 +311,8 @@ double BaseOrderHandler::CalculateLiquidationPrice(
   }
 }
 
-void BaseOrderHandler::AdjustLeverage(const int leverage) {
-  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+void BaseOrderHandler::AdjustLeverage(const int leverage,
+                                      const int symbol_idx) {
   const auto current_leverage = leverages_[symbol_idx];
 
   // 현재 설정된 레버리지 값과 같으면 변경 없이 리턴
@@ -331,7 +335,12 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
       __FILE__, __LINE__);
 
   // 진입 대기 주문 확인
-  for (const auto& pending_entry : pending_entries_[symbol_idx]) {
+  // (현재 레버리지가 최대 레버리지를 초과하였다면 주문이 삭제되므로 역순 순회)
+  const auto& pending_entries = pending_entries_[symbol_idx];
+  for (int order_idx = static_cast<int>(pending_entries.size()) - 1;
+       order_idx >= 0; order_idx--) {
+    const auto& pending_entry = pending_entries[order_idx];
+
     try {
       double order_price = 0;
 
@@ -376,8 +385,8 @@ void BaseOrderHandler::AdjustLeverage(const int leverage) {
 
       // 현재 주문의 명목 가치에 해당되는 레버리지 구간의 레버리지 최대값보다
       // 변경된 레버리지가 크면 대기 주문 유지 불가
-      IsValidLeverage(leverage, order_price,
-                      pending_entry->GetEntryOrderSize());
+      IsValidLeverage(leverage, order_price, pending_entry->GetEntryOrderSize(),
+                      symbol_idx);
     } catch (const InvalidValue& e) {
       LogFormattedInfo(WARNING_L, e.what(), __FILE__, __LINE__);
 
@@ -433,7 +442,8 @@ int BaseOrderHandler::GetLeverage(const int symbol_idx) const {
 
 double BaseOrderHandler::CalculateSlippagePrice(const OrderType order_type,
                                                 const Direction direction,
-                                                const double order_price) {
+                                                const double order_price,
+                                                const int symbol_idx) {
   double slippage_points = 0;
 
   // 시장가, 지정가에 따라 슬리피지가 달라짐
@@ -470,15 +480,13 @@ double BaseOrderHandler::CalculateSlippagePrice(const OrderType order_type,
 
   // 방향에 따라 덧셈과 뺄셈이 달라짐
   if (direction == LONG) {
-    return RoundToStep(
-        order_price + slippage_points,
-        symbol_info_[bar_->GetCurrentSymbolIndex()].GetTickSize());
+    return RoundToStep(order_price + slippage_points,
+                       symbol_info_[symbol_idx].GetTickSize());
   }
 
   if (direction == SHORT) {
-    return RoundToStep(
-        order_price - slippage_points,
-        symbol_info_[bar_->GetCurrentSymbolIndex()].GetTickSize());
+    return RoundToStep(order_price - slippage_points,
+                       symbol_info_[symbol_idx].GetTickSize());
   }
 
   throw runtime_error("슬리피지 계산 오류");
@@ -558,13 +566,14 @@ void BaseOrderHandler::IsValidPrice(const double price) {
 }
 
 void BaseOrderHandler::IsValidPositionSize(const double position_size,
-                                           const OrderType order_type) const {
+                                           const OrderType order_type,
+                                           const int symbol_idx) const {
   if (IsLessOrEqual(position_size, 0.0)) {
     throw InvalidValue(format(
         "포지션 크기 미달 (포지션 크기 [{}] | 조건: 0 초과)", position_size));
   }
 
-  const auto& symbol_info = symbol_info_[bar_->GetCurrentSymbolIndex()];
+  const auto& symbol_info = symbol_info_[symbol_idx];
 
   // 포지션 수량 단위 확인
   if (const auto qty_step = symbol_info.GetQtyStep();
@@ -624,11 +633,11 @@ void BaseOrderHandler::IsValidPositionSize(const double position_size,
 }
 
 void BaseOrderHandler::IsValidNotionalValue(const double order_price,
-                                            const double position_size) {
+                                            const double position_size,
+                                            const int symbol_idx) {
   // 명목 가치가 해당 심볼의 최소 명목 가치보다 작으면 오류
   const auto notional = order_price * position_size;
-  if (const auto min_notional =
-          symbol_info_[bar_->GetCurrentSymbolIndex()].GetMinNotionalValue();
+  if (const auto min_notional = symbol_info_[symbol_idx].GetMinNotionalValue();
       IsLess(notional, min_notional)) {
     throw InvalidValue(
         format("명목 가치 부족 (명목 가치 [{}] | "
@@ -639,9 +648,8 @@ void BaseOrderHandler::IsValidNotionalValue(const double order_price,
 
 void BaseOrderHandler::IsValidLeverage(const int leverage,
                                        const double order_price,
-                                       const double position_size) {
-  const auto symbol_idx = bar_->GetCurrentSymbolIndex();
-
+                                       const double position_size,
+                                       const int symbol_idx) {
   if (const auto max_leverage =
           GetLeverageBracket(symbol_idx, order_price, position_size)
               .max_leverage;
@@ -654,12 +662,12 @@ void BaseOrderHandler::IsValidLeverage(const int leverage,
   }
 }
 
-void BaseOrderHandler::IsValidEntryName(const string& entry_name) const {
+void BaseOrderHandler::IsValidEntryName(const string& entry_name,
+                                        const int symbol_idx) const {
   /* 같은 이름으로 체결된 Entry Name이 여러 개 존재하면, 청산 시 Target Entry
      지정할 때의 로직이 꼬이기 때문에 하나의 Entry Name은 하나의 진입 체결로
      제한 */
-  for (const auto& filled_entry :
-       filled_entries_[bar_->GetCurrentSymbolIndex()]) {
+  for (const auto& filled_entry : filled_entries_[symbol_idx]) {
     /* 체결된 진입 주문 중 같은 이름이 하나라도 존재하면
        해당 entry_name으로 진입 불가 */
     if (entry_name == filled_entry->GetEntryName()) {
@@ -745,25 +753,25 @@ void BaseOrderHandler::HasEnoughBalance(const double balance,
 void BaseOrderHandler::UpdateLastEntryBarIndex(const int symbol_idx) {
   const auto original_bar_type = bar_->GetCurrentBarType();
 
-  bar_->SetCurrentBarType(TRADING, "NONE");
+  bar_->SetCurrentBarType(TRADING, "");
 
   last_entry_bar_indices_[symbol_idx] = bar_->GetCurrentBarIndex();
 
   // 진입 시에는 트레이딩, 돋보기 바만 사용하며, 진입 바 인덱스는 진입 시에만
   // 업데이트 되므로 타임프레임은 필요하지 않음
-  bar_->SetCurrentBarType(original_bar_type, "NONE");
+  bar_->SetCurrentBarType(original_bar_type, "");
 }
 
 void BaseOrderHandler::UpdateLastExitBarIndex(const int symbol_idx) {
   const auto original_bar_type = bar_->GetCurrentBarType();
 
-  bar_->SetCurrentBarType(TRADING, "NONE");
+  bar_->SetCurrentBarType(TRADING, "");
 
   last_exit_bar_indices_[symbol_idx] = bar_->GetCurrentBarIndex();
 
   // 진입 시에는 트레이딩, 돋보기 바만 사용하며, 진입 바 인덱스는 진입 시에만
   // 업데이트 되므로 타임프레임은 필요하지 않음
-  bar_->SetCurrentBarType(original_bar_type, "NONE");
+  bar_->SetCurrentBarType(original_bar_type, "");
 }
 
 void BaseOrderHandler::ExecuteCancelEntry(
