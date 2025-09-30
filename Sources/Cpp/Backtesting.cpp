@@ -53,14 +53,14 @@ int main() {
   Backtesting::SetMarketDataDirectory("D:/Programming/Backtesting/Data");
   Backtesting::FetchExchangeInfo();
   Backtesting::FetchLeverageBracket();
-  const vector<string>& symbol_list = {"BTCUSDT"};
+  //const vector<string>& symbol_list = {"BTCUSDT"};
   
-/*
+
   const vector<string>& symbol_list = {
     "BTCUSDT",  "APTUSDT", "ETHUSDT",  "BNBUSDT",  "SOLUSDT",
     "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT",  "XRPUSDT",
     "LINKUSDT", "TRXUSDT", "LTCUSDT",  "ATOMUSDT", "NEARUSDT",
-    "ETCUSDT",  "FILUSDT", "INJUSDT",  "SUIUSDT",  "ARBUSDT"};*/
+    "ETCUSDT",  "FILUSDT", "INJUSDT",  "SUIUSDT",  "ARBUSDT"};
 
   Backtesting::AddBarDataBatch(
       symbol_list, "1h", "D:/Programming/Backtesting/Data/Continuous Klines",
