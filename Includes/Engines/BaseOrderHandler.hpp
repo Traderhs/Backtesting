@@ -58,7 +58,7 @@ class BaseOrderHandler {
   static void SetSymbolInfo(const vector<SymbolInfo>& symbol_info);
 
   /// 현재 심볼의 포지션 사이즈 합계를 최신 상태로 업데이트하는 함수
-  void UpdateCurrentPositionSize();
+  void UpdateCurrentPositionSize(int symbol_idx);
 
   /// 현재 심볼의 포지션 사이즈를 단순 반환하는 함수.\n\n
   /// 전략 실횅 시점에 무조건 값을 업데이트하기 때문에 전략 내에서는 이 함수로
@@ -97,13 +97,17 @@ class BaseOrderHandler {
   /// 현재 심볼 마지막 진입으로부터 몇 개의 트레이딩 바가 지났는지 계산하여
   /// 반환하는 함수
   ///
-  /// 진입이 아직 없었던 심볼은 NaN이 반환됨
+  /// 1. 진입이 아직 없었던 심볼은 NaN이 반환됨
+  /// 2. BEFORE/AFTER 전략에서 돋보기 바로 참조하더라도 트레이딩 바 인덱스로
+  ///    참조되므로 주의
   [[nodiscard]] double BarsSinceEntry() const;
 
   /// 현재 심볼 마지막 청산으로부터 몇 개의 트레이딩 바가 지났는지 계산하여
   /// 반환하는 함수
   ///
-  /// 청산이 아직 없었던 심볼은 NaN이 반환됨
+  /// 1. 청산이 아직 없었던 심볼은 NaN이 반환됨
+  /// 2. BEFORE/AFTER 전략에서 돋보기 바로 참조하더라도 트레이딩 바 인덱스로
+  ///    참조되므로 주의
   [[nodiscard]] double BarsSinceExit() const;
 
   /// 현재 심볼의 마지막 진입 가격을 반환하는 함수
@@ -130,7 +134,7 @@ class BaseOrderHandler {
   /// 주문 정보에 따라 강제 청산 가격을 계산하여 반환하는 함수
   [[nodiscard]] static double CalculateLiquidationPrice(
       Direction entry_direction, double order_price, double position_size,
-      double margin);
+      double margin, int symbol_idx);
 
  protected:
   BaseOrderHandler();
@@ -177,7 +181,7 @@ class BaseOrderHandler {
   /// 현재 심볼의 레버리지를 변경하는 함수
   ///
   /// 현재 심볼에 체결된 주문이 없는 경우에만 변경 가능
-  void AdjustLeverage(int leverage);
+  void AdjustLeverage(int leverage, int symbol_idx);
 
   // 지정된 심볼의 설정된 레버리지를 반환하는 함수
   [[nodiscard]] int GetLeverage(int symbol_idx) const;
@@ -185,7 +189,8 @@ class BaseOrderHandler {
   /// 주문 정보에 따라 슬리피지를 반영한 체결 가격을 반환하는 함수.
   [[nodiscard]] static double CalculateSlippagePrice(OrderType order_type,
                                                      Direction direction,
-                                                     double order_price);
+                                                     double order_price,
+                                                     int symbol_idx);
 
   /// 주문 정보에 따라 수수료 금액을 계산하여 반환하는 함수
   [[nodiscard]] static double CalculateTradingFee(OrderType order_type,
@@ -210,19 +215,21 @@ class BaseOrderHandler {
   static void IsValidPrice(double price);
 
   // 포지션 크기가 유효한 값인지 확인하는 함수
-  void IsValidPositionSize(double position_size, OrderType order_type) const;
+  void IsValidPositionSize(double position_size, OrderType order_type,
+                           int symbol_idx) const;
 
   // 명목 가치(가격 * 포지션 크기)가 최소 기준을 통과하여
   // 유효한 값인지 확인하는 함수
-  static void IsValidNotionalValue(double order_price, double position_size);
+  static void IsValidNotionalValue(double order_price, double position_size,
+                                   int symbol_idx);
 
   // 지정된 레버리지가 1 이상이고 명목 가치에 해당되는 브라켓의 최대 레버리지
   // 이하인지 확인하는 함수
   static void IsValidLeverage(int leverage, double order_price,
-                              double position_size);
+                              double position_size, int symbol_idx);
 
   /// 진입 체결 시 진입 이름이 유효한지 확인하는 함수
-  void IsValidEntryName(const string& entry_name) const;
+  void IsValidEntryName(const string& entry_name, int symbol_idx) const;
 
   /// 청산 주문 시 청산 이름이 유효한지 확인하는 함수
   void IsValidExitName(const string& exit_name) const;
