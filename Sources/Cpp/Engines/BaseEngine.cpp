@@ -257,7 +257,12 @@ void BaseEngine::DecreaseUsedMargin(const double decrease_margin) {
     throw runtime_error("사용한 마진 감소 실패");
   }
 
-  used_margin_ -= decrease_margin;
+  // 감소할 마진이 현재 사용한 마진과 같으면 0으로 설정 (부동 소수점 오차 방지)
+  if (IsEqual(decrease_margin, used_margin_)) {
+    used_margin_ = 0.0;
+  } else {
+    used_margin_ -= decrease_margin;
+  }
 }
 
 void BaseEngine::SetBankruptcy() { is_bankruptcy_ = true; }
