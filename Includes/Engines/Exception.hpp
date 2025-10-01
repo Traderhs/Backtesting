@@ -34,12 +34,6 @@ class OrderFailed final : public runtime_error {
   explicit OrderFailed(const string& message) : runtime_error(message) {}
 };
 
-/// 청산 시 진입 주문을 찾기 못했을 때 발생하는 에러
-class EntryOrderNotFound final : public runtime_error {
- public:
-  explicit EntryOrderNotFound(const string& message) : runtime_error(message) {}
-};
-
 /// 파산 시 발생하는 에러
 class Bankruptcy final : public runtime_error {
  public:

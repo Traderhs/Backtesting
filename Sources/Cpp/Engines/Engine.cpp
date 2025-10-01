@@ -1,4 +1,5 @@
 // 표준 라이브러리
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <filesystem>
@@ -863,6 +864,10 @@ void Engine::InitializeEngine() {
   magnifier_indices_ = &bar_->GetBarIndices(MAGNIFIER);
   mark_price_indices_ = &bar_->GetBarIndices(MARK_PRICE);
 
+  // 가격 및 가격 타입 캐시 초기화
+  price_cache_.resize(trading_bar_num_symbols_);
+  price_type_cache_.resize(trading_bar_num_symbols_);
+
   // 심볼 정보 크기 초기화
   symbol_info_.resize(trading_bar_num_symbols_);
 
@@ -953,14 +958,13 @@ void Engine::InitializeSymbolInfo() {
               symbol_info.SetMinNotionalValue(
                   GetDoubleFromJson(filter, "notional"));
               filter_count += 1;
-              continue;
             }
           }
 
           if (filter_count != 7) {
-            Logger::LogAndThrowError(
-                "filters의 심볼 정보 중 일부가 존재하지 않습니다.", __FILE__,
-                __LINE__);
+            throw invalid_argument(
+                format("[{}] filters의 심볼 정보 중 일부가 존재하지 않습니다.",
+                       symbol_name));
           }
 
           symbol_info.SetLiquidationFeeRate(
@@ -980,9 +984,8 @@ void Engine::InitializeSymbolInfo() {
     } catch (const std::exception& e) {
       logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
       Logger::LogAndThrowError(
-          format(
-              "[{}] 심볼에서 거래소 정보를 초기화하는 중 오류가 발생했습니다.",
-              symbol_name),
+          format("[{}] 거래소 정보를 초기화하는 중 오류가 발생했습니다.",
+                 symbol_name),
           __FILE__, __LINE__);
     }
 
@@ -1082,13 +1085,11 @@ void Engine::InitializeSymbolInfo() {
       }
 
       if (!funding_rate_exist) {
-        Logger::LogAndThrowError(
-            format("백테스팅 기간 [{} - {}]에 해당되는 [{}] 펀딩 비율 데이터가 "
+        throw invalid_argument(
+            format("[{}] 백테스팅 기간 [{} - {}]에 해당되는 펀딩 비율 데이터가 "
                    "존재하지 않습니다.",
-                   UtcTimestampToUtcDatetime(begin_open_time_),
-                   UtcTimestampToUtcDatetime(end_close_time_),
-                   trading_bar_data_->GetSymbolName(symbol_idx)),
-            __FILE__, __LINE__);
+                   symbol_name, UtcTimestampToUtcDatetime(begin_open_time_),
+                   UtcTimestampToUtcDatetime(end_close_time_)));
       }
 
       symbol_info.SetFundingRates(funding_rates_vector);
@@ -1290,30 +1291,9 @@ void Engine::BacktestingMain() {
     for (const auto symbol_idx : activated_symbol_indices_) {
       ExecuteStrategy(ON_CLOSE, symbol_idx);
 
-      // On Close 전략 실행 후 연쇄반응 완전 처리
-      // ProcessOhlc와 동일한 로직으로 모든 즉시 체결과 연쇄반응을 처리
-      while (true) {
-        // 1. 청산이 존재했다면 After Exit 전략 실행
-        if (order_handler_->IsJustExited()) {
-          order_handler_->InitializeJustExited();
-          ExecuteStrategy(AFTER_EXIT, symbol_idx);
-
-          // After Exit에서 즉시 체결된 주문이 있을 수 있으므로 다시 확인
-          continue;
-        }
-
-        // 2. 진입이 존재했다면 After Entry 전략 실행
-        if (order_handler_->IsJustEntered()) {
-          order_handler_->InitializeJustEntered();
-          ExecuteStrategy(AFTER_ENTRY, symbol_idx);
-
-          // After Entry에서 즉시 체결된 주문이 있을 수 있으므로 다시 확인
-          continue;
-        }
-
-        // 청산 및 진입 체결이 없는 경우 연쇄반응 처리 종료
-        break;
-      }
+      // On Close 전략 실행 후 더 이상 추가 진입/청산이 발생하지 않을 때까지
+      // After 전략 실행
+      ExecuteChainedAfterStrategies(symbol_idx);
     }
 
     // =========================================================================
@@ -1622,14 +1602,14 @@ void Engine::CheckFundingTime() {
         funding_price = current_market_bar.open;
       } else {
         // 4. 모든 일치하는 데이터가 없다면 펀딩비 정산 불가
-        logger_->Log(
+        OrderHandler::LogFormattedInfo(
             WARNING_L,
-            format("[{}] 펀딩 비율 데이터에 마크 가격이 존재하지 않으며, 현재 "
-                   "진행 시간 [{}]과 일치하는 마크 가격 바와 시장 가격 바가 "
-                   "존재하지 않으므로 펀딩비를 정산할 수 없습니다.",
+            format("펀딩 시간 [{}] 데이터에 마크 가격이 존재하지 않으며, "
+                   "현재 진행 시간 [{}]과 일치하는 마크 가격 바와 시장 가격 "
+                   "바가 존재하지 않으므로 펀딩비를 정산할 수 없습니다.",
                    UtcTimestampToUtcDatetime(funding_time),
                    UtcTimestampToUtcDatetime(current_open_time_)),
-            __FILE__, __LINE__, true);
+            __FILE__, __LINE__);
 
         // 다음 펀딩 정보 업데이트
         update_next_funding_info(symbol_idx);
@@ -1649,91 +1629,101 @@ void Engine::CheckFundingTime() {
 
 void Engine::ProcessOhlc(const BarType bar_type,
                          const vector<int>& symbol_indices) {
+  // 체결/강제 청산해야 하는 주문들
+  vector<FillInfo> should_fill_orders;
+
   // 매커니즘에 따라 확인할 순서대로 가격을 정렬한 벡터 얻기
-  const auto [mark_price_queue, market_price_queue] =
-      move(GetPriceQueue(bar_type, symbol_indices));
+  const auto&& [mark_price_queue, market_price_queue] =
+      GetPriceQueue(bar_type, symbol_indices);
 
   // 순서: 한 가격에서 가격 확인 후 다음 심볼 및 가격으로 넘어감
   // 한 심볼에서 모든 가격 체크 후 다음 가격 체크하면 논리상 시간을 한 번
   // 거슬러 올라가는 것이므로 옳지 않음
-  for (int queue_idx = 0; queue_idx < mark_price_queue.size(); queue_idx++) {
-    const auto [mark_price, mark_price_type, mark_price_symbol_idx] =
+  for (int queue_idx = 0; queue_idx < market_price_queue.size(); queue_idx++) {
+    const auto& [mark_price, mark_price_type, mark_price_symbol_idx] =
         mark_price_queue[queue_idx];
 
-    const auto [market_price, market_price_type, market_price_symbol_idx] =
+    const auto& [market_price, market_price_type, market_price_symbol_idx] =
         market_price_queue[queue_idx];
 
     // 마크 가격과 시장 가격에서 하나의 큐 인덱스의 심볼 인덱스는 동일
-    bar_->SetCurrentSymbolIndex(mark_price_symbol_idx);
+    bar_->SetCurrentSymbolIndex(market_price_symbol_idx);
 
-    // 정해진 순서대로 강제 청산을 확인
-    // 강제 청산도 After Exit 전략이 실행됨
-    order_handler_->CheckLiquidation(mark_price, mark_price_type,
-                                     mark_price_symbol_idx, bar_type);
-
-    // 통합된 연쇄반응 처리: 강제청산, 일반청산, 진입을 순서대로 완전히 처리
-    // CheckPending 함수가 while 루프에 포함되어 한 가격 내에서 여러 번 체결을
-    // 확인하는 이유는, After Exit/After Entry 전략에서의 주문도 체결될 수
-    // 있기 때문
+    // 현재 가격 타입이 HIGH 또는 LOW일 경우 CLOSE에서 방향을 계산할 수
+    // 있게 하기 위하여 가격과 가격 타입을 캐시
     //
-    // 청산을 먼저 확인하는 이유는, 청산 후 바로 진입하는 경우
-    // 명시적인 청산 주문 대신 리버스 청산이 실행되는 것을 방지하기 위함
-    while (true) {
-      // 1. 청산이 존재했다면 After Exit 전략 실행 (강제 청산 포함)
-      if (order_handler_->IsJustExited()) {
-        order_handler_->InitializeJustExited();
-        ExecuteStrategy(AFTER_EXIT, market_price_symbol_idx);
-
-        // After Exit에서 즉시 체결된 주문이 있을 수 있으므로 다시 확인
-        continue;
-      }
-
-      // 2. 진입이 존재했다면 After Entry 전략 실행
-      if (order_handler_->IsJustEntered()) {
-        order_handler_->InitializeJustEntered();
-        ExecuteStrategy(AFTER_ENTRY, market_price_symbol_idx);
-
-        // After Entry에서 즉시 체결된 주문이 있을 수 있으므로 다시 확인
-        continue;
-      }
-
-      // 3. 청산 대기 주문의 체결 확인
-      order_handler_->CheckPendingExits(market_price, market_price_type,
-                                        market_price_symbol_idx);
-
-      // 청산이 체결됐다면 After Exit부터 다시 처리
-      if (order_handler_->IsJustExited()) {
-        continue;
-      }
-
-      // 4. 진입 대기 주문의 체결 확인
-      order_handler_->CheckPendingEntries(market_price, market_price_type,
-                                          market_price_symbol_idx);
-
-      // 진입이 체결됐다면 After Entry부터 다시 처리
-      if (order_handler_->IsJustEntered()) {
-        continue;
-      }
-
-      // 청산 및 진입 체결이 없는 경우 체결 확인 및 전략 실행 종료
-      break;
+    // 강제 청산의 경우에도, 실제 체결은 시장 가격이므로 시장 가격을
+    // 기준으로 캐시하면 됨
+    if (market_price_type == HIGH || market_price_type == LOW) {
+      price_cache_[market_price_symbol_idx] = market_price;
+      price_type_cache_[market_price_symbol_idx] = market_price_type;
     }
+
+    // 체결/강제 청산 해야하는 주문 모음
+    const auto& should_liquidate = order_handler_->CheckLiquidation(
+        bar_type, mark_price_symbol_idx, mark_price, mark_price_type);
+    const auto& should_entries = order_handler_->CheckPendingEntries(
+        market_price_symbol_idx, market_price, market_price_type);
+    const auto& should_exits = order_handler_->CheckPendingExits(
+        market_price_symbol_idx, market_price, market_price_type);
+
+    // 체결/강제 청산 주문이 없는 경우 즉시 다음 가격 확인
+    if (should_liquidate.empty() && should_entries.empty() &&
+        should_exits.empty()) {
+      continue;
+    }
+
+    should_fill_orders.reserve(should_liquidate.size() + should_entries.size() +
+                               should_exits.size());
+    should_fill_orders.insert(should_fill_orders.end(),
+                              should_liquidate.begin(), should_liquidate.end());
+    should_fill_orders.insert(should_fill_orders.end(), should_entries.begin(),
+                              should_entries.end());
+    should_fill_orders.insert(should_fill_orders.end(), should_exits.begin(),
+                              should_exits.end());
+
+    // 전 가격에서 현재 가격으로 올 때의 방향과 체결 우선 순위에 따라
+    // 체결 순서대로 정렬
+    // -> 체결은 시장 가격 기준이므로 Market 변수 사용
+    SortOrders(should_fill_orders,
+               CalculatePriceDirection(bar_type, market_price_symbol_idx,
+                                       market_price, market_price_type));
+
+    // 정렬된 순서에 따라 주문 체결
+    for (const auto& should_fill_order : should_fill_orders) {
+      order_handler_->FillOrder(should_fill_order, market_price_symbol_idx,
+                                market_price_type);
+
+      // 주문 체결 후 더 이상 진입/청산이 발생하지 않을 때까지 AFTER 전략 실행
+      ExecuteChainedAfterStrategies(market_price_symbol_idx);
+    }
+
+    // 다음 루프를 위해 벡터 클리어
+    should_fill_orders.clear();
+  }
+
+  // 다음 ProcessOhlc을 대비하여 캐시 초기화
+  for (double& price_cache : price_cache_) {
+    price_cache = NAN;
   }
 }
 
 pair<vector<PriceData>, vector<PriceData>> Engine::GetPriceQueue(
     const BarType market_bar_type, const vector<int>& symbol_indices) const {
-  size_t vector_idx = 0;
   const auto num_symbols = symbol_indices.size();
 
   // 총 크기를 미리 계산하여 한 번에 할당 (심볼 개수 * OHLC 4개)
-  const auto total_size = num_symbols * 4;
+  const size_t total_size = num_symbols * 4;
   vector<PriceData> mark_queue(total_size);
   vector<PriceData> market_queue(total_size);
 
 #pragma omp parallel for if (num_symbols > 1)
-  for (const auto symbol_idx : symbol_indices) {
-    const auto& orig_mark_bar = mark_price_bar_data_->GetBar(
+  for (size_t symbol_order = 0; symbol_order < num_symbols; symbol_order++) {
+    // 실제 심볼 인덱스 (1,5,6 등 활성화된 심볼의 인덱스)
+    const auto symbol_idx = symbol_indices[symbol_order];
+
+    // 현재 바를 참조
+    const auto& original_mark_bar = mark_price_bar_data_->GetBar(
         symbol_idx, (*mark_price_indices_)[symbol_idx]);
     const auto& market_bar =
         market_bar_type == TRADING
@@ -1746,9 +1736,9 @@ pair<vector<PriceData>, vector<PriceData>> Engine::GetPriceQueue(
     // 기준으로 강제 청산을 확인
     // (ProcessOhlc 호출 전 Close Time을 일치시키기 때문에 데이터가 존재하다면
     // Open Time도 일치해야 함)
-    const auto& mark_bar = orig_mark_bar.open_time != market_bar.open_time
+    const auto& mark_bar = original_mark_bar.open_time != market_bar.open_time
                                ? market_bar
-                               : orig_mark_bar;
+                               : original_mark_bar;
 
     // 값 캐싱
     const double mark_open = mark_bar.open;
@@ -1770,38 +1760,186 @@ pair<vector<PriceData>, vector<PriceData>> Engine::GetPriceQueue(
         IsGreaterOrEqual(market_high - market_open, market_open - market_low);
 
     // Open
-    mark_queue[vector_idx] = {mark_open, OPEN, symbol_idx};
-    market_queue[vector_idx] = {market_open, OPEN, symbol_idx};
+    mark_queue[symbol_order] = {mark_open, OPEN, symbol_idx};
+    market_queue[symbol_order] = {market_open, OPEN, symbol_idx};
 
     // High/Low1
-    mark_queue[num_symbols + vector_idx] =
+    mark_queue[num_symbols + symbol_order] =
         mark_low_first ? PriceData{mark_low, LOW, symbol_idx}
                        : PriceData{mark_high, HIGH, symbol_idx};
-    market_queue[num_symbols + vector_idx] =
+    market_queue[num_symbols + symbol_order] =
         market_low_first ? PriceData{market_low, LOW, symbol_idx}
                          : PriceData{market_high, HIGH, symbol_idx};
 
     // High/Low2
-    mark_queue[2 * num_symbols + vector_idx] =
+    mark_queue[2 * num_symbols + symbol_order] =
         mark_low_first ? PriceData{mark_high, HIGH, symbol_idx}
                        : PriceData{mark_low, LOW, symbol_idx};
-    market_queue[2 * num_symbols + vector_idx] =
+    market_queue[2 * num_symbols + symbol_order] =
         market_low_first ? PriceData{market_high, HIGH, symbol_idx}
                          : PriceData{market_low, LOW, symbol_idx};
 
     // Close
-    mark_queue[3 * num_symbols + vector_idx] = {mark_close, CLOSE, symbol_idx};
-    market_queue[3 * num_symbols + vector_idx] = {market_close, CLOSE,
+    mark_queue[3 * num_symbols + symbol_order] = {mark_close, CLOSE,
                                                   symbol_idx};
-
-    vector_idx++;
+    market_queue[3 * num_symbols + symbol_order] = {market_close, CLOSE,
+                                                    symbol_idx};
   }
 
   return {move(mark_queue), move(market_queue)};
 }
 
+Direction Engine::CalculatePriceDirection(
+    const BarType bar_type, const int symbol_idx, const double current_price,
+    const PriceType current_price_type) const {
+  switch (current_price_type) {
+    case OPEN: {
+      if (const auto current_bar_idx = bar_->GetCurrentBarIndex();
+          current_bar_idx != 0) {
+        // 시가의 경우, 전 바의 종가로부터 갭 방향을 탐색
+        // 강제 청산의 경우에도, 실제 체결은 시장 가격이므로 시장 가격을
+        // 기준으로 방향을 결정하면 됨
+        const auto previous_close =
+            bar_->GetBarData(bar_type)
+                ->GetBar(symbol_idx, current_bar_idx - 1)
+                .close;
+
+        if (IsGreater(current_price, previous_close)) {
+          return LONG;
+        }
+
+        if (IsLess(current_price, previous_close)) {
+          return SHORT;
+        }
+      }
+
+      // 바 인덱스가 0이여서 전 바가 없거나, 전 바를 참조할 수 없거나,
+      // 현재 시가와 전 바의 종가가 같으면 방향 없음
+      // (정렬 시 상승으로 가정 → 애초에 이 케이스면 이 가격에서 체결 확률 없음)
+      return DIRECTION_NONE;
+    }
+
+    case HIGH: {
+      // Case 1. Open -> HIGH: 상승
+      // Case 2. LOW -> HIGH: 상승
+      // 단, 전 가격(Open, Low)과 High가 같다면 방향은 없지만 상승으로 가정
+      // 즉, 항상 상승
+      return LONG;
+    }
+
+    case LOW: {
+      // Case 1. OPEN -> LOW: 하락
+      // Case 2. HIGH -> LOW: 하락
+      // 단, 전 가격(Open, High)과 Low가 같다면 방향은 없지만 하락으로 가정
+      // 즉, 항상 하락
+      return SHORT;
+    }
+
+    case CLOSE: {
+      const auto price_cache = price_cache_[symbol_idx];
+      const auto price_type_cache = price_type_cache_[symbol_idx];
+
+      if (isnan(price_cache)) {
+        OrderHandler::LogFormattedInfo(
+            ERROR_L,
+            "가격 캐시가 NaN이므로 CLOSE로 오는 가격 방향을 계산할 수 "
+            "없습니다.",
+            __FILE__, __LINE__);
+        throw;
+      }
+
+      // 전 High/Low와 종가가 같은 경우
+      if (IsEqual(price_cache, current_price)) {
+        // 전 가격 타입이 HIGH였다면 상승으로 가정
+        if (price_type_cache == HIGH) {
+          return LONG;
+        }
+
+        // 전 가격 타입이 LOW였다면 하락으로 가정
+        if (price_type_cache == LOW) {
+          return SHORT;
+        }
+      }
+
+      // 전 가격 타입이 HIGH인 경우 하락 (HIGH -> CLOSE)
+      if (price_type_cache == HIGH) {
+        return SHORT;
+      }
+
+      // 전 가격 타입이 LOW인 경우 상승 (LOW -> CLOSE)
+      if (price_type_cache == LOW) {
+        return LONG;
+      }
+    }
+
+    default: {
+      throw runtime_error("가격 방향 계산 오류: 잘못된 가격 타입");
+    }
+  }
+}
+
+void Engine::SortOrders(vector<FillInfo>& should_fill_orders,
+                        const Direction price_direction) {
+  auto get_signal_priority = [](const OrderSignal signal) {
+    switch (signal) {
+      case LIQUIDATION:
+        return 1;  // 최고 우선순위
+      case EXIT:
+        return 2;
+      case ENTRY:
+        return 3;
+      default:
+        return 4;
+    }
+  };
+
+  // 정렬 기준에 따라 정렬
+  ranges::stable_sort(should_fill_orders,
+                      [price_direction, get_signal_priority](
+                          const FillInfo& a, const FillInfo& b) {
+                        // fill_price 기본 정렬
+                        if (!IsEqual(a.fill_price, b.fill_price)) {
+                          switch (price_direction) {
+                            case LONG:
+                              [[fallthrough]];
+                            case DIRECTION_NONE: {
+                              // LONG: 낮은 가격 -> 높은 가격 순
+                              // DIRECTION_NONE: 낮은 가격 -> 높은 가격 순 가정
+                              return IsLess(a.fill_price, b.fill_price);
+                            }
+
+                            case SHORT: {
+                              // SHORT: 높은 가격 -> 낮은 가격 순
+                              return IsGreater(a.fill_price, b.fill_price);
+                            }
+
+                            default:
+                              return IsLess(a.fill_price, b.fill_price);
+                          }
+                        }
+
+                        // fill_price가 같은 경우,
+                        // 주문 시그널 우선 순위에 따라 정렬
+                        if (a.order_signal != b.order_signal) {
+                          // 우선순위
+                          // 1) 강제 청산(LIQUIDATION)
+                          // 2) 청산(EXIT)
+                          // 3) 진입(ENTRY)
+                          return get_signal_priority(a.order_signal) <
+                                 get_signal_priority(b.order_signal);
+                        }
+
+                        // fill_price와 order_signal이 같은 경우,
+                        // stable_sort이기 때문에 기존 should_fill_orders의
+                        // 순서대로 유지됨
+                        // → 기존 Pending/Filled Vector에서 먼저 주문/체결된
+                        //   것이 먼저 체결됨
+                        return false;
+                      });
+}
+
 void Engine::ExecuteStrategy(const StrategyType strategy_type,
-                             const int symbol_index) {
+                             const int symbol_idx) {
   // = 원본 바 타입을 저장 =
   // 종가 전략 실행인 경우 원본 바 타입은 트레이딩 바
   //
@@ -1809,13 +1947,18 @@ void Engine::ExecuteStrategy(const StrategyType strategy_type,
   const auto original_bar_type = bar_->GetCurrentBarType();
 
   // 트레이딩 바의 지정된 심볼에서 전략 실행
-  // 돋보기 바에서 AFTER EXIT, AFTER ENTRY가 실행되더라도 전략은 종가 기준으로
-  // 하는 것이 참조 측면에서 올바름
+  // 돋보기 바에서 BEFORE/AFTER EXIT, BEFORE/AFTER ENTRY 전략이 실행되더라도
+  // 전략은 종가 기준으로 하는 것이 지표 참조 측면에서 올바름
+  //
+  // 예를 들어, 1시간 TRADING, 1분 MAGNIFIER라고 했을 때, close[0]했는데
+  // 1분의 close 값을 얻으면 안 되므로 TRADING으로 설정하는 것
+  // 단, 이러한 설정 때문에 미래 값 참조를 방지하기 위하여 BEFORE/AFTER
+  // 전략에서는 [0]으로 참조할 수 없음
   bar_->SetCurrentBarType(TRADING, "");
-  bar_->SetCurrentSymbolIndex(symbol_index);
+  bar_->SetCurrentSymbolIndex(symbol_idx);
 
   // 현재 심볼의 포지션 사이즈 업데이트
-  order_handler_->UpdateCurrentPositionSize();
+  order_handler_->UpdateCurrentPositionSize(symbol_idx);
 
   try {
     current_strategy_type_ = strategy_type;
@@ -1826,8 +1969,8 @@ void Engine::ExecuteStrategy(const StrategyType strategy_type,
         break;
       }
 
-      case BEFORE_ENTRY: {
-        strategy_->ExecuteBeforeEntry();
+      case AFTER_EXIT: {
+        strategy_->ExecuteAfterExit();
         break;
       }
 
@@ -1835,24 +1978,35 @@ void Engine::ExecuteStrategy(const StrategyType strategy_type,
         strategy_->ExecuteAfterEntry();
         break;
       }
-
-      case BEFORE_EXIT: {
-        strategy_->ExecuteBeforeExit();
-        break;
-      }
-
-      case AFTER_EXIT: {
-        strategy_->ExecuteAfterExit();
-        break;
-      }
     }
   } catch ([[maybe_unused]] const Bankruptcy& e) {
     SetBankruptcy();
-    throw;
+    throw Bankruptcy("파산");
   }
 
   // 원본 설정을 복원
   bar_->SetCurrentBarType(original_bar_type, "");
+}
+
+void Engine::ExecuteChainedAfterStrategies(const int symbol_idx) {
+  bool just_exited = false;
+  bool just_entered = false;
+
+  // 더 이상 추가 진입/청산이 발생하지 않을 때까지 AFTER 전략 실행
+  while (((just_exited = order_handler_->IsJustExited())) ||
+         ((just_entered = order_handler_->IsJustEntered()))) {
+    // 1. 청산이 존재했다면 After Exit 전략 실행 (강제 청산 포함)
+    if (just_exited) {
+      order_handler_->InitializeJustExited();
+      ExecuteStrategy(AFTER_EXIT, symbol_idx);
+    }
+
+    // 2. 진입이 존재했다면 After Entry 전략 실행
+    if (just_entered) {
+      order_handler_->InitializeJustEntered();
+      ExecuteStrategy(AFTER_ENTRY, symbol_idx);
+    }
+  }
 }
 
 }  // namespace backtesting::engine
