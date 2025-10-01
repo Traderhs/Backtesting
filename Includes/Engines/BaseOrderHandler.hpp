@@ -50,42 +50,10 @@ namespace backtesting::order {
 
 /// 주문, 포지션 등과 관련된 기본적인 작업을 처리하는 클래스
 class BaseOrderHandler {
+  // 기타 함수 접근용
+  friend class Engine;
+
  public:
-  /// 엔진 설정을 불러오고 주문들과 기타 설정을 초기화하는 함수
-  void Initialize(int num_symbols);
-
-  /// 심볼 정보를 초기화하는 함수
-  static void SetSymbolInfo(const vector<SymbolInfo>& symbol_info);
-
-  /// 현재 심볼의 포지션 사이즈 합계를 최신 상태로 업데이트하는 함수
-  void UpdateCurrentPositionSize(int symbol_idx);
-
-  /// 현재 심볼의 포지션 사이즈를 단순 반환하는 함수.\n\n
-  /// 전략 실횅 시점에 무조건 값을 업데이트하기 때문에 전략 내에서는 이 함수로
-  /// 값을 사용하면 됨.\n\n
-  /// 양수면 매수 진입, 음수면 매도 진입.
-  [[nodiscard]] double GetCurrentPositionSize() const;
-
-  /// 현재 심볼과 바에서 진입이 이루어졌는지를 결정하는 플래그를 초기화하는 함수
-  void InitializeJustEntered();
-
-  /// 현재 심볼과 바에서 청산이 이루어졌는지를 결정하는 플래그를 초기화하는 함수
-  void InitializeJustExited();
-
-  /// 지정된 심볼 마크 가격의 지정된 가격 타입을 기준으로 계산한 미실현 손실의
-  /// 절댓값의 합계를 반환하는 함수.
-  ///
-  /// 마크 가격이 현재 진행 중인 Close Time과 일치하지 않는다면 전략을 실행한 바
-  /// 타입의 가격을 사용
-  [[nodiscard]] double GetUnrealizedLoss(int symbol_idx,
-                                         PriceType price_type) const;
-
-  /// 현재 심볼과 바에서 진입이 이루어졌는지 여부를 반환하는 함수
-  [[nodiscard]] bool IsJustEntered() const;
-
-  /// 현재 심볼과 바에서 청산이 이루어졌는지 여부를 반환하는 함수
-  [[nodiscard]] bool IsJustExited() const;
-
   // ===========================================================================
   // 전략에서 사용하는 함수들
   // ===========================================================================
@@ -116,9 +84,26 @@ class BaseOrderHandler {
   /// 현재 심볼의 마지막 청산 가격을 반환하는 함수
   [[nodiscard]] double LastExitPrice() const;
 
-  // ===========================================================================
-  // OrderHandler 및 전략에서 사용하는 함수들
-  // ===========================================================================
+  /// 현재 심볼의 포지션 사이즈를 단순 반환하는 함수.\n\n
+  /// 전략 실횅 시점에 무조건 값을 업데이트하기 때문에 전략 내에서는 이 함수로
+  /// 값을 사용하면 됨.\n\n
+  /// 양수면 매수 진입, 음수면 매도 진입.
+  [[nodiscard]] double GetCurrentPositionSize() const;
+
+  /// 지정된 심볼 마크 가격의 지정된 가격 타입을 기준으로 계산한 미실현 손실의
+  /// 절댓값의 합계를 반환하는 함수.
+  ///
+  /// 마크 가격이 현재 진행 중인 Close Time과 일치하지 않는다면 전략을 실행한 바
+  /// 타입의 가격을 사용
+  [[nodiscard]] double GetUnrealizedLoss(int symbol_idx,
+                                         PriceType price_type) const;
+
+  /// 현재 심볼과 바에서 진입이 이루어졌는지 여부를 반환하는 함수
+  [[nodiscard]] bool IsJustEntered() const;
+
+  /// 현재 심볼과 바에서 청산이 이루어졌는지 여부를 반환하는 함수
+  [[nodiscard]] bool IsJustExited() const;
+
   /// 심볼 이름으로 포맷된 로그를 발생시키는 함수
   static void LogFormattedInfo(LogLevel log_level,
                                const string& formatted_message,
@@ -282,6 +267,21 @@ class BaseOrderHandler {
 
   /// 심볼별 현재 레버리지
   vector<int> leverages_;
+
+  /// 엔진 설정을 불러오고 주문들과 기타 설정을 초기화하는 함수
+  void Initialize(int num_symbols);
+
+  /// 심볼 정보를 초기화하는 함수
+  static void SetSymbolInfo(const vector<SymbolInfo>& symbol_info);
+
+  /// 현재 심볼의 포지션 사이즈 합계를 최신 상태로 업데이트하는 함수
+  void UpdateCurrentPositionSize(int symbol_idx);
+
+  /// 현재 심볼과 바에서 진입이 이루어졌는지를 결정하는 플래그를 초기화하는 함수
+  void InitializeJustEntered();
+
+  /// 현재 심볼과 바에서 청산이 이루어졌는지를 결정하는 플래그를 초기화하는 함수
+  void InitializeJustExited();
 
   /// 진입 주문 취소 시 자금 관련 처리를 하는 함수
   static void ExecuteCancelEntry(const shared_ptr<Order>& cancel_order);

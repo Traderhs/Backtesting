@@ -40,144 +40,6 @@ shared_ptr<Engine>& BaseOrderHandler::engine_ = Engine::GetEngine();
 shared_ptr<Logger>& BaseOrderHandler::logger_ = Logger::GetLogger();
 vector<SymbolInfo> BaseOrderHandler::symbol_info_;
 
-void BaseOrderHandler::Initialize(const int num_symbols) {
-  if (is_initialized_) {
-    Logger::LogAndThrowError(
-        "이미 초기화가 완료되어 다시 초기화할 수 없습니다.", __FILE__,
-        __LINE__);
-  }
-
-  // 주문들을 심볼 개수로 초기화
-  pending_entries_.resize(num_symbols);
-  filled_entries_.resize(num_symbols);
-  pending_exits_.resize(num_symbols);
-
-  // 마지막으로 진입 및 청산한 트레이딩 바 인덱스를 심볼 개수로 초기화
-  last_entry_bar_indices_.resize(num_symbols);
-  last_exit_bar_indices_.resize(num_symbols);
-
-  // 아직 진입 및 청산이 없었던 심볼은 SIZE_MAX를 가짐
-  ranges::fill(last_entry_bar_indices_, SIZE_MAX);
-  ranges::fill(last_exit_bar_indices_, SIZE_MAX);
-
-  // 마지막으로 진입 및 청산한 가격을 심볼 개수로 초기화
-  last_entry_prices_.resize(num_symbols);
-  last_exit_prices_.resize(num_symbols);
-
-  // 아직 진입 및 청산이 없었던 심볼은 NaN을 가짐
-  ranges::fill(last_entry_prices_, NAN);
-  ranges::fill(last_exit_prices_, NAN);
-
-  // 레버리지 벡터를 심볼 개수로 초기화
-  // 초기 레버리지는 1x
-  leverages_.resize(num_symbols, 1);
-
-  is_initialized_ = true;
-}
-
-void BaseOrderHandler::SetSymbolInfo(const vector<SymbolInfo>& symbol_info) {
-  if (symbol_info_.empty()) {
-    symbol_info_ = symbol_info;
-  } else {
-    Logger::LogAndThrowError(
-        "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.", __FILE__,
-        __LINE__);
-  }
-}
-
-void BaseOrderHandler::UpdateCurrentPositionSize(const int symbol_idx) {
-  double sum_position_size = 0;
-
-  for (const auto& filled_entry : filled_entries_[symbol_idx]) {
-    double position_size =
-        filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize();
-
-    position_size = filled_entry->GetEntryDirection() == LONG
-                        ? fabs(position_size)
-                        : -fabs(position_size);
-    sum_position_size += position_size;
-  }
-
-  current_position_size_ = sum_position_size;
-}
-
-double BaseOrderHandler::GetCurrentPositionSize() const {
-  return current_position_size_;
-}
-
-void BaseOrderHandler::InitializeJustEntered() { just_entered_ = false; }
-void BaseOrderHandler::InitializeJustExited() { just_exited_ = false; }
-
-double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
-                                           const PriceType price_type) const {
-  // 체결된 주문이 없는 경우 0을 반환
-  if (filled_entries_[symbol_idx].empty()) {
-    return 0.0;
-  }
-
-  const auto original_bar_type = bar_->GetCurrentBarType();
-
-  // 현재 마크 가격 바의 Close Time이 현재 진행 중인 Close Time과 같다면
-  // 유효하므로 마크 가격 기준으로 Loss 계산. 그렇지 않다면 전략을 실행한 바
-  // 타입을 기준으로 계산 (트레이딩 바 or 돋보기 바)
-  Bar base_bar{};
-  bar_->SetCurrentBarType(MARK_PRICE, "");
-  if (const auto& current_mark_bar =
-          bar_->GetBarData(MARK_PRICE, "")
-              ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
-      current_mark_bar.close_time == engine_->GetCurrentCloseTime()) {
-    base_bar = current_mark_bar;
-  } else {
-    bar_->SetCurrentBarType(original_bar_type, "");
-    base_bar = bar_->GetBarData(original_bar_type, "")
-                   ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
-  }
-
-  double base_price = 0;
-  switch (price_type) {
-    case OPEN: {
-      base_price = base_bar.open;
-      break;
-    }
-
-    case HIGH: {
-      base_price = base_bar.high;
-      break;
-    }
-
-    case LOW: {
-      base_price = base_bar.low;
-      break;
-    }
-
-    case CLOSE: {
-      base_price = base_bar.close;
-      break;
-    }
-  }
-
-  // 해당 심볼의 체결된 진입 주문 순회
-  double sum_loss = 0;
-  for (const auto& filled_entry : filled_entries_[symbol_idx]) {
-    // 진입 방향에 따라 손실 합산
-    // 부분 청산 시 남은 진입 물량만 미실현 손실에 포함됨
-    const auto pnl = CalculatePnl(
-        filled_entry->GetEntryDirection(), base_price,
-        filled_entry->GetEntryFilledPrice(),
-        filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize());
-
-    if (IsLess(pnl, 0.0)) {
-      sum_loss += fabs(pnl);
-    }
-  }
-
-  bar_->SetCurrentBarType(original_bar_type, "");
-  return sum_loss;
-}
-
-bool BaseOrderHandler::IsJustEntered() const { return just_entered_; }
-bool BaseOrderHandler::IsJustExited() const { return just_exited_; }
-
 void BaseOrderHandler::Cancel(const string& order_name) {
   const int symbol_idx = bar_->GetCurrentSymbolIndex();
   auto& pending_entries = pending_entries_[symbol_idx];
@@ -262,6 +124,80 @@ double BaseOrderHandler::LastEntryPrice() const {
 double BaseOrderHandler::LastExitPrice() const {
   return last_exit_prices_[bar_->GetCurrentSymbolIndex()];
 }
+
+double BaseOrderHandler::GetCurrentPositionSize() const {
+  return current_position_size_;
+}
+
+double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
+                                           const PriceType price_type) const {
+  // 체결된 주문이 없는 경우 0을 반환
+  if (filled_entries_[symbol_idx].empty()) {
+    return 0.0;
+  }
+
+  const auto original_bar_type = bar_->GetCurrentBarType();
+
+  // 현재 마크 가격 바의 Close Time이 현재 진행 중인 Close Time과 같다면
+  // 유효하므로 마크 가격 기준으로 Loss 계산. 그렇지 않다면 전략을 실행한 바
+  // 타입을 기준으로 계산 (트레이딩 바 or 돋보기 바)
+  Bar base_bar{};
+  bar_->SetCurrentBarType(MARK_PRICE, "");
+  if (const auto& current_mark_bar =
+          bar_->GetBarData(MARK_PRICE, "")
+              ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
+      current_mark_bar.close_time == engine_->GetCurrentCloseTime()) {
+    base_bar = current_mark_bar;
+  } else {
+    bar_->SetCurrentBarType(original_bar_type, "");
+    base_bar = bar_->GetBarData(original_bar_type, "")
+                   ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
+  }
+
+  double base_price = 0;
+  switch (price_type) {
+    case OPEN: {
+      base_price = base_bar.open;
+      break;
+    }
+
+    case HIGH: {
+      base_price = base_bar.high;
+      break;
+    }
+
+    case LOW: {
+      base_price = base_bar.low;
+      break;
+    }
+
+    case CLOSE: {
+      base_price = base_bar.close;
+      break;
+    }
+  }
+
+  // 해당 심볼의 체결된 진입 주문 순회
+  double sum_loss = 0;
+  for (const auto& filled_entry : filled_entries_[symbol_idx]) {
+    // 진입 방향에 따라 손실 합산
+    // 부분 청산 시 남은 진입 물량만 미실현 손실에 포함됨
+    const auto pnl = CalculatePnl(
+        filled_entry->GetEntryDirection(), base_price,
+        filled_entry->GetEntryFilledPrice(),
+        filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize());
+
+    if (IsLess(pnl, 0.0)) {
+      sum_loss += fabs(pnl);
+    }
+  }
+
+  bar_->SetCurrentBarType(original_bar_type, "");
+  return sum_loss;
+}
+
+bool BaseOrderHandler::IsJustEntered() const { return just_entered_; }
+bool BaseOrderHandler::IsJustExited() const { return just_exited_; }
 
 void BaseOrderHandler::LogFormattedInfo(const LogLevel log_level,
                                         const string& formatted_message,
@@ -773,6 +709,70 @@ void BaseOrderHandler::UpdateLastExitBarIndex(const int symbol_idx) {
   // 업데이트 되므로 타임프레임은 필요하지 않음
   bar_->SetCurrentBarType(original_bar_type, "");
 }
+
+void BaseOrderHandler::Initialize(const int num_symbols) {
+  if (is_initialized_) {
+    Logger::LogAndThrowError(
+        "주문 핸들러가 이미 초기화가 완료되어 다시 초기화할 수 없습니다.",
+        __FILE__, __LINE__);
+  }
+
+  // 주문들을 심볼 개수로 초기화
+  pending_entries_.resize(num_symbols);
+  filled_entries_.resize(num_symbols);
+  pending_exits_.resize(num_symbols);
+
+  // 마지막으로 진입 및 청산한 트레이딩 바 인덱스를 심볼 개수로 초기화
+  last_entry_bar_indices_.resize(num_symbols);
+  last_exit_bar_indices_.resize(num_symbols);
+
+  // 아직 진입 및 청산이 없었던 심볼은 SIZE_MAX를 가짐
+  ranges::fill(last_entry_bar_indices_, SIZE_MAX);
+  ranges::fill(last_exit_bar_indices_, SIZE_MAX);
+
+  // 마지막으로 진입 및 청산한 가격을 심볼 개수로 초기화
+  last_entry_prices_.resize(num_symbols);
+  last_exit_prices_.resize(num_symbols);
+
+  // 아직 진입 및 청산이 없었던 심볼은 NaN을 가짐
+  ranges::fill(last_entry_prices_, NAN);
+  ranges::fill(last_exit_prices_, NAN);
+
+  // 레버리지 벡터를 심볼 개수로 초기화
+  // 초기 레버리지는 1x
+  leverages_.resize(num_symbols, 1);
+
+  is_initialized_ = true;
+}
+
+void BaseOrderHandler::SetSymbolInfo(const vector<SymbolInfo>& symbol_info) {
+  if (symbol_info_.empty()) {
+    symbol_info_ = symbol_info;
+  } else {
+    Logger::LogAndThrowError(
+        "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.", __FILE__,
+        __LINE__);
+  }
+}
+
+void BaseOrderHandler::UpdateCurrentPositionSize(const int symbol_idx) {
+  double sum_position_size = 0;
+
+  for (const auto& filled_entry : filled_entries_[symbol_idx]) {
+    double position_size =
+        filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize();
+
+    position_size = filled_entry->GetEntryDirection() == LONG
+                        ? fabs(position_size)
+                        : -fabs(position_size);
+    sum_position_size += position_size;
+  }
+
+  current_position_size_ = sum_position_size;
+}
+
+void BaseOrderHandler::InitializeJustEntered() { just_entered_ = false; }
+void BaseOrderHandler::InitializeJustExited() { just_exited_ = false; }
 
 void BaseOrderHandler::ExecuteCancelEntry(
     const shared_ptr<Order>& cancel_order) {
