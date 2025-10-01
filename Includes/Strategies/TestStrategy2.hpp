@@ -20,7 +20,7 @@ class TestStrategy2 final : public Strategy {
   ExponentialMovingAverage& sma1;
   // ReSharper disable once CppInconsistentNaming
   ExponentialMovingAverage& sma2;
-  
+
   SwingHigh& highest_;
   SwingLow& lowest_;
 

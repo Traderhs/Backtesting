@@ -50,7 +50,7 @@ void BaseOrderHandler::Cancel(const string& order_name) {
     if (const auto pending_entry = pending_entries[order_idx];
         order_name == pending_entry->GetEntryName()) {
       // 예약 증거금 회복 과정 진행 후 삭제
-      ExecuteCancelEntry(pending_entry);
+      AdjustMarginOnEntryCancel(pending_entry);
       pending_entries.erase(pending_entries.begin() + order_idx);
 
       LogFormattedInfo(
@@ -773,11 +773,17 @@ void BaseOrderHandler::UpdateCurrentPositionSize(const int symbol_idx) {
 void BaseOrderHandler::InitializeJustEntered() { just_entered_ = false; }
 void BaseOrderHandler::InitializeJustExited() { just_exited_ = false; }
 
-void BaseOrderHandler::ExecuteCancelEntry(
+void BaseOrderHandler::AdjustMarginOnEntryCancel(
     const shared_ptr<Order>& cancel_order) {
   switch (cancel_order->GetEntryOrderType()) {
-    case MARKET: {
-      // 시장가는 예약 증거금이 없음
+    case MARKET:  // 시장가는 예약 증거금이 없음
+      [[fallthrough]];
+    case MIT: /* MIT Touch 대기 중에는 예약 증거금을 사용하지 않으며,
+                 Touch 이후에는 시장가로 체결하므로 대기 주문이 없음  */
+      [[fallthrough]];
+    case TRAILING: {
+      /* Trailing Touch 대기 중에는 예약 증거금을 사용하지 않으며,
+         Touch 이후에는 가격을 추적하다 시장가로 체결하므로 대기 주문이 없음 */
       return;
     }
 
@@ -787,12 +793,6 @@ void BaseOrderHandler::ExecuteCancelEntry(
           !IsEqual(entry_margin, 0.0)) {
         engine_->DecreaseUsedMargin(entry_margin);
       }
-      return;
-    }
-
-    case MIT: {
-      /* MIT Touch 대기 중에는 예약 증거금을 사용하지 않으며,
-         Touch 이후에는 시장가로 체결하므로 대기 주문이 없음  */
       return;
     }
 
@@ -806,17 +806,9 @@ void BaseOrderHandler::ExecuteCancelEntry(
           engine_->DecreaseUsedMargin(entry_margin);
         }
       }
-      return;
     }
 
-    case TRAILING: {
-      /* Trailing Touch 대기 중에는 예약 증거금을 사용하지 않으며,
-         Touch 이후에는 가격을 추적하다 시장가로 체결하므로 대기 주문이 없음 */
-      return;
-    }
-
-    default:
-      return;
+    default:;
   }
 }
 
