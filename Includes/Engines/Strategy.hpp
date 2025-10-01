@@ -149,14 +149,8 @@ class Strategy {
   /// 모든 바의 종가에서 전략을 실행하는 함수
   virtual void ExecuteOnClose() = 0;
 
-  /// 특정 심볼의 진입 체결 직전에 전략을 실행하는 함수
-  virtual void ExecuteBeforeEntry() = 0;
-
   /// 특정 심볼의 진입 직후 전략을 실행하는 함수
   virtual void ExecuteAfterEntry() = 0;
-
-  /// 특정 심볼의 청산 체결 직전에 전략을 실행하는 함수
-  virtual void ExecuteBeforeExit() = 0;
 
   /// 특정 심볼의 청산 직후 전략을 실행하는 함수
   virtual void ExecuteAfterExit() = 0;
