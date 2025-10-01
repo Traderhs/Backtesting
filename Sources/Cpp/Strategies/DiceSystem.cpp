@@ -132,8 +132,6 @@ void DiceSystem::ExecuteOnClose() {
   }
 }
 
-void DiceSystem::ExecuteBeforeEntry() {}
-
 void DiceSystem::ExecuteAfterEntry() {
   cached_current_position_size_ = order->GetCurrentPositionSize();
 
@@ -158,8 +156,6 @@ void DiceSystem::ExecuteAfterEntry() {
                    left_size);
   }
 }
-
-void DiceSystem::ExecuteBeforeExit() {}
 
 void DiceSystem::ExecuteAfterExit() {}
 

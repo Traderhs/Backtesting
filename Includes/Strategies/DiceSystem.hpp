@@ -13,9 +13,7 @@ class DiceSystem final : public Strategy {
 
   void Initialize() override;
   void ExecuteOnClose() override;
-  void ExecuteBeforeEntry() override;
   void ExecuteAfterEntry() override;
-  void ExecuteBeforeExit() override;
   void ExecuteAfterExit() override;
 
  private:

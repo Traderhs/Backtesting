@@ -284,7 +284,7 @@ class BaseOrderHandler {
   void InitializeJustExited();
 
   /// 진입 주문 취소 시 자금 관련 처리를 하는 함수
-  static void ExecuteCancelEntry(const shared_ptr<Order>& cancel_order);
+  static void AdjustMarginOnEntryCancel(const shared_ptr<Order>& cancel_order);
 };
 
 }  // namespace backtesting::order
