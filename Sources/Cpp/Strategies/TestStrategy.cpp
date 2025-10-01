@@ -58,7 +58,3 @@ void TestStrategy::ExecuteAfterEntry() {
 }
 
 void TestStrategy::ExecuteAfterExit() {}
-
-void TestStrategy::ExecuteBeforeEntry() {}
-
-void TestStrategy::ExecuteBeforeExit() {}
