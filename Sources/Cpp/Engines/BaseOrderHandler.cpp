@@ -143,13 +143,13 @@ double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
   Bar base_bar{};
   bar_->SetCurrentBarType(MARK_PRICE, "");
   if (const auto& current_mark_bar =
-          bar_->GetBarData(MARK_PRICE, "")
+          bar_->GetBarData(MARK_PRICE)
               ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
       current_mark_bar.close_time == engine_->GetCurrentCloseTime()) {
     base_bar = current_mark_bar;
   } else {
     bar_->SetCurrentBarType(original_bar_type, "");
-    base_bar = bar_->GetBarData(original_bar_type, "")
+    base_bar = bar_->GetBarData(original_bar_type)
                    ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
   }
 
