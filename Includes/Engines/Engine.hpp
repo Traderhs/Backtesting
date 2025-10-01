@@ -21,6 +21,8 @@ class Strategy;
 }
 
 namespace backtesting::order {
+struct FillInfo;
+enum class Direction;
 class SymbolInfo;
 class OrderHandler;
 }  // namespace backtesting::order
@@ -41,18 +43,16 @@ using enum PriceType;
 
 // 각 가격의 정보를 담고 있는 구조체
 struct PriceData {
-  double price;
-  PriceType price_type;
-  int symbol_index;
+  double price;          // 가격
+  PriceType price_type;  // OHLC
+  int symbol_idx;        // 심볼 인덱스
 };
 
 // 전략 타입을 지정하는 열거형 클래스
 enum class StrategyType {
   ON_CLOSE,
-  BEFORE_ENTRY,
   AFTER_ENTRY,
-  BEFORE_EXIT,
-  AFTER_EXIT,
+  AFTER_EXIT,  // 진입과 청산 동시 체결 시 AFTER_ENTRY보다 우선적으로 실행됨
 };
 using enum StrategyType;
 
@@ -122,6 +122,11 @@ class Engine final : public BaseEngine {
   vector<double> next_funding_rates_;        // 다음 펀딩 비율
   vector<int64_t> next_funding_times_;       // 다음 펀딩 시간
   vector<double> next_funding_mark_prices_;  // 다음 펀딩 시 사용하는 마크 가격
+
+  // ProcessOhlc 함수에서 현재 가격 타입이 HIGH 또는 LOW일 경우 CLOSE에서 방향을
+  // 계산할 수 있게 하기 위한 가격과 가격 타입 캐시
+  vector<double> price_cache_;
+  vector<PriceType> price_type_cache_;
 
   // ===========================================================================
   StrategyType current_strategy_type_;      // 현재 사용 중인 전략 실행 타입
@@ -211,8 +216,24 @@ class Engine final : public BaseEngine {
   [[nodiscard]] pair<vector<PriceData>, vector<PriceData>> GetPriceQueue(
       BarType market_bar_type, const vector<int>& symbol_indices) const;
 
+  /// 전 가격에서 현재 가격으로 올 때의 가격 방향을 계산하는 함수
+  [[nodiscard]] Direction CalculatePriceDirection(
+      BarType bar_type, int symbol_idx, double current_price,
+      PriceType current_price_type) const;
+
+  /// 전 가격에서 현재 가격으로 올 때의 가격 방향과 체결 우선 순위에 따라
+  /// 체결 순서대로 주문들을 정렬하는 함수
+  ///
+  /// 반환이 없고, 인수로 넣은 주문 벡터가 직접 정렬됨에 주의
+  static void SortOrders(vector<FillInfo>& should_fill_orders,
+                         Direction price_direction);
+
   /// 지정된 심볼에서 전략을 실행하는 함수
-  void ExecuteStrategy(StrategyType strategy_type, int symbol_index);
+  void ExecuteStrategy(StrategyType strategy_type, int symbol_idx);
+
+  /// 주문 체결 후 더 이상 추가 진입/청산이 발생하지 않을 때까지 AFTER 전략을
+  /// 실행하는 함수
+  void ExecuteChainedAfterStrategies(int symbol_idx);
 };
 
 }  // namespace backtesting::engine
