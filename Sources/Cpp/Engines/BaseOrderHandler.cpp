@@ -78,8 +78,7 @@ void BaseOrderHandler::Cancel(const string& order_name) {
           INFO_L,
           format("{} [{}] 주문 취소",
                  Order::OrderTypeToString(pending_exit->GetExitOrderType()),
-                 order_name, FormatDollar(engine_->GetUsedMargin(), true),
-                 FormatDollar(engine_->GetAvailableBalance(), true)),
+                 order_name),
           __FILE__, __LINE__);
 
       // 동일한 청산 이름으로 청산 대기 불가능하므로 찾으면 바로 break
