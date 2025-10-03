@@ -300,8 +300,8 @@
     padding: 0;
     overflow-x: hidden;
     overflow-y: scroll;
-    scrollbar-width: none;  /* Firefox */
-    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
     top: 0;
     border-right: 2px solid rgba(255, 215, 0, 0.13);
     white-space: nowrap;
@@ -360,8 +360,12 @@
 }
 
 @keyframes sweep {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
 }
 
 .symbol-card-header:hover::before {
@@ -416,4 +420,139 @@
 .symbol-card-grid {
     background-color: #111111;
     isolation: isolate;
+}
+
+/* 거래소 정보 전용 스타일 - StrategyIndicatorCard의 info 스타일과 동일 */
+.exchange-info-item {
+    position: relative;
+    display: flex;
+    width: 100%;
+    z-index: 2;
+    overflow: visible;
+    height: 365px;
+    min-height: unset;
+    transition: none;
+    background-color: transparent;
+    transform: translate3d(0, 0, 0);
+    backface-visibility: hidden;
+    will-change: transform;
+}
+
+.exchange-info-left {
+    min-width: fit-content; /* 동적 너비 조정을 위해 변경 */
+    width: fit-content; /* 동적 너비 조정을 위해 변경 */
+    position: sticky;
+    left: 0;
+    z-index: 3;
+    background-color: rgba(255, 215, 0, 0.1);
+    border-radius: 0;
+    padding: 0;
+    overflow-x: hidden;
+    overflow-y: scroll;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    top: 0;
+    border-right: 2px solid rgba(255, 215, 0, 0.13);
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    flex-shrink: 0;
+    height: auto;
+    box-sizing: border-box;
+}
+
+/* 거래소 정보 왼쪽 영역 스크롤바 숨기기 */
+.exchange-info-left::-webkit-scrollbar {
+    display: none;
+}
+
+.exchange-info-left .exchange-info-row:first-child {
+    margin-top: 20px;
+}
+
+.exchange-info-right {
+    flex: 1;
+    min-width: 140px;
+    position: relative;
+    z-index: 2;
+    padding-top: 0;
+    white-space: nowrap;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
+    text-overflow: ellipsis;
+    height: auto;
+    box-sizing: border-box;
+}
+
+.exchange-info-right .exchange-info-row:first-child {
+    margin-top: 20px;
+}
+
+/* 거래소 정보 행 스타일 */
+.exchange-info-row {
+    margin-bottom: 14px;
+    min-height: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    margin-top: 4px;
+    padding-left: 24px;
+    padding-right: 16px;
+}
+
+.exchange-info-row-inner {
+    display: flex;
+    align-items: center;
+    min-height: 18px;
+    height: 18px;
+    line-height: 18px;
+    width: 100%;
+    min-width: min-content;
+}
+
+/* 거래소 정보 불릿, 라벨, 값 스타일 */
+.exchange-info-bullet {
+    color: rgba(255, 215, 0, 0.8);
+    margin-right: 8px;
+    font-size: 15px;
+    line-height: 18px;
+    margin-top: -1px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+}
+
+.exchange-info-label {
+    font-weight: 600;
+    color: rgba(255, 215, 0, 0.8);
+    font-size: 15px;
+    line-height: 18px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.exchange-info-value {
+    color: #FFFFFF;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 18px;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+    overflow: visible;
+    width: max-content;
+    min-width: 100%;
+    padding-top: 1px;
+}
+
+/* 거래소 정보 오른쪽 영역 패딩 조정 */
+.exchange-info-right .exchange-info-row-inner {
+    padding-right: 8px;
+}
+
+/* 스크롤바가 있을 때 더 많은 패딩 적용 */
+.exchange-info-right.scrollable-x .exchange-info-row-inner {
+    padding-right: 24px;
 }

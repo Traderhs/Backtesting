@@ -47,7 +47,7 @@ struct FileMetadata {
 static unordered_map<string, FileMetadata> metadata_cache;
 static mutex metadata_cache_mutex;
 
-size_t CountDecimalPlaces(const double value) {
+int CountDecimalPlaces(const double value) {
   // 0이거나 정수인 경우 0 반환
   if (value == 0.0 || value == floor(value)) {
     return 0;
@@ -623,6 +623,12 @@ string FormatPercentage(const double percentage, const bool use_rounding) {
     oss << adjusted_percentage << "%";
   }
 
+  return oss.str();
+}
+
+string ToFixedString(const double value, const int precision) {
+  ostringstream oss;
+  oss << fixed << setprecision(precision) << value;
   return oss.str();
 }
 

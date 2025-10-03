@@ -31,7 +31,7 @@ namespace backtesting::utils {
  * @param value 소수 자릿수를 계산할 값
  * @return 주어진 double 값에 존재하는 소수점 자릿수의 개수
  */
-[[nodiscard]] size_t CountDecimalPlaces(double value);
+[[nodiscard]] int CountDecimalPlaces(double value);
 
 /**
  * 주어진 값을 지정된 소수 자릿수로 반올림하여 반환하는 함수
@@ -153,6 +153,9 @@ static locale global_locale("en_US.UTF-8");
 
 /// 퍼센트 값을 퍼센트 형식으로 포맷하여 반환하는 함수
 [[nodiscard]] string FormatPercentage(double percentage, bool use_rounding);
+
+/// 값을 주어진 정밀도의 string으로 변환하여 반환하는 함수
+string ToFixedString(double value, int precision);
 
 /// 환경 변수 값을 가져오는 함수
 [[nodiscard]] string GetEnvVariable(const string& env_var);

@@ -928,11 +928,14 @@ void Engine::InitializeSymbolInfo() {
         if (symbol.at("symbol") == symbol_name &&
             symbol.at("contractType") == "PERPETUAL") {
           // 해당 심볼이 존재한다면 필요한 정보들로 초기화
-          int filter_count = 0;  // filter 배열에서 초기화한 횟수
+          int filter_count = 0;  // filter 배열에서 값을 찾은 횟수
           for (const auto& filters = symbol.at("filters");
                const auto& filter : filters) {
             if (filter.at("filterType") == "PRICE_FILTER") {
-              symbol_info.SetTickSize(GetDoubleFromJson(filter, "tickSize"));
+              const auto price_step = GetDoubleFromJson(filter, "tickSize");
+
+              symbol_info.SetPriceStep(price_step);
+              symbol_info.SetPricePrecision(CountDecimalPlaces(price_step));
               filter_count += 1;
               continue;
             }
@@ -945,9 +948,12 @@ void Engine::InitializeSymbolInfo() {
             }
 
             if (filter.at("filterType") == "MARKET_LOT_SIZE") {
+              const auto qty_step = GetDoubleFromJson(filter, "stepSize");
+
               symbol_info.SetMarketMaxQty(GetDoubleFromJson(filter, "maxQty"))
                   .SetMarketMinQty(GetDoubleFromJson(filter, "minQty"))
-                  .SetQtyStep(GetDoubleFromJson(filter, "stepSize"));
+                  .SetQtyStep(qty_step)
+                  .SetQtyPrecision(CountDecimalPlaces(qty_step));
               filter_count += 3;
               continue;
             }

@@ -35,13 +35,14 @@ export interface StrategyRaw {
 
 export interface ExchangeInfoRaw {
     dataPath: string
-    tickSize: number
-    precision: number
+    priceStep: number
+    pricePrecision: number
+    qtyStep: number
+    qtyPrecision: number
     maxOrderQty: number
     minOrderQty: number
     maxMarketOrderQty: number
     minMarketOrderQty: number
-    qtyStep: number
     minNotional: number
     liquidationFee: number
 }
@@ -255,13 +256,14 @@ const Config = memo(({config: rawConfig}: ConfigProps) => {
     // 다른 변환 함수들도 useMemo로 최적화
     const convertExchangeInfo = useMemo(() => (info: Record<string, unknown>): ExchangeInfoRaw => ({
         dataPath: info["데이터 경로"] as string,
-        tickSize: info["틱 사이즈"] as number,
-        precision: info["소수점 정밀도"] as number,
+        priceStep: info["가격 최소 단위"] as number,
+        pricePrecision: info["가격 소수점 정밀도"] as number,
+        qtyStep: info["수량 최소 단위"] as number,
+        qtyPrecision: info["수량 소수점 정밀도"] as number,
         maxOrderQty: info["지정가 최대 수량"] as number,
         minOrderQty: info["지정가 최소 수량"] as number,
         maxMarketOrderQty: info["시장가 최대 수량"] as number,
         minMarketOrderQty: info["시장가 최소 수량"] as number,
-        qtyStep: info["수량 최소 단위"] as number,
         minNotional: info["최소 명목 가치"] as number,
         liquidationFee: info["강제 청산 수수료율"] as number,
     }), []);

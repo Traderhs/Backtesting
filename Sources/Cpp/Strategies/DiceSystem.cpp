@@ -233,15 +233,15 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
   // 276 USDT / 2,500 USDT = 0.1104 BTC → 0.110 BTC
   // (0.110 BTC 가격에 진입하면 손절 시 276 USDT에 근접한 손실
   //  → 0.110 BTC * 2,500 USDT = 275 USDT < 276 USDT)
-  const auto tick_size = symbol_info.GetTickSize();
+  const auto price_step = symbol_info.GetPriceStep();
   const auto qty_step = symbol_info.GetQtyStep();
 
-  stop_loss_points = RoundToStep(stop_loss_points, tick_size);
+  stop_loss_points = RoundToStep(stop_loss_points, price_step);
   double position_size = RoundToStep(allowed_loss / stop_loss_points, qty_step);
 
   // 5. 명목 가치 계산
   // 0.11 BTC × 52,300 USDT = 5,753 USDT
-  order_price = RoundToStep(order_price, tick_size);
+  order_price = RoundToStep(order_price, price_step);
   double notional_value = position_size * order_price;
 
   // 6. 레버리지 계산 (명목 가치를 심볼당 할당 가능한 마진으로 나눈 값)

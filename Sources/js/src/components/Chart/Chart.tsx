@@ -58,16 +58,16 @@ function parseTimeframe(timeframe: string): number {
 const Chart: React.FC<{
     symbol: string;
     timeframe: string;
-    tickSize: number;
-    precision: number;
-    config?: any; // config 추가
+    priceStep: number;
+    pricePrecision: number;
+    config?: any;
     onChartLoaded?: () => void
 }> = ({
           symbol,
           timeframe,
-          tickSize,
-          precision,
-          config, // config 추가
+          priceStep,
+          pricePrecision,
+          config,
           onChartLoaded
       }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -347,8 +347,8 @@ const Chart: React.FC<{
                 locale: 'ko-KR',
                 priceFormatter: (price: number) => {
                     return price.toLocaleString(undefined, {
-                        minimumFractionDigits: precision,
-                        maximumFractionDigits: precision
+                        minimumFractionDigits: pricePrecision,
+                        maximumFractionDigits: pricePrecision
                     });
                 }
             },
@@ -391,8 +391,8 @@ const Chart: React.FC<{
 
         candleStickRendererRef.current = new CandleStickRenderer({
             chart,
-            tickSize,
-            precision
+            priceStep: priceStep,
+            pricePrecision: pricePrecision
         });
 
         // 현재 심볼 정보를 전역 변수로 설정
@@ -791,7 +791,7 @@ const Chart: React.FC<{
             setIsCandleReady(false);
             setChartVisible(true);
         };
-    }, [symbol, timeframe, tickSize, precision, secondsPerBar, ws]);
+    }, [symbol, timeframe, priceStep, pricePrecision, secondsPerBar, ws]);
 
     // isLoading 상태를 감시하는 useEffect에 추가
     useEffect(() => {
@@ -1062,8 +1062,8 @@ const Chart: React.FC<{
                                 key={symbol}
                                 chart={chartRef.current}
                                 indicatorDataMap={indicatorDataMap}
-                                tickSize={tickSize}
-                                precision={precision}
+                                priceStep={priceStep}
+                                pricePrecision={pricePrecision}
                             />
                             <TimeSlider
                                 chart={chartRef.current}
@@ -1076,7 +1076,7 @@ const Chart: React.FC<{
                                 symbol={symbol}
                                 chart={chartRef.current}
                                 candleStickData={candleStickData}
-                                precision={precision}
+                                pricePrecision={pricePrecision}
                                 containerRef={chartContainerRef}
                             />
                             <TimeAxisTooltip
@@ -1087,7 +1087,7 @@ const Chart: React.FC<{
                             <PriceAxisTooltip
                                 chart={chartRef.current}
                                 containerRef={chartContainerRef}
-                                precision={precision}
+                                pricePrecision={pricePrecision}
                             />
                             <TradeMarkers
                                 symbol={symbol}
@@ -1095,7 +1095,7 @@ const Chart: React.FC<{
                                 mainSeries={window.mainSeries}
                                 candleStickData={candleStickData}
                                 containerRef={chartContainerRef}
-                                precision={precision}
+                                pricePrecision={pricePrecision}
                                 config={config}
                                 candleInterval={secondsPerBar}
                             />
