@@ -1,8 +1,13 @@
-// 표준 라이브러리
-#include <stdexcept>
-
 // 파일 헤더
 #include "Engines/Order.hpp"
+
+// 내부 헤더
+#include "Engines/Logger.hpp"
+
+// 네임 스페이스
+namespace backtesting {
+using namespace logger;
+}
 
 namespace backtesting::order {
 
@@ -254,23 +259,34 @@ Order& Order::SetExitFilledSize(const double exit_filled_size) {
 
 // ===========================================================================
 string Order::OrderTypeToString(const OrderType order_type) {
-  if (order_type == MARKET) {
-    return "시장가";
-  }
-  if (order_type == LIMIT) {
-    return "지정가";
-  }
-  if (order_type == MIT) {
-    return "MIT";
-  }
-  if (order_type == LIT) {
-    return "LIT";
-  }
-  if (order_type == TRAILING) {
-    return "트레일링";
+  switch (order_type) {
+    case MARKET: {
+      return "시장가";
+    }
+
+    case LIMIT: {
+      return "지정가";
+    }
+
+    case LIT: {
+      return "LIT";
+    }
+
+    case MIT: {
+      return "MIT";
+    }
+
+    case TRAILING: {
+      return "트레일링";
+    }
+
+    case ORDER_NONE: {
+      Logger::LogAndThrowError("[OrderTypeToString] 잘못된 주문 타입 NONE 지정",
+                               __FILE__, __LINE__);
+    }
   }
 
-  throw runtime_error("[OrderTypeToString] 잘못된 주문 타입 지정");
+  return string();
 }
 
 // ===========================================================================

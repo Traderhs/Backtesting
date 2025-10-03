@@ -361,28 +361,30 @@ void BarHandler::ProcessBarIndex(const BarType bar_type,
                                  const int64_t target_close_time) {
   const auto& bar_data = GetBarData(bar_type, timeframe);
   auto& bar_indices = GetBarIndices(bar_type, timeframe);
+  const auto max_bar_idx = bar_data->GetNumBars(symbol_idx) - 1;
 
-  try {
-    while (true) {
-      if (const auto next_close_time =
-              bar_data->SafeGetBar(symbol_idx, bar_indices[symbol_idx] + 1)
-                  .close_time;
-          next_close_time < target_close_time) {
-        // 다음 바의 Close Time이 Target Close Time보다 작으면
-        // 인덱스 증가 후 반복
-        bar_indices[symbol_idx]++;
-      } else if (next_close_time == target_close_time) {
-        // 다음 바의 Close Time이 Target Close Time과 같으면 인덱스 증가 후 탈출
-        bar_indices[symbol_idx]++;
-        return;
-      } else {
-        // 다음 바 Close Time이 Target Close Time보다 크면 증가하지 않고 종료
-        return;
-      }
+  while (true) {
+    size_t& bar_idx = bar_indices[symbol_idx];
+
+    // 최대 인덱스로 이후로는 이동 불가
+    if (bar_idx == max_bar_idx) {
+      return;
     }
-  } catch (const IndexOutOfRange&) {
-    // next_close_time이 바 데이터의 범위를 넘으면 최대 인덱스로 이동한 것이므로
-    // 더 이상 이동 불가
+
+    if (const auto next_close_time =
+            bar_data->GetBar(symbol_idx, bar_idx + 1).close_time;
+        next_close_time < target_close_time) {
+      // 다음 바의 Close Time이 Target Close Time보다 작으면
+      // 인덱스 증가 후 반복
+      bar_idx++;
+    } else if (next_close_time == target_close_time) {
+      // 다음 바의 Close Time이 Target Close Time과 같으면 인덱스 증가 후 탈출
+      bar_idx++;
+      return;
+    } else {
+      // 다음 바 Close Time이 Target Close Time보다 크면 증가하지 않고 종료
+      return;
+    }
   }
 }
 
@@ -456,7 +458,7 @@ size_t BarHandler::IncreaseBarIndex(const BarType bar_type,
     }
   }
 
-  throw runtime_error("");
+  [[unlikely]] throw;
 }
 
 BarType BarHandler::GetCurrentBarType() const { return current_bar_type_; }

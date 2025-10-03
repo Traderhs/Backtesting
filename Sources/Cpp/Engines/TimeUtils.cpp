@@ -189,8 +189,10 @@ int64_t ParseTimeframe(const string& timeframe_str) {
   }
 
   if (pos == 0) {
-    throw runtime_error(format(
-        "잘못된 타임프레임 포맷 {}이(가) 지정되었습니다.", timeframe_str));
+    Logger::LogAndThrowError(
+        format("잘못된 타임프레임 포맷 {}이(가) 지정되었습니다.",
+               timeframe_str),
+        __FILE__, __LINE__);
   }
 
   // str의 숫자 부분 찾기
@@ -218,9 +220,12 @@ int64_t ParseTimeframe(const string& timeframe_str) {
       return value * kMonth;
     }
 
-    throw runtime_error(
-        format("잘못된 타임프레임 유닛 {}이(가) 지정되었습니다.", unit));
+    Logger::LogAndThrowError(
+        format("잘못된 타임프레임 유닛 {}이(가) 지정되었습니다.", unit),
+        __FILE__, __LINE__);
   }
+
+  return -1;
 }
 
 string FormatTimeDiff(const int64_t diff_ms) {

@@ -134,8 +134,8 @@ bool IsFileMetadataValid(const string& file_path,
     const auto file_size = filesystem::file_size(path);
     const auto last_write_time = filesystem::last_write_time(path);
 
-    return (file_size == cached_metadata.file_size &&
-            last_write_time == cached_metadata.last_write_time);
+    return file_size == cached_metadata.file_size &&
+           last_write_time == cached_metadata.last_write_time;
   } catch (...) {
     return false;
   }
@@ -350,9 +350,10 @@ any GetScalarValue(const shared_ptr<arrow::Scalar>& scalar) {
       return dynamic_pointer_cast<arrow::DoubleScalar>(scalar)->value;
     case arrow::Type::STRING:
       return dynamic_pointer_cast<arrow::StringScalar>(scalar)->ToString();
-    default:
-      Logger::LogAndThrowError("해당되는 타입이 없습니다.: " + type, __FILE__,
-                               __LINE__);
+    [[unlikely]] default:
+      Logger::LogAndThrowError(
+          "스칼라 값을 얻기 위해 일치하는 타입이 없습니다.: " + type, __FILE__,
+          __LINE__);
       return nullptr;
   }
 }
