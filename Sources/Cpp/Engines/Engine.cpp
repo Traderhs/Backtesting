@@ -1234,7 +1234,7 @@ void Engine::BacktestingMain() {
             }
 
             logger_->Log(
-                WARNING_L,
+                WARN_L,
                 format("[{}] 심볼의 [{}] 돋보기 바가 누락되어 체결 확인을 "
                        "건너뜁니다. (돋보기 바 다음 시간: [{}])",
                        trading_bar_data_->GetSymbolName(symbol_idx),
@@ -1346,7 +1346,7 @@ void Engine::UpdateTradingStatus() {
               trading_bar_data_->GetBar(symbol_idx, bar_idx).open_time;
           trading_bar_open_time != current_open_time_) {
         logger_->Log(
-            WARNING_L,
+            WARN_L,
             format("[{}] 심볼의 [{}] 트레이딩 바가 누락되어 이번 시간의 "
                    "트레이딩을 건너뜁니다. (트레이딩 바 다음 시간: [{}])",
                    trading_bar_data_->GetSymbolName(symbol_idx),
@@ -1408,7 +1408,7 @@ void Engine::UpdateTradingStatus() {
              되므로 인덱스 증가
              ※ 원래 트레이딩 바 인덱스는 활성화된 심볼에서만 증가함 */
           logger_->Log(
-              WARNING_L,
+              WARN_L,
               format("[{} {}] 참조 바 데이터가 아직 시작되지 않아 해당 심볼의 "
                      "트레이딩을 진행할 수 없습니다. (참조 바가 시작되는 기준 "
                      "Close Time: [{}])",
@@ -1463,7 +1463,7 @@ void Engine::UpdateTradingStatus() {
            되므로 인덱스 증가
            ※ 원래 트레이딩 바 인덱스는 활성화된 심볼에서만 증가함 */
         logger_->Log(
-            WARNING_L,
+            WARN_L,
             format("[{}] 돋보기 바 데이터가 아직 시작되지 않아 해당 심볼의 "
                    "트레이딩을 진행할 수 없습니다. (돋보기 바 시작 시간: [{}])",
                    trading_bar_data_->GetSymbolName(symbol_idx),
@@ -1557,7 +1557,7 @@ void Engine::CheckFundingTime() {
       next_funding_times_[symbol_idx] = funding_time;
       next_funding_mark_prices_[symbol_idx] = mark_price;
     } else {
-      logger_->Log(WARNING_L,
+      logger_->Log(WARN_L,
                    format("[{}] 펀딩 비율 데이터가 종료되었으므로 해당 심볼의 "
                           "펀딩비는 더 이상 정산되지 않습니다.",
                           trading_bar_data_->GetSymbolName(symbol_idx)),
@@ -1601,7 +1601,7 @@ void Engine::CheckFundingTime() {
       } else [[unlikely]] {
         // 4. 모든 일치하는 데이터가 없다면 펀딩비 정산 불가
         OrderHandler::LogFormattedInfo(
-            WARNING_L,
+            WARN_L,
             format("펀딩 시간 [{}] 데이터에 마크 가격이 존재하지 않으며, "
                    "현재 진행 시간 [{}]과 일치하는 마크 가격 바와 시장 가격 "
                    "바가 존재하지 않으므로 펀딩비를 정산할 수 없습니다.",

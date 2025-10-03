@@ -64,7 +64,7 @@ namespace backtesting::logger {
 #endif
 
 /// 로그 레벨을 지정하는 열거형 클래스
-enum class LogLevel { DEBUG_L, INFO_L, WARNING_L, ERROR_L, BALANCE_L };
+enum class LogLevel { DEBUG_L, INFO_L, WARN_L, ERROR_L, BALANCE_L };
 using enum LogLevel;
 
 /**
@@ -185,7 +185,7 @@ class Logger final {
    * 로그 수준에 따라 서로 다른 파일에 로그를 관리
    * @param debug_log_name 디버그 수준 로그를 저장할 파일 이름
    * @param info_log_name 정보 수준 로그를 저장할 파일 이름
-   * @param warning_log_name 경고 수준 로그를 저장할 파일 이름
+   * @param warn_log_name 경고 수준 로그를 저장할 파일 이름
    * @param error_log_name 오류 수준 로그를 저장할 파일 이름
    * @param backtesting_log_name 각 백테스팅 폴더에 로그를 저장할 파일 이름
    * @return 싱글톤 Logger 인스턴스에 대한 참조
@@ -193,7 +193,7 @@ class Logger final {
   static shared_ptr<Logger>& GetLogger(
       const string& debug_log_name = "debug.log",
       const string& info_log_name = "info.log",
-      const string& warning_log_name = "warning.log",
+      const string& warn_log_name = "warn.log",
       const string& error_log_name = "error.log",
       const string& backtesting_log_name = "backtesting.log");
 
@@ -236,12 +236,12 @@ class Logger final {
    * 싱글톤 인스턴스를 생성하는 private 생성자
    * @param debug_log_name 디버그 로그 파일명
    * @param info_log_name 정보 로그 파일명
-   * @param warning_log_name 경고 로그 파일명
+   * @param warn_log_name 경고 로그 파일명
    * @param error_log_name 오류 로그 파일명
    * @param backtesting_log_name 백테스팅 로그 파일명
    */
   Logger(const string& debug_log_name, const string& info_log_name,
-         const string& warning_log_name, const string& error_log_name,
+         const string& warn_log_name, const string& error_log_name,
          const string& backtesting_log_name);
 
   /**
@@ -263,7 +263,7 @@ class Logger final {
   // 로그 파일 스트림
   ofstream debug_log_;
   ofstream info_log_;
-  ofstream warning_log_;
+  ofstream warn_log_;
   ofstream error_log_;
   ofstream backtesting_log_;
 

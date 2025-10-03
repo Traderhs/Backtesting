@@ -31,29 +31,29 @@ namespace backtesting::order {
 inline string warn_msg;
 
 // 경고 메세지를 로깅 후 false를 리턴하는 매크로
-#define WARN_AND_RET_FALSE()                                 \
-  LogFormattedInfo(WARNING_L, warn_msg, __FILE__, __LINE__); \
+#define WARN_AND_RET_FALSE()                              \
+  LogFormattedInfo(WARN_L, warn_msg, __FILE__, __LINE__); \
   return false;
 
 // 경고 메세지를 로깅 후 단순 리턴하는 매크로
-#define WARN_AND_RET()                                       \
-  LogFormattedInfo(WARNING_L, warn_msg, __FILE__, __LINE__); \
+#define WARN_AND_RET()                                    \
+  LogFormattedInfo(WARN_L, warn_msg, __FILE__, __LINE__); \
   return;
 
 // valid 검사 함수들의 리턴값을 검사하여 Invalid하면 원인과 경고 메시지를
 // 로깅 후 false를 리턴하는 매크로
-#define RET_FALSE_IF_INVALID(expr)                          \
-  if (const optional<string>& warn = expr) {                \
-    LogFormattedInfo(WARNING_L, *warn, __FILE__, __LINE__); \
-    WARN_AND_RET_FALSE()                                    \
+#define RET_FALSE_IF_INVALID(expr)                       \
+  if (const optional<string>& warn = expr) {             \
+    LogFormattedInfo(WARN_L, *warn, __FILE__, __LINE__); \
+    WARN_AND_RET_FALSE()                                 \
   }
 
 // valid 검사 함수들의 리턴값을 검사하여 Invalid하면 원인과 경고 메시지를
 // 로깅 후 단순 리턴하는 매크로
-#define RET_IF_INVALID(expr)                                \
-  if (const optional<string>& warn = expr) {                \
-    LogFormattedInfo(WARNING_L, *warn, __FILE__, __LINE__); \
-    WARN_AND_RET()                                          \
+#define RET_IF_INVALID(expr)                             \
+  if (const optional<string>& warn = expr) {             \
+    LogFormattedInfo(WARN_L, *warn, __FILE__, __LINE__); \
+    WARN_AND_RET()                                       \
   }
 
 OrderHandler::OrderHandler() = default;
@@ -104,7 +104,7 @@ bool OrderHandler::MarketEntry(const string& entry_name,
 
       entry_now = false;
     } else [[unlikely]] {
-      LogFormattedInfo(WARNING_L, "마지막 바에서 시장가 진입 대기 주문 불가",
+      LogFormattedInfo(WARN_L, "마지막 바에서 시장가 진입 대기 주문 불가",
                        __FILE__, __LINE__);
 
       WARN_AND_RET_FALSE()
@@ -191,7 +191,7 @@ bool OrderHandler::LimitEntry(const string& entry_name,
       order_time = next_bar.open_time;
       base_price = next_bar.open;
     } else [[unlikely]] {
-      LogFormattedInfo(WARNING_L, "마지막 바에서 지정가 진입 대기 주문 불가",
+      LogFormattedInfo(WARN_L, "마지막 바에서 지정가 진입 대기 주문 불가",
                        __FILE__, __LINE__);
 
       WARN_AND_RET_FALSE()
@@ -284,7 +284,7 @@ bool OrderHandler::MitEntry(const string& entry_name,
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       base_price = next_bar.open;
     } else [[unlikely]] {
-      LogFormattedInfo(WARNING_L, "마지막 바에서 MIT 진입 대기 주문 불가",
+      LogFormattedInfo(WARN_L, "마지막 바에서 MIT 진입 대기 주문 불가",
                        __FILE__, __LINE__);
 
       WARN_AND_RET_FALSE()
@@ -360,7 +360,7 @@ bool OrderHandler::LitEntry(const string& entry_name,
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       base_price = next_bar.open;
     } else [[unlikely]] {
-      LogFormattedInfo(WARNING_L, "마지막 바에서 LIT 진입 대기 주문 불가",
+      LogFormattedInfo(WARN_L, "마지막 바에서 LIT 진입 대기 주문 불가",
                        __FILE__, __LINE__);
 
       WARN_AND_RET_FALSE()
@@ -442,7 +442,7 @@ bool OrderHandler::TrailingEntry(const string& entry_name,
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       base_price = next_bar.open;
     } else [[unlikely]] {
-      LogFormattedInfo(WARNING_L, "마지막 바에서 트레일링 진입 대기 주문 불가",
+      LogFormattedInfo(WARN_L, "마지막 바에서 트레일링 진입 대기 주문 불가",
                        __FILE__, __LINE__);
 
       WARN_AND_RET_FALSE()
@@ -599,9 +599,8 @@ bool OrderHandler::MarketExit(const string& exit_name,
   } else [[unlikely]] {
     // 원본 진입 주문을 찾지 못하면 청산 실패
     LogFormattedInfo(
-        WARNING_L,
-        format("원본 진입 주문 [{}] 미존재로 청산 불가", target_name), __FILE__,
-        __LINE__);
+        WARN_L, format("원본 진입 주문 [{}] 미존재로 청산 불가", target_name),
+        __FILE__, __LINE__);
 
     WARN_AND_RET_FALSE()
   }
@@ -704,7 +703,7 @@ bool OrderHandler::LimitExit(const string& exit_name, const string& target_name,
       order_time = next_bar.open_time;
       base_price = next_bar.open;
     } else [[unlikely]] {
-      LogFormattedInfo(WARNING_L, "마지막 바에서 지정가 청산 대기 주문 불가",
+      LogFormattedInfo(WARN_L, "마지막 바에서 지정가 청산 대기 주문 불가",
                        __FILE__, __LINE__);
 
       WARN_AND_RET_FALSE()
@@ -729,9 +728,8 @@ bool OrderHandler::LimitExit(const string& exit_name, const string& target_name,
   } else [[unlikely]] {
     // 원본 진입 주문을 찾지 못하면 청산 실패
     LogFormattedInfo(
-        WARNING_L,
-        format("원본 진입 주문 [{}] 미존재로 청산 불가", target_name), __FILE__,
-        __LINE__);
+        WARN_L, format("원본 진입 주문 [{}] 미존재로 청산 불가", target_name),
+        __FILE__, __LINE__);
 
     WARN_AND_RET_FALSE()
   }
@@ -795,7 +793,7 @@ bool OrderHandler::MitExit(const string& exit_name, const string& target_name,
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       base_price = next_bar.open;
     } else [[unlikely]] {
-      LogFormattedInfo(WARNING_L, "마지막 바에서 MIT 청산 대기 주문 불가",
+      LogFormattedInfo(WARN_L, "마지막 바에서 MIT 청산 대기 주문 불가",
                        __FILE__, __LINE__);
 
       WARN_AND_RET_FALSE()
@@ -818,9 +816,8 @@ bool OrderHandler::MitExit(const string& exit_name, const string& target_name,
   } else [[unlikely]] {
     // 원본 진입 주문을 찾지 못하면 청산 실패
     LogFormattedInfo(
-        WARNING_L,
-        format("원본 진입 주문 [{}] 미존재로 청산 불가", target_name), __FILE__,
-        __LINE__);
+        WARN_L, format("원본 진입 주문 [{}] 미존재로 청산 불가", target_name),
+        __FILE__, __LINE__);
 
     WARN_AND_RET_FALSE()
   }
@@ -884,7 +881,7 @@ bool OrderHandler::LitExit(const string& exit_name, const string& target_name,
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       base_price = next_bar.open;
     } else [[unlikely]] {
-      LogFormattedInfo(WARNING_L, "마지막 바에서 LIT 청산 대기 주문 불가",
+      LogFormattedInfo(WARN_L, "마지막 바에서 LIT 청산 대기 주문 불가",
                        __FILE__, __LINE__);
 
       WARN_AND_RET_FALSE()
@@ -907,9 +904,8 @@ bool OrderHandler::LitExit(const string& exit_name, const string& target_name,
   } else [[unlikely]] {
     // 원본 진입 주문을 찾지 못하면 청산 실패
     LogFormattedInfo(
-        WARNING_L,
-        format("원본 진입 주문 [{}] 미존재로 청산 불가", target_name), __FILE__,
-        __LINE__);
+        WARN_L, format("원본 진입 주문 [{}] 미존재로 청산 불가", target_name),
+        __FILE__, __LINE__);
 
     WARN_AND_RET_FALSE()
   }
@@ -979,7 +975,7 @@ bool OrderHandler::TrailingExit(const string& exit_name,
       // On Close 전략일 시 기준 가격은 다음 봉의 Open
       base_price = next_bar.open;
     } else [[unlikely]] {
-      LogFormattedInfo(WARNING_L, "마지막 바에서 트레일링 청산 대기 주문 불가",
+      LogFormattedInfo(WARN_L, "마지막 바에서 트레일링 청산 대기 주문 불가",
                        __FILE__, __LINE__);
 
       WARN_AND_RET_FALSE()
@@ -1002,9 +998,8 @@ bool OrderHandler::TrailingExit(const string& exit_name,
   } else [[unlikely]] {
     // 원본 진입 주문을 찾지 못하면 청산 실패
     LogFormattedInfo(
-        WARNING_L,
-        format("원본 진입 주문 [{}] 미존재로 청산 불가", target_name), __FILE__,
-        __LINE__);
+        WARN_L, format("원본 진입 주문 [{}] 미존재로 청산 불가", target_name),
+        __FILE__, __LINE__);
 
     WARN_AND_RET_FALSE()
   }
@@ -1223,7 +1218,7 @@ vector<FillInfo> OrderHandler::CheckPendingExits(
       }
 
       [[unlikely]] case ORDER_NONE: {
-        LogFormattedInfo(WARNING_L, "청산 대기 주문에 NONE 주문 존재", __FILE__,
+        LogFormattedInfo(WARN_L, "청산 대기 주문에 NONE 주문 존재", __FILE__,
                          __LINE__);
 
         throw;
@@ -1457,7 +1452,7 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
           engine_->DecreaseWalletBalance(available_balance);
 
           LogFormattedInfo(
-              WARNING_L,
+              WARN_L,
               format("[{}] 일부 펀딩비 [{}] 지불 (펀딩 시간 {} | 펀딩 비율 "
                      "{} | 펀딩 가격 {} | 포지션 수량 {} | 전체 펀딩비 {})",
                      entry_name, FormatDollar(available_balance, true),
@@ -1512,7 +1507,7 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
           engine_->DecreaseWalletBalance(margin_deduction);
 
           LogFormattedInfo(
-              WARNING_L,
+              WARN_L,
               format("[{}] 남은 펀딩비 [{}]를 마진 [{}]에서 지불 "
                      "(펀딩 시간 {} | 펀딩 비율 {} | 펀딩 가격 {} | "
                      "포지션 수량 {} | 전체 펀딩비 {})",
@@ -1524,7 +1519,7 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
               __FILE__, __LINE__);
 
           LogFormattedInfo(
-              WARNING_L,
+              WARN_L,
               format(
                   "[{}] 펀딩비를 지불할 사용 가능 자금 부족으로 인해 잔여 마진 "
                   "[{}] → [{}], 강제 청산 가격 [{}] → [{}] 조정",
@@ -1554,7 +1549,7 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
           engine_->DecreaseWalletBalance(left_margin);
 
           LogFormattedInfo(
-              WARNING_L,
+              WARN_L,
               format("[{}] 남은 펀딩비 [{}]가 잔여 마진 [{}]"
                      "보다 많거나 같으므로, 잔여 마진 전체를 펀딩비로 지불하고 "
                      "강제 청산됩니다. (부족분은 보험 기금에서 충당됩니다.)",
@@ -1563,7 +1558,7 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
               __FILE__, __LINE__);
 
           LogFormattedInfo(
-              WARNING_L,
+              WARN_L,
               format("[{}] 남은 펀딩비 일부를 마진 [{}]로 전체 지불 "
                      "(펀딩 시간 {} | 펀딩 비율 {} | 펀딩 가격 {} | "
                      "포지션 수량 {} | 전체 펀딩비 {})",
@@ -2139,7 +2134,7 @@ void OrderHandler::FillPendingLimitEntry(const shared_ptr<Order>& limit_entry,
   if (const auto& warn = IsValidEntryName(entry_name, symbol_idx)) {
     // 중복된 진입 이름이 존재하면 체결 실패
     // 사용한 마진(예약 증거금) 감소
-    LogFormattedInfo(WARNING_L, *warn, __FILE__, __LINE__);
+    LogFormattedInfo(WARN_L, *warn, __FILE__, __LINE__);
     engine_->DecreaseUsedMargin(limit_entry->GetEntryMargin());
 
     WARN_AND_RET()
@@ -2177,7 +2172,7 @@ void OrderHandler::FillPendingLimitEntry(const shared_ptr<Order>& limit_entry,
           AdjustLeverage(limit_entry->GetLeverage(), symbol_idx)) {
     // 레버리지 변경이 실패하면 체결 실패
     // 사용한 마진(예약 증거금) 감소
-    LogFormattedInfo(WARNING_L, *warn, __FILE__, __LINE__);
+    LogFormattedInfo(WARN_L, *warn, __FILE__, __LINE__);
     engine_->DecreaseUsedMargin(limit_entry->GetEntryMargin());
 
     WARN_AND_RET()
@@ -2249,12 +2244,12 @@ bool OrderHandler::OrderPendingLitEntry(const shared_ptr<Order>& lit_entry,
   if (const auto& warn =
           HasEnoughBalance(engine_->GetAvailableBalance(), entry_margin,
                            "사용 가능", "LIT 주문 마진")) {
-    LogFormattedInfo(WARNING_L, *warn, __FILE__, __LINE__);
+    LogFormattedInfo(WARN_L, *warn, __FILE__, __LINE__);
 
     // 주문 실패 시 대기 주문에서 삭제
     pending_entries.erase(pending_entries.begin() + order_idx);
 
-    LogFormattedInfo(WARNING_L,
+    LogFormattedInfo(WARN_L,
                      format("LIT [{}] 주문 취소 (사용 가능 자금 부족)",
                             lit_entry->GetEntryName()),
                      __FILE__, __LINE__);

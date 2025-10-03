@@ -113,7 +113,7 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
 
   if (filesystem::exists(file_path)) {
     logger_->Log(
-        WARNING_L,
+        WARN_L,
         format("[{} {}] 연속 선물 캔들스틱 파일이 [{}] 경로에 이미 존재합니다.",
                symbol, timeframe_filename, ConvertBackslashToSlash(file_path)),
         __FILE__, __LINE__, true);
@@ -179,7 +179,7 @@ void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
       directory_path + "/" + filename_timeframe + ".parquet";
 
   if (!filesystem::exists(file_path)) {
-    logger_->Log(WARNING_L,
+    logger_->Log(WARN_L,
                  format("[{} {}] 연속 선물 캔들스틱 파일이 존재하지 않아 "
                         "업데이트할 수 없습니다.",
                         symbol, filename_timeframe),
@@ -245,7 +245,7 @@ void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
         __FILE__, __LINE__, true);
   } else {
     logger_->Log(
-        WARNING_L,
+        WARN_L,
         format("[{} {}] 연속 선물 캔들스틱 파일이 이미 최신 버전입니다.",
                symbol, filename_timeframe),
         __FILE__, __LINE__, true);
@@ -274,7 +274,7 @@ void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
 
   if (filesystem::exists(file_path)) {
     logger_->Log(
-        WARNING_L,
+        WARN_L,
         format("[{} {}] 마크 가격 캔들스틱 파일이 [{}] 경로에 이미 존재합니다.",
                symbol, timeframe_filename, ConvertBackslashToSlash(file_path)),
         __FILE__, __LINE__, true);
@@ -334,7 +334,7 @@ void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
       directory_path + "/" + filename_timeframe + ".parquet";
 
   if (!filesystem::exists(file_path)) {
-    logger_->Log(WARNING_L,
+    logger_->Log(WARN_L,
                  format("[{} {}] 마크 가격 캔들스틱 파일이 존재하지 않아 "
                         "업데이트할 수 없습니다.",
                         symbol, filename_timeframe),
@@ -399,7 +399,7 @@ void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
         __FILE__, __LINE__, true);
   } else {
     logger_->Log(
-        WARNING_L,
+        WARN_L,
         format("[{} {}] 마크 가격 캔들스틱 파일이 이미 최신 버전입니다.",
                symbol, filename_timeframe),
         __FILE__, __LINE__, true);
@@ -421,7 +421,7 @@ void BinanceFetcher::FetchFundingRates(const string& symbol) const {
   const string& file_path = funding_rates_directory_ + "/" + symbol + ".json";
 
   if (filesystem::exists(file_path)) {
-    logger_->Log(WARNING_L,
+    logger_->Log(WARN_L,
                  format("[{}] 펀딩 비율 파일이 [{}] 경로에 이미 존재합니다.",
                         symbol, ConvertBackslashToSlash(file_path)),
                  __FILE__, __LINE__, true);
@@ -496,7 +496,7 @@ void BinanceFetcher::UpdateFundingRates(const string& symbol) const {
   const auto& file_path = funding_rates_directory_ + "/" + symbol + ".json";
 
   if (!filesystem::exists(file_path)) {
-    logger_->Log(WARNING_L,
+    logger_->Log(WARN_L,
                  format("[{}] 펀딩 비율 파일이 존재하지 않아 "
                         "업데이트할 수 없습니다.",
                         symbol),
@@ -577,7 +577,7 @@ void BinanceFetcher::UpdateFundingRates(const string& symbol) const {
                symbol),
         __FILE__, __LINE__, true);
   } else {
-    logger_->Log(WARNING_L,
+    logger_->Log(WARN_L,
                  format("[{}] 펀딩 비율 파일이 이미 최신 버전입니다.", symbol),
                  __FILE__, __LINE__, true);
   }
@@ -807,7 +807,7 @@ vector<json> BinanceFetcher::TransformKlines(const vector<json>& klines,
       {
         const string& err =
             format("데이터 변환 중 에러가 발생했습니다: {}", e.what());
-        logger_->Log(WARNING_L, err, __FILE__, __LINE__, true);
+        logger_->Log(WARN_L, err, __FILE__, __LINE__, true);
       }
 
       // 에러 발생 시 빈 JSON 객체 저장
