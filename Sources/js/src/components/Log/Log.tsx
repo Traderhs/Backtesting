@@ -119,7 +119,7 @@ const LogRow: React.FC<{
     const getLogLevelColor = () => {
         if (line.includes('[DEBUG]')) {
             return 'rgb(156, 220, 254)';
-        } else if (line.includes('[WARNING]')) {
+        } else if (line.includes('[WARN]')) {
             return 'rgb(229, 192, 123)';
         } else if (line.includes('[ERROR]')) {
             return 'rgb(224, 108, 117)';
