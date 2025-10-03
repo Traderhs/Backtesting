@@ -190,8 +190,11 @@ Logger::Logger(const string& debug_log_name, const string& info_log_name,
   error_log_.open(log_path + error_log_name, ios::app);
 
   const string& backtesting_log_path = log_path + backtesting_log_name;
+
+  // 생성자는 새 프로그램 실행이므로 항상 새로 시작
   backtesting_log_.open(backtesting_log_path, ios::out | ios::trunc);
   backtesting_log_temp_path_ = backtesting_log_path;
+  backtesting_log_created_in_current_session_ = true;
 
   // 파일 버퍼 비활성화
   debug_log_.rdbuf()->pubsetbuf(nullptr, 0);
@@ -288,9 +291,23 @@ void Logger::SetLogDirectory(const string& log_directory) {
             filesystem::rename("./" + file,
                                format("{}/{}", log_directory, file));
           } catch (...) {
-            // 이동 실패 시 복사 후 삭제 시도
-            copy_file("./" + file, format("{}/{}", log_directory, file),
-                      filesystem::copy_options::overwrite_existing);
+            // 이동 실패 시 기존 파일에 내용 추가 후 현재 파일 삭제
+
+            // 기존 파일이 있다면 현재 파일 내용을 끝에 추가
+            if (const string& target_path =
+                    format("{}/{}", log_directory, file);
+                filesystem::exists(target_path)) {
+              ofstream target_file(target_path, ios::app);
+              ifstream source_file("./" + file);
+
+              target_file << source_file.rdbuf();
+              target_file.close();
+              source_file.close();
+            } else {
+              // 기존 파일이 없다면 단순 복사
+              filesystem::copy_file("./" + file, target_path);
+            }
+
             filesystem::remove("./" + file);
           }
         }
@@ -308,12 +325,22 @@ void Logger::SetLogDirectory(const string& log_directory) {
       instance_->warn_log_.rdbuf()->pubsetbuf(nullptr, 0);
       instance_->error_log_.rdbuf()->pubsetbuf(nullptr, 0);
 
-      // 백테스팅 로그 경로 업데이트 (기존 내용 삭제하고 새로 시작)
+      // 백테스팅 로그 경로 업데이트
       instance_->backtesting_log_temp_path_ =
           log_directory + "/" + backtesting_name;
+
+      // 현재 세션에서 생성된 로그라면 내용 보존, 아니라면 새로 시작
+      const ios::openmode mode =
+          instance_->backtesting_log_created_in_current_session_
+              ? ios::app
+              : ios::out | ios::trunc;
+
       instance_->backtesting_log_.open(instance_->backtesting_log_temp_path_,
-                                       ios::out | ios::trunc);
+                                       mode);
       instance_->backtesting_log_.rdbuf()->pubsetbuf(nullptr, 0);
+
+      // 이제 현재 세션에서 관리되는 것으로 표시
+      instance_->backtesting_log_created_in_current_session_ = true;
     }
   } catch (const exception& e) {
     LogAndThrowError(e.what(), __FILE__, __LINE__);
