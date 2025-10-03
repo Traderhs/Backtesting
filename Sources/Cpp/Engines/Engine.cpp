@@ -791,14 +791,11 @@ void Engine::IsValidIndicators() {
       const auto& indicator_name = indicator->GetName();
 
       // 지표 타임프레임 유효성 검사
-      const string& timeframe = indicator->GetTimeframe();
-      try {
-        ParseTimeframe(timeframe);
-      } catch ([[maybe_unused]] const std::exception& e) {
-        // 지표에서 trading_timeframe을 변수를 사용하면 아직 초기화 전이기
-        // 때문에 TRADING_TIMEFRAME으로 지정되어 있는데 이 경우는 유효한
-        // 타임프레임이기 때문에 넘어감
-        if (timeframe != "TRADING_TIMEFRAME") {
+      if (const string& timeframe = indicator->GetTimeframe();
+          timeframe != "TRADING_TIMEFRAME") {
+        try {
+          ParseTimeframe(timeframe);
+        } catch ([[maybe_unused]] const std::exception& e) {
           Logger::LogAndThrowError(
               format("[{}] 전략에서 사용하는 [{}] 지표의 타임프레임 "
                      "[{}]이(가) 유효하지 않습니다.",
@@ -1232,7 +1229,7 @@ void Engine::BacktestingMain() {
                   magnifier_bar_data_->GetBar(symbol_idx, moved_bar_idx + 1)
                       .open_time);
             } else {
-              // 마지막 바인 경우는 종료 명시
+              // 현재 바가 마지막 바인 경우는 종료 명시
               magnifier_next_open_time = "데이터 종료";
             }
 
@@ -1909,7 +1906,8 @@ void Engine::SortOrders(vector<FillInfo>& should_fill_orders,
                               [[fallthrough]];
                             case DIRECTION_NONE: {
                               // LONG: 낮은 가격 -> 높은 가격 순
-                              // DIRECTION_NONE: 낮은 가격 -> 높은 가격 순 가정
+                              // DIRECTION_NONE: 낮은 가격 -> 높은 가격 순
+                              // 가정
                               return IsLess(a.fill_price, b.fill_price);
                             }
 
@@ -1948,7 +1946,8 @@ void Engine::ExecuteStrategy(const StrategyType strategy_type,
   // = 원본 바 타입을 저장 =
   // 종가 전략 실행인 경우 원본 바 타입은 트레이딩 바
   //
-  // ProcessOhlc에서 전략 실행인 경우 원본 바 타입은 트레이딩 바 혹은 돋보기 바
+  // ProcessOhlc에서 전략 실행인 경우 원본 바 타입은 트레이딩 바 혹은 돋보기
+  // 바
   const auto original_bar_type = bar_->GetCurrentBarType();
 
   // 트레이딩 바의 지정된 심볼에서 전략 실행
