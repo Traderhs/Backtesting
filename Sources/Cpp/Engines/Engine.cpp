@@ -1957,13 +1957,13 @@ void Engine::ExecuteStrategy(const StrategyType strategy_type,
   const auto original_bar_type = bar_->GetCurrentBarType();
 
   // 트레이딩 바의 지정된 심볼에서 전략 실행
-  // 돋보기 바에서 BEFORE/AFTER EXIT, BEFORE/AFTER ENTRY 전략이 실행되더라도
-  // 전략은 종가 기준으로 하는 것이 지표 참조 측면에서 올바름
+  // 돋보기 바에서 AFTER EXIT, AFTER ENTRY 전략이 실행되더라도
+  // 전략은 트레이딩 바의 종가 기준으로 하는 것이 지표 참조 측면에서 올바름
   //
-  // 예를 들어, 1시간 TRADING, 1분 MAGNIFIER라고 했을 때, close[0]했는데
-  // 1분의 close 값을 얻으면 안 되므로 TRADING으로 설정하는 것
-  // 단, 이러한 설정 때문에 미래 값 참조를 방지하기 위하여 BEFORE/AFTER
-  // 전략에서는 [0]으로 참조할 수 없음
+  // 예를 들어, 1시간 TRADING, 1분 MAGNIFIER라고 했을 때, high[0]했는데
+  // 1분의 high 값을 얻으면 안 되므로 TRADING으로 설정하는 것
+  // 단, 이러한 설정 때문에 미래 값 참조를 방지하기 위하여 AFTER 전략에서는
+  // [0]으로 참조할 수 없음
   bar_->SetCurrentBarType(TRADING, "");
   bar_->SetCurrentSymbolIndex(symbol_idx);
 

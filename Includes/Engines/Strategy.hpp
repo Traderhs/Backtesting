@@ -37,14 +37,12 @@ namespace backtesting::strategy {
  *
  * ※ 커스텀 전략 생성 시 유의 사항 ※\n
  * 1. Strategy 클래스를 Public 상속 후
- *    Initialize, ExecuteOnClose, ExecuteAfterEntry, ExecuteAfterExit,
- *    ExecuteBeforeEntry, ExecuteBeforeExit 함수들을 오버라이드해서 제작\n
+ *    Initialize, ExecuteOnClose, ExecuteAfterEntry, ExecuteAfterExit
+ *    함수들을 오버라이드해서 제작\n
  *
  *    Initialize → 엔진 초기화 시 최초 1회 실행\n
  *    ExecuteOnCLose → 트레이딩 바 종가마다 모든 심볼에서 실행\n
- *    ExecuteBeforeEntry → 진입 체결 직전에 해당 심볼에서만 실행\n
  *    ExecuteAfterEntry → 진입 체결이 있었다면 해당 심볼에서만 즉시 실행\n
- *    ExecuteBeforeExit → 청산 체결 직전에 해당 심볼에서만 실행\n
  *    ExecuteAfterExit → 청산 체결이 있었다면 해당 심볼에서만 즉시 실행
  *                       ExecuteAfterEntry보다 우선 순위가 높음\n
  *
@@ -74,9 +72,9 @@ namespace backtesting::strategy {
  *    지표 바의 Close Time이 트레이딩 바의 Close Time이 동일해진 순간,
  *    다음 Close Time이 동일해지기 전까지 지표의 전 바의 값이 참조됨\n
  *
- * 9. 지표 값은 종가에서 완성되는데 BEFORE/AFTER 전략에서는 완성되지 않은
+ * 9. 지표 값은 종가에서 완성되는데 AFTER 전략에서는 완성되지 않은
  *    현재 바의 중간 값을 참조하므로,
- *    BEFORE/AFTER 전략에서는 [0]으로 현재의 값을 참조할 수 없음 ([1] 이상 가능)
+ *    AFTER 전략에서는 [0]으로 현재의 값을 참조할 수 없음 ([1] 이상 가능)
  *
  * 10. 부가 기능으로, 진입 잔량을 전량 청산하고 싶으면 left_size 변수를
  *     청산 수량에 사용하면 됨.\n
