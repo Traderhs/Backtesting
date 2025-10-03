@@ -857,7 +857,7 @@ void Analyzer::SaveBackboard() const {
     } else {
       // 패키지가 없으면 GitHub 릴리즈에서 다운로드
       logger_->Log(
-          WARNING_L,
+          WARN_L,
           "로컬 저장소에서 백보드를 찾을 수 없어 GitHub에서 다운로드합니다.",
           __FILE__, __LINE__, true);
 
@@ -1116,9 +1116,8 @@ void Analyzer::DownloadBackboardFromGitHub() const {
 
     if (int exe_result = system(download_exe_cmd.c_str()); exe_result != 0) {
       // curl이 실패하면 PowerShell로 재시도
-      logger_->Log(WARNING_L,
-                   "curl로 다운로드 실패, PowerShell로 재시도합니다.", __FILE__,
-                   __LINE__, true);
+      logger_->Log(WARN_L, "curl로 다운로드 실패, PowerShell로 재시도합니다.",
+                   __FILE__, __LINE__, true);
 
       const string fallback_exe_cmd = format(
           "powershell -Command \"$ProgressPreference = 'Continue'; "
@@ -1150,9 +1149,8 @@ void Analyzer::DownloadBackboardFromGitHub() const {
 
     if (int zip_result = system(download_zip_cmd.c_str()); zip_result != 0) {
       // curl이 실패하면 PowerShell로 재시도
-      logger_->Log(WARNING_L,
-                   "curl로 다운로드 실패, PowerShell로 재시도합니다.", __FILE__,
-                   __LINE__, true);
+      logger_->Log(WARN_L, "curl로 다운로드 실패, PowerShell로 재시도합니다.",
+                   __FILE__, __LINE__, true);
 
       const string fallback_zip_cmd = format(
           "powershell -Command \"$ProgressPreference = 'Continue'; "
@@ -1254,8 +1252,7 @@ void Analyzer::DownloadBackboardFromGitHub() const {
       filesystem::remove(zip_temp_path);
       filesystem::remove_all(extract_temp_path);
     } catch (const exception& e) {
-      logger_->Log(WARNING_L,
-                   format("임시 파일 정리 중 오류 발생: {}", e.what()),
+      logger_->Log(WARN_L, format("임시 파일 정리 중 오류 발생: {}", e.what()),
                    __FILE__, __LINE__, true);
     }
 

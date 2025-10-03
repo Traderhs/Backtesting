@@ -323,7 +323,7 @@ optional<string> BaseOrderHandler::AdjustLeverage(const int leverage,
     if (const auto& warn =
             IsValidLeverage(leverage, order_price,
                             pending_entry->GetEntryOrderSize(), symbol_idx)) {
-      LogFormattedInfo(WARNING_L, *warn, __FILE__, __LINE__);
+      LogFormattedInfo(WARN_L, *warn, __FILE__, __LINE__);
 
       // 현재 레버리지가 최대 레버리지를 초과하였다면 주문 취소
       Cancel(pending_entry->GetEntryName());
@@ -351,7 +351,7 @@ optional<string> BaseOrderHandler::AdjustLeverage(const int leverage,
       if (const auto& warn =
               HasEnoughBalance(engine_->GetAvailableBalance(), updated_margin,
                                "사용 가능", order_type_str + " 진입 마진")) {
-        LogFormattedInfo(WARNING_L, *warn, __FILE__, __LINE__);
+        LogFormattedInfo(WARN_L, *warn, __FILE__, __LINE__);
 
         // 위쪽에서 마진 재설정을 위해 DecreaseUsedMargin 함수를 이미 호출했고,
         // Cancel 함수에서 내부적으로 사용한 마진을 감소시키므로 중복 감소 방지
