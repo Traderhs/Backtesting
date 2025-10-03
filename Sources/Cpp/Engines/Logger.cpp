@@ -49,7 +49,7 @@ thread_local char Logger::filename_cache_[256];
 // 파일별 전용 버퍼 - 전역 static 변수
 static FastLogBuffer debug_buffer;
 static FastLogBuffer info_buffer;
-static FastLogBuffer warning_buffer;
+static FastLogBuffer warn_buffer;
 static FastLogBuffer error_buffer;
 static FastLogBuffer backtesting_buffer;
 
@@ -69,8 +69,8 @@ const char* Logger::GetLevelString(const LogLevel level) {
       return "INFO";
     }
 
-    case WARNING_L: {
-      return "WARNING";
+    case WARN_L: {
+      return "WARN";
     }
 
     case ERROR_L: {
@@ -179,14 +179,14 @@ size_t Logger::FormatMessageFast(char* buffer, const LogLevel level,
 }
 
 Logger::Logger(const string& debug_log_name, const string& info_log_name,
-               const string& warning_log_name, const string& error_log_name,
+               const string& warn_log_name, const string& error_log_name,
                const string& backtesting_log_name)
     : stop_logging_(false) {
   const string& log_path = log_directory_.empty() ? "./" : log_directory_ + "/";
 
   debug_log_.open(log_path + debug_log_name, ios::app);
   info_log_.open(log_path + info_log_name, ios::app);
-  warning_log_.open(log_path + warning_log_name, ios::app);
+  warn_log_.open(log_path + warn_log_name, ios::app);
   error_log_.open(log_path + error_log_name, ios::app);
 
   const string& backtesting_log_path = log_path + backtesting_log_name;
@@ -196,7 +196,7 @@ Logger::Logger(const string& debug_log_name, const string& info_log_name,
   // 파일 버퍼 비활성화
   debug_log_.rdbuf()->pubsetbuf(nullptr, 0);
   info_log_.rdbuf()->pubsetbuf(nullptr, 0);
-  warning_log_.rdbuf()->pubsetbuf(nullptr, 0);
+  warn_log_.rdbuf()->pubsetbuf(nullptr, 0);
   error_log_.rdbuf()->pubsetbuf(nullptr, 0);
   backtesting_log_.rdbuf()->pubsetbuf(nullptr, 0);
 
@@ -225,8 +225,8 @@ void Logger::Deleter::operator()(Logger* p) const {
       p->info_log_.close();
     }
 
-    if (p->warning_log_.is_open()) {
-      p->warning_log_.close();
+    if (p->warn_log_.is_open()) {
+      p->warn_log_.close();
     }
 
     if (p->error_log_.is_open()) {
@@ -259,8 +259,8 @@ void Logger::SetLogDirectory(const string& log_directory) {
         instance_->info_log_.close();
       }
 
-      if (instance_->warning_log_.is_open()) {
-        instance_->warning_log_.close();
+      if (instance_->warn_log_.is_open()) {
+        instance_->warn_log_.close();
       }
 
       if (instance_->error_log_.is_open()) {
@@ -274,12 +274,12 @@ void Logger::SetLogDirectory(const string& log_directory) {
       // 기본 파일 이름 설정
       const string& debug_name = "debug.log";
       const string& info_name = "info.log";
-      const string& warning_name = "warning.log";
+      const string& warn_name = "warn.log";
       const string& error_name = "error.log";
       const string& backtesting_name = "backtesting.log";
 
       // 기존 파일 이동 (현재 디렉토리에 있는 로그 파일을 새 디렉토리로 이동)
-      const vector log_files = {debug_name, info_name, warning_name, error_name,
+      const vector log_files = {debug_name, info_name, warn_name, error_name,
                                 backtesting_name};
 
       for (const auto& file : log_files) {
@@ -299,14 +299,13 @@ void Logger::SetLogDirectory(const string& log_directory) {
       // 새 위치에 파일 다시 열기
       instance_->debug_log_.open(log_directory + "/" + debug_name, ios::app);
       instance_->info_log_.open(log_directory + "/" + info_name, ios::app);
-      instance_->warning_log_.open(log_directory + "/" + warning_name,
-                                   ios::app);
+      instance_->warn_log_.open(log_directory + "/" + warn_name, ios::app);
       instance_->error_log_.open(log_directory + "/" + error_name, ios::app);
 
       // 파일 버퍼 크기 재설정
       instance_->debug_log_.rdbuf()->pubsetbuf(nullptr, 0);
       instance_->info_log_.rdbuf()->pubsetbuf(nullptr, 0);
-      instance_->warning_log_.rdbuf()->pubsetbuf(nullptr, 0);
+      instance_->warn_log_.rdbuf()->pubsetbuf(nullptr, 0);
       instance_->error_log_.rdbuf()->pubsetbuf(nullptr, 0);
 
       // 백테스팅 로그 경로 업데이트 (기존 내용 삭제하고 새로 시작)
@@ -325,14 +324,14 @@ void Logger::SetLogDirectory(const string& log_directory) {
 
 shared_ptr<Logger>& Logger::GetLogger(const string& debug_log_name,
                                       const string& info_log_name,
-                                      const string& warning_log_name,
+                                      const string& warn_log_name,
                                       const string& error_log_name,
                                       const string& backtesting_log_name) {
   if (!instance_) {
     lock_guard lock(mutex_);
     instance_ = shared_ptr<Logger>(
-        new Logger(debug_log_name, info_log_name, warning_log_name,
-                   error_log_name, backtesting_log_name),
+        new Logger(debug_log_name, info_log_name, warn_log_name, error_log_name,
+                   backtesting_log_name),
         Deleter());
   }
   return instance_;
@@ -349,11 +348,11 @@ NO_INLINE void Logger::ProcessMultiBuffer() {
     PREFETCH_READ(&info_buffer);
     any_work |= FlushBufferIfReady(debug_buffer, debug_log_);
 
-    PREFETCH_READ(&warning_buffer);
+    PREFETCH_READ(&warn_buffer);
     any_work |= FlushBufferIfReady(info_buffer, info_log_);
 
     PREFETCH_READ(&error_buffer);
-    any_work |= FlushBufferIfReady(warning_buffer, warning_log_);
+    any_work |= FlushBufferIfReady(warn_buffer, warn_log_);
 
     PREFETCH_READ(&backtesting_buffer);
     any_work |= FlushBufferIfReady(error_buffer, error_log_);
@@ -399,7 +398,7 @@ void Logger::FlushAllBuffers() {
   for (size_t i = 0; i < FastLogBuffer::max_buffers; ++i) {
     FlushBuffer(debug_buffer, i, debug_log_);
     FlushBuffer(info_buffer, i, info_log_);
-    FlushBuffer(warning_buffer, i, warning_log_);
+    FlushBuffer(warn_buffer, i, warn_log_);
     FlushBuffer(error_buffer, i, error_log_);
     FlushBuffer(backtesting_buffer, i, backtesting_log_);
   }
@@ -408,7 +407,7 @@ void Logger::FlushAllBuffers() {
 void Logger::ForceFlushAll() {
   ForceFlushBuffer(debug_buffer, debug_log_);
   ForceFlushBuffer(info_buffer, info_log_);
-  ForceFlushBuffer(warning_buffer, warning_log_);
+  ForceFlushBuffer(warn_buffer, warn_log_);
   ForceFlushBuffer(error_buffer, error_log_);
   ForceFlushBuffer(backtesting_buffer, backtesting_log_);
 }
@@ -466,8 +465,8 @@ FORCE_INLINE void Logger::Log(const LogLevel& log_level, const string& message,
         break;
       }
 
-      case WARNING_L: {
-        level_str = "WARNING_L";
+      case WARN_L: {
+        level_str = "WARN_L";
         break;
       }
 
@@ -509,8 +508,8 @@ void Logger::LogNoFormat(const LogLevel& log_level, const string& message,
       case DEBUG_L:
         level_str = "DEBUG_L";
         break;
-      case WARNING_L:
-        level_str = "WARNING_L";
+      case WARN_L:
+        level_str = "WARN_L";
         break;
       case ERROR_L:
         level_str = "ERROR_L";
@@ -548,8 +547,8 @@ FORCE_INLINE void Logger::WriteToBuffersFast(const LogLevel log_level,
       break;
     }
 
-    case WARNING_L: {
-      target_buffer = &warning_buffer;
+    case WARN_L: {
+      target_buffer = &warn_buffer;
       PREFETCH_WRITE(target_buffer);
       break;
     }
@@ -594,8 +593,8 @@ FORCE_INLINE void Logger::WriteToBuffersFast(const LogLevel log_level,
         break;
       }
 
-      case WARNING_L: {
-        warning_log_.write(data, static_cast<streamsize>(len));
+      case WARN_L: {
+        warn_log_.write(data, static_cast<streamsize>(len));
         break;
       }
 
@@ -627,7 +626,7 @@ void Logger::ConsoleLog(const string& level, const string& message) {
     cout << "\033[90m" << message << "\033[0m" << endl;  // Gray
   } else if (level == "INFO_L") {
     cout << "\033[38;2;200;200;200m" << message << "\033[0m" << endl;  // White
-  } else if (level == "WARNING_L") {
+  } else if (level == "WARN_L") {
     cout << "\033[33m" << message << "\033[0m" << endl;  // Yellow
   } else if (level == "ERROR_L") {
     cout << "\033[31m" << message << "\033[0m" << endl;  // Red
