@@ -32,9 +32,10 @@ shared_ptr<BarData> BaseBarHandler::GetBarData(const BarType bar_type,
     case REFERENCE: {
       const auto& timeframe_it = reference_bar_data_.find(timeframe);
       if (timeframe_it == reference_bar_data_.end()) {
-        throw runtime_error(
+        Logger::LogAndThrowError(
             format("타임프레임 [{}]은(는) 참조 바 데이터에 존재하지 않습니다.",
-                   timeframe));
+                   timeframe),
+            __FILE__, __LINE__);
       }
 
       return timeframe_it->second;

@@ -82,18 +82,20 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // 지표 계산 전 참조 호출 시 에러 발생
   // 특정 지표 계산 중 다른 지표 참조하는데 참조 지표의 정의 순서가 더 늦는 경우
   if (!is_calculated_) [[unlikely]] {
-    throw runtime_error(
+    Logger::LogAndThrowError(
         format("[{} {}] 지표가 계산되지 않았으므로 참조할 수 없습니다.", name_,
-               timeframe_));
+               timeframe_),
+        __FILE__, __LINE__);
   }
 
   // 다른 지표 계산 중 해당 지표와 다른 타임프레임의 이 지표를 사용 시 에러 발생
   if (is_calculating_ && timeframe_ != calculating_timeframe_) [[unlikely]] {
-    throw runtime_error(
+    Logger::LogAndThrowError(
         format("[{} {}] 지표 계산에 사용하는 [{} {}] 지표의 타임프레임은 "
                "[{} {}] 지표의 타임프레임과 동일해야 합니다.",
                calculating_name_, calculating_timeframe_, name_, timeframe_,
-               calculating_name_, calculating_timeframe_));
+               calculating_name_, calculating_timeframe_),
+        __FILE__, __LINE__);
   }
 
   // BEFORE/AFTER 전략에서 현재 인덱스 값 참조 시 에러 발생
@@ -119,11 +121,11 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // - 계산 중인 지표와 같은 타임프레임의 지표인 케이스만 존재
   //   (다른 타임프레임은 사전 검증에서 에러 발생)
   // =========================================================================
-  if (is_calculating_) [[likely]] {
+  if (is_calculating_) {
     const auto bar_idx = bar_->GetCurrentBarIndex();
 
     // 범위 검사
-    if (index > bar_idx) [[unlikely]] {
+    if (index > bar_idx) {
       return NAN;
     }
 
@@ -137,11 +139,11 @@ Numeric<double> Indicator::operator[](const size_t index) {
   //           트레이딩 바 타임프레임과 같은 타임프레임의 지표인 경우
   // - 원본 바 타입: TRADING, 원본 타임프레임: NONE
   // =========================================================================
-  if (!is_higher_timeframe_indicator_) [[likely]] {
+  if (!is_higher_timeframe_indicator_) {
     const auto bar_idx = bar_->GetCurrentBarIndex();
 
     // 범위 검사
-    if (index > bar_idx) [[unlikely]] {
+    if (index > bar_idx) {
       return NAN;
     }
 
@@ -164,7 +166,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
   const auto trading_bar_idx = bar_->GetCurrentBarIndex();
 
   // 범위 검사
-  if (index > trading_bar_idx) [[unlikely]] {
+  if (index > trading_bar_idx) {
     return NAN;
   }
 
@@ -173,9 +175,9 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // 캐시 히트 체크
   if (cached_symbol_idx_ == symbol_idx &&
       cached_trading_bar_idx_ == trading_bar_idx &&
-      cached_target_bar_idx_ == target_trading_bar_idx) [[likely]] {
+      cached_target_bar_idx_ == target_trading_bar_idx) {
     // 캐시된 결과가 NaN인 경우 (해당되는 Close Time이 없는 경우)
-    if (cached_ref_bar_idx_ == SIZE_MAX) [[unlikely]] {
+    if (cached_ref_bar_idx_ == SIZE_MAX) {
       return NAN;
     }
 
@@ -209,7 +211,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // =========================================================================
   while (ref_bar_idx > 0 &&
          reference_bar_data_->GetBar(symbol_idx, ref_bar_idx).close_time >
-             target_close_time) [[likely]] {
+             target_close_time) {
     --ref_bar_idx;
   }
 
@@ -218,8 +220,8 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // 이는 target_close_time이 모든 참조 바보다 과거인 경우 -> NaN 반환
   // =========================================================================
   if (ref_bar_idx == 0 &&
-      reference_bar_data_->GetBar(symbol_idx, 0).close_time > target_close_time)
-      [[unlikely]] {
+      reference_bar_data_->GetBar(symbol_idx, 0).close_time >
+          target_close_time) {
     // 결과 캐싱 (NaN 케이스도 캐싱하여 반복 계산 방지)
     cached_symbol_idx_ = symbol_idx;
     cached_trading_bar_idx_ = trading_bar_idx;
@@ -239,7 +241,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // (1단계에서 목표 시간보다 과거로 갔을 수도 있으므로 정확한 시점을 찾기 위함)
   // =========================================================================
   const auto num_bars = reference_num_bars_[symbol_idx];
-  while (ref_bar_idx + 1 < num_bars) [[likely]] {
+  while (ref_bar_idx + 1 < num_bars) {
     const auto next_close_time =
         reference_bar_data_->GetBar(symbol_idx, ref_bar_idx + 1).close_time;
 
@@ -352,8 +354,7 @@ void Indicator::CalculateIndicator() {
 
     logger_->Log(INFO_L, format("[{} {}] 지표 계산 완료", name_, timeframe_),
                  __FILE__, __LINE__, true);
-  } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
+  } catch ([[maybe_unused]] const exception& e) {
     Logger::LogAndThrowError(
         format("[{} {}] 지표 계산 중 오류가 발생했습니다.", name_, timeframe_),
         __FILE__, __LINE__);
