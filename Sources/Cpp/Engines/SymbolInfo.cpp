@@ -98,7 +98,7 @@ string SymbolInfo::GetExchangeInfoPath() const { return exchange_info_path_; }
 double SymbolInfo::GetPriceStep() const { return price_step_; }
 int SymbolInfo::GetPricePrecision() const { return price_precision_; }
 double SymbolInfo::GetQtyStep() const { return qty_step_; }
-size_t SymbolInfo::GetQtyPrecision() const { return qty_precision_; }
+int SymbolInfo::GetQtyPrecision() const { return qty_precision_; }
 double SymbolInfo::GetLimitMaxQty() const { return limit_max_qty_; }
 double SymbolInfo::GetLimitMinQty() const { return limit_min_qty_; }
 double SymbolInfo::GetMarketMaxQty() const { return market_max_qty_; }

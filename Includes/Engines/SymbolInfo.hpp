@@ -59,7 +59,7 @@ class SymbolInfo final {
   [[nodiscard]] double GetPriceStep() const;
   [[nodiscard]] int GetPricePrecision() const;
   [[nodiscard]] double GetQtyStep() const;
-  [[nodiscard]] size_t GetQtyPrecision() const;
+  [[nodiscard]] int GetQtyPrecision() const;
   [[nodiscard]] double GetLimitMaxQty() const;
   [[nodiscard]] double GetLimitMinQty() const;
   [[nodiscard]] double GetMarketMaxQty() const;

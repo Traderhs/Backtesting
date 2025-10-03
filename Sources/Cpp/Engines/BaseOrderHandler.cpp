@@ -562,8 +562,8 @@ optional<string> BaseOrderHandler::IsValidPositionSize(
   }
 
   // 포지션 수량 단위 확인
-  const auto qty_step = symbol_info.GetQtyStep();
-  if (!IsEqual(RoundToStep(position_size, qty_step), position_size)) {
+  if (const auto qty_step = symbol_info.GetQtyStep();
+      !IsEqual(RoundToStep(position_size, qty_step), position_size)) {
     return format("포지션 크기 [{}] 지정 오류 (조건: 수량 단위 [{}]의 배수)",
                   position_size, qty_step);
   }
@@ -584,7 +584,9 @@ optional<string> BaseOrderHandler::IsValidPositionSize(
           return format(
               "포지션 크기 [{}] 지정 오류 (조건: 시장가 최대 수량 [{}] 이하 및 "
               "최소 수량 [{}] 이상)",
-              position_size, max_qty, min_qty);
+              ToFixedString(position_size, qty_precision),
+              ToFixedString(max_qty, qty_precision),
+              ToFixedString(min_qty, qty_precision));
         }
 
         break;
@@ -601,7 +603,9 @@ optional<string> BaseOrderHandler::IsValidPositionSize(
           return format(
               "포지션 크기 [{}] 지정 오류 (조건: 지정가 최대 수량 [{}] 이하 및 "
               "최소 수량 [{}] 이상)",
-              position_size, max_qty, min_qty);
+              ToFixedString(position_size, qty_precision),
+              ToFixedString(max_qty, qty_precision),
+              ToFixedString(min_qty, qty_precision));
         }
 
         break;
@@ -688,32 +692,41 @@ optional<string> BaseOrderHandler::IsValidExitName(
 
 optional<string> BaseOrderHandler::IsValidLimitOrderPrice(
     const double limit_price, const double base_price,
-    const Direction direction) {
+    const Direction direction, const int symbol_idx) {
   if (direction == LONG && IsGreater(limit_price, base_price)) {
-    return format("지정가 [{}]에서 주문 불가 (조건: 기준가 [{}] 이하",
-                  limit_price, base_price);
+    const auto price_precision = symbol_info_[symbol_idx].GetPricePrecision();
+    return format("[{}]에서 지정가 주문 불가 (조건: 기준가 [{}] 이하)",
+                  ToFixedString(limit_price, price_precision),
+                  ToFixedString(base_price, price_precision));
   }
 
   if (direction == SHORT && IsLess(limit_price, base_price)) {
-    return format("지정가 [{}]에서 주문 불가 (조건: 기준가 [{}] 이상",
-                  limit_price, base_price);
+    const auto price_precision = symbol_info_[symbol_idx].GetPricePrecision();
+    return format("[{}]에서 지정가 주문 불가 (조건: 기준가 [{}] 이상)",
+                  ToFixedString(limit_price, price_precision),
+                  ToFixedString(base_price, price_precision));
   }
 
   return nullopt;
 }
 
 optional<string> BaseOrderHandler::IsValidTrailingTouchPrice(
-    const double touch_price) {
+    const double touch_price, const int symbol_idx) {
   if (IsLess(touch_price, 0.0)) [[unlikely]] {
-    return format("트레일링 터치 가격 [{}] 미달 (조건: 0 이상)", touch_price);
+    return format("트레일링 터치 가격 [{}] 미달 (조건: 0 이상)",
+                  ToFixedString(touch_price,
+                                symbol_info_[symbol_idx].GetPricePrecision()));
   }
 
   return nullopt;
 }
 
-optional<string> BaseOrderHandler::IsValidTrailPoint(double trail_point) {
+optional<string> BaseOrderHandler::IsValidTrailPoint(const double trail_point,
+                                                     const int symbol_idx) {
   if (IsLessOrEqual(trail_point, 0.0)) [[unlikely]] {
-    return format("트레일링 포인트 [{}] 미달 (조건: 0 초과)", trail_point);
+    return format("트레일링 포인트 [{}] 미달 (조건: 0 초과)",
+                  ToFixedString(trail_point,
+                                symbol_info_[symbol_idx].GetPricePrecision()));
   }
 
   return nullopt;
