@@ -1498,7 +1498,7 @@ void Engine::ExecuteTradingEnd(const int symbol_idx,
   bar_->SetCurrentBarType(TRADING, "");
   bar_->SetCurrentBarIndex(bar_->GetCurrentBarIndex() - 1);
 
-  order_handler_->CancelAll();
+  order_handler_->CancelAll(bar_type_str + " 바 데이터 종료");
   order_handler_->CloseAll();
 
   // 바가 끝난 전량 청산은 Just Exited로 판단하지 않음
@@ -1528,14 +1528,14 @@ void Engine::ExecuteAllTradingEnd() {
       bar_->SetCurrentBarType(TRADING, "");
       bar_->SetCurrentBarIndex(bar_->GetCurrentBarIndex() - 1);
 
-      order_handler_->CancelAll();
+      order_handler_->CancelAll("백테스트 종료 시간");
       order_handler_->CloseAll();
 
       // 트레이딩이 모두 종료된 전량 청산은 Just Exited로 판단하지 않음
       order_handler_->InitializeJustExited();
 
       logger_->Log(INFO_L,
-                   format("지정된 종료 시간에 의해 [{}] 심볼의 "
+                   format("백테스트 종료 시간에 의해 [{}] 심볼의 "
                           "백테스팅을 종료합니다.",
                           trading_bar_data_->GetSymbolName(symbol_idx)),
                    __FILE__, __LINE__, true);
@@ -1884,11 +1884,11 @@ void Engine::SortOrders(vector<FillInfo>& should_fill_orders,
                         const Direction price_direction) {
   auto get_signal_priority = [](const OrderSignal signal) {
     switch (signal) {
-      case LIQUIDATION:
+      case OrderSignal::LIQUIDATION:
         return 1;  // 최고 우선순위
-      case EXIT:
+      case OrderSignal::EXIT:
         return 2;
-      case ENTRY:
+      case OrderSignal::ENTRY:
         return 3;
       default:
         return 4;

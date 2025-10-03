@@ -48,69 +48,74 @@ void DiceSystem::ExecuteOnClose() {
     // 지갑 자금의 90% 미만을 마진으로 사용하고 있을 경우에만 진입 가능
     if (cached_wallet_balance_ = engine->GetWalletBalance(); IsGreaterOrEqual(
             engine->GetAvailableBalance(), cached_wallet_balance_ * 0.1)) {
-      // 장 마감 시 당일 고점이 스윙 하이보다 낮으면
+      // 매수 진입 중이 아니고 장 마감 시 일일 고점이 스윙 하이보다 낮으면
       // 신규 매수 진입 주문 or 매수 진입 주문 수정
-      if (IsLessOrEqual(cached_current_position_size_, 0.0) &&
-          daily_high_[0] < swing_high) {
-        // TODO 손절 포인트가 너무 작으면 진입하지 않기: atr 기반으로 할것
-        // TODO 추가 안하면 계산된 진입 마진 [$273,071.51]가 심볼당 할당 마진
-        // [$21,931.95]를 초과하므로 포지션 크기 [125325.4] → [10065.6]로 조정
-        // 과 같은 현상 발생. 매수 매도 둘 다 추가해야 함
+      if (IsLessOrEqual(cached_current_position_size_, 0.0)) {
+        if (daily_high_[0] < swing_high) {
+          // TODO 손절 포인트가 너무 작으면 진입하지 않기: atr 기반으로 할것
+          // TODO 추가 안하면 계산된 진입 마진 [$273,071.51]가 심볼당 할당 마진
+          // [$21,931.95]를 초과하므로 포지션 크기 [125325.4] → [10065.6]로 조정
+          // 과 같은 현상 발생. 매수 매도 둘 다 추가해야 함
 
-        const string& entry_name = "매수 진입";
-        const auto& [position_size, leverage] =
-            CalculatePositionSizeAndLeverage(
-                fabs(swing_high - swing_low) * long_stop_ratio_, swing_high,
-                Direction::LONG, entry_name);
+          const string& entry_name = "매수 진입";
+          const auto& [position_size, leverage] =
+              CalculatePositionSizeAndLeverage(
+                  fabs(swing_high - swing_low) * long_stop_ratio_, swing_high,
+                  Direction::LONG, entry_name);
 
-        // 계산된 포지션 크기가 유의미한 값이면 신규 진입 주문 or 주문 수정
-        if (!IsEqual(position_size, 0)) {
-          order->MitEntry(entry_name, Direction::LONG, swing_high,
-                          position_size, leverage);
+          // 계산된 포지션 크기가 유의미한 값이면 신규 진입 주문 or 주문 수정
+          if (!IsEqual(position_size, 0)) {
+            order->MitEntry(entry_name, Direction::LONG, swing_high,
+                            position_size, leverage);
+          } else {
+            // 문제가 있다면 기존 진입 주문 취소
+            order->Cancel(entry_name, CancelType::ENTRY,
+                          "업데이트된 포지션 크기 및 레버리지 계산 불가");
+          }
         } else {
-          // 문제가 있다면 기존 진입 주문 취소
-          order->Cancel(entry_name);
+          // 당일 고점이 스윙 상단보다 높았다면 매수 주문 취소
+          order->Cancel("매수 진입", CancelType::ENTRY,
+                        "일일 고점이 스윙 상단 초과");
         }
       } else {
-        // 매수 진입 중이거나 당일 고점이 스윙 상단보다 높았다면 매수 주문 취소
-        order->Cancel("매수 진입");
+        // 매수 진입 중이면 매수 주문 취소
+        order->Cancel("매수 진입", CancelType::ENTRY, "매수 진입 주문 존재");
       }
 
-      // 장 마감 시 당일 저점이 스윙 로우보다 높으면
+      // 매도 진입 중이 아니고 장 마감 시 일일 저점이 스윙 로우보다 높으면
       // 신규 매도 진입 주문 or 매도 진입 주문 수정
-      if (IsGreaterOrEqual(cached_current_position_size_, 0.0) &&
-          daily_low_[0] > swing_low) {
-        const string& entry_name = "매도 진입";
-        const auto& [position_size, leverage] =
-            CalculatePositionSizeAndLeverage(
-                fabs(swing_high - swing_low) * short_stop_ratio_, swing_low,
-                Direction::SHORT, entry_name);
+      if (IsGreaterOrEqual(cached_current_position_size_, 0.0)) {
+        if (daily_low_[0] > swing_low) {
+          const string& entry_name = "매도 진입";
+          const auto& [position_size, leverage] =
+              CalculatePositionSizeAndLeverage(
+                  fabs(swing_high - swing_low) * short_stop_ratio_, swing_low,
+                  Direction::SHORT, entry_name);
 
-        // 계산된 포지션 크기가 유의미한 값이면 신규 진입 주문 or 주문 수정
-        if (!IsEqual(position_size, 0)) {
-          order->MitEntry(entry_name, Direction::SHORT, swing_low,
-                          position_size, leverage);
+          // 계산된 포지션 크기가 유의미한 값이면 신규 진입 주문 or 주문 수정
+          if (!IsEqual(position_size, 0)) {
+            order->MitEntry(entry_name, Direction::SHORT, swing_low,
+                            position_size, leverage);
+          } else {
+            // 문제가 있다면 기존 진입 주문 취소
+            order->Cancel(entry_name, CancelType::ENTRY,
+                          "업데이트된 포지션 크기 및 레버리지 계산 불가");
+          }
         } else {
-          // 문제가 있다면 기존 진입 주문 취소
-          order->Cancel(entry_name);
+          // 당일 저점이 스윙 하단보다 낮았다면 매도 주문 취소
+          order->Cancel("매도 진입", CancelType::ENTRY,
+                        "일일 저점이 스윙 하단 미만");
         }
       } else {
-        // 매도 진입 중이거나 당일 저점이 스윙 하단보다 낮았다면 매도 주문 취소
-        order->Cancel("매도 진입");
+        // 매도 진입 중이면 매수 주문 취소
+        order->Cancel("매도 진입", CancelType::ENTRY, "매도 진입 주문 존재");
       }
 
     } else {
-      // TODO 특정 주문 이름으로 주문을 찾을 수 있게 하고 optional로 해당 주문
-      // 반환하게 하여 주문 있을 때만 else 말고 else if로 이거 실행하기
-      // 지금 무조건 로그 뜨고 취소 뜨니까 별로임
-      OrderHandler::LogFormattedInfo(WARN_L,
-                                     "지갑 자금의 90% 이상을 마진으로 사용 "
-                                     "중이므로 모든 진입 대기 주문 취소",
-                                     __FILE__, __LINE__);
-      engine->LogBalance();
-
-      order->Cancel("매수 진입");
-      order->Cancel("매도 진입");
+      order->Cancel("매수 진입", CancelType::ENTRY,
+                    "지갑 자금의 90% 이상을 마진으로 사용 중");
+      order->Cancel("매도 진입", CancelType::EXIT,
+                    "지갑 자금의 90% 이상을 마진으로 사용 중");
     }
 
     // 장 마감 시 스윙 로우의 값이 달라졌다면 매수 청산 주문 갱신

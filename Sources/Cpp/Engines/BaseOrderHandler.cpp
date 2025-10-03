@@ -40,50 +40,76 @@ shared_ptr<Engine>& BaseOrderHandler::engine_ = Engine::GetEngine();
 shared_ptr<Logger>& BaseOrderHandler::logger_ = Logger::GetLogger();
 vector<SymbolInfo> BaseOrderHandler::symbol_info_;
 
-void BaseOrderHandler::Cancel(const string& order_name) {
+void BaseOrderHandler::Cancel(const string& order_name,
+                              const CancelType cancel_type,
+                              const string& cancellation_reason) {
   const int symbol_idx = bar_->GetCurrentSymbolIndex();
-  auto& pending_entries = pending_entries_[symbol_idx];
-  auto& pending_exits = pending_exits_[symbol_idx];
+  bool cancel_in_entry = false;
+  bool cancel_in_exit = false;
 
-  // 진입 대기 주문에서 같은 이름이 존재할 시 삭제
-  for (int order_idx = 0; order_idx < pending_entries.size(); order_idx++) {
-    if (const auto pending_entry = pending_entries[order_idx];
-        order_name == pending_entry->GetEntryName()) {
-      // 예약 증거금 회복 과정 진행 후 삭제
-      DecreaseUsedMarginOnEntryCancel(pending_entry);
-      pending_entries.erase(pending_entries.begin() + order_idx);
+  switch (cancel_type) {
+    case CancelType::TOTAL: {
+      cancel_in_entry = true;
+      cancel_in_exit = true;
+      break;
+    }
 
-      LogFormattedInfo(
-          INFO_L,
-          format("{} [{}] 주문 취소",
-                 Order::OrderTypeToString(pending_entry->GetEntryOrderType()),
-                 order_name),
-          __FILE__, __LINE__);
-      engine_->LogBalance();
+    case CancelType::ENTRY: {
+      cancel_in_entry = true;
+      break;
+    }
 
-      // 동일한 진입 이름으로 진입 대기 불가능하므로 찾으면 바로 break
-      // (동일한 진입 이름으로 주문 시 기존 주문이 수정됨)
+    case CancelType::EXIT: {
+      cancel_in_exit = true;
       break;
     }
   }
 
+  if (cancel_in_entry) {
+    // 진입 대기 주문에서 같은 이름이 존재할 시 삭제
+    auto& pending_entries = pending_entries_[symbol_idx];
+    for (int order_idx = 0; order_idx < pending_entries.size(); order_idx++) {
+      if (const auto pending_entry = pending_entries[order_idx];
+          order_name == pending_entry->GetEntryName()) {
+        // 예약 증거금 회복 과정 진행 후 삭제
+        DecreaseUsedMarginOnEntryCancel(pending_entry);
+        pending_entries.erase(pending_entries.begin() + order_idx);
+
+        LogFormattedInfo(
+            INFO_L,
+            format("{} [{}] 주문 취소 ({})",
+                   Order::OrderTypeToString(pending_entry->GetEntryOrderType()),
+                   order_name, cancellation_reason),
+            __FILE__, __LINE__);
+        engine_->LogBalance();
+
+        // 동일한 진입 이름으로 진입 대기 불가능하므로 찾으면 바로 break
+        // (동일한 진입 이름으로 주문 시 기존 주문이 수정됨)
+        break;
+      }
+    }
+  }
+
   // 청산 대기 주문에서 같은 이름이 존재할 시 삭제
-  for (int order_idx = 0; order_idx < pending_exits.size(); order_idx++) {
-    if (const auto pending_exit = pending_exits[order_idx];
-        order_name == pending_exit->GetExitName()) {
-      // 청산 대기 주문은 예약 증거금이 필요하지 않기 때문에 삭제만 함
-      pending_exits.erase(pending_exits.begin() + order_idx);
+  if (cancel_in_exit) {
+    auto& pending_exits = pending_exits_[symbol_idx];
+    for (int order_idx = 0; order_idx < pending_exits.size(); order_idx++) {
+      if (const auto pending_exit = pending_exits[order_idx];
+          order_name == pending_exit->GetExitName()) {
+        // 청산 대기 주문은 예약 증거금이 필요하지 않기 때문에 삭제만 함
+        pending_exits.erase(pending_exits.begin() + order_idx);
 
-      LogFormattedInfo(
-          INFO_L,
-          format("{} [{}] 주문 취소",
-                 Order::OrderTypeToString(pending_exit->GetExitOrderType()),
-                 order_name),
-          __FILE__, __LINE__);
+        LogFormattedInfo(
+            INFO_L,
+            format("{} [{}] 주문 취소 ({})",
+                   Order::OrderTypeToString(pending_exit->GetExitOrderType()),
+                   order_name, cancellation_reason),
+            __FILE__, __LINE__);
 
-      // 동일한 청산 이름으로 청산 대기 불가능하므로 찾으면 바로 break
-      // (동일한 청산 이름으로 주문 시 기존 주문이 수정됨)
-      break;
+        // 동일한 청산 이름으로 청산 대기 불가능하므로 찾으면 바로 break
+        // (동일한 청산 이름으로 주문 시 기존 주문이 수정됨)
+        break;
+      }
     }
   }
 }
@@ -326,7 +352,8 @@ optional<string> BaseOrderHandler::AdjustLeverage(const int leverage,
       LogFormattedInfo(WARN_L, *warn, __FILE__, __LINE__);
 
       // 현재 레버리지가 최대 레버리지를 초과하였다면 주문 취소
-      Cancel(pending_entry->GetEntryName());
+      Cancel(pending_entry->GetEntryName(), CancelType::ENTRY,
+             "진입 대기 주문의 명목 가치가 변경된 레버리지 구간에서 유지 불가");
       continue;
     }
 
@@ -358,7 +385,9 @@ optional<string> BaseOrderHandler::AdjustLeverage(const int leverage,
         pending_entry->SetEntryMargin(0);
 
         // 새로운 마진을 충당할 수 없으면 주문 취소
-        Cancel(pending_entry->GetEntryName());
+        Cancel(
+            pending_entry->GetEntryName(), CancelType::ENTRY,
+            "진입 대기 주문의 재계산된 진입 마진에 할당할 사용 가능 자금 부족");
         continue;
       }
 
