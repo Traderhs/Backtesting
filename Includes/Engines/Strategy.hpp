@@ -128,12 +128,12 @@ class Strategy {
         strategy_->AutoDetectSourcePaths<CustomStrategy>();
       } catch (const std::exception& e) {
         logger->Log(
-            WARNING_L,
+            WARN_L,
             format("[{}] 소스 파일 경로 자동 탐지 실패: {}", name, e.what()),
             __FILE__, __LINE__, false);
       } catch (...) {
         logger->Log(
-            WARNING_L,
+            WARN_L,
             format("[{}] 소스 파일 경로 자동 탐지에서 알 수 없는 오류", name),
             __FILE__, __LINE__, false);
       }
@@ -294,12 +294,12 @@ class Strategy {
       indicator->template AutoDetectSourcePaths<CustomIndicator>();
     } catch (const std::exception& e) {
       logger->Log(
-          WARNING_L,
+          WARN_L,
           format("[{}] 지표 소스 파일 경로 자동 탐지 실패: {}", name, e.what()),
           __FILE__, __LINE__, false);
     } catch (...) {
       logger->Log(
-          WARNING_L,
+          WARN_L,
           format("[{}] 지표 소스 파일 경로 자동 탐지에서 알 수 없는 오류",
                  name),
           __FILE__, __LINE__, false);
