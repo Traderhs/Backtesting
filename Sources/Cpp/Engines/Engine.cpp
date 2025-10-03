@@ -78,6 +78,7 @@ void Engine::Backtesting() {
   try {
     BacktestingMain();
   } catch ([[maybe_unused]] const Bankruptcy& e) {
+    SetBankruptcy();
     logger_->Log(ERROR_L, "파산으로 인해 백테스팅을 종료합니다.", __FILE__,
                  __LINE__, true);
   }
@@ -169,8 +170,8 @@ void Engine::IsValidConfig() {
     }
 
     const auto& root_directory = Config::GetRootDirectory();
-    const auto& backtesting_period = config_->GetBacktestingPeriod();
-    const auto& use_bar_magnifier = config_->GetUseBarMagnifier();
+    const auto& opt_backtest_period = config_->GetBacktestPeriod();
+    const auto& opt_use_bar_magnifier = config_->GetUseBarMagnifier();
     const auto initial_balance = config_->GetInitialBalance();
     const auto taker_fee_percentage = config_->GetTakerFeePercentage();
     const auto maker_fee_percentage = config_->GetMakerFeePercentage();
@@ -193,14 +194,14 @@ void Engine::IsValidConfig() {
           __FILE__, __LINE__);
     }
 
-    if (!backtesting_period.has_value()) {
+    if (!opt_backtest_period) {
       Logger::LogAndThrowError(
           "백테스팅 기간이 설정되지 않았습니다. "
-          "Backtesting::SetConfig().SetBacktestingPeriod 함수를 호출해 주세요.",
+          "Backtesting::SetConfig().SetBacktestPeriod 함수를 호출해 주세요.",
           __FILE__, __LINE__);
     }
 
-    if (!use_bar_magnifier.has_value()) {
+    if (!opt_use_bar_magnifier) {
       Logger::LogAndThrowError(
           "바 돋보기 사용 여부가 초기화되지 않았습니다. "
           "Backtesting::SetConfig().SetUseBarMagnifier 함수를 호출해 주세요.",
@@ -340,10 +341,11 @@ void Engine::IsValidBarData() {
     }
 
     // =========================================================================
+    const auto use_bar_magnifier = *config_->GetUseBarMagnifier();
     const auto magnifier_bar_data = bar_->GetBarData(MAGNIFIER);
     const auto magnifier_num_symbols = magnifier_bar_data->GetNumSymbols();
 
-    if (config_->GetUseBarMagnifier().value()) {
+    if (use_bar_magnifier) {
       /* 2.1. 트레이딩 바 데이터의 심볼 개수와 돋보기 바 데이터의
               심볼 개수가 같은지 검증 */
       if (trading_num_symbols != magnifier_num_symbols) {
@@ -468,7 +470,6 @@ void Engine::IsValidBarData() {
 
     // 돋보기 기능 사용 시 마크 가격 바 데이터는 돋보기 바 데이터와 비교
     // 그렇지 않으면 트레이딩 바 데이터와 비교
-    const auto use_bar_magnifier = config_->GetUseBarMagnifier().value();
     const auto target_bar_data =
         use_bar_magnifier ? magnifier_bar_data : trading_bar_data;
     const auto target_num_symbols = target_bar_data->GetNumSymbols();
@@ -623,10 +624,10 @@ void Engine::IsValidDateRange() {
     }
 
     // 백테스팅 기간 받아오기
-    const auto backtesting_period = config_->GetBacktestingPeriod().value();
-    const auto& start_time = backtesting_period.GetStartTime();
-    const auto& end_time = backtesting_period.GetEndTime();
-    const auto& format = backtesting_period.GetFormat();
+    const auto& backtest_period = *config_->GetBacktestPeriod();
+    const auto& start_time = backtest_period.GetStartTime();
+    const auto& end_time = backtest_period.GetEndTime();
+    const auto& format = backtest_period.GetFormat();
 
     // Start가 지정된 경우 범위 체크
     if (!start_time.empty()) {
@@ -836,7 +837,7 @@ void Engine::InitializeEngine() {
   max_wallet_balance_ = initial_balance;
 
   // 돋보기 기능 사용 여부 결정
-  use_bar_magnifier_ = config_->GetUseBarMagnifier().value();
+  use_bar_magnifier_ = *config_->GetUseBarMagnifier();
 
   // 바 데이터 초기화
   trading_bar_data_ = bar_->GetBarData(TRADING);
@@ -1210,7 +1211,7 @@ void Engine::BacktestingMain() {
         current_open_time_ += magnifier_bar_time_diff_;
         current_close_time_ += magnifier_bar_time_diff_;
 
-        for (const auto& symbol_idx : activated_symbol_indices_) {
+        for (const auto symbol_idx : activated_symbol_indices_) {
           bar_->SetCurrentSymbolIndex(symbol_idx);
           bar_->ProcessBarIndex(MAGNIFIER, "", symbol_idx, current_close_time_);
           const auto moved_bar_idx = bar_->GetCurrentBarIndex();
@@ -1224,8 +1225,8 @@ void Engine::BacktestingMain() {
             string magnifier_next_open_time;
 
             // 다음 바의 Open Time 찾기
-            if (moved_bar_idx + 1 !=
-                magnifier_bar_data_->GetNumBars(symbol_idx)) {
+            if (moved_bar_idx <
+                magnifier_bar_data_->GetNumBars(symbol_idx) - 1) {
               // 현재 바가 마지막 바가 아닌 경우 직접 Open Time 가져오기
               magnifier_next_open_time = UtcTimestampToUtcDatetime(
                   magnifier_bar_data_->GetBar(symbol_idx, moved_bar_idx + 1)
@@ -1252,7 +1253,7 @@ void Engine::BacktestingMain() {
                                 current_close_time_);
         }
 
-        // 돋보기 기능 사용 시 돋보기 바 진행 도중 펀딩비 정산
+        // 돋보기 기능 사용 시 돋보기 바 하나마다 펀딩비 확인 후 정산
         CheckFundingTime();
 
         // 해당 돋보기 바를 진행
@@ -1272,12 +1273,12 @@ void Engine::BacktestingMain() {
       // 돋보기 기능 미사용 시 트레이딩 바를 이용하여 체결 확인
       bar_->SetCurrentBarType(TRADING, "");
 
-      for (const auto& symbol_idx : activated_symbol_indices_) {
+      for (const auto symbol_idx : activated_symbol_indices_) {
         // 마크 가격 바 인덱스를 현재 트레이딩 바 Close Time으로 일치
         bar_->ProcessBarIndex(MARK_PRICE, "", symbol_idx, current_close_time_);
       }
 
-      // 돋보기 기능 미사용 시 트레이딩 바 진행 도중 펀딩비 정산
+      // 돋보기 기능 미사용 시 트레이딩 바 하나마다 펀딩비 확인 후 정산
       CheckFundingTime();
 
       // 해당 트레이딩 바를 진행
@@ -1600,7 +1601,7 @@ void Engine::CheckFundingTime() {
         // 3. 시장 가격의 Close Time이 현재 진행 시간의 Close Time과 같다면
         //    시장 가격의 Open 가격을 사용
         funding_price = current_market_bar.open;
-      } else {
+      } else [[unlikely]] {
         // 4. 모든 일치하는 데이터가 없다면 펀딩비 정산 불가
         OrderHandler::LogFormattedInfo(
             WARNING_L,
@@ -1839,7 +1840,7 @@ Direction Engine::CalculatePriceDirection(
       const auto price_cache = price_cache_[symbol_idx];
       const auto price_type_cache = price_type_cache_[symbol_idx];
 
-      if (isnan(price_cache)) {
+      if (isnan(price_cache)) [[unlikely]] {
         OrderHandler::LogFormattedInfo(
             ERROR_L,
             "가격 캐시가 NaN이므로 CLOSE로 오는 가격 방향을 계산할 수 "
@@ -1872,9 +1873,13 @@ Direction Engine::CalculatePriceDirection(
       }
     }
 
-    default: {
-      throw runtime_error("가격 방향 계산 오류: 잘못된 가격 타입");
-    }
+    default:
+      [[unlikely]] {
+        OrderHandler::LogFormattedInfo(
+            ERROR_L, "가격 방향 계산 오류: 잘못된 가격 타입 (엔진 오류)",
+            __FILE__, __LINE__);
+        throw;
+      }
   }
 }
 
@@ -1960,28 +1965,23 @@ void Engine::ExecuteStrategy(const StrategyType strategy_type,
   // 현재 심볼의 포지션 사이즈 업데이트
   order_handler_->UpdateCurrentPositionSize(symbol_idx);
 
-  try {
-    current_strategy_type_ = strategy_type;
+  current_strategy_type_ = strategy_type;
 
-    switch (strategy_type) {
-      case ON_CLOSE: {
-        strategy_->ExecuteOnClose();
-        break;
-      }
-
-      case AFTER_EXIT: {
-        strategy_->ExecuteAfterExit();
-        break;
-      }
-
-      case AFTER_ENTRY: {
-        strategy_->ExecuteAfterEntry();
-        break;
-      }
+  switch (strategy_type) {
+    case ON_CLOSE: {
+      strategy_->ExecuteOnClose();
+      break;
     }
-  } catch ([[maybe_unused]] const Bankruptcy& e) {
-    SetBankruptcy();
-    throw Bankruptcy("파산");
+
+    case AFTER_EXIT: {
+      strategy_->ExecuteAfterExit();
+      break;
+    }
+
+    case AFTER_ENTRY: {
+      strategy_->ExecuteAfterEntry();
+      break;
+    }
   }
 
   // 원본 설정을 복원

@@ -28,12 +28,6 @@ class InsufficientBalance final : public runtime_error {
       : runtime_error(message) {}
 };
 
-/// 주문 실패 시 발생하는 에러
-class OrderFailed final : public runtime_error {
- public:
-  explicit OrderFailed(const string& message) : runtime_error(message) {}
-};
-
 /// 파산 시 발생하는 에러
 class Bankruptcy final : public runtime_error {
  public:

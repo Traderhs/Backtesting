@@ -78,7 +78,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param entry_direction 진입 방향
   /// @param order_size 진입 수량
   /// @param leverage 레버리지
-  void MarketEntry(const string& entry_name, Direction entry_direction,
+  /// @return 주문 성공 여부
+  bool MarketEntry(const string& entry_name, Direction entry_direction,
                    double order_size, int leverage);
 
   /// 지정가 진입 주문을 위해 사용하는 함수
@@ -88,7 +89,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param order_price 지정가 진입 주문 가격
   /// @param order_size 진입 수량
   /// @param leverage 레버리지
-  void LimitEntry(const string& entry_name, Direction entry_direction,
+  /// @return 주문 성공 여부
+  bool LimitEntry(const string& entry_name, Direction entry_direction,
                   double order_price, double order_size, int leverage);
 
   /// Market if Touched 진입 주문을 위해 사용하는 함수.
@@ -99,7 +101,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param touch_price 시장가 주문을 접수할 시점의 가격
   /// @param order_size 진입 수량
   /// @param leverage 레버리지
-  void MitEntry(const string& entry_name, Direction entry_direction,
+  /// @return 주문 성공 여부
+  bool MitEntry(const string& entry_name, Direction entry_direction,
                 double touch_price, double order_size, int leverage);
 
   /// Limit if Touched 진입 주문을 위해 사용하는 함수.
@@ -111,7 +114,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param order_price 지정가 진입 주문 가격
   /// @param order_size 진입 수량
   /// @param leverage 레버리지
-  void LitEntry(const string& entry_name, Direction entry_direction,
+  /// @return 주문 성공 여부
+  bool LitEntry(const string& entry_name, Direction entry_direction,
                 double touch_price, double order_price, double order_size,
                 int leverage);
 
@@ -127,19 +131,22 @@ class OrderHandler final : public BaseOrderHandler {
   ///                    포인트
   /// @param order_size 진입 수량
   /// @param leverage 레버리지
-  void TrailingEntry(const string& entry_name, Direction entry_direction,
+  /// @return 주문 성공 여부
+  bool TrailingEntry(const string& entry_name, Direction entry_direction,
                      double touch_price, double trail_point, double order_size,
                      int leverage);
 
   // ===========================================================================
   // 전략 구현부에서 사용하는 청산 함수들
+  // 반환 값은 항상 주문 성공 여부
   // ===========================================================================
   /// 시장가 청산 주문을 위해 사용하는 함수.
   ///
   /// @param exit_name 청산 이름
   /// @param target_name 청산할 진입 이름
   /// @param order_size 청산 수량
-  void MarketExit(const string& exit_name, const string& target_name,
+  /// @return 주문 성공 여부
+  bool MarketExit(const string& exit_name, const string& target_name,
                   double order_size);
 
   /// 지정가 청산 주문을 위해 사용하는 함수.
@@ -148,7 +155,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param target_name 청산할 진입 이름
   /// @param order_price 지정가 청산 주문 가격
   /// @param order_size 청산 수량
-  void LimitExit(const string& exit_name, const string& target_name,
+  /// @return 주문 성공 여부
+  bool LimitExit(const string& exit_name, const string& target_name,
                  double order_price, double order_size);
 
   /// Market if Touched 청산 주문을 위해 사용하는 함수.
@@ -158,7 +166,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param target_name 청산할 진입 이름
   /// @param touch_price 시장가 주문을 접수할 시점의 가격
   /// @param order_size 청산 수량
-  void MitExit(const string& exit_name, const string& target_name,
+  /// @return 주문 성공 여부
+  bool MitExit(const string& exit_name, const string& target_name,
                double touch_price, double order_size);
 
   /// Limit if Touched 청산 주문을 위해 사용하는 함수.
@@ -169,7 +178,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param touch_price 지정가 주문을 접수할 시점의 가격
   /// @param order_price 지정가 청산 주문 가격
   /// @param order_size 청산 수량
-  void LitExit(const string& exit_name, const string& target_name,
+  /// @return 주문 성공 여부
+  bool LitExit(const string& exit_name, const string& target_name,
                double touch_price, double order_price, double order_size);
 
   /// 트레일링 청산 주문을 위해 사용하는 함수.
@@ -183,7 +193,8 @@ class OrderHandler final : public BaseOrderHandler {
   /// @param trail_point 최고저가로부터 어느정도 움직였을 때 청산할지
   ///                    결정하는 포인트
   /// @param order_size 청산 수량
-  void TrailingExit(const string& exit_name, const string& target_name,
+  /// @return 주문 성공 여부
+  bool TrailingExit(const string& exit_name, const string& target_name,
                     double touch_price, double trail_point, double order_size);
 
   // ===========================================================================
@@ -216,20 +227,19 @@ class OrderHandler final : public BaseOrderHandler {
   /// 고저가를 확인할 때 강제 청산되었으면 강제 청산 가격은 청산 가격과 마크
   /// 가격의 차이를 시장 가격에서 조정하므로 실제 가격과 다를 수 있음에 주의
   [[nodiscard]] vector<FillInfo> CheckLiquidation(BarType market_bar_type,
-                                                   int symbol_idx, double price,
-                                                   PriceType price_type) const;
+                                                  int symbol_idx, double price,
+                                                  PriceType price_type) const;
 
   /// 트레이딩 중인 심볼에서 지정된 가격을 기준으로 청산 대기 주문들이
   /// 체결됐는지 확인 후 해당 주문 정보들을 반환하는 함수
-  [[nodiscard]] vector<FillInfo> CheckPendingExits(int symbol_idx,
-                                                    double price,
-                                                    PriceType price_type) const;
+  [[nodiscard]] vector<FillInfo> CheckPendingExits(int symbol_idx, double price,
+                                                   PriceType price_type) const;
 
   /// 트레이딩 중인 심볼에서 지정된 가격을 기준으로 진입 대기 주문들이
   /// 체결됐는지 확인 후 해당 주문 정보들을 반환하는 함수
   [[nodiscard]] vector<FillInfo> CheckPendingEntries(int symbol_idx,
-                                                      double price,
-                                                      PriceType price_type);
+                                                     double price,
+                                                     PriceType price_type);
 
   /// 지정된 주문을 시그널과 주문 타입에 적합하게 체결하는 함수
   void FillOrder(const FillInfo& order_info, int symbol_idx,
@@ -249,8 +259,10 @@ class OrderHandler final : public BaseOrderHandler {
                        double fill_price);
 
   /// 시장가 진입 시 자금 관련 처리 후 체결 주문에 추가하는 함수
-  void ExecuteMarketEntry(const shared_ptr<Order>& market_entry, int symbol_idx,
-                          PriceType price_type);
+  ///
+  /// @return 체결 성공 여부
+  bool FillMarketEntry(const shared_ptr<Order>& market_entry, int symbol_idx,
+                       PriceType price_type);
 
   /**
    * 현재 사용 중인 심볼에서 지정된 방향과 반대 방향의 진입 체결 주문이 있으면
@@ -300,7 +312,9 @@ class OrderHandler final : public BaseOrderHandler {
 
   /// 현재 사용 중인 심볼에서 LIT 진입 대기 주문이 터치되었을 때 지정가로
   /// 주문하는 함수.
-  void OrderPendingLitEntry(const shared_ptr<Order>& lit_entry, int& order_idx,
+  ///
+  /// @return 주문 성공 여부
+  bool OrderPendingLitEntry(const shared_ptr<Order>& lit_entry, int& order_idx,
                             int symbol_idx, PriceType price_type);
 
   // ===========================================================================
@@ -325,8 +339,10 @@ class OrderHandler final : public BaseOrderHandler {
 
   /// 현재 사용 중인 심볼에서 지정된 청산 대기 주문을 시장가 혹은 지정가로
   /// 체결하는 함수. 자금 관련 처리를 하고 체결 주문으로 이동시킴.
-  void FillPendingExitOrder(const shared_ptr<Order>& exit_order, int symbol_idx,
-                            double fill_price);
+  void FillPendingExitOrder(
+      const shared_ptr<Order>& exit_order,
+      const pair<shared_ptr<Order>, int>& target_entry_order, int symbol_idx,
+      double fill_price);
 
   // ===========================================================================
   /// 체결된 진입 주문에서 Target Name과 같은 주문을 찾아 주문 인덱스와

@@ -166,7 +166,9 @@ class BaseOrderHandler {
   /// 현재 심볼의 레버리지를 변경하는 함수
   ///
   /// 현재 심볼에 체결된 주문이 없는 경우에만 변경 가능
-  void AdjustLeverage(int leverage, int symbol_idx);
+  ///
+  /// 실패 시 에러 문자열이 반환됨
+  [[nodiscard]] optional<string> AdjustLeverage(int leverage, int symbol_idx);
 
   // 지정된 심볼의 설정된 레버리지를 반환하는 함수
   [[nodiscard]] int GetLeverage(int symbol_idx) const;
@@ -194,42 +196,47 @@ class BaseOrderHandler {
                                            double position_size);
 
   // 방향이 유효한 값인지 확인하는 함수
-  static void IsValidDirection(Direction direction);
+  [[nodiscard]] static optional<string> IsValidDirection(Direction direction);
 
   // 가격이 유효한 값인지 확인하는 함수
-  static void IsValidPrice(double price);
+  [[nodiscard]] static optional<string> IsValidPrice(double price);
 
   // 포지션 크기가 유효한 값인지 확인하는 함수
-  void IsValidPositionSize(double position_size, OrderType order_type,
-                           int symbol_idx) const;
+  [[nodiscard]] optional<string> IsValidPositionSize(double position_size,
+                                                     OrderType order_type,
+                                                     int symbol_idx) const;
 
   // 명목 가치(가격 * 포지션 크기)가 최소 기준을 통과하여
   // 유효한 값인지 확인하는 함수
-  static void IsValidNotionalValue(double order_price, double position_size,
-                                   int symbol_idx);
+  [[nodiscard]] static optional<string> IsValidNotionalValue(
+      double order_price, double position_size, int symbol_idx);
 
   // 지정된 레버리지가 1 이상이고 명목 가치에 해당되는 브라켓의 최대 레버리지
   // 이하인지 확인하는 함수
-  static void IsValidLeverage(int leverage, double order_price,
-                              double position_size, int symbol_idx);
+  [[nodiscard]] static optional<string> IsValidLeverage(int leverage,
+                                                        double order_price,
+                                                        double position_size,
+                                                        int symbol_idx);
 
   /// 진입 체결 시 진입 이름이 유효한지 확인하는 함수
-  void IsValidEntryName(const string& entry_name, int symbol_idx) const;
+  [[nodiscard]] optional<string> IsValidEntryName(const string& entry_name,
+                                                  int symbol_idx) const;
 
   /// 청산 주문 시 청산 이름이 유효한지 확인하는 함수
-  void IsValidExitName(const string& exit_name) const;
+  [[nodiscard]] optional<string> IsValidExitName(const string& exit_name) const;
 
   /// 지정가 주문 가격이 유효한 가격인지 확인하는 함수
-  static void IsValidLimitOrderPrice(double limit_price, double base_price,
-                                     Direction direction);
+  [[nodiscard]] static optional<string> IsValidLimitOrderPrice(
+      double limit_price, double base_price, Direction direction);
 
   /// 트레일링 진입/청산의 터치 가격이 유효한지 확인하는 함수.
   /// 트레일링 진입/청산의 터치 가격은 0으로 지정될 수 있기 때문에 별개 함수로
   /// 처리.
-  static void IsValidTrailingTouchPrice(double touch_price);
+  [[nodiscard]] static optional<string> IsValidTrailingTouchPrice(
+      double touch_price);
 
   /// 트레일링 포인트가 유효한지 확인하는 함수
-  static void IsValidTrailPoint(double trail_point);
+  [[nodiscard]] static optional<string> IsValidTrailPoint(double trail_point);
 
   /// 지정가 주문에서 현재 가격이 진입 방향에 따라 주문 가격보다 낮아졌거나
   /// 커졌는지 확인하는 함수.
@@ -251,9 +258,9 @@ class BaseOrderHandler {
                                            double price, double touch_price);
 
   /// 자금이 필요 자금보다 많은지 확인하는 함수
-  static void HasEnoughBalance(double balance, double needed_balance,
-                               const string& balance_type_msg,
-                               const string& purpose_msg);
+  [[nodiscard]] static optional<string> HasEnoughBalance(
+      double balance, double needed_balance, const string& balance_type_msg,
+      const string& purpose_msg);
 
   /// 지정된 심볼 마지막 진입의 트레이딩 바 인덱스를 업데이트하는 함수
   void UpdateLastEntryBarIndex(int symbol_idx);
@@ -284,7 +291,8 @@ class BaseOrderHandler {
   void InitializeJustExited();
 
   /// 진입 주문 취소 시 자금 관련 처리를 하는 함수
-  static void AdjustMarginOnEntryCancel(const shared_ptr<Order>& cancel_order);
+  static void DecreaseUsedMarginOnEntryCancel(
+      const shared_ptr<Order>& cancel_order);
 };
 
 }  // namespace backtesting::order
