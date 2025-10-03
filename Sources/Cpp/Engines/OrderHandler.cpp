@@ -287,7 +287,7 @@ bool OrderHandler::MitEntry(const string& entry_name,
       LogFormattedInfo(WARNING_L, "마지막 바에서 MIT 진입 대기 주문 불가",
                        __FILE__, __LINE__);
 
-      WARN_AND_RET_FALSE(order_failed_msg)
+      WARN_AND_RET_FALSE()
     }
   } else {
     // After Entry 혹은 After Exit 전략일 시
