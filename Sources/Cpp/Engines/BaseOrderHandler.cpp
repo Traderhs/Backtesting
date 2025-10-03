@@ -527,8 +527,8 @@ optional<string> BaseOrderHandler::IsValidPositionSize(
 
   // 포지션 수량 단위 확인
   const auto& symbol_info = symbol_info_[symbol_idx];
-  if (const auto qty_step = symbol_info.GetQtyStep(); !IsEqual(
-          RoundToStep(position_size, qty_step), position_size)) [[unlikely]] {
+  if (const auto qty_step = symbol_info.GetQtyStep();
+      !IsEqual(RoundToStep(position_size, qty_step), position_size)) {
     return format("포지션 크기 [{}] 지정 오류 (조건: 수량 단위 [{}]의 배수)",
                   position_size, qty_step);
   }
@@ -544,8 +544,8 @@ optional<string> BaseOrderHandler::IsValidPositionSize(
         // 시장가 최고 수량보다 많거나 최저 수량보다 적으면 오류
         const auto max_qty = symbol_info.GetMarketMaxQty();
         if (const auto min_qty = symbol_info.GetMarketMinQty();
-            IsGreater(position_size, max_qty) || IsLess(position_size, min_qty))
-            [[unlikely]] {
+            IsGreater(position_size, max_qty) ||
+            IsLess(position_size, min_qty)) {
           return format(
               "포지션 크기 [{}] 지정 오류 (조건: 시장가 최대 수량 [{}] 이하 및 "
               "최소 수량 [{}] 이상)",
@@ -561,8 +561,8 @@ optional<string> BaseOrderHandler::IsValidPositionSize(
         // 지정가 최고 수량보다 많거나 최저 수량보다 적으면 오류
         const auto max_qty = symbol_info.GetLimitMaxQty();
         if (const auto min_qty = symbol_info.GetLimitMinQty();
-            IsGreater(position_size, max_qty) || IsLess(position_size, min_qty))
-            [[unlikely]] {
+            IsGreater(position_size, max_qty) ||
+            IsLess(position_size, min_qty)) {
           return format(
               "포지션 크기 [{}] 지정 오류 (조건: 지정가 최대 수량 [{}] 이하 및 "
               "최소 수량 [{}] 이상)",
@@ -590,7 +590,7 @@ optional<string> BaseOrderHandler::IsValidNotionalValue(
   // 명목 가치가 해당 심볼의 최소 명목 가치보다 작으면 오류
   const auto notional = order_price * position_size;
   if (const auto min_notional = symbol_info_[symbol_idx].GetMinNotionalValue();
-      IsLess(notional, min_notional)) [[unlikely]] {
+      IsLess(notional, min_notional)) {
     return format("명목 가치 [{}] 부족 (조건: 심볼의 최소 명목 가치 [{}] 이상)",
                   FormatDollar(notional, true),
                   FormatDollar(min_notional, true));
@@ -606,7 +606,7 @@ optional<string> BaseOrderHandler::IsValidLeverage(const int leverage,
   if (const auto max_leverage =
           GetLeverageBracket(symbol_idx, order_price, position_size)
               .max_leverage;
-      leverage < 1 || leverage > max_leverage) [[unlikely]] {
+      leverage < 1 || leverage > max_leverage) {
     return format(
         "레버리지 [{}x] 조건 미만족 (조건: [1x] 이상 및 명목 가치 [{}] "
         "레버리지 구간의 최대 레버리지 [{}x] 이하)",
@@ -625,7 +625,7 @@ optional<string> BaseOrderHandler::IsValidEntryName(
   for (const auto& filled_entry : filled_entries_[symbol_idx]) {
     /* 체결된 진입 주문 중 같은 이름이 하나라도 존재하면
        해당 entry_name으로 진입 불가 */
-    if (entry_name == filled_entry->GetEntryName()) [[unlikely]] {
+    if (entry_name == filled_entry->GetEntryName()) {
       return format("중복된 진입 이름 [{}] 동시 체결 불가", entry_name);
     }
   }
@@ -654,12 +654,12 @@ optional<string> BaseOrderHandler::IsValidExitName(
 optional<string> BaseOrderHandler::IsValidLimitOrderPrice(
     const double limit_price, const double base_price,
     const Direction direction) {
-  if (direction == LONG && IsGreater(limit_price, base_price)) [[unlikely]] {
+  if (direction == LONG && IsGreater(limit_price, base_price)) {
     return format("지정가 [{}]에서 주문 불가 (조건: 기준가 [{}] 이하",
                   limit_price, base_price);
   }
 
-  if (direction == SHORT && IsLess(limit_price, base_price)) [[unlikely]] {
+  if (direction == SHORT && IsLess(limit_price, base_price)) {
     return format("지정가 [{}]에서 주문 불가 (조건: 기준가 [{}] 이상",
                   limit_price, base_price);
   }
@@ -701,7 +701,7 @@ bool BaseOrderHandler::IsPriceTouched(const Direction touch_direction,
 optional<string> BaseOrderHandler::HasEnoughBalance(
     const double balance, const double needed_balance,
     const string& balance_type_msg, const string& purpose_msg) {
-  if (IsLess(balance, needed_balance)) [[unlikely]] {
+  if (IsLess(balance, needed_balance)) {
     return format("{} 자금 [{}] 부족 (필요 자금: {} [{}])", balance_type_msg,
                   FormatDollar(balance, true), purpose_msg,
                   FormatDollar(needed_balance, true));
@@ -834,14 +834,13 @@ void BaseOrderHandler::DecreaseUsedMarginOnEntryCancel(
       }
     }
 
-    [[unlikely]] case ORDER_NONE:
+    [[unlikely]] case ORDER_NONE: {
       Logger::LogAndThrowError(
           "진입 대기 주문 취소를 위해 예약 마진 감소 중 오류 발생: 주문 타입이 "
           "NONE으로 지정됨.",
           __FILE__, __LINE__);
+    }
   }
-}
-
 }
 
 }  // namespace backtesting::order
