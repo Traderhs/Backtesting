@@ -260,6 +260,9 @@ class Logger final {
   // 백테스팅 로그 경로
   string backtesting_log_temp_path_;
 
+  // 백테스팅 로그가 현재 실행에서 생성된 것인지 추적
+  bool backtesting_log_created_in_current_session_;
+
   // 로그 파일 스트림
   ofstream debug_log_;
   ofstream info_log_;
