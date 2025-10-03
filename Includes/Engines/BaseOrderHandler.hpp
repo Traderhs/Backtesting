@@ -48,6 +48,10 @@ using namespace logger;
 
 namespace backtesting::order {
 
+// 어느 대기 주문에서 취소할 지 결정하는 열거형 클래스
+// TOTAL은 진입 대기 주문 및 청산 대기 주문 모두에서 취소함
+enum class CancelType { TOTAL, ENTRY, EXIT };
+
 /// 주문, 포지션 등과 관련된 기본적인 작업을 처리하는 클래스
 class BaseOrderHandler {
   // 기타 함수 접근용
@@ -60,7 +64,8 @@ class BaseOrderHandler {
   /// 대기 주문 취소를 위해 사용하는 함수.
   ///
   /// order_name이 진입 대기 주문과 청산 대기 주문에 동시에 존재하면 모두 취소.
-  void Cancel(const string& order_name);
+  void Cancel(const string& order_name, CancelType cancel_type,
+              const string& cancellation_reason);
 
   /// 현재 심볼 마지막 진입으로부터 몇 개의 트레이딩 바가 지났는지 계산하여
   /// 반환하는 함수

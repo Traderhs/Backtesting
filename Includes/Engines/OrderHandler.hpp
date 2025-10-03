@@ -2,6 +2,7 @@
 
 // 표준 라이브러리
 #include <mutex>
+#include <unordered_set>
 
 // 내부 헤더
 #include "Engines/BaseOrderHandler.hpp"
@@ -19,7 +20,6 @@ namespace backtesting::order {
 
 // 주문 시그널을 나타나는 열거형 클래스
 enum class OrderSignal { LIQUIDATION, EXIT, ENTRY };
-using enum OrderSignal;
 
 // 진입, 청산, 강제 청산해야 하는 주문의 정보를 담은 구조체
 struct FillInfo {
@@ -199,13 +199,22 @@ class OrderHandler final : public BaseOrderHandler {
 
   // ===========================================================================
   /// 현재 사용 중인 심볼 인덱스의 모든 진입 및 청산 대기 주문을 취소하는 함수
-  void CancelAll();
+  void CancelAll(const string& cancellation_reason);
 
   /// 현재 사용 중인 심볼 인덱스의 모든 체결된 진입을 시장가로 다음 바 시가에서
   /// 청산하는 함수\n\n
   /// BEFORE/AFTER ENTRY, BEFORE/AFTER EXIT 전략에서 호출하더라도
   /// 다음 바 시가에서 청산됨
   void CloseAll();
+
+  /// 체결된 진입 주문에서 Entry Name과 같은 이름의 진입 주문이 있는지 여부를
+  /// 반환하는 함수
+  [[nodiscard]] bool HasEntryOrder(const string& entry_name) const;
+
+  /// 체결된 진입 주문에서 Entry Names 중에서 같은 이름의 진입 주문이
+  /// 몇 개 존재하는지 찾아 개수를 반환하는 함수
+  [[nodiscard]] size_t CountEntryOrder(
+      const unordered_set<string>& entry_names) const;
 
  private:
   // 싱글톤 인스턴스 관리
@@ -345,10 +354,10 @@ class OrderHandler final : public BaseOrderHandler {
       double fill_price);
 
   // ===========================================================================
-  /// 체결된 진입 주문에서 Target Name과 같은 주문을 찾아 주문 인덱스와
-  /// 함께 반환하는 함수
+  /// 체결된 진입 주문에서 Entry Name과 같은 이름의 진입 주문을 찾아
+  /// 주문 인덱스와 함께 반환하는 함수
   [[nodiscard]] optional<pair<shared_ptr<Order>, int>> FindEntryOrder(
-      const string& target_name, int symbol_idx) const;
+      const string& entry_name, int symbol_idx) const;
 
   /// 청산 주문 크기와 이미 체결된 청산 크기의 합이 진입 체결 크기를 넘지 않도록
   /// 조정하여 반환하는 함수

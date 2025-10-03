@@ -145,7 +145,7 @@ bool OrderHandler::MarketEntry(const string& entry_name,
       .SetEntryFilledSize(order_size);
 
   // 해당 주문과 같은 이름의 대기 주문이 있으면 취소 (주문 수정)
-  Cancel(entry_name);
+  Cancel(entry_name, CancelType::ENTRY, "주문 수정");
 
   if (entry_now) {
     // 슬리피지가 포함된 체결가
@@ -246,7 +246,7 @@ bool OrderHandler::LimitEntry(const string& entry_name,
                                         "지정가 주문 마진"))
 
   // 해당 주문과 같은 이름의 대기 주문이 있으면 취소 (주문 수정)
-  Cancel(entry_name);
+  Cancel(entry_name, CancelType::ENTRY, "주문 수정");
 
   // 사용한 마진에 예약 증거금 증가
   engine_->IncreaseUsedMargin(entry_margin);
@@ -325,7 +325,7 @@ bool OrderHandler::MitEntry(const string& entry_name,
       IsValidLeverage(leverage, touch_price, order_size, symbol_idx))
 
   // 해당 주문과 같은 이름의 대기 주문이 있으면 취소 (주문 수정)
-  Cancel(entry_name);
+  Cancel(entry_name, CancelType::ENTRY, "주문 수정");
 
   // MIT 진입 터치 대기
   pending_entries_[symbol_idx].push_back(mit_entry);
@@ -406,7 +406,7 @@ bool OrderHandler::LitEntry(const string& entry_name,
       IsValidLeverage(leverage, order_price, order_size, symbol_idx))
 
   // 해당 주문과 같은 이름의 대기 주문이 있으면 취소 (주문 수정)
-  Cancel(entry_name);
+  Cancel(entry_name, CancelType::ENTRY, "주문 수정");
 
   // LIT 진입 터치 대기
   pending_entries_[symbol_idx].push_back(lit_entry);
@@ -502,7 +502,7 @@ bool OrderHandler::TrailingEntry(const string& entry_name,
       IsValidLeverage(leverage, target_price, order_size, symbol_idx))
 
   // 해당 주문과 같은 이름의 대기 주문이 있으면 취소 (주문 수정)
-  Cancel(entry_name);
+  Cancel(entry_name, CancelType::ENTRY, "주문 수정");
 
   // 트레일링 진입 터치 대기
   pending_entries_[symbol_idx].push_back(trailing_entry);
@@ -628,7 +628,7 @@ bool OrderHandler::MarketExit(const string& exit_name,
       IsValidNotionalValue(order_price, order_size, symbol_idx))
 
   // 해당 주문과 같은 이름의 대기 주문이 있으면 취소 (주문 수정)
-  Cancel(exit_name);
+  Cancel(exit_name, CancelType::EXIT, "주문 수정");
 
   if (exit_now) {
     // 슬리피지가 포함된 체결가
@@ -760,7 +760,7 @@ bool OrderHandler::LimitExit(const string& exit_name, const string& target_name,
       IsValidNotionalValue(order_price, order_size, symbol_idx))
 
   // 해당 주문과 같은 이름의 대기 주문이 있으면 취소 (주문 수정)
-  Cancel(exit_name);
+  Cancel(exit_name, CancelType::EXIT, "주문 수정");
 
   // 대기 중인 청산에 추가
   pending_exits_[symbol_idx].push_back(limit_exit);
@@ -847,7 +847,7 @@ bool OrderHandler::MitExit(const string& exit_name, const string& target_name,
       IsValidNotionalValue(touch_price, order_size, symbol_idx))
 
   // 해당 주문과 같은 이름의 대기 주문이 있으면 취소 (주문 수정)
-  Cancel(exit_name);
+  Cancel(exit_name, CancelType::EXIT, "주문 수정");
 
   // 대기 중인 청산에 추가
   pending_exits_[symbol_idx].push_back(mit_exit);
@@ -940,7 +940,7 @@ bool OrderHandler::LitExit(const string& exit_name, const string& target_name,
       IsValidNotionalValue(order_price, order_size, symbol_idx))
 
   // 해당 주문과 같은 이름의 대기 주문이 있으면 취소 (주문 수정)
-  Cancel(exit_name);
+  Cancel(exit_name, CancelType::EXIT, "주문 수정");
 
   // 대기 중인 청산에 추가
   pending_exits_[symbol_idx].push_back(lit_exit);
@@ -1047,7 +1047,7 @@ bool OrderHandler::TrailingExit(const string& exit_name,
       order_size, symbol_idx))
 
   // 해당 주문과 같은 이름의 대기 주문이 있으면 취소 (주문 수정)
-  Cancel(exit_name);
+  Cancel(exit_name, CancelType::EXIT, "주문 수정");
 
   // 대기 중인 청산에 추가
   pending_exits_[symbol_idx].push_back(trailing_exit);
@@ -1061,20 +1061,22 @@ bool OrderHandler::TrailingExit(const string& exit_name,
   return true;
 }
 
-void OrderHandler::CancelAll() {
+void OrderHandler::CancelAll(const string& cancellation_reason) {
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
 
   // 루프 중간에 주문이 삭제되므로 역순으로 순회
   const auto& pending_entries = pending_entries_[symbol_idx];
   for (int order_idx = static_cast<int>(pending_entries.size()) - 1;
        order_idx >= 0; order_idx--) {
-    Cancel(pending_entries[order_idx]->GetEntryName());
+    Cancel(pending_entries[order_idx]->GetEntryName(), CancelType::ENTRY,
+           cancellation_reason);
   }
 
   const auto& pending_exits = pending_exits_[symbol_idx];
   for (int order_idx = static_cast<int>(pending_exits.size()) - 1;
        order_idx >= 0; order_idx--) {
-    Cancel(pending_exits[order_idx]->GetExitName());
+    Cancel(pending_exits[order_idx]->GetExitName(), CancelType::EXIT,
+           cancellation_reason);
   }
 }
 
@@ -1092,6 +1094,34 @@ void OrderHandler::CloseAll() {
   }
 
   engine_->SetCurrentStrategyType(original_strategy_type);
+}
+
+bool OrderHandler::HasEntryOrder(const string& entry_name) const {
+  // 현재 심볼의 체결된 진입들 순회
+  for (const auto& filled_entry :
+       filled_entries_[bar_->GetCurrentSymbolIndex()]) {
+    // entry_name과 같은 이름의 진입이 있으면 true를 반환
+    if (filled_entry->GetEntryName() == entry_name) {
+      return true;
+    }
+  }
+
+  // entry_name과 같은 이름의 진입이 없으면 false를 반환
+  return false;
+}
+
+size_t OrderHandler::CountEntryOrder(
+    const unordered_set<string>& entry_names) const {
+  size_t count = 0;
+
+  for (const auto& filled_entry :
+       filled_entries_[bar_->GetCurrentSymbolIndex()]) {
+    if (entry_names.contains(filled_entry->GetEntryName())) {
+      ++count;
+    }
+  }
+
+  return count;
 }
 
 vector<FillInfo> OrderHandler::CheckLiquidation(
@@ -1154,7 +1184,7 @@ vector<FillInfo> OrderHandler::CheckLiquidation(
 
       // 체결된 진입을 넣음에 주의
       should_liquidate_filled_entries.push_back(
-          FillInfo{filled_entry, LIQUIDATION, fill_price});
+          FillInfo{filled_entry, OrderSignal::LIQUIDATION, fill_price});
     }
   }
 
@@ -1176,7 +1206,7 @@ vector<FillInfo> OrderHandler::CheckPendingExits(
         // 이 함수에 들어온 타이밍은 무조건 시가이기 때문에 즉시 체결 가능
         // 체결 가격은 시장가 정의에 따라 시가로 결정
         should_fill_pending_exits.push_back(
-            FillInfo{pending_exit, EXIT, price});
+            FillInfo{pending_exit, OrderSignal::EXIT, price});
 
         continue;
       }
@@ -1245,7 +1275,7 @@ vector<FillInfo> OrderHandler::CheckPendingEntries(const int symbol_idx,
         // 이 함수에 들어온 타이밍은 무조건 시가이기 때문에 즉시 체결 가능
         // 체결 가격은 시장가 정의에 따라 시가로 결정
         should_fill_pending_entries.push_back(
-            FillInfo{pending_entry, ENTRY, price});
+            FillInfo{pending_entry, OrderSignal::ENTRY, price});
 
         continue;
       }
@@ -1302,7 +1332,7 @@ void OrderHandler::FillOrder(const FillInfo& order_info, const int symbol_idx,
                              const PriceType price_type) {
   switch (const auto& [order, order_signal, fill_price] = order_info;
           order_signal) {
-    case LIQUIDATION: {
+    case OrderSignal::LIQUIDATION: {
       // 먼저 다른 주문에서 원본 진입 주문을 청산했으면
       // 강제 청산의 의미가 없으므로 바로 리턴
       if (FindEntryOrder(order->GetEntryName(), symbol_idx)) {
@@ -1314,7 +1344,7 @@ void OrderHandler::FillOrder(const FillInfo& order_info, const int symbol_idx,
       return;
     }
 
-    case EXIT: {
+    case OrderSignal::EXIT: {
       // 먼저 다른 주문에서 원본 진입 주문을 청산했으면 청산 불가
       // → 이 청산 주문 자체는 다른 청산 체결 시 이미 취소됨
       if (const auto& entry_order =
@@ -1326,7 +1356,7 @@ void OrderHandler::FillOrder(const FillInfo& order_info, const int symbol_idx,
     }
 
     // 진입 대기 주문은 다른 체결 주문에 의해 영향 없음
-    case ENTRY: {
+    case OrderSignal::ENTRY: {
       switch (order->GetEntryOrderType()) {
         case MARKET:
           [[fallthrough]];
@@ -1966,7 +1996,7 @@ optional<FillInfo> OrderHandler::CheckPendingLimitEntry(
       IsLimitPriceSatisfied(limit_entry->GetEntryDirection(), price,
                             order_price)) {
     // 시가에서 진입 조건 달성 시 체결 가격은 시가가 됨 (갭 고려)
-    return FillInfo{limit_entry, ENTRY,
+    return FillInfo{limit_entry, OrderSignal::ENTRY,
                     price_type == OPEN ? price : order_price};
   }
 
@@ -1980,7 +2010,8 @@ optional<FillInfo> OrderHandler::CheckPendingMitEntry(
   if (const auto touch_price = mit_entry->GetEntryTouchPrice();
       IsPriceTouched(mit_entry->GetEntryTouchDirection(), price, touch_price)) {
     // 시가에서 진입 조건 달성 시 체결 가격은 시가가 됨 (갭 고려)
-    return FillInfo{mit_entry, ENTRY, price_type == OPEN ? price : touch_price};
+    return FillInfo{mit_entry, OrderSignal::ENTRY,
+                    price_type == OPEN ? price : touch_price};
   }
 
   return nullopt;
@@ -2008,7 +2039,7 @@ optional<FillInfo> OrderHandler::CheckPendingLitEntry(
         IsLimitPriceSatisfied(lit_entry->GetEntryDirection(), price,
                               order_price)) {
       // 시가에서 진입 조건 달성 시 체결 가격은 시가가 됨 (갭 고려)
-      return FillInfo{lit_entry, ENTRY,
+      return FillInfo{lit_entry, OrderSignal::ENTRY,
                       price_type == OPEN ? price : order_price};
     }
   }
@@ -2069,7 +2100,7 @@ optional<FillInfo> OrderHandler::CheckPendingTrailingEntry(
 
     if (should_entry) {
       // 시가에서 진입 조건 달성 시 체결 가격은 시가가 됨 (갭 고려)
-      return FillInfo{trailing_entry, ENTRY,
+      return FillInfo{trailing_entry, OrderSignal::ENTRY,
                       price_type == OPEN ? price : trail_price};
     }
   }
@@ -2282,7 +2313,8 @@ optional<FillInfo> OrderHandler::CheckPendingLimitExit(
       IsLimitPriceSatisfied(limit_exit->GetExitDirection(), price,
                             order_price)) {
     // 시가에서 청산 조건 달성 시 체결 가격은 시가가 됨 (갭 고려)
-    return FillInfo{limit_exit, EXIT, price_type == OPEN ? price : order_price};
+    return FillInfo{limit_exit, OrderSignal::EXIT,
+                    price_type == OPEN ? price : order_price};
   }
 
   return nullopt;
@@ -2295,7 +2327,8 @@ optional<FillInfo> OrderHandler::CheckPendingMitExit(
   if (const auto touch_price = mit_exit->GetExitTouchPrice();
       IsPriceTouched(mit_exit->GetExitTouchDirection(), price, touch_price)) {
     // 시가에서 청산 조건 달성 시 체결 가격은 시가가 됨 (갭 고려)
-    return FillInfo{mit_exit, EXIT, price_type == OPEN ? price : touch_price};
+    return FillInfo{mit_exit, OrderSignal::EXIT,
+                    price_type == OPEN ? price : touch_price};
   }
 
   return nullopt;
@@ -2328,7 +2361,8 @@ optional<FillInfo> OrderHandler::CheckPendingLitExit(
         IsLimitPriceSatisfied(lit_exit->GetExitDirection(), price,
                               order_price)) {
       // 시가에서 청산 조건 달성 시 체결 가격은 시가가 됨 (갭 고려)
-      return FillInfo{lit_exit, EXIT, price_type == OPEN ? price : order_price};
+      return FillInfo{lit_exit, OrderSignal::EXIT,
+                      price_type == OPEN ? price : order_price};
     }
   }
 
@@ -2388,7 +2422,7 @@ optional<FillInfo> OrderHandler::CheckPendingTrailingExit(
 
     if (should_exit) {
       // 시가에서 청산 조건 달성 시 체결 가격은 시가가 됨 (갭 고려)
-      return FillInfo{trailing_exit, EXIT,
+      return FillInfo{trailing_exit, OrderSignal::EXIT,
                       price_type == OPEN ? price : trail_price};
     }
   }
@@ -2459,7 +2493,7 @@ void OrderHandler::FillPendingExitOrder(
 
         LogFormattedInfo(
             INFO_L,
-            format("{} [{}] 주문 취소 (원본 진입 강제 청산)",
+            format("{} [{}] 주문 취소 (원본 진입 전량 청산)",
                    Order::OrderTypeToString(pending_exit->GetExitOrderType()),
                    pending_exit->GetExitName()),
             __FILE__, __LINE__);
@@ -2472,14 +2506,15 @@ void OrderHandler::FillPendingExitOrder(
 }
 
 optional<pair<shared_ptr<Order>, int>> OrderHandler::FindEntryOrder(
-    const string& target_name, const int symbol_idx) const {
+    const string& entry_name, const int symbol_idx) const {
   const auto& filled_entries = filled_entries_[symbol_idx];
 
   // 현재 심볼의 체결된 진입들 순회
   for (int order_idx = 0; order_idx < filled_entries.size(); order_idx++) {
-    // target_entry_name과 같은 이름의 진입이 있으면 반환
+    // entry_name과 같은 이름의 진입이 있으면 반환
+    // 동일한 이름으로 진입 체결이 불가하니 찾으면 바로 반환하면 됨
     if (const auto& filled_entry = filled_entries[order_idx];
-        filled_entry->GetEntryName() == target_name) {
+        filled_entry->GetEntryName() == entry_name) {
       return make_pair(filled_entry, order_idx);
     }
   }
