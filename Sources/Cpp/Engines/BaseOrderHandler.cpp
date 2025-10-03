@@ -270,7 +270,7 @@ double BaseOrderHandler::CalculateLiquidationPrice(
     // 롱의 경우, 강제 청산 가격이 0 이하면 절대 청산되지 않음
     return 0.0;
   } else {
-    return RoundToStep(result, symbol_info_[symbol_idx].GetTickSize());
+    return RoundToStep(result, symbol_info_[symbol_idx].GetPriceStep());
   }
 }
 
@@ -449,12 +449,12 @@ double BaseOrderHandler::CalculateSlippagePrice(const OrderType order_type,
   // 방향에 따라 덧셈과 뺄셈이 달라짐
   if (direction == LONG) {
     return RoundToStep(order_price + slippage_points,
-                       symbol_info_[symbol_idx].GetTickSize());
+                       symbol_info_[symbol_idx].GetPriceStep());
   }
 
   if (direction == SHORT) {
     return RoundToStep(order_price - slippage_points,
-                       symbol_info_[symbol_idx].GetTickSize());
+                       symbol_info_[symbol_idx].GetPriceStep());
   }
 
   [[unlikely]] Logger::LogAndThrowError(
@@ -539,9 +539,12 @@ optional<string> BaseOrderHandler::IsValidDirection(const Direction direction) {
   return nullopt;
 }
 
-optional<string> BaseOrderHandler::IsValidPrice(const double price) {
+optional<string> BaseOrderHandler::IsValidPrice(const double price,
+                                                const int symbol_idx) {
   if (IsLessOrEqual(price, 0.0) || isnan(price)) [[unlikely]] {
-    return format("가격 [{}] 오류 (조건: 0 초과 및 NaN이 아닌 실수)", price);
+    return format(
+        "가격 [{}] 오류 (조건: 0 초과 및 NaN이 아닌 실수)",
+        ToFixedString(price, symbol_info_[symbol_idx].GetPricePrecision()));
   }
 
   return nullopt;
@@ -550,14 +553,17 @@ optional<string> BaseOrderHandler::IsValidPrice(const double price) {
 optional<string> BaseOrderHandler::IsValidPositionSize(
     const double position_size, const OrderType order_type,
     const int symbol_idx) const {
+  const auto& symbol_info = symbol_info_[symbol_idx];
+
+  const auto qty_precision = symbol_info.GetQtyPrecision();
   if (IsLessOrEqual(position_size, 0.0)) [[unlikely]] {
-    return format("포지션 크기 [{}] 미달 (조건: 0 초과)", position_size);
+    return format("포지션 크기 [{}] 미달 (조건: 0 초과)",
+                  ToFixedString(position_size, qty_precision));
   }
 
   // 포지션 수량 단위 확인
-  const auto& symbol_info = symbol_info_[symbol_idx];
-  if (const auto qty_step = symbol_info.GetQtyStep();
-      !IsEqual(RoundToStep(position_size, qty_step), position_size)) {
+  const auto qty_step = symbol_info.GetQtyStep();
+  if (!IsEqual(RoundToStep(position_size, qty_step), position_size)) {
     return format("포지션 크기 [{}] 지정 오류 (조건: 수량 단위 [{}]의 배수)",
                   position_size, qty_step);
   }

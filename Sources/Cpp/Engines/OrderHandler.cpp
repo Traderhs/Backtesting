@@ -208,9 +208,9 @@ bool OrderHandler::LimitEntry(const string& entry_name,
     }
   }
 
-  // 주문 가격을 틱 사이즈로 반올림
+  // 주문 가격을 가격 최소 단위로 반올림
   order_price =
-      RoundToStep(order_price, symbol_info_[symbol_idx].GetTickSize());
+      RoundToStep(order_price, symbol_info_[symbol_idx].GetPriceStep());
 
   // 주문 생성
   const auto limit_entry = make_shared<Order>();
@@ -225,7 +225,7 @@ bool OrderHandler::LimitEntry(const string& entry_name,
 
   // 유효성 검사
   RET_FALSE_IF_INVALID(IsValidDirection(entry_direction))
-  RET_FALSE_IF_INVALID(IsValidPrice(order_price))
+  RET_FALSE_IF_INVALID(IsValidPrice(order_price, symbol_idx))
   RET_FALSE_IF_INVALID(
       IsValidLimitOrderPrice(order_price, base_price, entry_direction))
   RET_FALSE_IF_INVALID(IsValidPositionSize(order_size, LIMIT, symbol_idx))
@@ -299,9 +299,9 @@ bool OrderHandler::MitEntry(const string& entry_name,
     }
   }
 
-  // 터치 가격을 틱 사이즈로 반올림
+  // 터치 가격을 가격 최소 단위로 반올림
   touch_price =
-      RoundToStep(touch_price, symbol_info_[symbol_idx].GetTickSize());
+      RoundToStep(touch_price, symbol_info_[symbol_idx].GetPriceStep());
 
   // 주문 생성
   const auto mit_entry = make_shared<Order>();
@@ -317,7 +317,7 @@ bool OrderHandler::MitEntry(const string& entry_name,
 
   // 유효성 검사
   RET_FALSE_IF_INVALID(IsValidDirection(entry_direction))
-  RET_FALSE_IF_INVALID(IsValidPrice(touch_price))
+  RET_FALSE_IF_INVALID(IsValidPrice(touch_price, symbol_idx))
   RET_FALSE_IF_INVALID(IsValidPositionSize(order_size, MIT, symbol_idx))
   RET_FALSE_IF_INVALID(
       IsValidNotionalValue(touch_price, order_size, symbol_idx))
@@ -375,8 +375,8 @@ bool OrderHandler::LitEntry(const string& entry_name,
     }
   }
 
-  // 터치 가격과 주문 가격을 틱 사이즈로 반올림
-  const auto tick_size = symbol_info_[symbol_idx].GetTickSize();
+  // 터치 가격과 주문 가격을 가격 최소 단위로 반올림
+  const auto tick_size = symbol_info_[symbol_idx].GetPriceStep();
   touch_price = RoundToStep(touch_price, tick_size);
   order_price = RoundToStep(order_price, tick_size);
 
@@ -395,8 +395,8 @@ bool OrderHandler::LitEntry(const string& entry_name,
 
   // 유효성 검사
   RET_FALSE_IF_INVALID(IsValidDirection(entry_direction))
-  RET_FALSE_IF_INVALID(IsValidPrice(touch_price))
-  RET_FALSE_IF_INVALID(IsValidPrice(order_price))
+  RET_FALSE_IF_INVALID(IsValidPrice(touch_price, symbol_idx))
+  RET_FALSE_IF_INVALID(IsValidPrice(order_price, symbol_idx))
   RET_FALSE_IF_INVALID(
       IsValidLimitOrderPrice(order_price, touch_price, entry_direction))
   RET_FALSE_IF_INVALID(IsValidPositionSize(order_size, LIT, symbol_idx))
@@ -457,9 +457,9 @@ bool OrderHandler::TrailingEntry(const string& entry_name,
     }
   }
 
-  // 터치 가격을 틱 사이즈로 반올림
+  // 터치 가격을 가격 최소 단위로 반올림
   touch_price =
-      RoundToStep(touch_price, symbol_info_[symbol_idx].GetTickSize());
+      RoundToStep(touch_price, symbol_info_[symbol_idx].GetPriceStep());
 
   // 주문 생성
   const auto trailing_entry = make_shared<Order>();
@@ -734,9 +734,9 @@ bool OrderHandler::LimitExit(const string& exit_name, const string& target_name,
     WARN_AND_RET_FALSE()
   }
 
-  // 주문 가격을 틱 사이즈로 반올림
+  // 주문 가격을 가격 최소 단위로 반올림
   order_price =
-      RoundToStep(order_price, symbol_info_[symbol_idx].GetTickSize());
+      RoundToStep(order_price, symbol_info_[symbol_idx].GetPriceStep());
 
   // 총 청산 주문 수량이 진입 체결 수량보다 크지 않게 조정
   order_size = GetAdjustedExitSize(order_size, entry_order);
@@ -752,7 +752,7 @@ bool OrderHandler::LimitExit(const string& exit_name, const string& target_name,
 
   // 유효성 검사
   RET_FALSE_IF_INVALID(IsValidExitName(exit_name))
-  RET_FALSE_IF_INVALID(IsValidPrice(order_price))
+  RET_FALSE_IF_INVALID(IsValidPrice(order_price, symbol_idx))
   RET_FALSE_IF_INVALID(IsValidLimitOrderPrice(order_price, base_price,
                                               limit_exit->GetExitDirection()))
   RET_FALSE_IF_INVALID(IsValidPositionSize(order_size, LIMIT, symbol_idx))
@@ -822,9 +822,9 @@ bool OrderHandler::MitExit(const string& exit_name, const string& target_name,
     WARN_AND_RET_FALSE()
   }
 
-  // 터치 가격을 틱 사이즈로 반올림
+  // 터치 가격을 가격 최소 단위로 반올림
   touch_price =
-      RoundToStep(touch_price, symbol_info_[symbol_idx].GetTickSize());
+      RoundToStep(touch_price, symbol_info_[symbol_idx].GetPriceStep());
 
   // 총 청산 주문 수량이 진입 체결 수량보다 크지 않게 조정
   order_size = GetAdjustedExitSize(order_size, entry_order);
@@ -841,7 +841,7 @@ bool OrderHandler::MitExit(const string& exit_name, const string& target_name,
 
   // 유효성 검사
   RET_FALSE_IF_INVALID(IsValidExitName(exit_name))
-  RET_FALSE_IF_INVALID(IsValidPrice(touch_price))
+  RET_FALSE_IF_INVALID(IsValidPrice(touch_price, symbol_idx))
   RET_FALSE_IF_INVALID(IsValidPositionSize(order_size, MIT, symbol_idx))
   RET_FALSE_IF_INVALID(
       IsValidNotionalValue(touch_price, order_size, symbol_idx))
@@ -910,8 +910,8 @@ bool OrderHandler::LitExit(const string& exit_name, const string& target_name,
     WARN_AND_RET_FALSE()
   }
 
-  // 터치 가격과 주문 가격을 틱 사이즈로 반올림
-  const auto tick_size = symbol_info_[symbol_idx].GetTickSize();
+  // 터치 가격과 주문 가격을 가격 최소 단위로 반올림
+  const auto tick_size = symbol_info_[symbol_idx].GetPriceStep();
   touch_price = RoundToStep(touch_price, tick_size);
   order_price = RoundToStep(order_price, tick_size);
 
@@ -931,8 +931,8 @@ bool OrderHandler::LitExit(const string& exit_name, const string& target_name,
 
   // 유효성 검사
   RET_FALSE_IF_INVALID(IsValidExitName(exit_name))
-  RET_FALSE_IF_INVALID(IsValidPrice(touch_price))
-  RET_FALSE_IF_INVALID(IsValidPrice(order_price))
+  RET_FALSE_IF_INVALID(IsValidPrice(touch_price, symbol_idx))
+  RET_FALSE_IF_INVALID(IsValidPrice(order_price, symbol_idx))
   RET_FALSE_IF_INVALID(IsValidLimitOrderPrice(order_price, touch_price,
                                               lit_exit->GetExitDirection()))
   RET_FALSE_IF_INVALID(IsValidPositionSize(order_size, LIT, symbol_idx))
@@ -1004,9 +1004,9 @@ bool OrderHandler::TrailingExit(const string& exit_name,
     WARN_AND_RET_FALSE()
   }
 
-  // 터치 가격을 틱 사이즈로 반올림
+  // 터치 가격을 가격 최소 단위로 반올림
   touch_price =
-      RoundToStep(touch_price, symbol_info_[symbol_idx].GetTickSize());
+      RoundToStep(touch_price, symbol_info_[symbol_idx].GetPriceStep());
 
   // 총 청산 주문 수량이 진입 체결 수량보다 크지 않게 조정
   order_size = GetAdjustedExitSize(order_size, entry_order);

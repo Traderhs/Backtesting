@@ -498,16 +498,16 @@ void Analyzer::SaveConfig() {
         auto& symbol_info = symbol_info_[symbol_idx];
 
         // 거래소 정보 저장
-        const auto tick_size = symbol_info.GetTickSize();
         symbol["거래소 정보"] = {
             {"데이터 경로", symbol_info.GetExchangeInfoPath()},
-            {"틱 사이즈", tick_size},
-            {"소수점 정밀도", CountDecimalPlaces(tick_size)},
+            {"가격 최소 단위", symbol_info.GetPriceStep()},
+            {"가격 소수점 정밀도", symbol_info.GetPricePrecision()},
+            {"수량 최소 단위", symbol_info.GetQtyStep()},
+            {"수량 소수점 정밀도", symbol_info.GetQtyPrecision()},
             {"지정가 최대 수량", symbol_info.GetLimitMaxQty()},
             {"지정가 최소 수량", symbol_info.GetLimitMinQty()},
             {"시장가 최대 수량", symbol_info.GetMarketMaxQty()},
             {"시장가 최소 수량", symbol_info.GetMarketMinQty()},
-            {"수량 최소 단위", symbol_info.GetQtyStep()},
             {"최소 명목 가치", symbol_info.GetMinNotionalValue()},
             {"강제 청산 수수료율", symbol_info.GetLiquidationFeeRate()}};
 

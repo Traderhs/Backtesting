@@ -5,10 +5,10 @@ import "./PriceAxisTooltip.css";
 interface PriceAxisTooltipProps {
     chart: IChartApi | null;
     containerRef: React.RefObject<HTMLDivElement | null>;
-    precision: number;
+    pricePrecision: number;
 }
 
-const PriceAxisTooltip: React.FC<PriceAxisTooltipProps> = ({chart, containerRef, precision}) => {
+const PriceAxisTooltip: React.FC<PriceAxisTooltipProps> = ({chart, containerRef, pricePrecision}) => {
     const tooltipRef = useRef<HTMLDivElement>(null);
     const [visible, setVisible] = useState<boolean>(false);
     const [tooltipText, setTooltipText] = useState<string>("");
@@ -135,8 +135,8 @@ const PriceAxisTooltip: React.FC<PriceAxisTooltipProps> = ({chart, containerRef,
 
                 // 가격 포맷 적용
                 const formattedPrice = price.toLocaleString(undefined, {
-                    minimumFractionDigits: precision,
-                    maximumFractionDigits: precision
+                    minimumFractionDigits: pricePrecision,
+                    maximumFractionDigits: pricePrecision
                 });
 
                 setTooltipText(formattedPrice);
@@ -195,7 +195,7 @@ const PriceAxisTooltip: React.FC<PriceAxisTooltipProps> = ({chart, containerRef,
         return () => {
             chart.unsubscribeCrosshairMove(onCrosshairMove);
         };
-    }, [chart, containerRef, precision]);
+    }, [chart, containerRef, pricePrecision]);
 
     return (
         <div

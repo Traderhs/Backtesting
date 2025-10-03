@@ -80,8 +80,8 @@ function AppContent() {
     const [chartConfig, setChartConfig] = useState<{
         symbol: string;
         timeframe: string;
-        tickSize: number;
-        precision: number;
+        priceStep: number;
+        pricePrecision: number;
     } | null>(null);
     const [isChartLoading, setIsChartLoading] = useState(false);
     const [config, setConfig] = useState<any>(null);
@@ -109,8 +109,8 @@ function AppContent() {
         configParam?: {
             symbol?: string;
             timeframe?: string;
-            tickSize?: number;
-            precision?: number;
+            priceStep?: number;
+            pricePrecision?: number;
             plotType?: string;
         },
         sidebarDirection?: 'left' | 'right'
@@ -186,14 +186,14 @@ function AppContent() {
             configParam &&
             'symbol' in configParam &&
             'timeframe' in configParam &&
-            'tickSize' in configParam &&
-            'precision' in configParam &&
+            'priceStep' in configParam &&
+            'pricePrecision' in configParam &&
             (
                 !chartConfig || // 차트 설정이 아직 없거나
                 chartConfig.symbol !== configParam.symbol || // 심볼이 다르거나
                 chartConfig.timeframe !== configParam.timeframe || // 타임프레임이 다르거나
-                chartConfig.tickSize !== configParam.tickSize || // 틱 사이즈가 다르거나
-                chartConfig.precision !== configParam.precision // 정밀도가 다를 때만
+                chartConfig.priceStep !== configParam.priceStep || // 가격 최소 단위가 다르거나
+                chartConfig.pricePrecision !== configParam.pricePrecision // 가격 소수점 정밀도가 다를 때만
             );
 
         // 플롯 타입 업데이트 필요 여부
@@ -218,7 +218,7 @@ function AppContent() {
             // Log 탭으로 전환할 때 텍스트 최적화 로딩 시작
             if (newTab === "Log") {
                 setIsLogTextOptimizing(true);
-                
+
                 // 텍스트 최적화 완료까지 로딩 표시 (800ms 후 해제)
                 setTimeout(() => {
                     setIsLogTextOptimizing(false);
@@ -273,8 +273,8 @@ function AppContent() {
                 const newChartConfig = {
                     symbol: configParam.symbol as string,
                     timeframe: configParam.timeframe as string,
-                    tickSize: configParam.tickSize as number,
-                    precision: configParam.precision as number,
+                    priceStep: configParam.priceStep as number,
+                    pricePrecision: configParam.pricePrecision as number,
                 };
 
                 // 차트 로딩 상태 활성화 및 새 설정 적용
@@ -439,8 +439,8 @@ function AppContent() {
     return (
         <div className="flex h-full w-full overflow-hidden bg-[#111111]" style={{position: "relative"}}>
             {/* 이미지 로딩 중일 때 전체 화면 로딩 스피너 표시 */}
-            {isGlobalLoading && <LoadingSpinner />}
-            
+            {isGlobalLoading && <LoadingSpinner/>}
+
             {/* StarField 컴포넌트는 항상 렌더링하되, Chart 탭에서는 opacity로 숨김 처리 */}
             <div style={{
                 position: 'absolute',
@@ -460,131 +460,131 @@ function AppContent() {
                 </Suspense>
             </div>
 
-                        {/* 서버 오류 발생 시 경고 팝업 표시 */}
-                        {serverError && <ServerAlert serverError={serverError}/>}
+            {/* 서버 오류 발생 시 경고 팝업 표시 */}
+            {serverError && <ServerAlert serverError={serverError}/>}
 
-                        <Sidebar
-                            onSelectTab={handleSelectTab}
-                            activeTab={tab}
-                            config={config || {}} // config가 없으면 빈 객체 제공
-                            isChartLoading={isChartLoading}
-                            activeSymbol={tab === "Chart" ? chartConfig?.symbol : undefined}
-                            activePlotType={tab === "Plot" ? activePlotType : undefined}
-                            isAnimating={isAnimating}
-                            timeframe={chartConfig?.timeframe}
-                        />
+            <Sidebar
+                onSelectTab={handleSelectTab}
+                activeTab={tab}
+                config={config || {}} // config가 없으면 빈 객체 제공
+                isChartLoading={isChartLoading}
+                activeSymbol={tab === "Chart" ? chartConfig?.symbol : undefined}
+                activePlotType={tab === "Plot" ? activePlotType : undefined}
+                isAnimating={isAnimating}
+                timeframe={chartConfig?.timeframe}
+            />
 
-                        <main
-                            className="h-full overflow-hidden flex flex-col w-full gpu-accelerated-heavy main-content"
-                            style={{...getMainContentStyle(), zIndex: 1}}
-                        >
-                            {/* 애니메이션 컨테이너 - 항상 overflow hidden으로 설정하여 중첩 스크롤바 방지 */}
-                            <div className={`tab-container ${animationDirection}`}
-                                 style={{overflow: "hidden", height: "100%"}}>
-                                {/* 각 탭 컨텐츠를 방문 상태에 기반하여 조건부 렌더링 */}
+            <main
+                className="h-full overflow-hidden flex flex-col w-full gpu-accelerated-heavy main-content"
+                style={{...getMainContentStyle(), zIndex: 1}}
+            >
+                {/* 애니메이션 컨테이너 - 항상 overflow hidden으로 설정하여 중첩 스크롤바 방지 */}
+                <div className={`tab-container ${animationDirection}`}
+                     style={{overflow: "hidden", height: "100%"}}>
+                    {/* 각 탭 컨텐츠를 방문 상태에 기반하여 조건부 렌더링 */}
 
-                                <div
-                                    className={getTabClass("Overview")}
-                                    style={getTabStyle("Overview")}
-                                    data-tab="Overview"
-                                >
-                                    {/* Overview는 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
-                                    {visitedTabs["Overview"] && (
-                                        <Suspense fallback={<div/>}>
-                                            <Overview/>
-                                        </Suspense>
-                                    )}
-                                </div>
-
-                                <div
-                                    className={getTabClass("Performance")}
-                                    style={getTabStyle("Performance")}
-                                    data-tab="Performance"
-                                >
-                                    {/* Performance는 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
-                                    {visitedTabs["Performance"] && (
-                                        <Suspense fallback={<div/>}>
-                                            <Performance config={config || {}} />
-                                        </Suspense>
-                                    )}
-                                </div>
-
-                                <div
-                                    className={getTabClass("Plot")}
-                                    style={getTabStyle("Plot")}
-                                    data-tab="Plot"
-                                >
-                                    {/* Plot 탭은 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
-                                    {visitedTabs["Plot"] && (
-                                        <Suspense fallback={<div/>}>
-                                            <Plot plotType={activePlotType} config={config} />
-                                        </Suspense>
-                                    )}
-                                </div>
-
-                                <div
-                                    className={getTabClass("Chart")}
-                                    style={getTabStyle("Chart")}
-                                    data-tab="Chart"
-                                >
-                                    {/* Chart 탭은 방문한 경우에만 렌더링하고 chartConfig가 있을 때만, 이후에는 display로 제어 */}
-                                    {visitedTabs["Chart"] && chartConfig && (
-                                        <Suspense fallback={<div/>}>
-                                            <Chart
-                                                key={chartConfig.symbol} // 심볼 변경 시 강제 리마운트
-                                                symbol={chartConfig.symbol}
-                                                timeframe={chartConfig.timeframe}
-                                                tickSize={chartConfig.tickSize}
-                                                precision={chartConfig.precision}
-                                                config={config || {}} // config 추가
-                                                onChartLoaded={handleChartLoaded}
-                                            />
-                                        </Suspense>
-                                    )}
-                                </div>
-
-                                <div
-                                    className={getTabClass("TradeList")}
-                                    style={getTabStyle("TradeList")}
-                                    data-tab="TradeList"
-                                >
-                                    {/* TradeList 탭은 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
-                                    {visitedTabs["TradeList"] && (
-                                        <Suspense fallback={<div/>}>
-                                            <TradeList config={config || {}}/>
-                                        </Suspense>
-                                    )}
-                                </div>
-
-                                <div
-                                    className={getTabClass("Config")}
-                                    style={getTabStyle("Config")}
-                                    data-tab="Config"
-                                >
-                                    {/* Config 탭은 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
-                                    {visitedTabs["Config"] && (
-                                        <Suspense fallback={<div/>}>
-                                            <Config config={config || {}}/>
-                                        </Suspense>
-                                    )}
-                                </div>
-
-                                <div
-                                    className={getTabClass("Log")}
-                                    style={getTabStyle("Log")}
-                                    data-tab="Log"
-                                >
-                                    {/* Log 탭은 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
-                                    {visitedTabs["Log"] && (
-                                        <Suspense fallback={<div/>}>
-                                            <Log isTextOptimizing={isLogTextOptimizing}/>
-                                        </Suspense>
-                                    )}
-                                </div>
-                            </div>
-                        </main>
+                    <div
+                        className={getTabClass("Overview")}
+                        style={getTabStyle("Overview")}
+                        data-tab="Overview"
+                    >
+                        {/* Overview는 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
+                        {visitedTabs["Overview"] && (
+                            <Suspense fallback={<div/>}>
+                                <Overview/>
+                            </Suspense>
+                        )}
                     </div>
-                );
+
+                    <div
+                        className={getTabClass("Performance")}
+                        style={getTabStyle("Performance")}
+                        data-tab="Performance"
+                    >
+                        {/* Performance는 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
+                        {visitedTabs["Performance"] && (
+                            <Suspense fallback={<div/>}>
+                                <Performance config={config || {}}/>
+                            </Suspense>
+                        )}
+                    </div>
+
+                    <div
+                        className={getTabClass("Plot")}
+                        style={getTabStyle("Plot")}
+                        data-tab="Plot"
+                    >
+                        {/* Plot 탭은 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
+                        {visitedTabs["Plot"] && (
+                            <Suspense fallback={<div/>}>
+                                <Plot plotType={activePlotType} config={config}/>
+                            </Suspense>
+                        )}
+                    </div>
+
+                    <div
+                        className={getTabClass("Chart")}
+                        style={getTabStyle("Chart")}
+                        data-tab="Chart"
+                    >
+                        {/* Chart 탭은 방문한 경우에만 렌더링하고 chartConfig가 있을 때만, 이후에는 display로 제어 */}
+                        {visitedTabs["Chart"] && chartConfig && (
+                            <Suspense fallback={<div/>}>
+                                <Chart
+                                    key={chartConfig.symbol} // 심볼 변경 시 강제 리마운트
+                                    symbol={chartConfig.symbol}
+                                    timeframe={chartConfig.timeframe}
+                                    priceStep={chartConfig.priceStep}
+                                    pricePrecision={chartConfig.pricePrecision}
+                                    config={config || {}} // config 추가
+                                    onChartLoaded={handleChartLoaded}
+                                />
+                            </Suspense>
+                        )}
+                    </div>
+
+                    <div
+                        className={getTabClass("TradeList")}
+                        style={getTabStyle("TradeList")}
+                        data-tab="TradeList"
+                    >
+                        {/* TradeList 탭은 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
+                        {visitedTabs["TradeList"] && (
+                            <Suspense fallback={<div/>}>
+                                <TradeList config={config || {}}/>
+                            </Suspense>
+                        )}
+                    </div>
+
+                    <div
+                        className={getTabClass("Config")}
+                        style={getTabStyle("Config")}
+                        data-tab="Config"
+                    >
+                        {/* Config 탭은 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
+                        {visitedTabs["Config"] && (
+                            <Suspense fallback={<div/>}>
+                                <Config config={config || {}}/>
+                            </Suspense>
+                        )}
+                    </div>
+
+                    <div
+                        className={getTabClass("Log")}
+                        style={getTabStyle("Log")}
+                        data-tab="Log"
+                    >
+                        {/* Log 탭은 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
+                        {visitedTabs["Log"] && (
+                            <Suspense fallback={<div/>}>
+                                <Log isTextOptimizing={isLogTextOptimizing}/>
+                            </Suspense>
+                        )}
+                    </div>
+                </div>
+            </main>
+        </div>
+    );
 }
 
 function App() {
@@ -592,7 +592,7 @@ function App() {
         <WebSocketProvider>
             <TradeFilterProvider>
                 <LogoProvider>
-                    <AppContent />
+                    <AppContent/>
                 </LogoProvider>
             </TradeFilterProvider>
         </WebSocketProvider>

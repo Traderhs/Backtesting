@@ -19,8 +19,8 @@ export interface HistogramSeriesProps {
     bearishColor?: string;
     indicatorName: string;
     initialData?: HistogramDataPoint[];
-    tickSize: number;
-    precision: number;
+    priceStep: number;
+    pricePrecision: number;
 }
 
 export interface HistogramSeriesHandle {
@@ -37,8 +37,8 @@ const HistogramSeriesTemplate = forwardRef<HistogramSeriesHandle, HistogramSerie
         bearishColor,
         indicatorName,
         initialData = [],
-        tickSize,
-        precision
+        priceStep,
+        pricePrecision
     } = props;
 
     const seriesRef = useRef<any>(null);
@@ -67,8 +67,8 @@ const HistogramSeriesTemplate = forwardRef<HistogramSeriesHandle, HistogramSerie
             color: color,
             priceFormat: {
                 type: 'price',
-                minMove: tickSize,
-                precision: precision
+                minMove: priceStep,
+                precision: pricePrecision
             },
             lastValueVisible: false,
             priceLineVisible: false,
@@ -129,8 +129,8 @@ const HistogramSeriesTemplate = forwardRef<HistogramSeriesHandle, HistogramSerie
         color,
         bearishColor,
         indicatorName,
-        tickSize,
-        precision
+        priceStep,
+        pricePrecision
     ]);
 
     // 대기 중인 업데이트가 있으면 처리하는 함수

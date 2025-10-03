@@ -20,8 +20,8 @@ export interface AreaSeriesProps {
     pointMarkersRadius?: number;
     indicatorName: string;
     initialData?: DataPoint[];
-    tickSize: number;
-    precision: number;
+    priceStep: number;
+    pricePrecision: number;
 }
 
 export interface AreaSeriesHandle {
@@ -43,8 +43,8 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
         pointMarkersRadius,
         indicatorName,
         initialData = [],
-        tickSize,
-        precision,
+        priceStep,
+        pricePrecision,
     } = props;
 
     const seriesRef = useRef<any>(null);
@@ -68,8 +68,8 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
             pointMarkersRadius: pointMarkersRadius,
             priceFormat: {
                 type: 'price',
-                minMove: tickSize,
-                precision: precision,
+                minMove: priceStep,
+                precision: pricePrecision,
             },
             lastValueVisible: false,
             priceLineVisible: false,
@@ -125,8 +125,8 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
         pointMarkersVisible,
         pointMarkersRadius,
         indicatorName,
-        tickSize,
-        precision
+        priceStep,
+        pricePrecision
     ]);
 
     // 대기 중인 업데이트가 있으면 처리하는 함수

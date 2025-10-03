@@ -16,11 +16,11 @@ interface TopInfoProps {
     symbol: string;
     chart: IChartApi | null;
     candleStickData: Candle[];
-    precision: number;
+    pricePrecision: number;
     containerRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, precision, containerRef}) => {
+const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, pricePrecision, containerRef}) => {
     // 가격 및 지표 정보를 업데이트하기 위한 상태
     const [priceInfo, setPriceInfo] = useState<string>("");
     const [indicatorInfo, setIndicatorInfo] = useState<string>("");
@@ -45,16 +45,16 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, precis
 
             if (configRequest.status === 200) {
                 const config = JSON.parse(configRequest.responseText);
-                
+
                 // 현재 심볼 설정 찾기
                 const currentSymbolConfig = config['심볼'].find((s: any) => s['심볼 이름'] === symbol);
                 symbolConfigRef.current = currentSymbolConfig;
-                
+
                 // 지표 설정 정보 저장
                 indicatorConfigsRef.current = config['지표'] || [];
-                
+
                 // 볼륨 정밀도 설정
-                if (currentSymbolConfig && currentSymbolConfig['거래소 정보'] && 
+                if (currentSymbolConfig && currentSymbolConfig['거래소 정보'] &&
                     currentSymbolConfig['거래소 정보']['수량 최소 단위'] !== undefined) {
                     const minQtyStep = currentSymbolConfig['거래소 정보']['수량 최소 단위'];
                     if (minQtyStep < 1) {
@@ -87,9 +87,9 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, precis
         if (precision === "기본값") {
             if (format === "없음") {
                 // 심볼 가격 소수점 정밀도 사용
-                precisionValue = symbolConfigRef.current && symbolConfigRef.current['거래소 정보'] && 
-                                symbolConfigRef.current['거래소 정보']['소수점 정밀도'] !== undefined ? 
-                                symbolConfigRef.current['거래소 정보']['소수점 정밀도'] : 0;
+                precisionValue = symbolConfigRef.current && symbolConfigRef.current['거래소 정보'] &&
+                symbolConfigRef.current['거래소 정보']['가격 소수점 정밀도'] !== undefined ?
+                    symbolConfigRef.current['거래소 정보']['가격 소수점 정밀도'] : 0;
             } else if (format === "퍼센트" || format === "달러") {
                 precisionValue = 2;
             } else if (format === "볼륨") {
@@ -103,7 +103,7 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, precis
 
         // 값 포맷팅
         let formattedValue = "";
-        
+
         if (format === "없음") {
             formattedValue = value.toLocaleString(undefined, {
                 minimumFractionDigits: precisionValue,
@@ -125,7 +125,7 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, precis
                 const units = ['', 'K', 'M', 'B', 'T'];
                 const unitIndex = Math.floor(Math.log10(value) / 3);
                 const unitValue = value / Math.pow(1000, unitIndex);
-                
+
                 // 단위가 있을 때는 소수점 2자리까지 표시
                 formattedValue = `${unitValue.toFixed(2)}${units[unitIndex]}`;
             } else {
@@ -142,7 +142,7 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, precis
                 maximumFractionDigits: precisionValue
             });
         }
-        
+
         // 뒷자리 0 절삭 처리 제거
         return formattedValue;
     };
@@ -318,8 +318,8 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, precis
             // 숫자 포맷팅 함수 - 3자리마다 쉼표 추가
             const formatPrice = (value: number) => {
                 return value.toLocaleString(undefined, {
-                    minimumFractionDigits: precision,
-                    maximumFractionDigits: precision
+                    minimumFractionDigits: pricePrecision,
+                    maximumFractionDigits: pricePrecision
                 });
             };
 
@@ -448,8 +448,8 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, precis
                     }
 
                     // 지표 값 포맷팅 - 새로운 방식으로 변경
-                    let formattedValue = typeof value === "number" && !isNaN(value) ? 
-                                         formatIndicatorValue(value, info.name) : value;
+                    let formattedValue = typeof value === "number" && !isNaN(value) ?
+                        formatIndicatorValue(value, info.name) : value;
 
                     // pane 구분 (0 => 메인 차트, 1 이상 => 별도 페인)
                     if (!indicatorInfoPerPane[info.pane]) {
@@ -542,7 +542,7 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, precis
             });
             window.paneIndicatorDivs = {};
         };
-    }, [chart, candleStickData, precision, containerRef]);
+    }, [chart, candleStickData, pricePrecision, containerRef]);
 
     return (
         <div className="top-info">

@@ -27,8 +27,8 @@ interface SidebarProps {
     onSelectTab: (tab: string, configParam?: {
         symbol?: string,
         timeframe?: string,
-        tickSize?: number,
-        precision?: number,
+        priceStep?: number,
+        pricePrecision?: number,
         plotType?: string
     }, direction?: 'left' | 'right') => void
     activeTab: string
@@ -242,8 +242,8 @@ export default function Sidebar({
         handleTabChange("Chart", {
             symbol: newSymbol,
             timeframe: sym["트레이딩 바 데이터"]["타임프레임"],
-            tickSize: sym["거래소 정보"]["틱 사이즈"],
-            precision: sym["거래소 정보"]["소수점 정밀도"],
+            priceStep: sym["거래소 정보"]["가격 최소 단위"],
+            pricePrecision: sym["거래소 정보"]["가격 소수점 정밀도"],
         });
     };
 

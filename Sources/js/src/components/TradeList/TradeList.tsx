@@ -163,13 +163,11 @@ const getSymbolPrecision = (config: any, symbol: string): { pricePrecision: numb
 
     const exchangeInfo = symbolInfo["거래소 정보"];
 
-    // 가격 precision: "소수점 정밀도" 필드 사용
-    const pricePrecision = exchangeInfo["소수점 정밀도"] || 2;
+    // 가격 precision: "가격 소수점 정밀도" 필드 사용
+    const pricePrecision = exchangeInfo["가격 소수점 정밀도"] || 2;
 
-    // 수량 precision: "수량 최소 단위"에서 소수점 자릿수 계산
-    const qtyStep = exchangeInfo["수량 최소 단위"] || 0.001;
-    const qtyPrecision = qtyStep.toString().includes('.') ?
-        qtyStep.toString().split('.')[1].length : 0;
+    // 수량 precision: "수량 소수점 정밀도" 필드 사용
+    const qtyPrecision = exchangeInfo["수량 소수점 정밀도"] || 0;
 
     const result = {
         pricePrecision: pricePrecision,

@@ -4,12 +4,14 @@
 namespace backtesting::order {
 
 SymbolInfo::SymbolInfo()
-    : tick_size_(NAN),
+    : price_step_(NAN),
+      price_precision_(0),
+      qty_step_(NAN),
+      qty_precision_(0),
       limit_max_qty_(NAN),
       limit_min_qty_(NAN),
       market_max_qty_(NAN),
       market_min_qty_(NAN),
-      qty_step_(NAN),
       min_notional_value_(NAN),
       liquidation_fee_rate_(NAN) {}
 SymbolInfo::~SymbolInfo() = default;
@@ -19,8 +21,23 @@ SymbolInfo& SymbolInfo::SetExchangeInfoPath(const string& exchange_info_path) {
   return *this;
 }
 
-SymbolInfo& SymbolInfo::SetTickSize(const double tick_size) {
-  tick_size_ = tick_size;
+SymbolInfo& SymbolInfo::SetPriceStep(const double price_step) {
+  price_step_ = price_step;
+  return *this;
+}
+
+SymbolInfo& SymbolInfo::SetPricePrecision(const int price_precision) {
+  price_precision_ = price_precision;
+  return *this;
+}
+
+SymbolInfo& SymbolInfo::SetQtyStep(const double qty_step) {
+  qty_step_ = qty_step;
+  return *this;
+}
+
+SymbolInfo& SymbolInfo::SetQtyPrecision(const int qty_precision) {
+  qty_precision_ = qty_precision;
   return *this;
 }
 
@@ -41,11 +58,6 @@ SymbolInfo& SymbolInfo::SetMarketMaxQty(const double market_max_qty) {
 
 SymbolInfo& SymbolInfo::SetMarketMinQty(const double market_min_qty) {
   market_min_qty_ = market_min_qty;
-  return *this;
-}
-
-SymbolInfo& SymbolInfo::SetQtyStep(const double qty_step) {
-  qty_step_ = qty_step;
   return *this;
 }
 
@@ -83,12 +95,14 @@ SymbolInfo& SymbolInfo::SetFundingRates(
 }
 
 string SymbolInfo::GetExchangeInfoPath() const { return exchange_info_path_; }
-double SymbolInfo::GetTickSize() const { return tick_size_; }
+double SymbolInfo::GetPriceStep() const { return price_step_; }
+int SymbolInfo::GetPricePrecision() const { return price_precision_; }
+double SymbolInfo::GetQtyStep() const { return qty_step_; }
+size_t SymbolInfo::GetQtyPrecision() const { return qty_precision_; }
 double SymbolInfo::GetLimitMaxQty() const { return limit_max_qty_; }
 double SymbolInfo::GetLimitMinQty() const { return limit_min_qty_; }
 double SymbolInfo::GetMarketMaxQty() const { return market_max_qty_; }
 double SymbolInfo::GetMarketMinQty() const { return market_min_qty_; }
-double SymbolInfo::GetQtyStep() const { return qty_step_; }
 double SymbolInfo::GetMinNotionalValue() const { return min_notional_value_; }
 double SymbolInfo::GetLiquidationFeeRate() const {
   return liquidation_fee_rate_;

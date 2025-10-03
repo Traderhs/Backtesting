@@ -42,15 +42,15 @@ const mapPointMarkersVisible = (str: string): boolean => {
 interface IndicatorSeriesContainerProps {
     chart: IChartApi | null;
     indicatorDataMap: { [indicatorName: string]: IndicatorDataPoint[] };
-    tickSize: number;
-    precision: number;
+    priceStep: number;
+    pricePrecision: number;
 }
 
 const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
                                                                                chart,
                                                                                indicatorDataMap,
-                                                                               tickSize,
-                                                                               precision
+                                                                               priceStep,
+                                                                               pricePrecision
                                                                            }) => {
     const [config, setConfig] = useState<any>(null);
     const [seriesComponents, setSeriesComponents] = useState<JSX.Element[]>([]);
@@ -218,8 +218,8 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
                         pointMarkersRadius={pointMarkersRadius}
                         indicatorName={indicatorName}
                         initialData={indicatorDataMap[indicatorName] || []}
-                        tickSize={tickSize}
-                        precision={precision}
+                        priceStep={priceStep}
+                        pricePrecision={pricePrecision}
                     />
                 );
                 componentCount++;
@@ -246,8 +246,8 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
                         pointMarkersRadius={pointMarkersRadius}
                         indicatorName={indicatorName}
                         initialData={indicatorDataMap[indicatorName] || []}
-                        tickSize={tickSize}
-                        precision={precision}
+                        priceStep={priceStep}
+                        pricePrecision={pricePrecision}
                     />
                 );
                 componentCount++;
@@ -265,8 +265,8 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
                         bearishColor={plot["음봉일 때 히스토그램 색상"]}
                         indicatorName={indicatorName}
                         initialData={indicatorDataMap[indicatorName] || []}
-                        tickSize={tickSize}
-                        precision={precision}
+                        priceStep={priceStep}
+                        pricePrecision={pricePrecision}
                     />
                 );
                 componentCount++;
@@ -287,8 +287,8 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
                         pointMarkersRadius={pointMarkersRadius}
                         indicatorName={indicatorName}
                         initialData={indicatorDataMap[indicatorName] || []}
-                        tickSize={tickSize}
-                        precision={precision}
+                        priceStep={priceStep}
+                        pricePrecision={pricePrecision}
                     />
                 );
                 componentCount++;
@@ -296,7 +296,7 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
         });
 
         setSeriesComponents(comps);
-    }, [chart, config, indicatorDataMap, tickSize, precision]);
+    }, [chart, config, indicatorDataMap, priceStep, pricePrecision]);
 
     return <div style={{opacity: isVisible ? 1 : 0, transition: 'opacity 0.3s ease'}}>
         {seriesComponents}
