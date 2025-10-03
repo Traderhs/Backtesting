@@ -86,7 +86,7 @@ int main() {
 
   Backtesting::SetConfig()
       .SetRootDirectory("D:/Programming/Backtesting")
-      .SetBacktestingPeriod()
+      .SetBacktestPeriod()
       .SetUseBarMagnifier(true)
       .SetInitialBalance(10000)
       .SetTakerFeePercentage(0.045)
