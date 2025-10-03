@@ -43,10 +43,10 @@ Config& Config::SetRootDirectory(const string& root_directory) {
   return *this;
 }
 
-Config& Config::SetBacktestingPeriod(const string& start_time,
+Config& Config::SetBacktestPeriod(const string& start_time,
                                      const string& end_time,
                                      const string& format) {
-  backtesting_period_ = BacktestingPeriod{start_time, end_time, format};
+  backtest_period_ = Period{start_time, end_time, format};
   return *this;
 }
 
@@ -93,8 +93,8 @@ Config& Config::DisableSameBarDataWithTargetCheck() {
 }
 
 string Config::GetRootDirectory() { return root_directory_; }
-optional<BacktestingPeriod> Config::GetBacktestingPeriod() const {
-  return backtesting_period_;
+optional<Period> Config::GetBacktestPeriod() const {
+  return backtest_period_;
 }
 optional<bool> Config::GetUseBarMagnifier() const { return use_bar_magnifier_; }
 double Config::GetInitialBalance() const { return initial_balance_; }

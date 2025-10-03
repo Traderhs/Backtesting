@@ -116,7 +116,7 @@ void Analyzer::AddTrade(Trade& new_trade, const int exit_count) {
     // 두 번째 분할 청산 거래부터는 첫 분할 청산 거래의 진입 거래 번호가
     // 거래 번호가 됨
     int trade_num = 1;
-    for (auto& trade : ranges::reverse_view(trade_list_)) {
+    for (const auto& trade : ranges::reverse_view(trade_list_)) {
       if (trade.GetEntryName() == new_trade.GetEntryName() &&
           IsEqual(trade.GetLeverage(), new_trade.GetLeverage()) &&
           IsEqual(trade.GetEntryPrice(), new_trade.GetEntryPrice()) &&
@@ -468,7 +468,7 @@ void Analyzer::SaveConfig() {
   const auto& strategy = engine_->strategy_;
   const auto& strategy_class_name = strategy->GetClassName();
   const auto& strategy_name = strategy->GetName();
-  const auto use_bar_magnifier = config_->GetUseBarMagnifier().value();
+  const auto use_bar_magnifier = *config_->GetUseBarMagnifier();
   const int num_symbols = trading_bar_data->GetNumSymbols();
 
   // 공통 경로 캐싱
@@ -1080,11 +1080,12 @@ void Analyzer::ParsePlotInfo(ordered_json& indicator_json,
     }
   }
 
-  if (plot->precision_.has_value()) {
-    plot_info["소수점 정밀도"] = plot->precision_.value();
+  if (plot->precision_) {
+    plot_info["소수점 정밀도"] = *plot->precision_;
   } else {
     // 값이 없는 경우 심볼 가격 소수점 정밀도 사용
     // (VOLUME은 수량 최소 단위의 정밀도 사용)
+    // → 프론트에서 처리됨
     plot_info["소수점 정밀도"] = "기본값";
   }
 }

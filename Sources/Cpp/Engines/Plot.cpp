@@ -97,12 +97,14 @@ Plot::Plot(const char line_width, const LineStyle line_style,
         __FILE__, __LINE__);
   }
 
-  if (precision.has_value() && (precision < 0 || precision > 15)) {
-    Logger::LogAndThrowError(
-        std::format("주어진 플롯의 소수점 정밀도 [{}]은(는) 0 이상, "
-                    "15 이하로 설정해야 합니다.",
-                    to_string(precision.value())),
-        __FILE__, __LINE__);
+  if (precision) {
+    if (const auto precision_val = *precision;
+        precision_val < 0 || precision_val > 15)
+      Logger::LogAndThrowError(
+          std::format("주어진 플롯의 소수점 정밀도 [{}]은(는) 0 이상, "
+                      "15 이하로 설정해야 합니다.",
+                      to_string(precision_val)),
+          __FILE__, __LINE__);
   }
 }
 

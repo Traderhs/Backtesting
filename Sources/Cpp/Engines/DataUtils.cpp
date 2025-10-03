@@ -533,7 +533,7 @@ pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>> SplitTable(
 double RoundToStep(const double value, const double step) {
   if (IsLessOrEqual(step, 0.0)) {
     Logger::LogAndThrowError(
-        format("반올림을 위하여 주어진 스텝 {}은(는) 0보다 커야합니다.",
+        format("반올림을 위하여 주어진 스텝 [{}]은(는) 0보다 커야합니다.",
                to_string(step)),
         __FILE__, __LINE__);
   }
