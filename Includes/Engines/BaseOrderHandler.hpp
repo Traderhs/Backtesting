@@ -71,7 +71,7 @@ class BaseOrderHandler {
   /// 반환하는 함수
   ///
   /// 1. 진입이 아직 없었던 심볼은 NaN이 반환됨
-  /// 2. BEFORE/AFTER 전략에서 돋보기 바로 참조하더라도 트레이딩 바 인덱스로
+  /// 2. AFTER 전략에서 돋보기 바로 참조해도 트레이딩 바 인덱스로
   ///    참조되므로 주의
   [[nodiscard]] double BarsSinceEntry() const;
 
@@ -79,7 +79,7 @@ class BaseOrderHandler {
   /// 반환하는 함수
   ///
   /// 1. 청산이 아직 없었던 심볼은 NaN이 반환됨
-  /// 2. BEFORE/AFTER 전략에서 돋보기 바로 참조하더라도 트레이딩 바 인덱스로
+  /// 2. AFTER 전략에서 돋보기 바로 참조해도 트레이딩 바 인덱스로
   ///    참조되므로 주의
   [[nodiscard]] double BarsSinceExit() const;
 
@@ -233,16 +233,18 @@ class BaseOrderHandler {
 
   /// 지정가 주문 가격이 유효한 가격인지 확인하는 함수
   [[nodiscard]] static optional<string> IsValidLimitOrderPrice(
-      double limit_price, double base_price, Direction direction);
+      double limit_price, double base_price, Direction direction,
+      int symbol_idx);
 
   /// 트레일링 진입/청산의 터치 가격이 유효한지 확인하는 함수.
   /// 트레일링 진입/청산의 터치 가격은 0으로 지정될 수 있기 때문에 별개 함수로
   /// 처리.
   [[nodiscard]] static optional<string> IsValidTrailingTouchPrice(
-      double touch_price);
+      double touch_price, int symbol_idx);
 
   /// 트레일링 포인트가 유효한지 확인하는 함수
-  [[nodiscard]] static optional<string> IsValidTrailPoint(double trail_point);
+  [[nodiscard]] static optional<string> IsValidTrailPoint(double trail_point,
+                                                          int symbol_idx);
 
   /// 지정가 주문에서 현재 가격이 진입 방향에 따라 주문 가격보다 낮아졌거나
   /// 커졌는지 확인하는 함수.

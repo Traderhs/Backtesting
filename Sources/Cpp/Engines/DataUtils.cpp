@@ -628,6 +628,7 @@ string FormatPercentage(const double percentage, const bool use_rounding) {
 
 string ToFixedString(const double value, const int precision) {
   ostringstream oss;
+  oss.imbue(global_locale);
   oss << fixed << setprecision(precision) << value;
   return oss.str();
 }

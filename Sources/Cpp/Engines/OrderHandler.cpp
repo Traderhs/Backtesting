@@ -226,8 +226,8 @@ bool OrderHandler::LimitEntry(const string& entry_name,
   // 유효성 검사
   RET_FALSE_IF_INVALID(IsValidDirection(entry_direction))
   RET_FALSE_IF_INVALID(IsValidPrice(order_price, symbol_idx))
-  RET_FALSE_IF_INVALID(
-      IsValidLimitOrderPrice(order_price, base_price, entry_direction))
+  RET_FALSE_IF_INVALID(IsValidLimitOrderPrice(order_price, base_price,
+                                              entry_direction, symbol_idx))
   RET_FALSE_IF_INVALID(IsValidPositionSize(order_size, LIMIT, symbol_idx))
   RET_FALSE_IF_INVALID(
       IsValidNotionalValue(order_price, order_size, symbol_idx))
@@ -254,10 +254,13 @@ bool OrderHandler::LimitEntry(const string& entry_name,
   // 지정가 진입 대기
   pending_entries_[symbol_idx].push_back(limit_entry);
 
-  LogFormattedInfo(INFO_L,
-                   format("지정가 [{}] 주문 (주문가 {} | 주문량 {})",
-                          entry_name, order_price, order_size),
-                   __FILE__, __LINE__);
+  const auto& symbol_info = symbol_info_[symbol_idx];
+  LogFormattedInfo(
+      INFO_L,
+      format("지정가 [{}] 주문 (주문가 {} | 주문량 {})", entry_name,
+             ToFixedString(order_price, symbol_info.GetPricePrecision()),
+             ToFixedString(order_size, symbol_info.GetQtyPrecision())),
+      __FILE__, __LINE__);
   engine_->LogBalance();
 
   return true;
@@ -330,10 +333,13 @@ bool OrderHandler::MitEntry(const string& entry_name,
   // MIT 진입 터치 대기
   pending_entries_[symbol_idx].push_back(mit_entry);
 
-  LogFormattedInfo(INFO_L,
-                   format("MIT [{}] 대기 주문 (터치가 {} | 주문량 {})",
-                          entry_name, touch_price, order_size),
-                   __FILE__, __LINE__);
+  const auto& symbol_info = symbol_info_[symbol_idx];
+  LogFormattedInfo(
+      INFO_L,
+      format("MIT [{}] 대기 주문 (터치가 {} | 주문량 {})", entry_name,
+             ToFixedString(touch_price, symbol_info.GetPricePrecision()),
+             ToFixedString(order_size, symbol_info.GetQtyPrecision())),
+      __FILE__, __LINE__);
 
   return true;
 }
@@ -397,8 +403,8 @@ bool OrderHandler::LitEntry(const string& entry_name,
   RET_FALSE_IF_INVALID(IsValidDirection(entry_direction))
   RET_FALSE_IF_INVALID(IsValidPrice(touch_price, symbol_idx))
   RET_FALSE_IF_INVALID(IsValidPrice(order_price, symbol_idx))
-  RET_FALSE_IF_INVALID(
-      IsValidLimitOrderPrice(order_price, touch_price, entry_direction))
+  RET_FALSE_IF_INVALID(IsValidLimitOrderPrice(order_price, touch_price,
+                                              entry_direction, symbol_idx))
   RET_FALSE_IF_INVALID(IsValidPositionSize(order_size, LIT, symbol_idx))
   RET_FALSE_IF_INVALID(
       IsValidNotionalValue(order_price, order_size, symbol_idx))
@@ -411,10 +417,14 @@ bool OrderHandler::LitEntry(const string& entry_name,
   // LIT 진입 터치 대기
   pending_entries_[symbol_idx].push_back(lit_entry);
 
+  const auto& symbol_info = symbol_info_[symbol_idx];
+  const auto price_precision = symbol_info.GetPricePrecision();
   LogFormattedInfo(
       INFO_L,
       format("LIT [{}] 대기 주문 (터치가 {} | 주문가 {} | 주문량 {})",
-             entry_name, touch_price, order_price, order_size),
+             entry_name, ToFixedString(touch_price, price_precision),
+             ToFixedString(order_price, price_precision),
+             ToFixedString(order_size, symbol_info.GetQtyPrecision())),
       __FILE__, __LINE__);
 
   return true;
@@ -481,8 +491,8 @@ bool OrderHandler::TrailingEntry(const string& entry_name,
 
   // 유효성 검사
   RET_FALSE_IF_INVALID(IsValidDirection(entry_direction))
-  RET_FALSE_IF_INVALID(IsValidTrailingTouchPrice(touch_price))
-  RET_FALSE_IF_INVALID(IsValidTrailPoint(trail_point))
+  RET_FALSE_IF_INVALID(IsValidTrailingTouchPrice(touch_price, symbol_idx))
+  RET_FALSE_IF_INVALID(IsValidTrailPoint(trail_point, symbol_idx))
   RET_FALSE_IF_INVALID(IsValidPositionSize(order_size, TRAILING, symbol_idx))
 
   double start_price;
@@ -507,11 +517,16 @@ bool OrderHandler::TrailingEntry(const string& entry_name,
   // 트레일링 진입 터치 대기
   pending_entries_[symbol_idx].push_back(trailing_entry);
 
-  LogFormattedInfo(INFO_L,
-                   format("트레일링 [{}] 대기 주문 (터치가 {} | "
-                          "트레일 포인트 {} | 주문량 {})",
-                          entry_name, touch_price, trail_point, order_size),
-                   __FILE__, __LINE__);
+  const auto& symbol_info = symbol_info_[symbol_idx];
+  const auto price_precision = symbol_info.GetPricePrecision();
+  LogFormattedInfo(
+      INFO_L,
+      format("트레일링 [{}] 대기 주문 (터치가 {} | "
+             "트레일 포인트 {} | 주문량 {})",
+             entry_name, ToFixedString(touch_price, price_precision),
+             ToFixedString(trail_point, price_precision),
+             ToFixedString(order_size, symbol_info.GetQtyPrecision())),
+      __FILE__, __LINE__);
 
   return true;
 }
@@ -753,8 +768,8 @@ bool OrderHandler::LimitExit(const string& exit_name, const string& target_name,
   // 유효성 검사
   RET_FALSE_IF_INVALID(IsValidExitName(exit_name))
   RET_FALSE_IF_INVALID(IsValidPrice(order_price, symbol_idx))
-  RET_FALSE_IF_INVALID(IsValidLimitOrderPrice(order_price, base_price,
-                                              limit_exit->GetExitDirection()))
+  RET_FALSE_IF_INVALID(IsValidLimitOrderPrice(
+      order_price, base_price, limit_exit->GetExitDirection(), symbol_idx))
   RET_FALSE_IF_INVALID(IsValidPositionSize(order_size, LIMIT, symbol_idx))
   RET_FALSE_IF_INVALID(
       IsValidNotionalValue(order_price, order_size, symbol_idx))
@@ -765,10 +780,13 @@ bool OrderHandler::LimitExit(const string& exit_name, const string& target_name,
   // 대기 중인 청산에 추가
   pending_exits_[symbol_idx].push_back(limit_exit);
 
-  LogFormattedInfo(INFO_L,
-                   format("지정가 [{}] 대기 주문 (주문가 {} | 주문량 {})",
-                          exit_name, order_price, order_size),
-                   __FILE__, __LINE__);
+  const auto& symbol_info = symbol_info_[symbol_idx];
+  LogFormattedInfo(
+      INFO_L,
+      format("지정가 [{}] 대기 주문 (주문가 {} | 주문량 {})", exit_name,
+             ToFixedString(order_price, symbol_info.GetPricePrecision()),
+             ToFixedString(order_size, symbol_info.GetQtyPrecision())),
+      __FILE__, __LINE__);
 
   return true;
 }
@@ -852,10 +870,13 @@ bool OrderHandler::MitExit(const string& exit_name, const string& target_name,
   // 대기 중인 청산에 추가
   pending_exits_[symbol_idx].push_back(mit_exit);
 
-  LogFormattedInfo(INFO_L,
-                   format("MIT [{}] 대기 주문 (터치가 {} | 주문량 {})",
-                          exit_name, touch_price, order_size),
-                   __FILE__, __LINE__);
+  const auto& symbol_info = symbol_info_[symbol_idx];
+  LogFormattedInfo(
+      INFO_L,
+      format("MIT [{}] 대기 주문 (터치가 {} | 주문량 {})", exit_name,
+             ToFixedString(touch_price, symbol_info.GetPricePrecision()),
+             ToFixedString(order_size, symbol_info.GetQtyPrecision())),
+      __FILE__, __LINE__);
 
   return true;
 }
@@ -933,8 +954,8 @@ bool OrderHandler::LitExit(const string& exit_name, const string& target_name,
   RET_FALSE_IF_INVALID(IsValidExitName(exit_name))
   RET_FALSE_IF_INVALID(IsValidPrice(touch_price, symbol_idx))
   RET_FALSE_IF_INVALID(IsValidPrice(order_price, symbol_idx))
-  RET_FALSE_IF_INVALID(IsValidLimitOrderPrice(order_price, touch_price,
-                                              lit_exit->GetExitDirection()))
+  RET_FALSE_IF_INVALID(IsValidLimitOrderPrice(
+      order_price, touch_price, lit_exit->GetExitDirection(), symbol_idx))
   RET_FALSE_IF_INVALID(IsValidPositionSize(order_size, LIT, symbol_idx))
   RET_FALSE_IF_INVALID(
       IsValidNotionalValue(order_price, order_size, symbol_idx))
@@ -945,10 +966,14 @@ bool OrderHandler::LitExit(const string& exit_name, const string& target_name,
   // 대기 중인 청산에 추가
   pending_exits_[symbol_idx].push_back(lit_exit);
 
+  const auto& symbol_info = symbol_info_[symbol_idx];
+  const auto price_precision = symbol_info.GetPricePrecision();
   LogFormattedInfo(
       INFO_L,
       format("LIT [{}] 대기 주문 (터치가 {} | 주문가 {} | 주문량 {})",
-             exit_name, touch_price, order_price, order_size),
+             exit_name, ToFixedString(touch_price, price_precision),
+             ToFixedString(order_price, price_precision),
+             ToFixedString(order_size, symbol_info.GetQtyPrecision())),
       __FILE__, __LINE__);
 
   return true;
@@ -1030,8 +1055,8 @@ bool OrderHandler::TrailingExit(const string& exit_name,
 
   // 유효성 검사
   RET_FALSE_IF_INVALID(IsValidExitName(exit_name))
-  RET_FALSE_IF_INVALID(IsValidTrailingTouchPrice(touch_price))
-  RET_FALSE_IF_INVALID(IsValidTrailPoint(trail_point))
+  RET_FALSE_IF_INVALID(IsValidTrailingTouchPrice(touch_price, symbol_idx))
+  RET_FALSE_IF_INVALID(IsValidTrailPoint(trail_point, symbol_idx))
   RET_FALSE_IF_INVALID(IsValidPositionSize(order_size, TRAILING, symbol_idx))
 
   double start_price;
@@ -1052,11 +1077,16 @@ bool OrderHandler::TrailingExit(const string& exit_name,
   // 대기 중인 청산에 추가
   pending_exits_[symbol_idx].push_back(trailing_exit);
 
-  LogFormattedInfo(INFO_L,
-                   format("트레일링 [{}] 대기 주문 (터치가 {} | "
-                          "트레일 포인트 {} | 주문량 {})",
-                          exit_name, touch_price, trail_point, order_size),
-                   __FILE__, __LINE__);
+  const auto& symbol_info = symbol_info_[symbol_idx];
+  const auto price_precision = symbol_info.GetPricePrecision();
+  LogFormattedInfo(
+      INFO_L,
+      format("트레일링 [{}] 대기 주문 (터치가 {} | "
+             "트레일 포인트 {} | 주문량 {})",
+             exit_name, ToFixedString(touch_price, price_precision),
+             ToFixedString(trail_point, price_precision),
+             ToFixedString(order_size, symbol_info.GetQtyPrecision())),
+      __FILE__, __LINE__);
 
   return true;
 }
@@ -1098,16 +1128,11 @@ void OrderHandler::CloseAll() {
 
 bool OrderHandler::HasEntryOrder(const string& entry_name) const {
   // 현재 심볼의 체결된 진입들 순회
-  for (const auto& filled_entry :
-       filled_entries_[bar_->GetCurrentSymbolIndex()]) {
-    // entry_name과 같은 이름의 진입이 있으면 true를 반환
-    if (filled_entry->GetEntryName() == entry_name) {
-      return true;
-    }
-  }
-
-  // entry_name과 같은 이름의 진입이 없으면 false를 반환
-  return false;
+  // entry_name과 같은 이름의 진입이 있으면 true를 반환
+  return ranges::any_of(filled_entries_[bar_->GetCurrentSymbolIndex()],
+                        [&](const shared_ptr<Order>& filled_entry) {
+                          return filled_entry->GetEntryName() == entry_name;
+                        });
 }
 
 size_t OrderHandler::CountEntryOrder(
@@ -1230,8 +1255,8 @@ vector<FillInfo> OrderHandler::CheckPendingExits(
       }
 
       case LIT: {
-        if (const auto& order_info =
-                CheckPendingLitExit(pending_exit, price, price_type)) {
+        if (const auto& order_info = CheckPendingLitExit(
+                pending_exit, symbol_idx, price, price_type)) {
           should_fill_pending_exits.push_back(*order_info);
         }
 
@@ -1417,6 +1442,7 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
       funding_amount = -funding_amount;
     }
 
+    // 펀딩비 수령
     if (IsGreater(funding_amount, 0.0)) {
       // 펀딩비 수령은 단순히 지갑 자금에 합산
       engine_->IncreaseWalletBalance(funding_amount);
@@ -1442,9 +1468,11 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
                  "{} | 펀딩 가격 {} | 포지션 수량 {})",
                  entry_name, FormatDollar(abs_funding_amount, true),
                  funding_time, FormatPercentage(funding_rate * 100, false),
-                 funding_price, left_position_size),
+                 funding_price,  // 펀딩 가격은 소수점 정밀도 상관없이 전부 출력
+                 ToFixedString(left_position_size,
+                               symbol_info_[symbol_idx].GetQtyPrecision())),
           __FILE__, __LINE__);
-    } else {
+    } else {  // 펀딩비 지불
       // 펀딩비가 사용 가능 자금보다 적을 경우 지갑 자금에서 지불
       if (const auto available_balance = engine_->GetAvailableBalance();
           IsLessOrEqual(abs_funding_amount, available_balance)) {
@@ -1471,9 +1499,15 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
                    "{} | 펀딩 가격 {} | 포지션 수량 {})",
                    entry_name, FormatDollar(abs_funding_amount, true),
                    funding_time, FormatPercentage(funding_rate * 100, false),
-                   funding_price, left_position_size),
+                   funding_price,
+                   ToFixedString(left_position_size,
+                                 symbol_info_[symbol_idx].GetQtyPrecision())),
             __FILE__, __LINE__);
       } else {
+        const auto& symbol_info = symbol_info_[symbol_idx];
+        const auto price_precision = symbol_info.GetPricePrecision();
+        const auto qty_precision = symbol_info.GetQtyPrecision();
+
         // 펀딩비가 사용 가능 자금보다 많을 경우 우선 사용 가능 자금에서 최대한
         // 지불 후 주문 마진에서 감소
 
@@ -1487,7 +1521,8 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
                      "{} | 펀딩 가격 {} | 포지션 수량 {} | 전체 펀딩비 {})",
                      entry_name, FormatDollar(available_balance, true),
                      funding_time, FormatPercentage(funding_rate * 100, false),
-                     funding_price, left_position_size,
+                     funding_price,
+                     ToFixedString(left_position_size, qty_precision),
                      FormatDollar(abs_funding_amount, true)),
               __FILE__, __LINE__);
 
@@ -1544,7 +1579,7 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
                      entry_name, FormatDollar(margin_deduction, true),
                      FormatDollar(left_margin, true), funding_time,
                      FormatPercentage(funding_rate * 100, false), funding_price,
-                     left_position_size,
+                     ToFixedString(left_position_size, qty_precision),
                      FormatDollar(abs_funding_amount, true)),
               __FILE__, __LINE__);
 
@@ -1555,7 +1590,8 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
                   "[{}] → [{}], 강제 청산 가격 [{}] → [{}] 조정",
                   entry_name, FormatDollar(left_margin, true),
                   FormatDollar(adjusted_margin, true),
-                  original_liquidation_price, adjusted_liquidation_price),
+                  ToFixedString(original_liquidation_price, price_precision),
+                  ToFixedString(adjusted_liquidation_price, price_precision)),
               __FILE__, __LINE__);
         } else {
           // 2.2 남은 펀딩비가 잔여 마진보다 많거나 같을 경우, 잔여 마진까지만
@@ -1594,7 +1630,7 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
                      "포지션 수량 {} | 전체 펀딩비 {})",
                      entry_name, FormatDollar(left_margin, true), funding_time,
                      FormatPercentage(funding_rate * 100, false), funding_price,
-                     left_position_size,
+                     ToFixedString(left_position_size, qty_precision),
                      FormatDollar(abs_funding_amount, true)),
               __FILE__, __LINE__);
 
@@ -1746,11 +1782,15 @@ bool OrderHandler::FillMarketEntry(const shared_ptr<Order>& market_entry,
   // 시장가 진입
   filled_entries_[symbol_idx].push_back(market_entry);
 
-  LogFormattedInfo(INFO_L,
-                   format("{} [{}] 체결 (체결가 {} | 체결량 {} | 진입 마진 {})",
-                          order_type_str, entry_name, entry_filled_price,
-                          entry_filled_size, FormatDollar(entry_margin, true)),
-                   __FILE__, __LINE__);
+  const auto& symbol_info = symbol_info_[symbol_idx];
+  LogFormattedInfo(
+      INFO_L,
+      format("{} [{}] 체결 (체결가 {} | 체결량 {} | 진입 마진 {})",
+             order_type_str, entry_name,
+             ToFixedString(entry_filled_price, symbol_info.GetPricePrecision()),
+             ToFixedString(entry_filled_size, symbol_info.GetQtyPrecision()),
+             FormatDollar(entry_margin, true)),
+      __FILE__, __LINE__);
   engine_->LogBalance();
 
   return true;
@@ -1787,6 +1827,11 @@ void OrderHandler::ExitOppositeFilledEntries(
 
 void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order,
                                const int symbol_idx) {
+  // 심볼 정보 로딩
+  const auto& symbol_info = symbol_info_[symbol_idx];
+  const auto price_precision = symbol_info.GetPricePrecision();
+  const auto qty_precision = symbol_info.GetQtyPrecision();
+
   // 주문 정보 로딩
   const auto entry_direction = exit_order->GetEntryDirection();
   const auto& entry_name = exit_order->GetEntryName();
@@ -1881,13 +1926,16 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order,
             "[{}] → [{}], 펀딩비 수령 [{}] → [{}], 펀딩비 지불 [{}] -> [{}] "
             "조정 (진입 수량 [{}] | 부분 청산 수량 [{}] | 전체 청산 수량 [{}])",
             entry_name, FormatDollar(left_margin, true),
-            FormatDollar(adjusted_margin, true), liquidation_price,
-            adjusted_liquidation_price,
+            FormatDollar(adjusted_margin, true),
+            ToFixedString(liquidation_price, price_precision),
+            ToFixedString(adjusted_liquidation_price, price_precision),
             FormatDollar(received_funding_amount, true),
             FormatDollar(adjusted_received_funding_amount, true),
             FormatDollar(paid_funding_amount, true),
-            FormatDollar(adjusted_paid_funding_amount, true), entry_filled_size,
-            exit_filled_size, total_exit_filled_size),
+            FormatDollar(adjusted_paid_funding_amount, true),
+            ToFixedString(entry_filled_size, qty_precision),
+            ToFixedString(exit_filled_size, qty_precision),
+            ToFixedString(total_exit_filled_size, qty_precision)),
         __FILE__, __LINE__);
 
     // 명목 가치가 감소했는데 레버리지 구간에 의한 현재 레버리지 조정을 하지
@@ -1931,9 +1979,8 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order,
              "손익 {} | 실손익 {})",
              order_type_str, exit_name,
              Order::OrderTypeToString(exit_order->GetEntryOrderType()),
-             entry_name, exit_filled_price,
-             RoundToStep(exit_order->GetExitFilledSize(),
-                         symbol_info_[symbol_idx].GetQtyStep()),
+             entry_name, ToFixedString(exit_filled_price, price_precision),
+             ToFixedString(exit_filled_size, qty_precision),
              FormatDollar(left_margin, true),
              FormatDollar(calculated_pnl, true),
              FormatDollar(realized_pnl, true)),
@@ -2248,11 +2295,16 @@ void OrderHandler::FillPendingLimitEntry(const shared_ptr<Order>& limit_entry,
   // 지정가 진입
   filled_entries_[symbol_idx].push_back(limit_entry);
 
-  LogFormattedInfo(INFO_L,
-                   format("{} [{}] 체결 (체결가 {} | 체결량 {} | 진입 마진 {})",
-                          order_type_str, entry_name, slippage_filled_price,
-                          entry_filled_size, FormatDollar(entry_margin, true)),
-                   __FILE__, __LINE__);
+  const auto& symbol_info = symbol_info_[symbol_idx];
+  LogFormattedInfo(
+      INFO_L,
+      format(
+          "{} [{}] 체결 (체결가 {} | 체결량 {} | 진입 마진 {})", order_type_str,
+          entry_name,
+          ToFixedString(slippage_filled_price, symbol_info.GetPricePrecision()),
+          ToFixedString(entry_filled_size, symbol_info.GetQtyPrecision()),
+          FormatDollar(entry_margin, true)),
+      __FILE__, __LINE__);
   engine_->LogBalance();
 }
 
@@ -2295,10 +2347,13 @@ bool OrderHandler::OrderPendingLitEntry(const shared_ptr<Order>& lit_entry,
   // 사용한 마진에 예약 증거금 증가
   engine_->IncreaseUsedMargin(entry_margin);
 
+  const auto& symbol_info = symbol_info_[symbol_idx];
   LogFormattedInfo(
       INFO_L,
       format("터치로 인해 LIT [{}] 대기 주문 (주문가 {} | 주문량 {})",
-             lit_entry->GetEntryName(), order_price, order_size),
+             lit_entry->GetEntryName(),
+             ToFixedString(order_price, symbol_info.GetPricePrecision()),
+             ToFixedString(order_size, symbol_info.GetQtyPrecision())),
       __FILE__, __LINE__);
   engine_->LogBalance();
 
@@ -2335,7 +2390,7 @@ optional<FillInfo> OrderHandler::CheckPendingMitExit(
 }
 
 optional<FillInfo> OrderHandler::CheckPendingLitExit(
-    const shared_ptr<Order>& lit_exit, const double price,
+    const shared_ptr<Order>& lit_exit, const int symbol_idx, const double price,
     const PriceType price_type) {
   // Order Time이 설정되지 않았으면 지정가 미주문 -> 터치 확인
   if (lit_exit->GetExitOrderTime() == -1) {
@@ -2345,12 +2400,15 @@ optional<FillInfo> OrderHandler::CheckPendingLitExit(
       // 청산은 마진이 잡히지 않기 때문에 따로 주문이 필요없으므로 시간만 설정
       lit_exit->SetExitOrderTime(engine_->GetCurrentOpenTime());
 
-      LogFormattedInfo(
-          INFO_L,
-          format("LIT [{}] 주문 (주문가 {} | 주문량 {})",
-                 lit_exit->GetEntryName(), lit_exit->GetEntryOrderPrice(),
-                 lit_exit->GetEntryOrderSize()),
-          __FILE__, __LINE__);
+      const auto& symbol_info = symbol_info_[symbol_idx];
+      LogFormattedInfo(INFO_L,
+                       format("LIT [{}] 주문 (주문가 {} | 주문량 {})",
+                              lit_exit->GetEntryName(),
+                              ToFixedString(lit_exit->GetEntryOrderPrice(),
+                                            symbol_info.GetPricePrecision()),
+                              ToFixedString(lit_exit->GetEntryOrderSize(),
+                                            symbol_info.GetQtyPrecision())),
+                       __FILE__, __LINE__);
     }
   }
 
