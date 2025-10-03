@@ -98,14 +98,14 @@ Numeric<double> Indicator::operator[](const size_t index) {
         __FILE__, __LINE__);
   }
 
-  // BEFORE/AFTER 전략에서 현재 인덱스 값 참조 시 에러 발생
+  // AFTER 전략에서 현재 인덱스 값 참조 시 에러 발생
   // 봉 완성은 CLOSE에서 되는데, 해당 전략들은 봉 중간에 실행되므로 현재 인덱스
   // 값 참조 시 미래의 값을 참조하게 되는 것이므로 논리에 맞지 않음
   // (current_strategy_type의 초기값은 ON_CLOSE이므로 계산 중에는 관계 없음)
   if (index == 0 && engine_->GetCurrentStrategyType() != ON_CLOSE)
       [[unlikely]] {
     Logger::LogAndThrowError(
-        format("Before/After 전략에서는 [0]을 이용하여 [{} {}] 지표의 현재 "
+        format("After 전략에서는 [0]을 이용하여 [{} {}] 지표의 현재 "
                "인덱스의 값을 참조할 수 없습니다.",
                name_, timeframe_),
         __FILE__, __LINE__);
