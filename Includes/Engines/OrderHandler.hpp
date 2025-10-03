@@ -203,7 +203,7 @@ class OrderHandler final : public BaseOrderHandler {
 
   /// 현재 사용 중인 심볼 인덱스의 모든 체결된 진입을 시장가로 다음 바 시가에서
   /// 청산하는 함수\n\n
-  /// BEFORE/AFTER ENTRY, BEFORE/AFTER EXIT 전략에서 호출하더라도
+  /// AFTER ENTRY, AFTER EXIT 전략에서 호출하더라도
   /// 다음 바 시가에서 청산됨
   void CloseAll();
 
@@ -339,7 +339,8 @@ class OrderHandler final : public BaseOrderHandler {
 
   /// LIT 청산 대기 주문의 체결을 확인하고 해당 주문 정보를 반환하는 함수
   [[nodiscard]] static optional<FillInfo> CheckPendingLitExit(
-      const shared_ptr<Order>& lit_exit, double price, PriceType price_type);
+      const shared_ptr<Order>& lit_exit, int symbol_idx, double price,
+      PriceType price_type);
 
   /// 트레일링 청산 대기 주문의 체결을 확인하고 해당 주문 정보를 반환하는 함수
   [[nodiscard]] static optional<FillInfo> CheckPendingTrailingExit(

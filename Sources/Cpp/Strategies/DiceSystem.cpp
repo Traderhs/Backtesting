@@ -207,8 +207,13 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
     return make_pair(0, 0);
   }
 
+  // 심볼 정보 로딩
   const auto symbol_idx = bar->GetCurrentSymbolIndex();
   auto& symbol_info = symbol_info_[symbol_idx];
+  const auto price_step = symbol_info.GetPriceStep();
+  const auto price_precision = symbol_info.GetPricePrecision();
+  const auto qty_step = symbol_info.GetQtyStep();
+  const auto qty_precision = symbol_info.GetQtyPrecision();
 
   // 지갑 자금 = 13,800 USDT, 거래당 리스크 = 2%, 심볼당 할당 자금 = 5%,
   // 진입가 52,300 USDT, 손절 포인트 = 2,500 USDT
@@ -233,9 +238,6 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
   // 276 USDT / 2,500 USDT = 0.1104 BTC → 0.110 BTC
   // (0.110 BTC 가격에 진입하면 손절 시 276 USDT에 근접한 손실
   //  → 0.110 BTC * 2,500 USDT = 275 USDT < 276 USDT)
-  const auto price_step = symbol_info.GetPriceStep();
-  const auto qty_step = symbol_info.GetQtyStep();
-
   stop_loss_points = RoundToStep(stop_loss_points, price_step);
   double position_size = RoundToStep(allowed_loss / stop_loss_points, qty_step);
 
@@ -312,8 +314,10 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
             "포지션 크기 [{}] → [{}]로 조정 (명목 가치 [{}] → [{}] | 진입 "
             "마진 [{}] → [{}] | 레버리지 [{}x])",
             entry_name, FormatDollar(pre_entry_margin, true),
-            FormatDollar(available_margin, true), pre_position_size,
-            position_size, FormatDollar(pre_notional_value, true),
+            FormatDollar(available_margin, true),
+            ToFixedString(pre_position_size, qty_precision),
+            ToFixedString(position_size, qty_precision),
+            FormatDollar(pre_notional_value, true),
             FormatDollar(notional_value, true),
             FormatDollar(pre_entry_margin, true),
             FormatDollar(entry_margin, true), leverage),
@@ -380,8 +384,10 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
               "[{}] 1x 레버리지에서도 안전한 청산가를 확보할 수 없어 진입 불가 "
               "(진입가 [{}] | 손절가 [{}] | 청산가 [{}] → [{}] | 초기 레버리지 "
               "[{}])",
-              entry_name, order_price, stop_loss_price, liquidation_price,
-              test_liquidation_price, leverage),
+              entry_name, ToFixedString(order_price, price_precision),
+              ToFixedString(stop_loss_price, price_precision),
+              ToFixedString(liquidation_price, price_precision),
+              ToFixedString(test_liquidation_price, price_precision), leverage),
           __FILE__, __LINE__);
       return make_pair(0, 0);
     }
@@ -400,8 +406,11 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
             "[{}] 청산가 [{}]이(가) 손절가 [{}]보다 진입가 [{}]에 가까우므로 "
             "레버리지 [{}x] → [{}x]로 조정 (청산가 [{}] → [{}] | 진입 마진 "
             "[{}] → [{}])",
-            entry_name, pre_liquidation_price, stop_loss_price, order_price,
-            pre_leverage, leverage, pre_liquidation_price, liquidation_price,
+            entry_name, ToFixedString(pre_liquidation_price, price_precision),
+            ToFixedString(stop_loss_price, price_precision),
+            ToFixedString(order_price, price_precision), pre_leverage, leverage,
+            ToFixedString(pre_liquidation_price, price_precision),
+            ToFixedString(liquidation_price, price_precision),
             FormatDollar(pre_entry_margin, true),
             FormatDollar(entry_margin, true)),
 
@@ -434,8 +443,10 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
               "포지션 크기 [{}] → [{}]로 조정 (명목 가치 [{}] → [{}] | 진입 "
               "마진 [{}] → [{}] | 레버리지 [{}x])",
               entry_name, FormatDollar(pre_entry_margin, true),
-              FormatDollar(available_margin, true), pre_position_size,
-              position_size, FormatDollar(pre_notional_value, true),
+              FormatDollar(available_margin, true),
+              ToFixedString(pre_position_size, qty_precision),
+              ToFixedString(position_size, qty_precision),
+              FormatDollar(pre_notional_value, true),
               FormatDollar(notional_value, true),
               FormatDollar(pre_entry_margin, true),
               FormatDollar(entry_margin, true), leverage),
@@ -455,7 +466,8 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
         WARN_L,
         format("[{}] 계산된 포지션 크기 [{}]이(가) 시장가의 최소 포지션 크기 "
                "[{}]보다 적으므로 진입 불가",
-               entry_name, position_size, min_qty),
+               entry_name, ToFixedString(position_size, qty_precision),
+               ToFixedString(min_qty, qty_precision)),
         __FILE__, __LINE__);
 
     return make_pair(0, 0);  // 최소 수량보다 작으면 진입하지 않음
@@ -467,7 +479,10 @@ pair<double, int> DiceSystem::CalculatePositionSizeAndLeverage(
         WARN_L,
         format("[{}] 계산된 포지션 크기 [{}]이(가) 시장가의 최대 포지션 크기 "
                "[{}]보다 많으므로 포지션 크기 [{}] → [{}]으로 조정",
-               entry_name, position_size, max_qty, position_size, max_qty),
+               entry_name, ToFixedString(position_size, qty_precision),
+               ToFixedString(max_qty, qty_precision),
+               ToFixedString(position_size, qty_precision),
+               ToFixedString(max_qty, qty_precision)),
         __FILE__, __LINE__);
 
     // TODO 제한 말고 분할 진입할 것
