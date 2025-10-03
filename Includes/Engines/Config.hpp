@@ -30,10 +30,10 @@ namespace backtesting::engine {
 
 /// 백테스팅 기간을 지정하는 구조체.\n
 /// Start와 End 시간을 지정하지 않으면 캔들 범위 전체로 백테스팅 진행
-struct BacktestingPeriod {
-  BacktestingPeriod() = default;
-  explicit BacktestingPeriod(const string& start_time, const string& end_time,
-                             const string& format) {
+struct Period {
+  Period() = default;
+  explicit Period(const string& start_time, const string& end_time,
+                  const string& format) {
     this->start_time = start_time;
     this->end_time = end_time;
     this->format = format;
@@ -80,9 +80,9 @@ class Config final {
   /// @param end_time 트레이딩 바 데이터의 타임프레임을 기준으로,
   ///                 지정된 End Time 이전의 Close Time까지 백테스팅
   /// @param format Start Time과 End Time의 시간 포맷
-  Config& SetBacktestingPeriod(const string& start_time = "",
-                               const string& end_time = "",
-                               const string& format = "%Y-%m-%d %H:%M:%S");
+  Config& SetBacktestPeriod(const string& start_time = "",
+                            const string& end_time = "",
+                            const string& format = "%Y-%m-%d %H:%M:%S");
 
   // 바 돋보기 기능을 사용할지 여부를 설정하는 함수
   Config& SetUseBarMagnifier(bool use_bar_magnifier);
@@ -113,7 +113,7 @@ class Config final {
   Config& DisableSameBarDataWithTargetCheck();
 
   [[nodiscard]] static string GetRootDirectory();
-  [[nodiscard]] optional<BacktestingPeriod> GetBacktestingPeriod() const;
+  [[nodiscard]] optional<Period> GetBacktestPeriod() const;
   [[nodiscard]] optional<bool> GetUseBarMagnifier() const;
   [[nodiscard]] double GetInitialBalance() const;
   [[nodiscard]] double GetTakerFeePercentage() const;
@@ -136,7 +136,7 @@ class Config final {
   static string root_directory_;
 
   /// 백테스팅 기간
-  optional<BacktestingPeriod> backtesting_period_;
+  optional<Period> backtest_period_;
 
   /// 바 돋보기 사용 여부
   optional<bool> use_bar_magnifier_;
