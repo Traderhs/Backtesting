@@ -36,12 +36,14 @@ class SymbolInfo final {
   ~SymbolInfo();
 
   SymbolInfo& SetExchangeInfoPath(const string& exchange_info_path);
-  SymbolInfo& SetTickSize(double tick_size);
+  SymbolInfo& SetPriceStep(double price_step);
+  SymbolInfo& SetPricePrecision(int price_precision);
+  SymbolInfo& SetQtyStep(double qty_step);
+  SymbolInfo& SetQtyPrecision(int qty_precision);
   SymbolInfo& SetLimitMaxQty(double default_max_qty);
   SymbolInfo& SetLimitMinQty(double default_min_qty);
   SymbolInfo& SetMarketMaxQty(double market_max_qty);
   SymbolInfo& SetMarketMinQty(double market_min_qty);
-  SymbolInfo& SetQtyStep(double qty_step);
   SymbolInfo& SetMinNotionalValue(double min_notional);
   SymbolInfo& SetLiquidationFeeRate(double liquidation_fee);
 
@@ -54,12 +56,14 @@ class SymbolInfo final {
 
   // ===========================================================================
   [[nodiscard]] string GetExchangeInfoPath() const;
-  [[nodiscard]] double GetTickSize() const;
+  [[nodiscard]] double GetPriceStep() const;
+  [[nodiscard]] int GetPricePrecision() const;
+  [[nodiscard]] double GetQtyStep() const;
+  [[nodiscard]] size_t GetQtyPrecision() const;
   [[nodiscard]] double GetLimitMaxQty() const;
   [[nodiscard]] double GetLimitMinQty() const;
   [[nodiscard]] double GetMarketMaxQty() const;
   [[nodiscard]] double GetMarketMinQty() const;
-  [[nodiscard]] double GetQtyStep() const;
   [[nodiscard]] double GetMinNotionalValue() const;
   [[nodiscard]] double GetLiquidationFeeRate() const;
 
@@ -71,12 +75,14 @@ class SymbolInfo final {
 
  private:
   string exchange_info_path_;    // 거래소 정보 파일 경로
-  double tick_size_;             // 틱 사이즈
+  double price_step_;            // 가격 최소 단위
+  int price_precision_;          // 가격 소수점 정밀도
+  double qty_step_;              // 수량 최소 단위
+  int qty_precision_;            // 수량 소수점 정밀도
   double limit_max_qty_;         // 지정가 최대 수량
   double limit_min_qty_;         // 지정가 최소 수량
   double market_max_qty_;        // 시장가 최대 수량
   double market_min_qty_;        // 시장가 최소 수량
-  double qty_step_;              // 수량 최소 단위
   double min_notional_value_;    // 최소 명목 가치
   double liquidation_fee_rate_;  // 강제 청산 수수료율
 

@@ -17,7 +17,7 @@ const countFields = [
 ];
 
 // 숫자 포맷팅 헬퍼 함수 수정
-function formatValue(value: string | number, key: string, precision: number = 2, config?: any, symbol?: string): string {
+function formatValue(value: string | number, key: string, pricePrecision: number = 2, config?: any, symbol?: string): string {
     const num = typeof value === 'number' ? value : parseFloat(String(value).replace(/,/g, ''));
 
     // NaN인 경우 원본 문자열 반환
@@ -33,8 +33,8 @@ function formatValue(value: string | number, key: string, precision: number = 2,
     const priceFields = ["진입 가격", "청산 가격", "강제 청산 가격"];
     if (priceFields.includes(key)) {
         return num.toLocaleString('en-US', {
-            minimumFractionDigits: precision,
-            maximumFractionDigits: precision
+            minimumFractionDigits: pricePrecision,
+            maximumFractionDigits: pricePrecision
         });
     }
 
@@ -95,7 +95,7 @@ interface TradeMarkersProps {
     mainSeries: ISeriesApi<SeriesType> | undefined;
     candleStickData: CandleData[]; // 현재 로드된 전체 캔들 데이터
     containerRef: React.RefObject<HTMLDivElement | null>; // 차트 컨테이너 ref
-    precision: number;
+    pricePrecision: number;
     config?: any;
     candleInterval: number;
 }
@@ -108,15 +108,10 @@ function getSymbolQtyPrecision(config: any, symbol: string): number {
 
     const symbolInfo = config["심볼"].find((s: any) => s["심볼 이름"] === symbol);
     if (!symbolInfo || !symbolInfo["거래소 정보"]) {
-        return 3; // 기본값
+        return 0; // 기본값
     }
 
-    const exchangeInfo = symbolInfo["거래소 정보"];
-
-    // 수량 precision: "수량 최소 단위"에서 소수점 자릿수 계산
-    const qtyStep = exchangeInfo["수량 최소 단위"] || 0.001;
-    return qtyStep.toString().includes('.') ?
-        qtyStep.toString().split('.')[1].length : 0;
+    return symbolInfo["거래소 정보"]["수량 소수점 정밀도"] || 0;
 }
 
 // 마커 아이템 인터페이스 추가
@@ -230,7 +225,7 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
                                                        mainSeries,
                                                        candleStickData,
                                                        containerRef,
-                                                       precision,
+                                                       pricePrecision,
                                                        config,
                                                        candleInterval
                                                    }) => {
@@ -1176,7 +1171,7 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
                                                 }
                                             }
 
-                                            let displayValue = formatValue(value as string | number, key, precision, config, symbol);
+                                            let displayValue = formatValue(value as string | number, key, pricePrecision, config, symbol);
                                             if ((key === "진입 시간" || key === "청산 시간") && typeof value === 'string' && value !== '-') {
                                                 try {
                                                     const date = new Date(value);
@@ -1262,7 +1257,7 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
                                                 }
                                             }
 
-                                            let displayValue = formatValue(value as string | number, key, precision, config, symbol);
+                                            let displayValue = formatValue(value as string | number, key, pricePrecision, config, symbol);
                                             if ((key === "진입 시간" || key === "청산 시간") && typeof value === 'string' && value !== '-') {
                                                 try {
                                                     const date = new Date(value);

@@ -11,8 +11,8 @@ export interface CandleData {
 
 interface CandleStickRendererProps {
     chart: IChartApi | null;
-    tickSize: number;
-    precision: number;
+    priceStep: number;
+    pricePrecision: number;
 }
 
 // 데이터 처리 후 콜백을 위한 타입
@@ -28,14 +28,14 @@ class CandleStickRenderer {
     private readonly chart: IChartApi | null;
     private mainSeries: ReturnType<IChartApi['addSeries']> | null = null;
     private volumeSeries: ReturnType<IChartApi['addSeries']> | null = null;
-    private readonly tickSize: number;
-    private readonly precision: number;
+    private readonly priceStep: number;
+    private readonly pricePrecision: number;
     private firstUpdate: boolean = true;
 
-    constructor({chart, tickSize, precision}: CandleStickRendererProps) {
+    constructor({chart, priceStep, pricePrecision}: CandleStickRendererProps) {
         this.chart = chart;
-        this.tickSize = tickSize;
-        this.precision = precision;
+        this.priceStep = priceStep;
+        this.pricePrecision = pricePrecision;
     }
 
     public initSeries() {
@@ -51,7 +51,11 @@ class CandleStickRenderer {
             // 볼륨 시리즈 생성
             this.volumeSeries = this.chart.addSeries(HistogramSeries, {
                 priceScaleId: "volume",
-                priceFormat: {type: "volume", minMove: this.tickSize, precision: this.precision},
+                priceFormat: {
+                    type: "volume",
+                    minMove: this.priceStep,
+                    precision: this.pricePrecision
+                },
                 lastValueVisible: false,
                 priceLineVisible: false
             }, 0);
@@ -71,7 +75,11 @@ class CandleStickRenderer {
                 borderDownColor: "#f23645",
                 wickUpColor: "#4caf50",
                 wickDownColor: "#f23645",
-                priceFormat: {type: 'price', minMove: this.tickSize, precision: this.precision},
+                priceFormat: {
+                    type: 'price',
+                    minMove: this.priceStep,
+                    precision: this.pricePrecision
+                },
                 lastValueVisible: false,
                 priceLineVisible: false
             }, 0);
@@ -149,9 +157,9 @@ class CandleStickRenderer {
                             color: "#08998180"
                         };
                     }
-                    
+
                     let color: string;
-                    
+
                     // 시가 == 종가인 경우 (도지 캔들)
                     if (bar.open === bar.close) {
                         // 첫 번째 캔들이거나 이전 종가가 없으면 기본 캔들 색상 로직 사용
@@ -166,7 +174,7 @@ class CandleStickRenderer {
                         // 기존 방식: 시가 vs 종가
                         color = bar.close >= bar.open ? "#08998180" : "#ef535080";
                     }
-                    
+
                     return {
                         time: bar.time,
                         value: bar.volume === null ? NaN : bar.volume,
@@ -214,9 +222,9 @@ class CandleStickRenderer {
                                     color: "#08998180"
                                 };
                             }
-                            
+
                             let color: string;
-                            
+
                             // 시가 == 종가인 경우 (도지 캔들)
                             if (bar.open === bar.close) {
                                 // 첫 번째 캔들이거나 이전 종가가 없으면 기본 캔들 색상 로직 사용
@@ -231,7 +239,7 @@ class CandleStickRenderer {
                                 // 기존 방식: 시가 vs 종가
                                 color = bar.close >= bar.open ? "#08998180" : "#ef535080";
                             }
-                            
+
                             return {
                                 time: bar.time,
                                 value: bar.volume,

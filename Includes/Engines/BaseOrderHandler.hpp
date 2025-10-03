@@ -204,7 +204,8 @@ class BaseOrderHandler {
   [[nodiscard]] static optional<string> IsValidDirection(Direction direction);
 
   // 가격이 유효한 값인지 확인하는 함수
-  [[nodiscard]] static optional<string> IsValidPrice(double price);
+  [[nodiscard]] static optional<string> IsValidPrice(double price,
+                                                     int symbol_idx);
 
   // 포지션 크기가 유효한 값인지 확인하는 함수
   [[nodiscard]] optional<string> IsValidPositionSize(double position_size,

@@ -20,13 +20,14 @@ interface BarData {
 
 interface ExchangeInfo {
     dataPath: string
-    tickSize: number
-    precision: number
+    priceStep: number
+    pricePrecision: number
+    qtyStep: number
+    qtyPrecision: number
     maxOrderQty: number
     minOrderQty: number
     maxMarketOrderQty: number
     minMarketOrderQty: number
-    qtyStep: number
     minNotional: number
     liquidationFee: number
 }
@@ -344,12 +345,109 @@ const SymbolCard = memo(({
     const renderExchangeInfo = (data?: ExchangeInfo) => {
         if (!data) return null;
 
+        // 스크롤 동기화를 위한 ref들
+        const exchangeLeftRef = useRef<HTMLDivElement>(null);
+        const exchangeRightRef = useRef<HTMLDivElement>(null);
+
+        // 스크롤바 높이 조정 및 동기화 함수
+        const syncExchangeScroll = useCallback(() => {
+            if (exchangeRightRef.current && exchangeLeftRef.current) {
+                // 스크롤 위치 동기화
+                exchangeLeftRef.current.scrollTop = exchangeRightRef.current.scrollTop;
+
+                // 가로 스크롤바 공간 보정
+                const hasHorizontalScrollbar = exchangeRightRef.current.scrollWidth > exchangeRightRef.current.clientWidth;
+                const scrollbarHeight = hasHorizontalScrollbar ? exchangeRightRef.current.offsetHeight - exchangeRightRef.current.clientHeight : 0;
+
+                if (scrollbarHeight > 0) {
+                    // 왼쪽 영역 하단에 스크롤바 높이만큼 패딩 추가
+                    exchangeLeftRef.current.style.paddingBottom = `${scrollbarHeight}px`;
+                } else {
+                    exchangeLeftRef.current.style.paddingBottom = '0px';
+                }
+
+                // 스크롤바 감지 및 클래스 추가
+                if (hasHorizontalScrollbar) {
+                    exchangeRightRef.current.classList.add('scrollable-x');
+                } else {
+                    exchangeRightRef.current.classList.remove('scrollable-x');
+                }
+            }
+        }, []);
+
+        // 왼쪽 영역 휠 이벤트 처리
+        const handleExchangeLeftScroll = useCallback(() => {
+            if (exchangeLeftRef.current && exchangeRightRef.current) {
+                // 왼쪽 영역 스크롤 발생 시 오른쪽 영역 스크롤 동기화
+                exchangeRightRef.current.scrollTop = exchangeLeftRef.current.scrollTop;
+            }
+        }, []);
+
+        // 왼쪽 영역 너비 자동 조정 함수
+        const adjustExchangeLeftWidth = useCallback(() => {
+            if (!exchangeLeftRef.current) return;
+
+            // 왼쪽 영역의 모든 라벨 요소 가져오기
+            const labels = exchangeLeftRef.current.querySelectorAll('.exchange-info-label');
+
+            // 가장 긴 텍스트를 가진 라벨 찾기
+            let maxWidth = 0;
+            labels.forEach(label => {
+                const labelWidth = (label as HTMLElement).offsetWidth;
+                maxWidth = Math.max(maxWidth, labelWidth);
+            });
+
+            // 기본 패딩과 여백 고려 (불릿 + 여백 + 패딩)
+            const padding = 32 + 24; // 패딩, 마진, 글머리 기호 등의 공간
+
+            // 너비 계산 및 적용
+            const finalWidth = maxWidth + padding;
+            exchangeLeftRef.current.style.width = `${finalWidth}px`;
+            exchangeLeftRef.current.style.minWidth = `${finalWidth}px`;
+        }, []);
+
+        // 마운트 및 업데이트 시 설정
+        useEffect(() => {
+            // 왼쪽 너비 조정 및 스크롤바 공간 조정
+            setTimeout(() => {
+                adjustExchangeLeftWidth(); // 왼쪽 너비 먼저 조정
+                syncExchangeScroll();      // 그 다음 스크롤 동기화
+            }, 100);
+
+            // 윈도우 리사이즈 이벤트에도 대응
+            const handleResize = () => {
+                adjustExchangeLeftWidth(); // 리사이즈 시에도 너비 재조정
+                syncExchangeScroll();
+            };
+            window.addEventListener('resize', handleResize);
+
+            // 스크롤 동기화 이벤트 리스너 등록
+            const rightSection = exchangeRightRef.current;
+            if (rightSection) {
+                rightSection.addEventListener('scroll', syncExchangeScroll);
+            }
+
+            return () => {
+                window.removeEventListener('resize', handleResize);
+                if (rightSection) {
+                    rightSection.removeEventListener('scroll', syncExchangeScroll);
+                }
+            };
+        }, [syncExchangeScroll, adjustExchangeLeftWidth]);
+
         return (
             <motion.div
                 className="symbol-card-container"
                 initial={{opacity: 1}}
                 animate={{opacity: 1}}
                 transition={pageTransition}
+                onAnimationComplete={() => {
+                    // 애니메이션 완료 후 너비 조정 및 스크롤바 공간 조정
+                    setTimeout(() => {
+                        adjustExchangeLeftWidth(); // 왼쪽 너비 먼저 조정
+                        syncExchangeScroll();      // 그 다음 스크롤 동기화
+                    }, 100);
+                }}
             >
                 <div className="symbol-card-border"/>
                 <motion.div
@@ -366,120 +464,140 @@ const SymbolCard = memo(({
                     animate={{opacity: 1}}
                     transition={pageTransition}
                 >
-                    <div className="symbol-card-inner">
-                        <div className="symbol-card-left-section">
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-bullet">&bull;</span>
-                                    <span className="symbol-card-label">데이터 경로</span>
+                    <div className="exchange-info-item">
+                        <div
+                            className="exchange-info-left"
+                            ref={exchangeLeftRef}
+                            onScroll={handleExchangeLeftScroll}
+                        >
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-bullet">•</span>
+                                    <span className="exchange-info-label">데이터 경로</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-bullet">&bull;</span>
-                                    <span className="symbol-card-label">틱 사이즈</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-bullet">•</span>
+                                    <span className="exchange-info-label">가격 최소 단위</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-bullet">&bull;</span>
-                                    <span className="symbol-card-label">소수점 정밀도</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-bullet">•</span>
+                                    <span className="exchange-info-label">가격 소수점 정밀도</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-bullet">&bull;</span>
-                                    <span className="symbol-card-label">지정가 최대 수량</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-bullet">•</span>
+                                    <span className="exchange-info-label">수량 최소 단위</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-bullet">&bull;</span>
-                                    <span className="symbol-card-label">지정가 최소 수량</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-bullet">•</span>
+                                    <span className="exchange-info-label">수량 소수점 정밀도</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-bullet">&bull;</span>
-                                    <span className="symbol-card-label">시장가 최대 수량</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-bullet">•</span>
+                                    <span className="exchange-info-label">지정가 최대 수량</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-bullet">&bull;</span>
-                                    <span className="symbol-card-label">시장가 최소 수량</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-bullet">•</span>
+                                    <span className="exchange-info-label">지정가 최소 수량</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-bullet">&bull;</span>
-                                    <span className="symbol-card-label">수량 최소 단위</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-bullet">•</span>
+                                    <span className="exchange-info-label">시장가 최대 수량</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-bullet">&bull;</span>
-                                    <span className="symbol-card-label">최소 명목 가치</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-bullet">•</span>
+                                    <span className="exchange-info-label">시장가 최소 수량</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-bullet">&bull;</span>
-                                    <span className="symbol-card-label">강제 청산 수수료율</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-bullet">•</span>
+                                    <span className="exchange-info-label">최소 명목 가치</span>
+                                </div>
+                            </div>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-bullet">•</span>
+                                    <span className="exchange-info-label">강제 청산 수수료율</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="symbol-card-right-section">
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-path-value">{data.dataPath}</span>
+                        <div
+                            className="exchange-info-right"
+                            ref={exchangeRightRef}
+                            onScroll={syncExchangeScroll}
+                        >
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-value">{data.dataPath}</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-value">{trimEndZeros(data.tickSize)}</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-value">{trimEndZeros(data.priceStep)}</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-value">{trimEndZeros(data.precision)}</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-value">{trimEndZeros(data.pricePrecision)}</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-value">{data.maxOrderQty.toLocaleString()}</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-value">{trimEndZeros(data.qtyStep)}</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-value">{trimEndZeros(data.minOrderQty)}</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-value">{trimEndZeros(data.qtyPrecision)}</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-value">{data.maxMarketOrderQty.toLocaleString()}</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-value">{data.maxOrderQty.toLocaleString()}</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-value">{trimEndZeros(data.minMarketOrderQty)}</span>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-value">{trimEndZeros(data.minOrderQty)}</span>
                                 </div>
                             </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-value">{trimEndZeros(data.qtyStep)}</span>
-                                </div>
-                            </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
-                                    <span className="symbol-card-value">${data.minNotional.toLocaleString()}</span>
-                                </div>
-                            </div>
-                            <div className="symbol-card-row">
-                                <div className="symbol-card-row-inner">
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
                                     <span
-                                        className="symbol-card-value">{trimEndZeros((data.liquidationFee * 100))}%</span>
+                                        className="exchange-info-value">{data.maxMarketOrderQty.toLocaleString()}</span>
+                                </div>
+                            </div>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-value">{trimEndZeros(data.minMarketOrderQty)}</span>
+                                </div>
+                            </div>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-value">${data.minNotional.toLocaleString()}</span>
+                                </div>
+                            </div>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span
+                                        className="exchange-info-value">{trimEndZeros((data.liquidationFee * 100))}%</span>
                                 </div>
                             </div>
                         </div>
