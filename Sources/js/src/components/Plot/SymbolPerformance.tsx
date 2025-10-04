@@ -1096,6 +1096,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
     const seriesRefs = useRef<Map<string, any>>(new Map()); // 모든 시리즈 ref 저장
     const symbolsRef = useRef<string[]>(configSymbols); // 심볼 목록 ref 추가
     const colorsRef = useRef<string[]>([]); // 색상 목록 ref 추가
+    const yearGridContainerRef = useRef<HTMLDivElement | null>(null); // 년도 그리드 컨테이너 ref 추가
     const isComponentMounted = useRef(true);
     const hasTooltipAppeared = useRef(false);
 
@@ -1128,6 +1129,96 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                 tooltipRef.current.style.visibility = 'hidden';
             }
         }, 200); // 페이드 아웃 애니메이션 시간과 일치시킴
+    }, []);
+
+    // 년도 세로 그리드를 그리는 함수
+    const drawYearGridLines = useCallback(() => {
+        if (!chartRef.current || !chartContainerRef.current) return;
+
+        // 기존 그리드 컨테이너 제거
+        if (yearGridContainerRef.current) {
+            yearGridContainerRef.current.remove();
+            yearGridContainerRef.current = null;
+        }
+
+        const chart = chartRef.current;
+        const container = chartContainerRef.current;
+
+        // 현재 차트에 표시된 시리즈의 데이터에서 년도 변경 지점 찾기
+        const allDataPoints: { time: number }[] = [];
+
+        // 모든 시리즈에서 데이터 수집
+        seriesRefs.current.forEach((series) => {
+            try {
+                const data = series.data();
+                if (data && Array.isArray(data)) {
+                    allDataPoints.push(...data);
+                }
+            } catch (error) {
+                // 데이터 가져오기 실패 시 무시
+            }
+        });
+
+        if (allDataPoints.length === 0) return;
+
+        // 시간순 정렬 및 중복 제거
+        const uniqueTimes = Array.from(new Set(allDataPoints.map(p => p.time))).sort((a, b) => a - b);
+
+        // 년도가 바뀌는 지점 찾기
+        const yearChangePoints: { year: number; time: number }[] = [];
+        let lastYear: number | null = null;
+
+        for (const time of uniqueTimes) {
+            const date = new Date(Number(time) * 1000);
+            const year = date.getFullYear();
+
+            if (lastYear !== null && year !== lastYear) {
+                yearChangePoints.push({ year, time });
+            }
+            lastYear = year;
+        }
+
+        // 년도 변경 지점이 없으면 종료
+        if (yearChangePoints.length === 0) return;
+
+        // 그리드 라인을 담을 컨테이너 생성
+        const gridContainer = document.createElement('div');
+        gridContainer.style.position = 'absolute';
+        gridContainer.style.top = '0';
+        gridContainer.style.left = '0';
+        gridContainer.style.width = '100%';
+        gridContainer.style.height = '100%';
+        gridContainer.style.pointerEvents = 'none';
+        gridContainer.style.zIndex = '1';
+        container.appendChild(gridContainer);
+        yearGridContainerRef.current = gridContainer;
+
+        // y축 너비와 x축 높이 가져오기
+        const leftPriceScaleWidth = chart.priceScale('left').width() || 0;
+        const timeScaleHeight = chart.timeScale().height() || 0;
+        const containerWidth = container.clientWidth;
+
+        // 각 년도 변경 지점에 세로선 그리기
+        for (const point of yearChangePoints) {
+            const coordinate = chart.timeScale().timeToCoordinate(point.time as any);
+            if (coordinate === null) continue;
+
+            // x축 포함한 실제 좌표
+            const actualX = coordinate + leftPriceScaleWidth;
+
+            // y축 영역을 침범하거나 차트 오른쪽을 벗어나면 건너뛰기
+            if (actualX < leftPriceScaleWidth || actualX > containerWidth) continue;
+
+            const line = document.createElement('div');
+            line.style.position = 'absolute';
+            line.style.left = `${actualX}px`;
+            line.style.top = '0';
+            line.style.width = '1px';
+            line.style.height = `calc(100% - ${timeScaleHeight}px)`; // x축 높이만큼 빼기
+            line.style.backgroundColor = 'rgba(128, 128, 128, 0.3)';
+            line.style.pointerEvents = 'none';
+            gridContainer.appendChild(line);
+        }
     }, []);
 
     // 크로스헤어 이동 핸들러 추가 (EquityCurve와 동일)
@@ -1869,6 +1960,11 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
             for (let entry of entries) {
                 const {width, height} = entry.contentRect;
                 chart.applyOptions({width, height});
+                
+                // 리사이즈 시 년도 그리드 다시 그리기
+                requestAnimationFrame(() => {
+                    drawYearGridLines();
+                });
             }
         });
         resizeObserver.observe(chartContainerRef.current);
@@ -1887,8 +1983,18 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
         // 초기 화면을 제일 축소한 상태로 설정 (마지막에 호출)
         chart.timeScale().fitContent();
 
+        // 년도 그리드 그리기
+        drawYearGridLines();
+
         // 이벤트 구독
         chart.subscribeCrosshairMove(handleCrosshairMove);
+
+        // timeScale visible range 변경 감지 (줌/팬 시 그리드 업데이트)
+        chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+            requestAnimationFrame(() => {
+                drawYearGridLines();
+            });
+        });
 
         // 컴포넌트 마운트 상태 설정
         isComponentMounted.current = true;
@@ -1925,6 +2031,12 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                     tooltipRef.current.remove();
                     tooltipRef.current = null;
                 }
+                
+                // 년도 그리드 컨테이너 제거
+                if (yearGridContainerRef.current) {
+                    yearGridContainerRef.current.remove();
+                    yearGridContainerRef.current = null;
+                }
 
                 resizeObserver.disconnect();
                 hasTooltipAppeared.current = false;
@@ -1932,7 +2044,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                 console.error("차트 제거 중 오류 발생:", error);
             }
         };
-    }, [filteredTrades, loading, handleCrosshairMove, selectedMetric, timeframeStr]);
+    }, [filteredTrades, loading, handleCrosshairMove, selectedMetric, timeframeStr, drawYearGridLines]);
 
     // 마운트/업데이트 시 configSymbols로 심볼 ref 동기화
     useEffect(() => {
