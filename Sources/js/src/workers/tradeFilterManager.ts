@@ -90,6 +90,7 @@ interface WorkerTask {
 interface WorkerResult {
     id: string;
     trades: TradeItem[];
+    hasBankruptcy?: boolean; // 파산 여부 추가
     chunkIndex: number;
     totalChunks: number;
     processingTime: number;
@@ -101,17 +102,17 @@ export class TradeFilterManager {
     private busyWorkers: Set<number> = new Set();
     private pendingTasks: WorkerTask[] = [];
     private results: Map<string, WorkerResult[]> = new Map();
-    private callbacks: Map<string, (result: TradeItem[]) => void> = new Map();
+    private callbacks: Map<string, (result: { trades: TradeItem[], hasBankruptcy: boolean }) => void> = new Map();
     private progressCallbacks: Map<string, (progress: number) => void> = new Map();
-    
+
     // 자금 재계산 관련 추가 속성들
     private needsBalanceRecalculation: Map<string, boolean> = new Map();
     private originalTradesMap: Map<string, TradeItem[]> = new Map();
-    
+
     // 최신 작업 관리를 위한 속성들
     private latestTaskId: string | null = null;
     private activeTasks: Set<string> = new Set();
-    
+
     // 워커 수 동적 결정 (CPU 코어 수 기반)
     private readonly maxWorkers: number;
     private readonly chunkSize: number;
@@ -120,7 +121,7 @@ export class TradeFilterManager {
         // CPU 코어 수 기반으로 워커 수 결정
         this.maxWorkers = Math.max(navigator.hardwareConcurrency || 4, 2);
         this.chunkSize = Math.max(500, Math.min(2000, Math.floor(20000 / this.maxWorkers)));
-        
+
         this.initializeWorkers();
     }
 
@@ -130,10 +131,10 @@ export class TradeFilterManager {
                 const worker = new Worker(new URL('./tradeFilterWorker.ts', import.meta.url), {
                     type: 'module'
                 });
-                
+
                 worker.onmessage = (event) => this.handleWorkerMessage(i, event);
                 worker.onerror = (error) => this.handleWorkerError(i, error);
-                
+
                 this.workers.push(worker);
             } catch (error) {
                 console.error(`워커 ${i} 초기화 실패:`, error);
@@ -142,11 +143,11 @@ export class TradeFilterManager {
     }
 
     private handleWorkerMessage(workerIndex: number, event: MessageEvent): void {
-        const { type, trades, id, chunkIndex, totalChunks, processingTime, error } = event.data;
-        
+        const {type, trades, id, chunkIndex, totalChunks, processingTime, error} = event.data;
+
         if (type === 'filterResult') {
             this.busyWorkers.delete(workerIndex);
-            
+
             if (error) {
                 console.error(`워커 ${workerIndex} 에러:`, error);
                 this.handleTaskError(id, error);
@@ -159,7 +160,7 @@ export class TradeFilterManager {
                     processingTime: processingTime || 0,
                 });
             }
-            
+
             // 대기 중인 작업이 있으면 실행
             this.processNextTask();
         }
@@ -168,17 +169,17 @@ export class TradeFilterManager {
     private handleWorkerError(workerIndex: number, error: ErrorEvent): void {
         console.error(`워커 ${workerIndex} 오류:`, error);
         this.busyWorkers.delete(workerIndex);
-        
+
         // 워커 재시작 시도
         try {
             this.workers[workerIndex].terminate();
             const newWorker = new Worker(new URL('./tradeFilterWorker.ts', import.meta.url), {
                 type: 'module'
             });
-            
+
             newWorker.onmessage = (event) => this.handleWorkerMessage(workerIndex, event);
             newWorker.onerror = (error) => this.handleWorkerError(workerIndex, error);
-            
+
             this.workers[workerIndex] = newWorker;
         } catch (restartError) {
             console.error(`워커 ${workerIndex} 재시작 실패:`, restartError);
@@ -194,21 +195,21 @@ export class TradeFilterManager {
         if (!this.results.has(taskId)) {
             this.results.set(taskId, []);
         }
-        
+
         const taskResults = this.results.get(taskId)!;
         taskResults.push(result);
-        
+
         // 진행률 업데이트
         const progressCallback = this.progressCallbacks.get(taskId);
         if (progressCallback) {
             const progress = (result.chunkIndex + 1) / result.totalChunks * 100;
             progressCallback(Math.min(progress, 100));
         }
-        
+
         // 모든 청크가 완료되었는지 확인
         const expectedChunks = this.getExpectedChunks(taskId);
         if (taskResults.length === expectedChunks) {
-            this.combineResults(taskId);
+            this.combineResults(taskId).then();
         }
     }
 
@@ -217,7 +218,7 @@ export class TradeFilterManager {
         const callback = this.callbacks.get(taskId);
         if (callback) {
             // 에러 발생 시 빈 배열 반환
-            callback([]);
+            callback({trades: [], hasBankruptcy: false});
             this.cleanupTask(taskId);
         }
     }
@@ -237,7 +238,7 @@ export class TradeFilterManager {
 
         const taskResults = this.results.get(taskId);
         const callback = this.callbacks.get(taskId);
-        
+
         if (!taskResults || !callback) {
             console.error(`작업 ${taskId}의 결과 또는 콜백을 찾을 수 없음`);
             return;
@@ -246,11 +247,11 @@ export class TradeFilterManager {
         try {
             // 청크 인덱스 순으로 정렬
             taskResults.sort((a, b) => a.chunkIndex - b.chunkIndex);
-            
+
             // 결과 합치기
             const combinedTrades: TradeItem[] = [];
             let totalProcessingTime = 0;
-            
+
             for (const result of taskResults) {
                 if (result.chunkIndex === 0) {
                     // 첫 번째 청크는 헤더 포함
@@ -261,24 +262,34 @@ export class TradeFilterManager {
                 }
                 totalProcessingTime += result.processingTime;
             }
-            
+
             // 자금 재계산이 필요한 경우 메인 스레드에서 수행 (더 빠름)
             const needsRecalculation = this.needsBalanceRecalculation.get(taskId);
+            let hasBankruptcy = false;
+
+            // 워커에서 hasBankruptcy 정보 수집
+            for (const result of taskResults) {
+                if (result.hasBankruptcy) {
+                    hasBankruptcy = true;
+                    break;
+                }
+            }
+
             if (needsRecalculation && combinedTrades.length > 1) {
-                const recalculatedTrades = this.recalculateBalanceInMainThread(
-                    combinedTrades, 
+                const recalculationResult = this.recalculateBalanceInMainThread(
+                    combinedTrades,
                     this.originalTradesMap.get(taskId) || combinedTrades
                 );
 
-                callback(recalculatedTrades);
+                callback({trades: recalculationResult.result, hasBankruptcy: recalculationResult.hasBankruptcy});
             } else {
-                callback(combinedTrades);
+                callback({trades: combinedTrades, hasBankruptcy});
             }
-            
+
             this.cleanupTask(taskId);
         } catch (error) {
             console.error(`작업 ${taskId} 결과 합치기 실패:`, error);
-            callback([]);
+            callback({trades: [], hasBankruptcy: false});
             this.cleanupTask(taskId);
         }
     }
@@ -301,7 +312,7 @@ export class TradeFilterManager {
                 this.cleanupTask(taskId);
             }
         }
-        
+
         // 대기 중인 작업들도 제거
         this.pendingTasks = [];
     }
@@ -310,17 +321,17 @@ export class TradeFilterManager {
         if (trades.length <= 1) {
             return [trades]; // 헤더만 있는 경우
         }
-        
+
         const header = trades[0];
         const dataRows = trades.slice(1);
         const chunks: TradeItem[][] = [];
-        
+
         for (let i = 0; i < dataRows.length; i += this.chunkSize) {
             const chunkData = dataRows.slice(i, i + this.chunkSize);
             // 각 청크에 헤더 추가
             chunks.push([header, ...chunkData]);
         }
-        
+
         return chunks.length > 0 ? chunks : [trades];
     }
 
@@ -337,15 +348,15 @@ export class TradeFilterManager {
         if (this.pendingTasks.length === 0) {
             return;
         }
-        
+
         const workerIndex = this.getAvailableWorker();
         if (workerIndex === -1) {
             return; // 사용 가능한 워커가 없음
         }
-        
+
         const task = this.pendingTasks.shift()!;
         this.busyWorkers.add(workerIndex);
-        
+
         try {
             this.workers[workerIndex].postMessage({
                 type: 'filter',
@@ -364,21 +375,21 @@ export class TradeFilterManager {
     }
 
     public filterTrades(
-        trades: TradeItem[], 
+        trades: TradeItem[],
         filter: TradeFilter,
         onProgress?: (progress: number) => void
-    ): Promise<TradeItem[]> {
+    ): Promise<{ trades: TradeItem[], hasBankruptcy: boolean }> {
         return new Promise((resolve, reject) => {
             try {
                 // 입력 검증
                 if (!trades || !Array.isArray(trades) || trades.length === 0) {
-                    resolve([]);
+                    resolve({trades: [], hasBankruptcy: false});
                     return;
                 }
 
                 // 아무 필터도 적용되어 있지 않으면 원본 데이터 그대로 반환
                 if (!this.hasActiveFilters(filter)) {
-                    resolve(trades);
+                    resolve({trades, hasBankruptcy: false});
                     return;
                 }
 
@@ -387,30 +398,32 @@ export class TradeFilterManager {
 
                 // 작업 ID 생성
                 const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                
+
                 // 최신 작업으로 설정
                 this.latestTaskId = taskId;
                 this.activeTasks.add(taskId);
-                
+
                 // 콜백 등록
                 this.callbacks.set(taskId, resolve);
                 if (onProgress) {
                     this.progressCallbacks.set(taskId, onProgress);
                 }
-                
+
                 // 자금 재계산 정보 저장
                 this.needsBalanceRecalculation.set(taskId, filter.recalculateBalance);
                 this.originalTradesMap.set(taskId, trades);
 
                 // 데이터가 작은 경우 단일 워커로 처리
                 if (trades.length < this.chunkSize * 2) {
+                    // 단일 워커도 청크 모드와 동일하게 필터링만 수행하고 자금 재계산은 메인 스레드에서
+                    const singleWorkerFilter = {...filter, recalculateBalance: false};
                     const workerIndex = this.getAvailableWorker();
                     if (workerIndex !== -1) {
                         this.busyWorkers.add(workerIndex);
                         this.workers[workerIndex].postMessage({
                             type: 'filter',
                             trades,
-                            filter,
+                            filter: singleWorkerFilter,
                             allTrades: trades,
                             taskId,
                             chunkIndex: 0,
@@ -421,7 +434,7 @@ export class TradeFilterManager {
                         this.pendingTasks.push({
                             id: taskId,
                             chunk: trades,
-                            filter,
+                            filter: singleWorkerFilter,
                             allTrades: trades,
                             chunkIndex: 0,
                             totalChunks: 1
@@ -436,8 +449,8 @@ export class TradeFilterManager {
                 // 각 청크를 작업으로 생성
                 for (let i = 0; i < chunks.length; i++) {
                     // 청크 처리 시에는 자금 재계산을 끄고 필터링만 수행
-                    const chunkFilter = { ...filter, recalculateBalance: false };
-                    
+                    const chunkFilter = {...filter, recalculateBalance: false};
+
                     const task: WorkerTask = {
                         id: taskId,
                         chunk: chunks[i],
@@ -486,7 +499,7 @@ export class TradeFilterManager {
                 console.error(`워커 ${index} 종료 실패:`, error);
             }
         });
-        
+
         // 상태 초기화
         this.workers = [];
         this.busyWorkers.clear();
@@ -501,9 +514,12 @@ export class TradeFilterManager {
     }
 
     // 메인 스레드에서 자금 재계산 수행 (워커보다 빠름)
-    private recalculateBalanceInMainThread(filtered: TradeItem[], allTrades: TradeItem[]): TradeItem[] {
-        if (filtered.length <= 1) return filtered; // 헤더만 있는 경우
-        
+    private recalculateBalanceInMainThread(filtered: TradeItem[], allTrades: TradeItem[]): {
+        result: TradeItem[],
+        hasBankruptcy: boolean
+    } {
+        if (filtered.length <= 1) return {result: filtered, hasBankruptcy: false}; // 헤더만 있는 경우
+
         // 필터된 거래가 원본 거래와 동일한지 확인
         if (filtered.length === allTrades.length) {
             let isIdentical = true;
@@ -514,10 +530,10 @@ export class TradeFilterManager {
                 }
             }
             if (isIdentical) {
-                return allTrades; // 원본 거래 반환
+                return {result: allTrades, hasBankruptcy: false}; // 원본 거래 반환
             }
         }
-        
+
         const initialBalance = allTrades.length > 0 ? Number(allTrades[0]["현재 자금"]) : 0;
         let currentBalance = initialBalance;
         let maxBalance = initialBalance;
@@ -531,7 +547,7 @@ export class TradeFilterManager {
         // 첫 번째 패스: 거래 번호 재매핑만 수행
         for (let i = 1; i < filtered.length; i++) {
             const originalTradeNumber = Number(filtered[i]["거래 번호"]);
-            
+
             if (originalTradeNumber !== lastOriginalTradeNumber) {
                 if (!tradeNumberMap.has(originalTradeNumber)) {
                     tradeNumberMap.set(originalTradeNumber, newTradeNumber);
@@ -556,17 +572,18 @@ export class TradeFilterManager {
         }
 
         const endIndex = bankruptIndex > 0 ? bankruptIndex : filtered.length;
-        
+        const hasBankruptcy = bankruptIndex > 0; // 파산 발생 여부
+
         // 결과 배열 미리 할당
         const result = new Array(endIndex);
         result[0] = filtered[0]; // 헤더 복사
 
         // 빠른 자금 재계산
         for (let i = 1; i < endIndex; i++) {
-            const trade = { ...filtered[i] }; // 얕은 복사
+            const trade = {...filtered[i]}; // 얕은 복사
             const originalTradeNumber = Number(trade["거래 번호"]);
             const mappedNumber = tradeNumberMap.get(originalTradeNumber) || originalTradeNumber;
-            
+
             // 현재 거래의 손익 처리
             const profit = Number(trade["순손익"]);
             currentBalance += profit;
@@ -586,7 +603,7 @@ export class TradeFilterManager {
             result[i] = trade;
         }
 
-        return result;
+        return {result, hasBankruptcy};
     }
 
     // 필터가 실제로 적용되어 있는지 확인하는 유틸리티
@@ -594,36 +611,36 @@ export class TradeFilterManager {
         return (
             // 거래 번호 필터
             filter.tradeNumberMin !== undefined || filter.tradeNumberMax !== undefined ||
-            
+
             // 문자열 필터들
-            (filter.strategies && filter.strategies.length > 0) || 
-            (filter.symbols && filter.symbols.length > 0) || 
-            (filter.entryNames && filter.entryNames.length > 0) || 
-            (filter.exitNames && filter.exitNames.length > 0) || 
-            (filter.entryDirections && filter.entryDirections.length > 0 && 
-             !(filter.entryDirections.length === 2 && filter.entryDirections.includes("매수") && filter.entryDirections.includes("매도"))) ||
-            
+            (filter.strategies && filter.strategies.length > 0) ||
+            (filter.symbols && filter.symbols.length > 0) ||
+            (filter.entryNames && filter.entryNames.length > 0) ||
+            (filter.exitNames && filter.exitNames.length > 0) ||
+            (filter.entryDirections && filter.entryDirections.length > 0 &&
+                !(filter.entryDirections.length === 2 && filter.entryDirections.includes("매수") && filter.entryDirections.includes("매도"))) ||
+
             // 시간 필터들
             filter.entryTimeMin !== undefined || filter.entryTimeMax !== undefined ||
             filter.exitTimeMin !== undefined || filter.exitTimeMax !== undefined ||
-            (filter.entryYears && filter.entryYears.length > 0) || 
-            (filter.entryMonths && filter.entryMonths.length > 0) || 
-            (filter.entryDays && filter.entryDays.length > 0) || 
-            (filter.entryDayOfWeeks && filter.entryDayOfWeeks.length > 0) || 
-            (filter.entryHours && filter.entryHours.length > 0) || 
-            (filter.entryMinutes && filter.entryMinutes.length > 0) || 
+            (filter.entryYears && filter.entryYears.length > 0) ||
+            (filter.entryMonths && filter.entryMonths.length > 0) ||
+            (filter.entryDays && filter.entryDays.length > 0) ||
+            (filter.entryDayOfWeeks && filter.entryDayOfWeeks.length > 0) ||
+            (filter.entryHours && filter.entryHours.length > 0) ||
+            (filter.entryMinutes && filter.entryMinutes.length > 0) ||
             (filter.entrySeconds && filter.entrySeconds.length > 0) ||
-            (filter.exitYears && filter.exitYears.length > 0) || 
-            (filter.exitMonths && filter.exitMonths.length > 0) || 
-            (filter.exitDays && filter.exitDays.length > 0) || 
-            (filter.exitDayOfWeeks && filter.exitDayOfWeeks.length > 0) || 
-            (filter.exitHours && filter.exitHours.length > 0) || 
-            (filter.exitMinutes && filter.exitMinutes.length > 0) || 
+            (filter.exitYears && filter.exitYears.length > 0) ||
+            (filter.exitMonths && filter.exitMonths.length > 0) ||
+            (filter.exitDays && filter.exitDays.length > 0) ||
+            (filter.exitDayOfWeeks && filter.exitDayOfWeeks.length > 0) ||
+            (filter.exitHours && filter.exitHours.length > 0) ||
+            (filter.exitMinutes && filter.exitMinutes.length > 0) ||
             (filter.exitSeconds && filter.exitSeconds.length > 0) ||
-            
+
             // 보유 시간 필터
             filter.holdingTimeMin !== undefined || filter.holdingTimeMax !== undefined ||
-            
+
             // 숫자 범위 필터들
             filter.leverageMin !== undefined || filter.leverageMax !== undefined ||
             filter.entryPriceMin !== undefined || filter.entryPriceMax !== undefined ||
