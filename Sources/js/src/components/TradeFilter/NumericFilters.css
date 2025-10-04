@@ -1,7 +1,7 @@
 /* 공통 숫자 입력 필드 스타일 */
 .common-numeric-input {
   background-color: rgba(17, 17, 17, 0.8) !important;
-  border: 1px solid rgba(255, 215, 0, 0.3) !important;
+  border: 1px solid rgba(255, 215, 0, 0.4) !important;
   padding: 6px 8px !important;
   border-radius: 8px !important;
   font-size: 14px !important;

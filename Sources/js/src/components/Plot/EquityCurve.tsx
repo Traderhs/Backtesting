@@ -53,23 +53,23 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
     const chartRef = useRef<IChartApi | null>(null);
     const baselineSeriesRef = useRef<any | null>(null); // 타입을 any로 변경하여 우회
     const initialBalanceLineRef = useRef<any | null>(null);
-    const maxBalanceLineRef = useRef<any | null>(null); // 최고 자금 라인 ref 추가
-    const maxDrawdownLineRef = useRef<any | null>(null); // 최고 드로우다운 라인 ref 추가
-    const drawdownSeriesRef = useRef<any | null>(null); // 드로우다운 시리즈 ref 추가
-    const drawdownPaneRef = useRef<any | null>(null); // 드로우다운 pane ref 추가
+    const maxBalanceLineRef = useRef<any | null>(null); // 최고 자금 라인 ref
+    const maxDrawdownLineRef = useRef<any | null>(null); // 최고 드로우다운 라인 ref
+    const drawdownSeriesRef = useRef<any | null>(null); // 드로우다운 시리즈 ref
+    const drawdownPaneRef = useRef<any | null>(null); // 드로우다운 pane ref
     const timeAxisLabelRef = useRef<HTMLDivElement | null>(null);
     const priceAxisLabelRef = useRef<HTMLDivElement | null>(null);
-    const tooltipRef = useRef<HTMLDivElement | null>(null); // 마우스 툴팁을 위한 ref 추가
-    const scaleButtonRef = useRef<HTMLDivElement | null>(null); // 로그 스케일 버튼 ref 추가
-    const yearGridContainerRef = useRef<HTMLDivElement | null>(null); // 년도 그리드 컨테이너 ref 추가
+    const tooltipRef = useRef<HTMLDivElement | null>(null); // 마우스 툴팁을 위한 ref
+    const scaleButtonRef = useRef<HTMLDivElement | null>(null); // 로그 스케일 버튼 ref
+    const yearGridContainerRef = useRef<HTMLDivElement | null>(null); // 년도 그리드 컨테이너 ref
     const isComponentMounted = useRef(true);
-    const seriesDataRef = useRef<CustomBaselineData[]>([]); // seriesData를 위한 ref 추가
-    const hasTooltipAppeared = useRef(false); // 툴팁 첫 등장 여부 추적 ref 추가
+    const seriesDataRef = useRef<CustomBaselineData[]>([]); // seriesData를 위한 ref
+    const hasTooltipAppeared = useRef(false); // 툴팁 첫 등장 여부 추적 ref
     const {filteredTrades} = useTradeFilter();
     const filteredTradesRef = useRef(filteredTrades); // filteredTrades를 ref로 저장
-    const prevFilteredTradesLengthRef = useRef(filteredTrades.length); // 이전 filteredTrades 길이를 저장하는 ref 추가
-    const [isLogScale, setIsLogScale] = useState(false); // 로그 스케일 상태 추가
-    const initialDrawdownHeightSet = useRef(false); // 드로우다운 초기 높이 설정 여부 ref 추가
+    const prevFilteredTradesLengthRef = useRef(filteredTrades.length); // 이전 filteredTrades 길이를 저장하는 ref
+    const [isLogScale, setIsLogScale] = useState(false); // 로그 스케일 상태
+    const initialDrawdownHeightSet = useRef(false); // 드로우다운 초기 높이 설정 여부 ref
 
     // 로그 스케일 토글 함수
     const toggleLogScale = useCallback(() => {
@@ -295,7 +295,7 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
             const year = date.getFullYear();
 
             if (lastYear !== null && year !== lastYear) {
-                yearChangePoints.push({ year, time: point.time });
+                yearChangePoints.push({year, time: point.time});
             }
             lastYear = year;
         }
@@ -839,12 +839,12 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
 
             // 구분선 HTML (최고 자금과 드로우다운 사이)
             const dividerHtml = (showMaxBalance && showDrawdown) ? `
-        <div style="border-bottom: 1px solid rgba(255, 215, 0, 0.3); margin-bottom: 8px;"></div>
+        <div style="border-bottom: 1px solid rgba(255, 215, 0, 0.4); margin-bottom: 8px;"></div>
       ` : '';
 
             // 내용 업데이트
             tooltip.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; border-bottom: 1px solid rgba(255, 215, 0, 0.3); padding-bottom: 5px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; border-bottom: 1px solid rgba(255, 215, 0, 0.4); padding-bottom: 5px;">
            <strong style="color: #ffffff; font-size: 15px; font-weight: 600;">거래 번호 #${Number(pointData.tradeNum).toLocaleString()}</strong>
         </div>
         <div style="margin: 8px 0 0 0;">
@@ -965,7 +965,7 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
                 fontFamily: "'Inter', 'Pretendard', sans-serif",
                 ...(showPanes ? {
                     panes: {
-                        separatorColor: 'rgba(255, 215, 0, 0.3)', // pane 구분선 색상 (테두리와 같게)
+                        separatorColor: 'rgba(255, 215, 0, 0.4)', // pane 구분선 색상 (테두리와 같게)
                         separatorHoverColor: 'transparent', // hover 색상을 투명하게 설정
                     }
                 } : {})
@@ -1102,7 +1102,7 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
                         removeDOMElement(container, priceAxisLabelRef);
                         removeDOMElement(container, tooltipRef);
                         removeDOMElement(container, scaleButtonRef);
-                        
+
                         // 년도 그리드 컨테이너 제거
                         if (yearGridContainerRef.current && container.contains(yearGridContainerRef.current)) {
                             container.removeChild(yearGridContainerRef.current);
@@ -1325,7 +1325,7 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
 
                 const {width, height} = entries[0].contentRect;
                 chartRef.current.applyOptions({width, height});
-                
+
                 // 리사이즈 시 년도 그리드 다시 그리기
                 requestAnimationFrame(() => {
                     drawYearGridLines();

@@ -1127,7 +1127,7 @@ const SymbolCard = memo(({
             style={{
                 borderRadius: '8px',
                 background: '#111111',
-                border: '1.2px solid rgba(255, 215, 0, 0.3)',
+                border: '1.2px solid rgba(255, 215, 0, 0.4)',
                 boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)',
                 marginTop: '7px',
                 marginLeft: '4px',

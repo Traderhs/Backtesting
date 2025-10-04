@@ -29,7 +29,7 @@
     right: 0;
     bottom: 0;
     border-radius: 8px;
-    border: 1px solid rgba(255, 215, 0, 0.15);
+    border: 1px solid rgba(255, 215, 0, 0.3);
     pointer-events: none;
     z-index: 1;
 }
@@ -58,7 +58,7 @@
     left: 0;
     right: 0;
     height: 2px;
-    background: rgba(255, 215, 0, 0.13);
+    background: rgba(255, 215, 0, 0.1);
     content: '';
     width: 100%;
 }
@@ -162,7 +162,7 @@
 }
 
 .symbol-card-bullet {
-    color: rgba(255, 215, 0, 0.8);
+    color: rgba(255, 215, 0, 0.6);
     margin-right: 8px;
     font-size: 15px;
     line-height: 18px;
