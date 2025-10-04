@@ -624,24 +624,19 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
 
             // 툴팁 너비를 계산하여 데이터 포인트 위치에 맞게 배치
             const labelWidth = timeAxisLabel.offsetWidth;
+            const leftPriceScaleWidth = chartRef.current?.priceScale('left').width() || 0;
 
-            // 툴팁 위치 계산 (SymbolPerformance와 동일한 방식)
+            // 툴팁 위치 계산 - param.point.x를 사용하여 y축 너비 변화에 대응
+            // param.point.x는 차트 영역 내 좌표이므로 y축 너비를 더하고 레이블 중앙 정렬을 위해 labelWidth / 2를 뺌
             const containerForLabel = chartContainerRef.current;
-            let labelX = closestXCoordinate - labelWidth / 2 + 75; // offsetX 포함
+            let labelX = (param.point.x as number) + leftPriceScaleWidth - labelWidth / 2;
 
             if (containerForLabel) {
                 const containerWidth = containerForLabel.clientWidth;
                 // 오른쪽 경계에서 label이 넘지 않게 고정
                 labelX = Math.min(labelX, containerWidth - labelWidth);
-                // 왼쪽 경계도 체크
-                labelX = Math.max(labelX, 0);
-            }
-
-            // 왼쪽 경계 검사 - 왼쪽 price scale 너비 고려
-            const leftPriceScaleWidth = chartRef.current?.priceScale('left').width() || 0;
-            if (labelX < leftPriceScaleWidth) {
-                // 왼쪽 경계를 넘어가면 price scale 바로 옆에 붙이기
-                labelX = leftPriceScaleWidth;
+                // 왼쪽 경계도 체크 - 왼쪽 price scale 너비 고려
+                labelX = Math.max(labelX, leftPriceScaleWidth);
             }
 
             timeAxisLabel.style.left = `${labelX}px`;
@@ -793,14 +788,16 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
       `;
 
             // 가장 가까운 데이터 포인트의 위치를 기준으로 툴팁 위치 조정
-            const pointX = closestXCoordinate;
+            // param.point.x를 사용하여 y축 너비 변화에 영향받지 않도록 수정
+            const leftPriceScaleWidth = chartRef.current?.priceScale('left').width() || 0;
+            const pointX = (param.point.x as number) + leftPriceScaleWidth;
             const pointY = param.point.y;
 
             requestAnimationFrame(() => {
                 if (!isComponentMounted.current || !tooltipRef.current) return;
 
                 // 위치 업데이트 먼저 수행 (십자선 우하단에 표시)
-                let finalX = pointX + 125; // 데이터 포인트에서 약간 오른쪽으로 이동
+                let finalX = pointX + 25; // 마우스 커서에서 오른쪽으로 이동
                 let finalY = pointY + 25; // 마우스 커서에서 아래쪽으로 이동
 
                 // 드로우다운 페인인 경우 Y좌표 조정
@@ -829,7 +826,7 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
                     // 오른쪽 경계 체크
                     const rightEdge = finalX + tooltipWidth;
                     if (rightEdge > containerRect.width) {
-                        finalX = pointX - tooltipWidth + 70; // 오른쪽으로 벗어나면 왼쪽에 표시
+                        finalX = pointX - tooltipWidth - 25; // 오른쪽으로 벗어나면 왼쪽에 표시
                     }
 
                     // 아래쪽 경계 체크
