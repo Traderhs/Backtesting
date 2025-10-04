@@ -92,12 +92,12 @@ interface TradeFilter {
  * 거래 데이터를 필터링합니다 (멀티 워커 버전)
  * @param trades 필터링할 거래 데이터
  * @param filter 필터 조건
- * @returns 필터링된 거래 데이터
+ * @returns 필터링된 거래 데이터와 파산 여부
  */
 export async function filterTradesAsync(
     trades: TradeItem[],
     filter: TradeFilter
-): Promise<TradeItem[]> {
+): Promise<{ trades: TradeItem[], hasBankruptcy: boolean }> {
     try {
         return await tradeFilterManager.filterTrades(trades, filter);
     } catch (error) {

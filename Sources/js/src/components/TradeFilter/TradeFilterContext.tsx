@@ -145,6 +145,7 @@ export interface TradeFilterContextType {
     loading: boolean;
     isFiltering: boolean;
     filteringProgress: number; // 필터링 진행률 (0-100) 추가
+    hasBankruptcy: boolean; // 자금 재계산 시 파산 발생 여부
     options: {
         symbols: FilterOption[];
         strategies: FilterOption[];

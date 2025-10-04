@@ -124,6 +124,9 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
     // 필터링 진행률 상태
     const [filteringProgress, setFilteringProgress] = useState<number>(0);
 
+    // 자금 재계산 시 파산 발생 여부
+    const [hasBankruptcy, setHasBankruptcy] = useState<boolean>(false);
+
     // 앱 시작 시 config.json 불러오기 (전략, 심볼)
     useEffect(() => {
         async function loadConfig() {
@@ -439,7 +442,8 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                 workerFilter
             );
 
-            setFilteredTrades(result as TradeItem[]);
+            setFilteredTrades(result.trades as TradeItem[]);
+            setHasBankruptcy(result.hasBankruptcy); // 파산 여부 저장
             setIsFiltering(false);
             setFilteringProgress(100);
         } catch (error) {
@@ -476,6 +480,7 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
         loading,
         isFiltering, // 필터링 진행 상태 추가
         filteringProgress, // 멀티 워커 진행률 추가
+        hasBankruptcy, // 자금 재계산 시 파산 발생 여부 추가
         options: {
             symbols: symbolOptions,
             strategies: strategyOptions,
@@ -495,6 +500,7 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
         loading,
         isFiltering,
         filteringProgress,
+        hasBankruptcy,
         symbolOptions,
         strategyOptions,
         entryOptions,

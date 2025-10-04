@@ -108,6 +108,20 @@
     border-bottom: 1px dotted rgba(255, 215, 0, 0.3) !important;
 }
 
+/* 파산 행 바로 직전 거래는 bottom border와 ::after 제거 */
+.trade-list-container .table .tr.before-bankrupt .td {
+    border-bottom: none !important;
+}
+
+.trade-list-container .table .tr.before-bankrupt .td::after {
+    display: none !important;
+}
+
+/* tr 자체에 적용된 금색 경계선도 제거 (우선순위 확보) */
+.trade-list-container .table .tr.before-bankrupt {
+    border-bottom: none !important;
+}
+
 /* 마지막 행 구분선 제거 */
 .trade-list-container .table .tr.last-row .td {
     border-bottom: none !important;
