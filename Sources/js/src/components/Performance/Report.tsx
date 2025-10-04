@@ -1163,9 +1163,13 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                             <span
                                                 className="text-xs text-[#fff2b3] mb-1 block truncate header-text">최대 개별 순수익률</span>
                                             <span
-                                                className={`truncate ${
-                                                    metrics && metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.value !== '-' && Number(metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.pnl) > 0 ? 'positive' : ''
-                                                }`}>
+                                                className={'truncate ' + (metrics ? (() => {
+                                                    const val = metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.value;
+                                                    const pnlStr = metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.pnl;
+                                                    if (val === '-' || pnlStr === '-' || pnlStr === undefined) return '';
+                                                    const pnlNum = parseFloat(String(pnlStr).replace(/,/g, ''));
+                                                    return isNaN(pnlNum) ? '' : (pnlNum > 0 ? 'positive' : (pnlNum < 0 ? 'negative' : ''));
+                                                })() : '')}>
                                                 {metrics && metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.value === '-' ? '-' : formatPercent(metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.value)}
                                             </span>
                                         </div>
@@ -1175,9 +1179,12 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                             <span
                                                 className="text-xs text-[#fff2b3] mb-1 block truncate header-text">순수익</span>
                                             <span
-                                                className={`truncate ${
-                                                    metrics && metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.pnl !== '-' && Number(metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.pnl) > 0 ? 'positive' : ''
-                                                }`}>
+                                                className={'truncate ' + (metrics ? (() => {
+                                                    const pnlStr = metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.pnl;
+                                                    if (pnlStr === '-' || pnlStr === undefined) return '';
+                                                    const pnlNum = parseFloat(String(pnlStr).replace(/,/g, ''));
+                                                    return isNaN(pnlNum) ? '' : (pnlNum > 0 ? 'positive' : (pnlNum < 0 ? 'negative' : ''));
+                                                })() : '')}>
                                                 {metrics && metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.pnl === '-' ? '-' : formatDollar(metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.pnl)}
                                             </span>
                                         </div>
@@ -1197,9 +1204,13 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                             <span
                                                 className="text-xs text-[#fff2b3] mb-1 block truncate header-text">최대 전체 순수익률</span>
                                             <span
-                                                className={`truncate ${
-                                                    metrics && metrics.maxProfitLossRateMetrics.maxTotalProfitRate.value !== '-' && Number(metrics.maxProfitLossRateMetrics.maxTotalProfitRate.pnl) > 0 ? 'positive' : ''
-                                                }`}>
+                                                className={'truncate ' + (metrics ? (() => {
+                                                    const val = metrics.maxProfitLossRateMetrics.maxTotalProfitRate.value;
+                                                    const pnlStr = metrics.maxProfitLossRateMetrics.maxTotalProfitRate.pnl;
+                                                    if (val === '-' || pnlStr === '-' || pnlStr === undefined) return '';
+                                                    const pnlNum = parseFloat(String(pnlStr).replace(/,/g, ''));
+                                                    return isNaN(pnlNum) ? '' : (pnlNum > 0 ? 'positive' : (pnlNum < 0 ? 'negative' : ''));
+                                                })() : '')}>
                                                 {metrics && metrics.maxProfitLossRateMetrics.maxTotalProfitRate.value === '-' ? '-' : formatPercent(metrics.maxProfitLossRateMetrics.maxTotalProfitRate.value)}
                                             </span>
                                         </div>
@@ -1209,9 +1220,12 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                             <span
                                                 className="text-xs text-[#fff2b3] mb-1 block truncate header-text">순수익</span>
                                             <span
-                                                className={`truncate ${
-                                                    metrics && metrics.maxProfitLossRateMetrics.maxTotalProfitRate.pnl !== '-' && Number(metrics.maxProfitLossRateMetrics.maxTotalProfitRate.pnl) > 0 ? 'positive' : ''
-                                                }`}>
+                                                className={'truncate ' + (metrics ? (() => {
+                                                    const pnlStr = metrics.maxProfitLossRateMetrics.maxTotalProfitRate.pnl;
+                                                    if (pnlStr === '-' || pnlStr === undefined) return '';
+                                                    const pnlNum = parseFloat(String(pnlStr).replace(/,/g, ''));
+                                                    return isNaN(pnlNum) ? '' : (pnlNum > 0 ? 'positive' : (pnlNum < 0 ? 'negative' : ''));
+                                                })() : '')}>
                                                 {metrics && metrics.maxProfitLossRateMetrics.maxTotalProfitRate.pnl === '-' ? '-' : formatDollar(metrics.maxProfitLossRateMetrics.maxTotalProfitRate.pnl)}
                                             </span>
                                         </div>
