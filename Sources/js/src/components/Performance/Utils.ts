@@ -116,7 +116,7 @@ export const formatPercent = (value: string | number): string => {
     // 문자열인 경우 숫자 부분 추출 (예: "12.34%" -> "12.34")
     // 숫자인 경우 그대로 사용
     const percentValue = typeof value === 'string'
-        ? parseFloat(value.replace('%', ''))
+        ? parseFloat(value.replace('%', '').replace(/,/g, ''))
         : value;
 
     if (isNaN(percentValue)) {
