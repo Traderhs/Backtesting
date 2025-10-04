@@ -187,7 +187,7 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
         exit: {
             scale: 1,
             // 나갈 때 테두리 색상과 그림자 원래대로 복구 (animate 상태 또는 style의 기본값으로 돌아감)
-            borderColor: 'rgba(255, 215, 0, 0.3)',
+            borderColor: 'rgba(255, 215, 0, 0.4)',
             boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)',
             transition: {duration: 0.03, ease: 'easeIn'} // 마우스를 뗐을 때 더 빠른 복귀
         }
@@ -233,7 +233,7 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
                     maxWidth: '200px',
                     overflow: 'hidden', // 텍스트 오버플로우 방지
                     // 테두리를 여기에 직접 적용 - 카드의 가장 바깥쪽 요소
-                    border: '1.2px solid rgba(255, 215, 0, 0.3)',
+                    border: '1.2px solid rgba(255, 215, 0, 0.4)',
                     // 그림자로 테두리 강화
                     boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)',
                     transformOrigin: 'center center',
@@ -629,7 +629,7 @@ const Overview = React.memo(({}: OverviewProps) => {
                     overflow: 'visible',
                     background: '#111111',
                     boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)',
-                    border: '1.2px solid rgba(255, 215, 0, 0.3)',
+                    border: '1.2px solid rgba(255, 215, 0, 0.4)',
                     marginTop: '10px',
                     marginBottom: '2.5rem',
                     position: 'relative',

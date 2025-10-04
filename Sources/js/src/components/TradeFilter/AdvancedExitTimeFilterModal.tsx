@@ -498,7 +498,7 @@ const AdvancedExitTimeFilterModal: React.FC<AdvancedExitTimeFilterModalProps> = 
                     onMouseDown={handleMouseDown}
                 >
                     <div className="advanced-filter-title-row">
-                        <h2 className="advanced-filter-title">[종료 시간] 고급 필터</h2>
+                        <h2 className="advanced-filter-title">[청산 시간] 고급 필터</h2>
                         <button 
                             className="advanced-close-button" 
                             onClick={handleCloseButtonClick}

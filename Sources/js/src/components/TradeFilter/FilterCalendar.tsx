@@ -202,6 +202,7 @@ const FilterCalendar: React.FC<FilterCalendarProps> = ({
         isMouseDownOutside = false;
         return;
       }
+
       if (calendarRef.current && !calendarRef.current.contains(event.target as Node)) {
         isMouseDownOutside = true;
       } else {
