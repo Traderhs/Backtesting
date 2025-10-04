@@ -1086,7 +1086,7 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                 <td className="p-0 text-center align-middle overflow-hidden">
                                     <div className="flex justify-around items-center h-full">
                                         <div
-                                            className="flex-1 text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
+                                            className="flex-grow text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
                                             style={{borderRightColor: 'rgba(255, 215, 0, 0.4)'}}>
                                             <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">최대 순수익</span>
                                             <span
@@ -1096,25 +1096,10 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                                 {metrics && metrics.maxProfitLossMetrics.maxProfit === '-' ? '-' : formatDollar(metrics.maxProfitLossMetrics.maxProfit)}
                                             </span>
                                         </div>
-                                        <div
-                                            className="flex-1 text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
-                                            style={{borderRightColor: 'rgba(255, 215, 0, 0.4)'}}>
-                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">개별 순수익률</span>
+                                        <div className="flex-grow text-center px-1 py-2 overflow-hidden">
+                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">청산 시간</span>
                                             <span
-                                                className={`truncate ${
-                                                    metrics && metrics.maxProfitLossMetrics.maxProfitIndividualRate !== '-' && parseFloat(String(metrics.maxProfitLossMetrics.maxProfitIndividualRate).replace('%', '')) > 0 ? 'positive' : ''
-                                                }`}>
-                                                {metrics && metrics.maxProfitLossMetrics.maxProfitIndividualRate === '-' ? '-' : formatPercent(metrics.maxProfitLossMetrics.maxProfitIndividualRate)}
-                                            </span>
-                                        </div>
-                                        <div className="flex-1 text-center px-1 py-2 overflow-hidden">
-                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">전체 순수익률</span>
-                                            <span
-                                                className={`truncate ${
-                                                    metrics && metrics.maxProfitLossMetrics.maxProfitTotalRate !== '-' && parseFloat(String(metrics.maxProfitLossMetrics.maxProfitTotalRate).replace('%', '')) > 0 ? 'positive' : ''
-                                                }`}>
-                                                {metrics && metrics.maxProfitLossMetrics.maxProfitTotalRate === '-' ? '-' : formatPercent(metrics.maxProfitLossMetrics.maxProfitTotalRate)}
-                                            </span>
+                                                className="truncate">{metrics && metrics.maxProfitLossMetrics.maxProfitTime}</span>
                                         </div>
                                     </div>
                                 </td>
@@ -1122,7 +1107,7 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                 <td className="p-0 text-center align-middle overflow-hidden">
                                     <div className="flex justify-around items-center h-full">
                                         <div
-                                            className="flex-1 text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
+                                            className="flex-grow text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
                                             style={{borderRightColor: 'rgba(255, 215, 0, 0.4)'}}>
                                             <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">최대 순손실</span>
                                             <span
@@ -1132,25 +1117,10 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                                 {metrics && formatDollar(metrics.maxProfitLossMetrics.maxLoss)}
                                             </span>
                                         </div>
-                                        <div
-                                            className="flex-1 text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
-                                            style={{borderRightColor: 'rgba(255, 215, 0, 0.4)'}}>
-                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">개별 순손실률</span>
+                                        <div className="flex-grow text-center px-1 py-2 overflow-hidden">
+                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">청산 시간</span>
                                             <span
-                                                className={`truncate ${
-                                                    metrics && parseFloat(String(metrics.maxProfitLossMetrics.maxLossIndividualRate).replace('%', '')) < 0 ? 'negative' : ''
-                                                }`}>
-                                                {metrics && formatPercent(metrics.maxProfitLossMetrics.maxLossIndividualRate)}
-                                            </span>
-                                        </div>
-                                        <div className="flex-1 text-center px-1 py-2 overflow-hidden">
-                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">전체 순손실률</span>
-                                            <span
-                                                className={`truncate ${
-                                                    metrics && parseFloat(String(metrics.maxProfitLossMetrics.maxLossTotalRate).replace('%', '')) < 0 ? 'negative' : ''
-                                                }`}>
-                                                {metrics && formatPercent(metrics.maxProfitLossMetrics.maxLossTotalRate)}
-                                            </span>
+                                                className="truncate">{metrics && metrics.maxProfitLossMetrics.maxLossTime}</span>
                                         </div>
                                     </div>
                                 </td>
@@ -1160,32 +1130,15 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                         <div
                                             className="flex-grow text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
                                             style={{borderRightColor: 'rgba(255, 215, 0, 0.4)'}}>
-                                            <span
-                                                className="text-xs text-[#fff2b3] mb-1 block truncate header-text">최대 개별 순수익률</span>
+                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">최대 개별 순수익률</span>
                                             <span
                                                 className={'truncate ' + (metrics ? (() => {
                                                     const val = metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.value;
-                                                    const pnlStr = metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.pnl;
-                                                    if (val === '-' || pnlStr === '-' || pnlStr === undefined) return '';
-                                                    const pnlNum = parseFloat(String(pnlStr).replace(/,/g, ''));
-                                                    return isNaN(pnlNum) ? '' : (pnlNum > 0 ? 'positive' : (pnlNum < 0 ? 'negative' : ''));
+                                                    if (val === '-') return '';
+                                                    const valNum = parseFloat(String(val).replace('%', ''));
+                                                    return isNaN(valNum) ? '' : (valNum > 0 ? 'positive' : (valNum < 0 ? 'negative' : ''));
                                                 })() : '')}>
                                                 {metrics && metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.value === '-' ? '-' : formatPercent(metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.value)}
-                                            </span>
-                                        </div>
-                                        <div
-                                            className="flex-grow text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
-                                            style={{borderRightColor: 'rgba(255, 215, 0, 0.4)'}}>
-                                            <span
-                                                className="text-xs text-[#fff2b3] mb-1 block truncate header-text">순수익</span>
-                                            <span
-                                                className={'truncate ' + (metrics ? (() => {
-                                                    const pnlStr = metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.pnl;
-                                                    if (pnlStr === '-' || pnlStr === undefined) return '';
-                                                    const pnlNum = parseFloat(String(pnlStr).replace(/,/g, ''));
-                                                    return isNaN(pnlNum) ? '' : (pnlNum > 0 ? 'positive' : (pnlNum < 0 ? 'negative' : ''));
-                                                })() : '')}>
-                                                {metrics && metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.pnl === '-' ? '-' : formatDollar(metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.pnl)}
                                             </span>
                                         </div>
                                         <div className="flex-grow text-center px-1 py-2 overflow-hidden">
@@ -1201,32 +1154,15 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                         <div
                                             className="flex-grow text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
                                             style={{borderRightColor: 'rgba(255, 215, 0, 0.4)'}}>
-                                            <span
-                                                className="text-xs text-[#fff2b3] mb-1 block truncate header-text">최대 전체 순수익률</span>
+                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">최대 전체 순수익률</span>
                                             <span
                                                 className={'truncate ' + (metrics ? (() => {
                                                     const val = metrics.maxProfitLossRateMetrics.maxTotalProfitRate.value;
-                                                    const pnlStr = metrics.maxProfitLossRateMetrics.maxTotalProfitRate.pnl;
-                                                    if (val === '-' || pnlStr === '-' || pnlStr === undefined) return '';
-                                                    const pnlNum = parseFloat(String(pnlStr).replace(/,/g, ''));
-                                                    return isNaN(pnlNum) ? '' : (pnlNum > 0 ? 'positive' : (pnlNum < 0 ? 'negative' : ''));
+                                                    if (val === '-') return '';
+                                                    const valNum = parseFloat(String(val).replace('%', ''));
+                                                    return isNaN(valNum) ? '' : (valNum > 0 ? 'positive' : (valNum < 0 ? 'negative' : ''));
                                                 })() : '')}>
                                                 {metrics && metrics.maxProfitLossRateMetrics.maxTotalProfitRate.value === '-' ? '-' : formatPercent(metrics.maxProfitLossRateMetrics.maxTotalProfitRate.value)}
-                                            </span>
-                                        </div>
-                                        <div
-                                            className="flex-grow text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
-                                            style={{borderRightColor: 'rgba(255, 215, 0, 0.4)'}}>
-                                            <span
-                                                className="text-xs text-[#fff2b3] mb-1 block truncate header-text">순수익</span>
-                                            <span
-                                                className={'truncate ' + (metrics ? (() => {
-                                                    const pnlStr = metrics.maxProfitLossRateMetrics.maxTotalProfitRate.pnl;
-                                                    if (pnlStr === '-' || pnlStr === undefined) return '';
-                                                    const pnlNum = parseFloat(String(pnlStr).replace(/,/g, ''));
-                                                    return isNaN(pnlNum) ? '' : (pnlNum > 0 ? 'positive' : (pnlNum < 0 ? 'negative' : ''));
-                                                })() : '')}>
-                                                {metrics && metrics.maxProfitLossRateMetrics.maxTotalProfitRate.pnl === '-' ? '-' : formatDollar(metrics.maxProfitLossRateMetrics.maxTotalProfitRate.pnl)}
                                             </span>
                                         </div>
                                         <div className="flex-grow text-center px-1 py-2 overflow-hidden">
@@ -1242,53 +1178,17 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                         <div
                                             className="flex-grow text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
                                             style={{borderRightColor: 'rgba(255, 215, 0, 0.4)'}}>
-                                            <span
-                                                className="text-xs text-[#fff2b3] mb-1 block truncate header-text">최대 개별 순손실률</span>
+                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">최대 개별 순손실률</span>
                                             <span
                                                 className={`truncate ${
                                                     metrics && (() => {
-                                                        const pnlStr = metrics.maxProfitLossRateMetrics.maxIndividualLossRate.pnl;
-                                                        const rateVal = parseFloat(String(metrics.maxProfitLossRateMetrics.maxIndividualLossRate.value).replace('%', ''));
-                                                        if (pnlStr === '-' && isNaN(rateVal)) return '';
-                                                        const pnlVal = pnlStr === '-' ? 0 : Number(pnlStr.replace(/,/g, ''));
-                                                        return (pnlVal === 0 && rateVal === 0) ? '' : (pnlVal < 0 || rateVal < 0) ? 'negative' : '';
+                                                        const val = metrics.maxProfitLossRateMetrics.maxIndividualLossRate.value;
+                                                        if (val === '-') return '';
+                                                        const rateVal = parseFloat(String(val).replace('%', ''));
+                                                        return isNaN(rateVal) ? '' : (rateVal < 0 ? 'negative' : '');
                                                     })()
-                                                }`}
-                                                style={{
-                                                    color: metrics && (() => {
-                                                        const pnlStr = metrics.maxProfitLossRateMetrics.maxIndividualLossRate.pnl;
-                                                        const rateVal = parseFloat(String(metrics.maxProfitLossRateMetrics.maxIndividualLossRate.value).replace('%', ''));
-                                                        if (pnlStr === '-' && isNaN(rateVal)) return undefined;
-                                                        const pnlVal = pnlStr === '-' ? 0 : Number(pnlStr.replace(/,/g, ''));
-                                                        return (pnlVal === 0 && rateVal === 0) ? '#ffffff' : undefined;
-                                                    })()
-                                                }}>
+                                                }`}>
                                                 {metrics && formatPercent(metrics.maxProfitLossRateMetrics.maxIndividualLossRate.value)}
-                                            </span>
-                                        </div>
-                                        <div
-                                            className="flex-grow text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
-                                            style={{borderRightColor: 'rgba(255, 215, 0, 0.4)'}}>
-                                            <span
-                                                className="text-xs text-[#fff2b3] mb-1 block truncate header-text">순손실</span>
-                                            <span
-                                                className={`truncate ${
-                                                    metrics && (() => {
-                                                        const pnlStr = metrics.maxProfitLossRateMetrics.maxIndividualLossRate.pnl;
-                                                        if (pnlStr === '-') return '';
-                                                        const pnlVal = Number(pnlStr.replace(/,/g, ''));
-                                                        return pnlVal === 0 ? '' : pnlVal < 0 ? 'negative' : '';
-                                                    })()
-                                                }`}
-                                                style={{
-                                                    color: metrics && (() => {
-                                                        const pnlStr = metrics.maxProfitLossRateMetrics.maxIndividualLossRate.pnl;
-                                                        if (pnlStr === '-') return undefined;
-                                                        const pnlVal = Number(pnlStr.replace(/,/g, ''));
-                                                        return pnlVal === 0 ? '#ffffff' : undefined;
-                                                    })()
-                                                }}>
-                                                {metrics && formatDollar(metrics.maxProfitLossRateMetrics.maxIndividualLossRate.pnl)}
                                             </span>
                                         </div>
                                         <div className="flex-grow text-center px-1 py-2 overflow-hidden">
@@ -1304,53 +1204,17 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                         <div
                                             className="flex-grow text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
                                             style={{borderRightColor: 'rgba(255, 215, 0, 0.4)'}}>
-                                            <span
-                                                className="text-xs text-[#fff2b3] mb-1 block truncate header-text">최대 전체 순손실률</span>
+                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">최대 전체 순손실률</span>
                                             <span
                                                 className={`truncate ${
                                                     metrics && (() => {
-                                                        const pnlStr = metrics.maxProfitLossRateMetrics.maxTotalLossRate.pnl;
-                                                        const rateVal = parseFloat(String(metrics.maxProfitLossRateMetrics.maxTotalLossRate.value).replace('%', ''));
-                                                        if (pnlStr === '-' && isNaN(rateVal)) return '';
-                                                        const pnlVal = pnlStr === '-' ? 0 : Number(pnlStr.replace(/,/g, ''));
-                                                        return (pnlVal === 0 && rateVal === 0) ? '' : (pnlVal < 0 || rateVal < 0) ? 'negative' : '';
+                                                        const val = metrics.maxProfitLossRateMetrics.maxTotalLossRate.value;
+                                                        if (val === '-') return '';
+                                                        const rateVal = parseFloat(String(val).replace('%', ''));
+                                                        return isNaN(rateVal) ? '' : (rateVal < 0 ? 'negative' : '');
                                                     })()
-                                                }`}
-                                                style={{
-                                                    color: metrics && (() => {
-                                                        const pnlStr = metrics.maxProfitLossRateMetrics.maxTotalLossRate.pnl;
-                                                        const rateVal = parseFloat(String(metrics.maxProfitLossRateMetrics.maxTotalLossRate.value).replace('%', ''));
-                                                        if (pnlStr === '-' && isNaN(rateVal)) return undefined;
-                                                        const pnlVal = pnlStr === '-' ? 0 : Number(pnlStr.replace(/,/g, ''));
-                                                        return (pnlVal === 0 && rateVal === 0) ? '#ffffff' : undefined;
-                                                    })()
-                                                }}>
+                                                }`}>
                                                 {metrics && formatPercent(metrics.maxProfitLossRateMetrics.maxTotalLossRate.value)}
-                                            </span>
-                                        </div>
-                                        <div
-                                            className="flex-grow text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
-                                            style={{borderRightColor: 'rgba(255, 215, 0, 0.4)'}}>
-                                            <span
-                                                className="text-xs text-[#fff2b3] mb-1 block truncate header-text">순손실</span>
-                                            <span
-                                                className={`truncate ${
-                                                    metrics && (() => {
-                                                        const pnlStr = metrics.maxProfitLossRateMetrics.maxTotalLossRate.pnl;
-                                                        if (pnlStr === '-') return '';
-                                                        const pnlVal = Number(pnlStr.replace(/,/g, ''));
-                                                        return pnlVal === 0 ? '' : pnlVal < 0 ? 'negative' : '';
-                                                    })()
-                                                }`}
-                                                style={{
-                                                    color: metrics && (() => {
-                                                        const pnlStr = metrics.maxProfitLossRateMetrics.maxTotalLossRate.pnl;
-                                                        if (pnlStr === '-') return undefined;
-                                                        const pnlVal = Number(pnlStr.replace(/,/g, ''));
-                                                        return pnlVal === 0 ? '#ffffff' : undefined;
-                                                    })()
-                                                }}>
-                                                {metrics && formatDollar(metrics.maxProfitLossRateMetrics.maxTotalLossRate.pnl)}
                                             </span>
                                         </div>
                                         <div className="flex-grow text-center px-1 py-2 overflow-hidden">
