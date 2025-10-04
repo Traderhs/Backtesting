@@ -1176,19 +1176,18 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
 
             // 툴팁 위치 계산
             const labelWidth = timeAxisLabel.offsetWidth;
+            const leftPriceScaleWidth = chartRef.current?.priceScale('left').width() || 0;
+
+            // param.point.x는 차트 영역 내 좌표이므로 y축 너비를 더하고 레이블 중앙 정렬을 위해 labelWidth / 2를 뺌
             const containerForLabel = chartContainerRef.current;
-            let labelX = param.point.x;
+            let labelX = (param.point.x as number) + leftPriceScaleWidth - labelWidth / 2;
+
             if (containerForLabel) {
                 const containerWidth = containerForLabel.clientWidth;
                 // 오른쪽 경계에서 label이 넘지 않게 고정
-                labelX = Math.min(param.point.x, containerWidth - labelWidth);
-                // 왼쪽 경계도 체크
-                labelX = Math.max(labelX, 0);
-            }
-
-            const leftPriceScaleWidth = chartRef.current?.priceScale('left').width() || 0;
-            if (labelX < leftPriceScaleWidth) {
-                labelX = leftPriceScaleWidth;
+                labelX = Math.min(labelX, containerWidth - labelWidth);
+                // 왼쪽 경계도 체크 - 왼쪽 price scale 너비 고려
+                labelX = Math.max(labelX, leftPriceScaleWidth);
             }
 
             timeAxisLabel.style.left = `${labelX}px`;
