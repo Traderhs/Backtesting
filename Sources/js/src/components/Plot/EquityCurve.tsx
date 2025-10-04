@@ -337,7 +337,7 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
             line.style.top = '0';
             line.style.width = '1px';
             line.style.height = `calc(100% - ${timeScaleHeight}px)`; // x축 높이만큼 빼기
-            line.style.backgroundColor = 'rgba(128, 128, 128, 0.3)';
+            line.style.backgroundColor = 'rgba(255, 215, 0, 0.15)';
             line.style.pointerEvents = 'none';
             gridContainer.appendChild(line);
         }
