@@ -882,6 +882,15 @@ export default function TradeList({config}: TradeListProps) {
         return () => clearTimeout(timeoutId);
     }, [filteredTrades, allTrades, filter.recalculateBalance, hasBankruptcy]);
 
+    // 필터나 자금 재계산이 변경되면 선택 및 호버 상태 모두 해제
+    useEffect(() => {
+        setSelectedCell(null);
+        setSelectedColumnGroup([]);
+        setHoverTradeNo(null);
+        setHoverColumn(null);
+        setHoverColumnGroup([]);
+    }, [filteredTrades, filter.recalculateBalance]);
+
     // 열 너비 계산 최적화 - 샘플링 사용 및 캐싱 강화
     const columnWidthsCache = useRef<Map<string, { [key: string]: string }>>(new Map());
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
