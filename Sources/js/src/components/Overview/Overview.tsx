@@ -29,7 +29,7 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
     const [fontSize, setFontSize] = useState(27);
     const [displayValue, setDisplayValue] = useState('');
     const valueRef = useRef<HTMLDivElement>(null);
-    
+
     // 지표 데이터 매핑 함수 (소수점 제거 옵션 추가)
     const getMetricValue = (metricId: string, data: any, removeDecimal = false) => {
         switch (metricId) {
@@ -93,17 +93,17 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
     // 텍스트 크기 조정 함수
     const adjustTextSize = useCallback(() => {
         if (!valueRef.current) return;
-        
+
         const container = valueRef.current.closest('div[style*="padding: 1.2rem"]');
         if (!container) return;
-        
+
         // 카드 고정 너비 (패딩 제외한 실제 텍스트 공간)
         const maxWidth = container.clientWidth - 40; // 패딩 2.4rem = 38.4px 정도
-        
+
         // 원본 값 시도
         let currentValue = getMetricValue(metric.id, metricsData, false);
-    let currentFontSize = 27; // Adjusted font size
-        
+        let currentFontSize = 27; // Adjusted font size
+
         // 임시 측정용 엘리먼트 생성
         const measureElement = document.createElement('div');
         measureElement.style.position = 'absolute';
@@ -112,41 +112,41 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
         measureElement.style.fontWeight = '700';
         measureElement.style.fontFamily = getComputedStyle(valueRef.current).fontFamily;
         document.body.appendChild(measureElement);
-        
+
         // 먼저 원본 값으로 시도
         measureElement.style.fontSize = currentFontSize + 'px';
         measureElement.textContent = currentValue;
-        
+
         if (measureElement.scrollWidth > maxWidth) {
             // 소수점 제거된 값으로 시도
             const valueWithoutDecimal = getMetricValue(metric.id, metricsData, true);
             measureElement.textContent = valueWithoutDecimal;
-            
+
             if (measureElement.scrollWidth <= maxWidth) {
                 // 소수점만 제거해도 되는 경우
                 currentValue = valueWithoutDecimal;
             } else {
                 // 소수점 제거해도 안 되면 폰트 크기 점진적 감소 (소수점 제거된 값으로)
                 currentValue = valueWithoutDecimal;
-                
+
                 while (measureElement.scrollWidth > maxWidth && currentFontSize > 12) {
                     currentFontSize -= 1;
                     measureElement.style.fontSize = currentFontSize + 'px';
                 }
             }
         }
-        
+
         document.body.removeChild(measureElement);
-        
+
         setDisplayValue(currentValue);
         setFontSize(currentFontSize);
     }, [metric.id, metricsData]);
-    
+
     // 메트릭 데이터 변경 시 텍스트 크기 조정
     useEffect(() => {
         adjustTextSize();
     }, [adjustTextSize]);
-    
+
     // 윈도우 리사이즈 시 텍스트 크기 재조정
     useEffect(() => {
         const handleResize = () => adjustTextSize();
@@ -353,6 +353,12 @@ const FilteredEquityCurveWrapper = React.memo(() => {
     // 필터링된 거래 ref - 렌더링 최적화
     const filteredTradesRef = useRef(filteredTrades);
 
+    // 자금 재계산 시 변경되는 필드를 포함한 키 생성 (Hook은 최상위에서 호출)
+    const equityCurveKey = useMemo(() => {
+        const currentCapitalSum = filteredTrades?.reduce((sum, t) => sum + (Number(t["현재 자금"]) || 0), 0) || 0;
+        return `equity-curve-${filteredTrades?.length || 0}-${currentCapitalSum}`;
+    }, [filteredTrades]);
+
     // 컴포넌트 마운트/언마운트 관리
     useEffect(() => {
 
@@ -401,7 +407,7 @@ const FilteredEquityCurveWrapper = React.memo(() => {
             position: 'relative',
             isolation: 'isolate'
         }}>
-            {isReady && <EquityCurve key={`equity-curve-${filteredTrades?.length || 0}`}/>}
+            {isReady && <EquityCurve key={equityCurveKey}/>}
         </div>
     );
 });
@@ -418,27 +424,30 @@ const Overview = React.memo(({}: OverviewProps) => {
     const [isMounted, setIsMounted] = useState(false);
     const [sharpeLoading, setSharpeLoading] = useState(false);
     const [hasEverHadData, setHasEverHadData] = useState(false); // 한번이라도 데이터가 있었는지
-    
+
     // 거래 목록의 고유 해시값을 생성 (실제 내용이 바뀔 때만 변경됨)
     const tradesHash = useMemo(() => {
         if (!filteredTrades || filteredTrades.length === 0) {
             return 'empty';
         }
-        
+
         try {
-            // 핵심 속성들로만 해시 생성
+            // 핵심 속성들로만 해시 생성 (자금 재계산 시 변경되는 필드도 포함)
             const essentialData = filteredTrades.map(trade => ({
                 id: trade.id,
                 entryTime: trade.entryTime,
                 exitTime: trade.exitTime,
-                profitLoss: trade.profitLoss
+                profitLoss: trade.profitLoss,
+                currentCapital: trade["현재 자금"],  // 자금 재계산 시 변경
+                accumulatedProfitLoss: trade["누적 손익"],  // 자금 재계산 시 변경
+                maxDrawdown: trade["최고 드로우다운"]  // 자금 재계산 시 변경
             }));
             return JSON.stringify(essentialData);
         } catch {
             return `fallback-${filteredTrades.length}-${Date.now()}`;
         }
     }, [filteredTrades]);
-    
+
     // 이전 해시값을 저장
     const prevTradesHashRef = useRef<string>('');
     const initialLoadRef = useRef(true);
@@ -511,23 +520,23 @@ const Overview = React.memo(({}: OverviewProps) => {
             setDataLoading(true);
             return;
         }
-        
+
         // 해시값이 이전과 같다면 (거래 목록이 실제로 바뀌지 않았다면) 아무것도 하지 않음
         if (!initialLoadRef.current && tradesHash === prevTradesHashRef.current) {
             return;
         }
-        
+
         // 해시값이 바뀌었으므로 이전 값 업데이트
         prevTradesHashRef.current = tradesHash;
-        
+
         // 0.3초 지연으로 불필요한 계산 방지
         const timer = setTimeout(calculateMetricsData, 300);
-        
+
         // 초기 로드 완료 표시
         if (initialLoadRef.current) {
             initialLoadRef.current = false;
         }
-        
+
         return () => clearTimeout(timer);
     }, [tradesHash, loading, calculateMetricsData]);
 
