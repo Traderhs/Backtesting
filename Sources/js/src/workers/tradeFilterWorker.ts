@@ -213,7 +213,7 @@ const recalculateBalance = (filtered: TradeItem[], allTrades: TradeItem[]): Trad
 
                 if (prevExitTime <= currentEntryTime && prevTradeNumber < mappedNumber) {
                     // 더 최근의 청산 시간이거나, 같은 청산 시간이지만 더 큰 거래 번호인 경우
-                    if (prevExitTime > mostRecentExitTime || 
+                    if (prevExitTime > mostRecentExitTime ||
                         (prevExitTime.getTime() === mostRecentExitTime.getTime() && prevTradeNumber > bestTradeNumber)) {
                         mostRecentExitTime = prevExitTime;
                         bestTradeNumber = prevTradeNumber;
@@ -247,16 +247,22 @@ const recalculateBalance = (filtered: TradeItem[], allTrades: TradeItem[]): Trad
 
 
 // 필터 적용 메인 함수 - 모든 필터 AND 적용 후 자금 재계산
-const applyFiltersInOrder = (trades: TradeItem[], filter: TradeFilter, allTrades: TradeItem[]): TradeItem[] => {
+const applyFiltersInOrder = (trades: TradeItem[], filter: TradeFilter, allTrades: TradeItem[]): {
+    result: TradeItem[],
+    hasBankruptcy: boolean
+} => {
     // 모든 필터를 AND로 한 번에 적용
     const filteredTrades = applyAllFiltersAtOnce(trades, filter);
 
     // 자금 재계산이 켜져있고 필터링된 거래가 있으면 자금 재계산 수행
     if (filter.recalculateBalance && filteredTrades.length > 1) {
-        return recalculateBalance(filteredTrades, allTrades);
+        const recalculated = recalculateBalance(filteredTrades, allTrades);
+        // 파산 여부 확인: recalculated가 filteredTrades보다 짧으면 파산 발생
+        const hasBankruptcy = recalculated.length < filteredTrades.length;
+        return {result: recalculated, hasBankruptcy};
     }
 
-    return filteredTrades;
+    return {result: filteredTrades, hasBankruptcy: false};
 };
 
 // 최적화된 모든 필터를 한 번에 적용하는 함수
@@ -414,57 +420,81 @@ const applyAllFiltersAtOnce = (trades: TradeItem[], filter: TradeFilter): TradeI
     // 숫자 필터들을 배열로 미리 정의하여 반복문 최적화
     const numericFilters = [];
     if (filter.leverageMin !== undefined || filter.leverageMax !== undefined)
-        numericFilters.push({ field: "레버리지", min: filter.leverageMin, max: filter.leverageMax });
+        numericFilters.push({field: "레버리지", min: filter.leverageMin, max: filter.leverageMax});
     if (filter.entryPriceMin !== undefined || filter.entryPriceMax !== undefined)
-        numericFilters.push({ field: "진입 가격", min: filter.entryPriceMin, max: filter.entryPriceMax });
+        numericFilters.push({field: "진입 가격", min: filter.entryPriceMin, max: filter.entryPriceMax});
     if (filter.entryQuantityMin !== undefined || filter.entryQuantityMax !== undefined)
-        numericFilters.push({ field: "진입 수량", min: filter.entryQuantityMin, max: filter.entryQuantityMax });
+        numericFilters.push({field: "진입 수량", min: filter.entryQuantityMin, max: filter.entryQuantityMax});
     if (filter.exitPriceMin !== undefined || filter.exitPriceMax !== undefined)
-        numericFilters.push({ field: "청산 가격", min: filter.exitPriceMin, max: filter.exitPriceMax });
+        numericFilters.push({field: "청산 가격", min: filter.exitPriceMin, max: filter.exitPriceMax});
     if (filter.exitQuantityMin !== undefined || filter.exitQuantityMax !== undefined)
-        numericFilters.push({ field: "청산 수량", min: filter.exitQuantityMin, max: filter.exitQuantityMax });
+        numericFilters.push({field: "청산 수량", min: filter.exitQuantityMin, max: filter.exitQuantityMax});
     if (filter.forcedLiquidationPriceMin !== undefined || filter.forcedLiquidationPriceMax !== undefined)
-        numericFilters.push({ field: "강제 청산 가격", min: filter.forcedLiquidationPriceMin, max: filter.forcedLiquidationPriceMax });
+        numericFilters.push({
+            field: "강제 청산 가격",
+            min: filter.forcedLiquidationPriceMin,
+            max: filter.forcedLiquidationPriceMax
+        });
     if (filter.fundingReceiveCountMin !== undefined || filter.fundingReceiveCountMax !== undefined)
-        numericFilters.push({ field: "펀딩 수령 횟수", min: filter.fundingReceiveCountMin, max: filter.fundingReceiveCountMax });
+        numericFilters.push({
+            field: "펀딩 수령 횟수",
+            min: filter.fundingReceiveCountMin,
+            max: filter.fundingReceiveCountMax
+        });
     if (filter.fundingReceiveFeeMin !== undefined || filter.fundingReceiveFeeMax !== undefined)
-        numericFilters.push({ field: "펀딩비 수령", min: filter.fundingReceiveFeeMin, max: filter.fundingReceiveFeeMax });
+        numericFilters.push({field: "펀딩비 수령", min: filter.fundingReceiveFeeMin, max: filter.fundingReceiveFeeMax});
     if (filter.fundingPayCountMin !== undefined || filter.fundingPayCountMax !== undefined)
-        numericFilters.push({ field: "펀딩 지불 횟수", min: filter.fundingPayCountMin, max: filter.fundingPayCountMax });
+        numericFilters.push({field: "펀딩 지불 횟수", min: filter.fundingPayCountMin, max: filter.fundingPayCountMax});
     if (filter.fundingPayFeeMin !== undefined || filter.fundingPayFeeMax !== undefined)
-        numericFilters.push({ field: "펀딩비 지불", min: filter.fundingPayFeeMin, max: filter.fundingPayFeeMax });
+        numericFilters.push({field: "펀딩비 지불", min: filter.fundingPayFeeMin, max: filter.fundingPayFeeMax});
     if (filter.fundingCountMin !== undefined || filter.fundingCountMax !== undefined)
-        numericFilters.push({ field: "펀딩 횟수", min: filter.fundingCountMin, max: filter.fundingCountMax });
+        numericFilters.push({field: "펀딩 횟수", min: filter.fundingCountMin, max: filter.fundingCountMax});
     if (filter.fundingFeeMin !== undefined || filter.fundingFeeMax !== undefined)
-        numericFilters.push({ field: "펀딩비", min: filter.fundingFeeMin, max: filter.fundingFeeMax });
+        numericFilters.push({field: "펀딩비", min: filter.fundingFeeMin, max: filter.fundingFeeMax});
     if (filter.entryFeeMin !== undefined || filter.entryFeeMax !== undefined)
-        numericFilters.push({ field: "진입 수수료", min: filter.entryFeeMin, max: filter.entryFeeMax });
+        numericFilters.push({field: "진입 수수료", min: filter.entryFeeMin, max: filter.entryFeeMax});
     if (filter.exitFeeMin !== undefined || filter.exitFeeMax !== undefined)
-        numericFilters.push({ field: "청산 수수료", min: filter.exitFeeMin, max: filter.exitFeeMax });
+        numericFilters.push({field: "청산 수수료", min: filter.exitFeeMin, max: filter.exitFeeMax});
     if (filter.forcedLiquidationFeeMin !== undefined || filter.forcedLiquidationFeeMax !== undefined)
-        numericFilters.push({ field: "강제 청산 수수료", min: filter.forcedLiquidationFeeMin, max: filter.forcedLiquidationFeeMax });
+        numericFilters.push({
+            field: "강제 청산 수수료",
+            min: filter.forcedLiquidationFeeMin,
+            max: filter.forcedLiquidationFeeMax
+        });
     if (filter.profitLossMin !== undefined || filter.profitLossMax !== undefined)
-        numericFilters.push({ field: "손익", min: filter.profitLossMin, max: filter.profitLossMax });
+        numericFilters.push({field: "손익", min: filter.profitLossMin, max: filter.profitLossMax});
     if (filter.netProfitLossMin !== undefined || filter.netProfitLossMax !== undefined)
-        numericFilters.push({ field: "순손익", min: filter.netProfitLossMin, max: filter.netProfitLossMax });
+        numericFilters.push({field: "순손익", min: filter.netProfitLossMin, max: filter.netProfitLossMax});
     if (filter.individualProfitRateMin !== undefined || filter.individualProfitRateMax !== undefined)
-        numericFilters.push({ field: "개별 순손익률", min: filter.individualProfitRateMin, max: filter.individualProfitRateMax });
+        numericFilters.push({
+            field: "개별 순손익률",
+            min: filter.individualProfitRateMin,
+            max: filter.individualProfitRateMax
+        });
     if (filter.overallProfitRateMin !== undefined || filter.overallProfitRateMax !== undefined)
-        numericFilters.push({ field: "전체 순손익률", min: filter.overallProfitRateMin, max: filter.overallProfitRateMax });
+        numericFilters.push({field: "전체 순손익률", min: filter.overallProfitRateMin, max: filter.overallProfitRateMax});
     if (filter.currentCapitalMin !== undefined || filter.currentCapitalMax !== undefined)
-        numericFilters.push({ field: "현재 자금", min: filter.currentCapitalMin, max: filter.currentCapitalMax });
+        numericFilters.push({field: "현재 자금", min: filter.currentCapitalMin, max: filter.currentCapitalMax});
     if (filter.highestCapitalMin !== undefined || filter.highestCapitalMax !== undefined)
-        numericFilters.push({ field: "최고 자금", min: filter.highestCapitalMin, max: filter.highestCapitalMax });
+        numericFilters.push({field: "최고 자금", min: filter.highestCapitalMin, max: filter.highestCapitalMax});
     if (filter.drawdownMin !== undefined || filter.drawdownMax !== undefined)
-        numericFilters.push({ field: "드로우다운", min: filter.drawdownMin, max: filter.drawdownMax });
+        numericFilters.push({field: "드로우다운", min: filter.drawdownMin, max: filter.drawdownMax});
     if (filter.maxDrawdownMin !== undefined || filter.maxDrawdownMax !== undefined)
-        numericFilters.push({ field: "최고 드로우다운", min: filter.maxDrawdownMin, max: filter.maxDrawdownMax });
+        numericFilters.push({field: "최고 드로우다운", min: filter.maxDrawdownMin, max: filter.maxDrawdownMax});
     if (filter.accumulatedProfitLossMin !== undefined || filter.accumulatedProfitLossMax !== undefined)
-        numericFilters.push({ field: "누적 손익", min: filter.accumulatedProfitLossMin, max: filter.accumulatedProfitLossMax });
+        numericFilters.push({
+            field: "누적 손익",
+            min: filter.accumulatedProfitLossMin,
+            max: filter.accumulatedProfitLossMax
+        });
     if (filter.accumulatedProfitRateMin !== undefined || filter.accumulatedProfitRateMax !== undefined)
-        numericFilters.push({ field: "누적 손익률", min: filter.accumulatedProfitRateMin, max: filter.accumulatedProfitRateMax });
+        numericFilters.push({
+            field: "누적 손익률",
+            min: filter.accumulatedProfitRateMin,
+            max: filter.accumulatedProfitRateMax
+        });
     if (filter.heldSymbolsCountMin !== undefined || filter.heldSymbolsCountMax !== undefined)
-        numericFilters.push({ field: "보유 심볼 수", min: filter.heldSymbolsCountMin, max: filter.heldSymbolsCountMax });
+        numericFilters.push({field: "보유 심볼 수", min: filter.heldSymbolsCountMin, max: filter.heldSymbolsCountMax});
 
     // 메인 필터링 루프
     for (let i = 1; i < trades.length; i++) {
@@ -588,7 +618,7 @@ const applyAllFiltersAtOnce = (trades: TradeItem[], filter: TradeFilter): TradeI
 
         // 4. 숫자 범위 필터들 (Number 변환 필요, 가장 느림이므로 마지막에)
         let passedNumericFilters = true;
-        for (const { field, min, max } of numericFilters) {
+        for (const {field, min, max} of numericFilters) {
             const value = Number(trade[field]);
             if ((min !== undefined && value < min) || (max !== undefined && value > max)) {
                 passedNumericFilters = false;
@@ -614,7 +644,7 @@ const applyAllFiltersAtOnce = (trades: TradeItem[], filter: TradeFilter): TradeI
 
 // 최적화된 워커 메시지 핸들러
 self.addEventListener('message', (event) => {
-    const { type, trades, filter, allTrades, taskId, chunkIndex, totalChunks }: WorkerMessage = event.data;
+    const {type, trades, filter, allTrades, taskId, chunkIndex, totalChunks}: WorkerMessage = event.data;
 
     if (type === 'filter') {
         try {
@@ -670,12 +700,13 @@ self.addEventListener('message', (event) => {
 
             // 필터링 실행 (성능 측정 포함)
             const startTime = performance.now();
-            const result = applyFiltersInOrder(trades, filter, allTrades);
+            const {result, hasBankruptcy} = applyFiltersInOrder(trades, filter, allTrades);
             const endTime = performance.now();
 
             self.postMessage({
                 type: 'filterResult',
                 trades: result,
+                hasBankruptcy: hasBankruptcy, // 파산 여부 추가
                 id: taskId,
                 chunkIndex: chunkIndex || 0,
                 totalChunks: totalChunks || 1,

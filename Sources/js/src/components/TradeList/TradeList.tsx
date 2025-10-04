@@ -8,8 +8,9 @@ import {formatDateTimeWithWeekday} from "@/components/Performance/Utils";
 
 interface TradeItem {
     "거래 번호": number
+    __isBankruptRow?: boolean  // 파산 행 표시용 플래그
 
-    [key: string]: string | number
+    [key: string]: string | number | boolean | undefined
 }
 
 // 컴포넌트 props 인터페이스 추가
@@ -184,9 +185,9 @@ const getSymbolFromTrade = (trade: TradeItem): string => {
 }
 
 // 너비 측정을 위한 헬퍼 함수 - formatWithTooltip과 동일한 로직 사용
-const getDisplayStringForMeasuring = (value: string | number | undefined, key: string, config?: any, symbol?: string): string => {
-    if (value === undefined || value === null) return "";
-    if (key === 'originalIdxForSort') return ""; // 이 키는 표시되지 않음
+const getDisplayStringForMeasuring = (value: string | number | boolean | undefined, key: string, config?: any, symbol?: string): string => {
+    if (value === undefined || value === null || typeof value === 'boolean') return "";
+    if (key === 'originalIdxForSort' || key === '__isBankruptRow') return ""; // 이 키는 표시되지 않음
 
     // 거래 번호
     if (key === "거래 번호") {
@@ -260,7 +261,12 @@ const getDisplayStringForMeasuring = (value: string | number | undefined, key: s
 const formatCache = new Map<string, React.ReactElement>();
 const MAX_CACHE_SIZE = 10000; // 캐시 크기 제한
 
-const formatWithTooltip = (value: string | number, key: string, config?: any, symbol?: string): React.ReactElement => {
+const formatWithTooltip = (value: string | number | boolean | undefined, key: string, config?: any, symbol?: string): React.ReactElement => {
+    // 특수 키나 잘못된 값 처리
+    if (value === undefined || value === null || typeof value === 'boolean' || key === 'originalIdxForSort' || key === '__isBankruptRow') {
+        return <span>-</span>;
+    }
+
     // 캐시 키 생성 - 모든 매개변수를 포함하여 고유성 보장
     const cacheKey = `${key}:${value}:${symbol}:${config?.심볼?.length || 0}`;
 
@@ -305,7 +311,7 @@ const formatWithTooltip = (value: string | number, key: string, config?: any, sy
     }
     // 가격 필드들은 심볼별 precision 사용 + 천단위 쉼표
     else if (PRICE_FIELDS.has(key)) {
-        if (value === undefined || value === null || String(value) === "-") {
+        if (String(value) === "-") {
             result = <span title="-">-</span>;
         } else {
             const num = typeof value === "number" ? value : parseFloat(String(value));
@@ -321,7 +327,7 @@ const formatWithTooltip = (value: string | number, key: string, config?: any, sy
     }
     // 수량 필드들은 심볼별 precision 사용 + 천단위 쉼표
     else if (QUANTITY_FIELDS.has(key)) {
-        if (value === undefined || value === null || String(value) === "-") {
+        if (String(value) === "-") {
             result = <span title="-">-</span>;
         } else {
             const num = typeof value === "number" ? value : parseFloat(String(value));
@@ -410,6 +416,7 @@ interface TradeRowProps {
     config: any;
     isDifferentFromNext: boolean;
     isLastRowOfDataset: boolean;
+    isNextRowBankrupt: boolean; // 다음 행이 파산 행인지
     selectedCell: { rowIndex: number, columnKey: string, tradeNo: number } | null;
     onMouseEnter: (tradeNo: number) => void;
     onMouseLeave: () => void;
@@ -432,6 +439,7 @@ const TradeRow = React.memo<TradeRowProps>(({
                                                 config,
                                                 isDifferentFromNext,
                                                 isLastRowOfDataset,
+                                                isNextRowBankrupt,
                                                 selectedCell,
                                                 onMouseEnter,
                                                 onMouseLeave,
@@ -445,7 +453,10 @@ const TradeRow = React.memo<TradeRowProps>(({
     let rowClass = "tr";
     if (isLastRowOfDataset) rowClass += " last-row";
     if (!isDifferentFromNext && !isLastRowOfDataset) rowClass += " same-trade";
-    else if (isDifferentFromNext || isLastRowOfDataset) rowClass += " last-group-row";
+    else if ((isDifferentFromNext || isLastRowOfDataset) && !isNextRowBankrupt) rowClass += " last-group-row"; // 파산 행 다음이면 last-group-row 안 붙임
+
+    // 파산 행 바로 직전 거래는 before-bankrupt 클래스 추가
+    if (isNextRowBankrupt) rowClass += " before-bankrupt";
 
     if (isActiveRow) rowClass += " active-row";
 
@@ -612,6 +623,19 @@ const TradeRow = React.memo<TradeRowProps>(({
                 if (isHoverColumnGroup) cellClass += ' hover-column-group';
                 if (isSelectedRow && isSelectedColumnGroup) cellClass += ' selected-intersection';
 
+                // 파산 행 직전 거래인 경우 bottom border 제거를 위한 인라인 스타일
+                const cellStyle: React.CSSProperties = {
+                    color: cell.textColor || 'inherit',
+                    backgroundColor: calculatedBackground,
+                    width: columnWidths[cell.key] || 'auto',
+                    minWidth: columnWidths[cell.key] || 'auto',
+                    maxWidth: columnWidths[cell.key] || 'auto',
+                    flexBasis: columnWidths[cell.key] || 'auto',
+                    cursor: 'pointer',
+                    ...(isIntersection ? {zIndex: 50, position: 'relative'} : {}),
+                    ...(isNextRowBankrupt ? {borderBottom: 'none'} : {}) // 파산 행 직전이면 bottom border 제거
+                };
+
                 return (
                     <div
                         key={cell.key}
@@ -643,18 +667,7 @@ const TradeRow = React.memo<TradeRowProps>(({
                                 onCellHover(cell.key);
                             }
                         }}
-                        style={{
-                            color: cell.textColor || 'inherit',
-                            // use backgroundColor for more specific control and avoid invalid '!important' strings
-                            backgroundColor: calculatedBackground,
-                            width: columnWidths[cell.key] || 'auto',
-                            minWidth: columnWidths[cell.key] || 'auto',
-                            maxWidth: columnWidths[cell.key] || 'auto',
-                            flexBasis: columnWidths[cell.key] || 'auto',
-                            cursor: 'pointer',
-                            // selected intersection fallback: provide non-important inline zIndex/position
-                            ...(isIntersection ? {zIndex: 50, position: 'relative'} : {})
-                        }}
+                        style={cellStyle}
                     >
                         {cell.formattedContent}
                     </div>
@@ -728,7 +741,7 @@ const PageTitle = React.memo(() => (
 ));
 
 export default function TradeList({config}: TradeListProps) {
-    const {filteredTrades, allTrades} = useTradeFilter()
+    const {filteredTrades, allTrades, filter, hasBankruptcy} = useTradeFilter()
     const [trades, setTrades] = useState<TradeItem[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const tableRef = useRef<HTMLDivElement>(null)
@@ -813,13 +826,16 @@ export default function TradeList({config}: TradeListProps) {
 
     // allHeaders를 useEffect 외부로 이동하거나, 의존성 배열에서 제거
     const allHeaders = useMemo(() =>
-            trades.length > 0 ? Object.keys(trades[0]).filter(key => key !== 'originalIdxForSort') : []
+            trades.length > 0 ? Object.keys(trades[0]).filter(key => key !== 'originalIdxForSort' && key !== '__isBankruptRow') : []
         , [trades]);
 
-    // 데이터 로딩 처리 - 최적화된 데이터 변환
+    // 데이터 로딩 처리 - 최적화된 데이터 변환 및 파산 행 추가 (TradeList에서만)
     const prevFilteredTradesRef = useRef<any[]>([]);
+    const prevAllTradesRef = useRef<any[]>([]);
+    const prevRecalculateBalanceRef = useRef<boolean | undefined>(undefined);
     useEffect(() => {
-        if (filteredTrades === prevFilteredTradesRef.current) {
+        if (filteredTrades === prevFilteredTradesRef.current &&
+            filter.recalculateBalance === prevRecalculateBalanceRef.current) {
             return; // 데이터가 변경되지 않았으면 스킵
         }
 
@@ -827,17 +843,44 @@ export default function TradeList({config}: TradeListProps) {
 
         // 배치 처리를 위한 setTimeout 사용
         const timeoutId = setTimeout(() => {
-            const newTrades = filteredTrades.map((trade, index) => ({
-                ...trade,
-                originalIdxForSort: index
-            }));
+            // 파산 여부는 컨텍스트에서 가져옴 (워커가 자금 재계산 중 파산을 감지한 경우)
+            // 자금 재계산이 켜져 있어야만 파산 행을 표시
+            const shouldShowBankruptcy = filter.recalculateBalance && hasBankruptcy;
+
+            let newTrades: TradeItem[];
+
+            if (shouldShowBankruptcy) {
+                // 파산 시점이 있으면 파산 행 추가
+                const tradesWithIndex = filteredTrades.map((trade, index) => ({
+                    ...trade,
+                    originalIdxForSort: index
+                }));
+
+                // 파산 행 생성 (TradeList에서만 표시용)
+                const bankruptRow: TradeItem = {
+                    "거래 번호": -1,
+                    __isBankruptRow: true,
+                    originalIdxForSort: filteredTrades.length
+                } as any;
+
+                newTrades = [...tradesWithIndex, bankruptRow];
+            } else {
+                // 파산이 없으면 기존 로직대로
+                newTrades = filteredTrades.map((trade, index) => ({
+                    ...trade,
+                    originalIdxForSort: index
+                }));
+            }
+
             setTrades(newTrades);
             prevFilteredTradesRef.current = filteredTrades;
+            prevAllTradesRef.current = allTrades;
+            prevRecalculateBalanceRef.current = filter.recalculateBalance;
             setIsLoading(false);
         }, 0);
 
         return () => clearTimeout(timeoutId);
-    }, [filteredTrades]);
+    }, [filteredTrades, allTrades, filter.recalculateBalance, hasBankruptcy]);
 
     // 열 너비 계산 최적화 - 샘플링 사용 및 캐싱 강화
     const columnWidthsCache = useRef<Map<string, { [key: string]: string }>>(new Map());
@@ -1326,6 +1369,34 @@ export default function TradeList({config}: TradeListProps) {
                                 position: 'relative'
                             }}>
                                 {visibleTradesData.map(({tradeData: row, originalIndex}) => {
+                                    // 파산 행인 경우 특별 렌더링
+                                    if (row.__isBankruptRow) {
+                                        return (
+                                            <div
+                                                key={`bankrupt-${originalIndex}`}
+                                                className="tr bankrupt-row"
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: `${Math.floor(originalIndex * rowHeight)}px`,
+                                                    left: 0,
+                                                    width: '100%',
+                                                    height: `${rowHeight}px`,
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    justifyContent: 'center',
+                                                    backgroundColor: 'rgba(242, 54, 69, 0.15)',
+                                                    borderTop: '2px solid #f23645',
+                                                    fontSize: '18px',
+                                                    fontWeight: 'bold',
+                                                    color: '#f23645',
+                                                    zIndex: 10
+                                                }}
+                                            >
+                                                파산으로 거래 종료
+                                            </div>
+                                        );
+                                    }
+
                                     const currentTradeNo = row["거래 번호"];
 
                                     // 조기 반환을 통한 성능 최적화
@@ -1334,6 +1405,9 @@ export default function TradeList({config}: TradeListProps) {
                                     const nextTradeNo = nextTrade ? nextTrade["거래 번호"] : null;
                                     const isDifferentFromNext = nextTradeNo !== null && currentTradeNo !== nextTradeNo;
                                     const isLastRowOfDataset = originalIndex === trades.length - 1;
+
+                                    // 다음 행이 파산 행인지 확인
+                                    const isNextRowBankrupt = nextTrade?.__isBankruptRow === true;
 
                                     // isActiveRow 계산 최적화
                                     let isActiveRow = false;
@@ -1364,6 +1438,7 @@ export default function TradeList({config}: TradeListProps) {
                                             config={config}
                                             isDifferentFromNext={isDifferentFromNext}
                                             isLastRowOfDataset={isLastRowOfDataset}
+                                            isNextRowBankrupt={isNextRowBankrupt}
                                             selectedCell={selectedCell}
                                             onMouseEnter={handleMouseEnter}
                                             onMouseLeave={handleMouseLeave}
