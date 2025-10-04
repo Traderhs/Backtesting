@@ -26,29 +26,59 @@ interface MetricsCardProps {
 }
 
 const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) => {
-    // 지표 데이터 매핑 함수
-    const getMetricValue = (metricId: string, data: any) => {
+    const [fontSize, setFontSize] = useState(27);
+    const [displayValue, setDisplayValue] = useState('');
+    const valueRef = useRef<HTMLDivElement>(null);
+    
+    // 지표 데이터 매핑 함수 (소수점 제거 옵션 추가)
+    const getMetricValue = (metricId: string, data: any, removeDecimal = false) => {
         switch (metricId) {
             case 'totalProfitLoss':
-                return formatDollar(data.totalProfitLossMetrics.totalProfitLoss);
+                const profitLoss = parseFloat(data.totalProfitLossMetrics.totalProfitLoss);
+                if (removeDecimal) {
+                    return '$' + Math.round(profitLoss).toLocaleString('en-US');
+                }
+                return formatDollar(profitLoss);
             case 'totalProfitLossPercent':
-                return formatPercent(data.totalProfitLossMetrics.totalProfitLossPercent);
+                const percent = data.totalProfitLossMetrics.totalProfitLossPercent;
+                if (removeDecimal) {
+                    const numVal = parseFloat(percent);
+                    return isNaN(numVal) ? '0%' : Math.round(numVal).toLocaleString('en-US') + '%';
+                }
+                return formatPercent(percent);
             case 'mdd':
-                return formatPercent(data.riskRewardMetrics.mdd);
+                const mdd = data.riskRewardMetrics.mdd;
+                if (removeDecimal) {
+                    const numVal = parseFloat(mdd);
+                    return isNaN(numVal) ? '0%' : Math.round(numVal).toLocaleString('en-US') + '%';
+                }
+                return formatPercent(mdd);
             case 'winRate':
-                return formatPercent(data.riskRewardMetrics.winRate);
+                const winRate = data.riskRewardMetrics.winRate;
+                if (removeDecimal) {
+                    const numVal = parseFloat(winRate);
+                    return isNaN(numVal) ? '0%' : Math.round(numVal).toLocaleString('en-US') + '%';
+                }
+                return formatPercent(winRate);
             case 'profitFactor':
                 const profitFactor = data.riskRewardMetrics.profitFactor;
-                return profitFactor === "∞" ? "∞" : (() => {
-                    const numVal = parseFloat(profitFactor);
-                    return isNaN(numVal) ? '0.00' : numVal.toLocaleString('en-US', {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2
-                    });
-                })();
+                if (profitFactor === "∞") return "∞";
+                const numVal = parseFloat(profitFactor);
+                if (isNaN(numVal)) return '0.00';
+                if (removeDecimal) {
+                    return Math.round(numVal).toLocaleString('en-US');
+                }
+                return numVal.toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
             case 'sharpeRatio':
                 const sharpeRatio = parseFloat(data.riskAdjustedReturnMetrics.sharpeRatio);
-                return isNaN(sharpeRatio) ? '0.00' : sharpeRatio.toLocaleString('en-US', {
+                if (isNaN(sharpeRatio)) return '0.00';
+                if (removeDecimal) {
+                    return Math.round(sharpeRatio).toLocaleString('en-US');
+                }
+                return sharpeRatio.toLocaleString('en-US', {
                     minimumFractionDigits: 2,
                     maximumFractionDigits: 2
                 });
@@ -59,6 +89,70 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
                 return '0';
         }
     };
+
+    // 텍스트 크기 조정 함수
+    const adjustTextSize = useCallback(() => {
+        if (!valueRef.current) return;
+        
+        const container = valueRef.current.closest('div[style*="padding: 1.2rem"]');
+        if (!container) return;
+        
+        // 카드 고정 너비 (패딩 제외한 실제 텍스트 공간)
+        const maxWidth = container.clientWidth - 40; // 패딩 2.4rem = 38.4px 정도
+        
+        // 원본 값 시도
+        let currentValue = getMetricValue(metric.id, metricsData, false);
+    let currentFontSize = 27; // Adjusted font size
+        
+        // 임시 측정용 엘리먼트 생성
+        const measureElement = document.createElement('div');
+        measureElement.style.position = 'absolute';
+        measureElement.style.visibility = 'hidden';
+        measureElement.style.whiteSpace = 'nowrap';
+        measureElement.style.fontWeight = '700';
+        measureElement.style.fontFamily = getComputedStyle(valueRef.current).fontFamily;
+        document.body.appendChild(measureElement);
+        
+        // 먼저 원본 값으로 시도
+        measureElement.style.fontSize = currentFontSize + 'px';
+        measureElement.textContent = currentValue;
+        
+        if (measureElement.scrollWidth > maxWidth) {
+            // 소수점 제거된 값으로 시도
+            const valueWithoutDecimal = getMetricValue(metric.id, metricsData, true);
+            measureElement.textContent = valueWithoutDecimal;
+            
+            if (measureElement.scrollWidth <= maxWidth) {
+                // 소수점만 제거해도 되는 경우
+                currentValue = valueWithoutDecimal;
+            } else {
+                // 소수점 제거해도 안 되면 폰트 크기 점진적 감소 (소수점 제거된 값으로)
+                currentValue = valueWithoutDecimal;
+                
+                while (measureElement.scrollWidth > maxWidth && currentFontSize > 12) {
+                    currentFontSize -= 1;
+                    measureElement.style.fontSize = currentFontSize + 'px';
+                }
+            }
+        }
+        
+        document.body.removeChild(measureElement);
+        
+        setDisplayValue(currentValue);
+        setFontSize(currentFontSize);
+    }, [metric.id, metricsData]);
+    
+    // 메트릭 데이터 변경 시 텍스트 크기 조정
+    useEffect(() => {
+        adjustTextSize();
+    }, [adjustTextSize]);
+    
+    // 윈도우 리사이즈 시 텍스트 크기 재조정
+    useEffect(() => {
+        const handleResize = () => adjustTextSize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [adjustTextSize]);
 
     // 지표 색상 결정 함수
     const getMetricColor = (metricId: string, data: any) => {
@@ -118,7 +212,10 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
         <div style={{
             position: 'relative',
             padding: '5px', // 패딩 추가하여 카드 주변에 여유 공간 확보
-            overflow: 'visible' // 부모 요소에도 overflow visible 적용
+            overflow: 'visible', // 부모 요소에도 overflow visible 적용
+            width: '200px', // 카드 컨테이너 너비 고정
+            minWidth: '200px',
+            maxWidth: '200px'
         }}>
             {/* 호버 효과용 컨테이너 */}
             <motion.div
@@ -131,8 +228,10 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
                     position: 'relative',
                     borderRadius: '8px',
                     height: '140px',
-                    width: '100%',
-                    overflow: 'visible',
+                    width: '200px', // 카드 너비 고정
+                    minWidth: '200px',
+                    maxWidth: '200px',
+                    overflow: 'hidden', // 텍스트 오버플로우 방지
                     // 테두리를 여기에 직접 적용 - 카드의 가장 바깥쪽 요소
                     border: '1.2px solid rgba(255, 215, 0, 0.3)',
                     // 그림자로 테두리 강화
@@ -149,25 +248,42 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
                     flexDirection: 'column',
                     justifyContent: 'space-between',
                     position: 'relative',
-                    zIndex: 1
+                    zIndex: 1,
+                    width: '200px', // 카드 너비 고정
+                    minWidth: '200px',
+                    maxWidth: '200px'
                 }}>
                     <div>
                         <h3 style={{
-                            fontSize: '20px',
+                            fontSize: '22px',
                             fontWeight: 700,
                             color: 'rgba(255,255,255,0.9)',
-                            marginBottom: '0.5rem'
+                            marginBottom: '0.5rem',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis'
                         }}>
                             {metric.title}
                         </h3>
                     </div>
-                    <p style={{
-                        fontSize: '27px',
-                        fontWeight: 700,
-                        color: getMetricColor(metric.id, metricsData)
+                    <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        minHeight: '32px'
                     }}>
-                        {getMetricValue(metric.id, metricsData)}
-                    </p>
+                        <div ref={valueRef} style={{
+                            fontSize: fontSize + 'px',
+                            fontWeight: 700,
+                            color: getMetricColor(metric.id, metricsData),
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            lineHeight: '1.2',
+                            transform: 'translateY(-3px)'
+                        }}>
+                            {displayValue || getMetricValue(metric.id, metricsData)}
+                        </div>
+                    </div>
                 </div>
             </motion.div>
 
@@ -207,10 +323,11 @@ const MetricsGrid = React.memo(({metricsData}: MetricsGridProps) => {
             className="flex gap-1 min-w-max w-full"
             style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(7, 1fr)',
-                gap: '12px',
-                width: '100%',
-                overflow: 'visible' // 그리드 컨테이너에도 overflow: visible 적용
+                gridTemplateColumns: 'repeat(7, 200px)',
+                gap: '25px',
+                width: 'fit-content',
+                overflow: 'visible',
+                paddingLeft: '10px' // 왼쪽 여백 추가로 카드 시작점 이동
             }}
         >
             {metrics.map((metric, index) => (
@@ -485,7 +602,7 @@ const Overview = React.memo(({}: OverviewProps) => {
                 position: 'relative',
                 zIndex: 1,
                 overflow: 'visible',
-                padding: '0 20px',
+                padding: '0 0 0 10px', // 왼쪽 패딩만 적용
                 maxWidth: '100%'
             }}>
                 {/* MetricsGrid에 isCardAnimationPlaying 상태 전달 (필요하다면 하위 컴포넌트에서도 사용 가능) */}
