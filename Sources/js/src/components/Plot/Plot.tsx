@@ -28,18 +28,20 @@ const FilteredEquityCurveWrapper = React.memo(() => {
     // 마지막 렌더키를 저장하는 ref - 리렌더링 루프 방지
     const lastRenderKeyRef = useRef(`equity-curve-${filteredTrades?.length || 0}`);
 
-    // 필터 변경 감지를 위한 키 생성 - Date.now() 제거하여 리렌더링 루프 방지
+    // 필터 변경 감지를 위한 키 생성 - 자금 재계산 시 변경되는 필드도 포함
     const renderKey = useMemo(() => {
-        const newKey = `equity-curve-${filteredTrades?.length || 0}`;
+        // 거래 수와 자금 필드의 해시로 키 생성
+        const currentCapitalSum = filteredTrades?.reduce((sum, t) => sum + (Number(t["현재 자금"]) || 0), 0) || 0;
+        const newKey = `equity-curve-${filteredTrades?.length || 0}-${currentCapitalSum}`;
 
-        // 거래 수가 실제로 변경된 경우에만 렌더키 업데이트
+        // 키가 실제로 변경된 경우에만 업데이트
         if (newKey !== lastRenderKeyRef.current) {
             lastRenderKeyRef.current = newKey;
             return newKey;
         }
 
         return lastRenderKeyRef.current;
-    }, [filteredTrades?.length]);
+    }, [filteredTrades]);
 
     // 컴포넌트 마운트/언마운트 관리
     useEffect(() => {
@@ -93,7 +95,7 @@ const FilteredEquityCurveWrapper = React.memo(() => {
 
     // 거래 데이터가 없는 경우
     if (!filteredTrades || filteredTrades.length === 1) {
-        return <NoDataMessage message="거래 내역이 존재하지 않습니다." />;
+        return <NoDataMessage message="거래 내역이 존재하지 않습니다."/>;
     }
 
     // 준비되면 EquityCurve 렌더링 - renderKey로 필터 변경 시만 리렌더링
@@ -164,12 +166,12 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
     const [netProfitLossInitialized, setNetProfitLossInitialized] = useState(false);
     const [holdingTimePnlInitialized, setHoldingTimePnlInitialized] = useState(false);
     const [symbolPerformanceInitialized, setSymbolPerformanceInitialized] = useState(false);
-    
+
     // 각 plotType별 애니메이션 실행 완료 상태 추적
     const [animatedPlots, setAnimatedPlots] = useState<Set<string>>(new Set());
 
     // 필터링된 거래 목록 사용
-    const { filteredTrades } = useTradeFilter();
+    const {filteredTrades} = useTradeFilter();
 
     // 컴포넌트 마운트 시 로그 출력
     useEffect(() => {
@@ -278,7 +280,7 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
 
     // 현재 plotType의 애니메이션 실행 여부 결정
     const shouldAnimate = !animatedPlots.has(plotType);
-    
+
     // plotType이 변경될 때 애니메이션 상태 업데이트
     useEffect(() => {
         if (!animatedPlots.has(plotType)) {
@@ -290,7 +292,7 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
     return useMemo(() => {
         // 거래 데이터가 없는 경우
         if (!filteredTrades || filteredTrades.length === 1) {
-            return <NoDataMessage message="거래 내역이 존재하지 않습니다." />;
+            return <NoDataMessage message="거래 내역이 존재하지 않습니다."/>;
         }
 
         return (
@@ -417,7 +419,7 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
                             height: '100%'
                         }}>
                             {isMounted && (symbolPerformanceInitialized || plotType === 'symbol-performance') && (
-                                <SymbolPerformance config={config} />
+                                <SymbolPerformance config={config}/>
                             )}
                         </div>
                     </div>
