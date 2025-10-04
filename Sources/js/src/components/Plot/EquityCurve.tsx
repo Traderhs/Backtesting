@@ -61,6 +61,7 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
     const priceAxisLabelRef = useRef<HTMLDivElement | null>(null);
     const tooltipRef = useRef<HTMLDivElement | null>(null); // 마우스 툴팁을 위한 ref 추가
     const scaleButtonRef = useRef<HTMLDivElement | null>(null); // 로그 스케일 버튼 ref 추가
+    const yearGridContainerRef = useRef<HTMLDivElement | null>(null); // 년도 그리드 컨테이너 ref 추가
     const isComponentMounted = useRef(true);
     const seriesDataRef = useRef<CustomBaselineData[]>([]); // seriesData를 위한 ref 추가
     const hasTooltipAppeared = useRef(false); // 툴팁 첫 등장 여부 추적 ref 추가
@@ -271,6 +272,77 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
         }, 200); // 페이드 아웃 애니메이션 시간과 일치시킴
     }, []);
 
+    // 년도 세로 그리드를 그리는 함수
+    const drawYearGridLines = useCallback(() => {
+        if (!chartRef.current || !chartContainerRef.current || !seriesDataRef.current.length) return;
+
+        // 기존 그리드 컨테이너 제거
+        if (yearGridContainerRef.current) {
+            yearGridContainerRef.current.remove();
+            yearGridContainerRef.current = null;
+        }
+
+        const seriesData = seriesDataRef.current;
+        const chart = chartRef.current;
+        const container = chartContainerRef.current;
+
+        // 년도가 바뀌는 지점 찾기
+        const yearChangePoints: { year: number; time: Time }[] = [];
+        let lastYear: number | null = null;
+
+        for (const point of seriesData) {
+            const date = new Date(Number(point.time) * 1000);
+            const year = date.getFullYear();
+
+            if (lastYear !== null && year !== lastYear) {
+                yearChangePoints.push({ year, time: point.time });
+            }
+            lastYear = year;
+        }
+
+        // 년도 변경 지점이 없으면 종료
+        if (yearChangePoints.length === 0) return;
+
+        // 그리드 라인을 담을 컨테이너 생성
+        const gridContainer = document.createElement('div');
+        gridContainer.style.position = 'absolute';
+        gridContainer.style.top = '0';
+        gridContainer.style.left = '0';
+        gridContainer.style.width = '100%';
+        gridContainer.style.height = '100%';
+        gridContainer.style.pointerEvents = 'none';
+        gridContainer.style.zIndex = '1';
+        container.appendChild(gridContainer);
+        yearGridContainerRef.current = gridContainer;
+
+        // y축 너비와 x축 높이 가져오기
+        const leftPriceScaleWidth = chart.priceScale('left').width() || 0;
+        const timeScaleHeight = chart.timeScale().height() || 0;
+        const containerWidth = container.clientWidth;
+
+        // 각 년도 변경 지점에 세로선 그리기
+        for (const point of yearChangePoints) {
+            const coordinate = chart.timeScale().timeToCoordinate(point.time);
+            if (coordinate === null) continue;
+
+            // x축 포함한 실제 좌표
+            const actualX = coordinate + leftPriceScaleWidth;
+
+            // y축 영역을 침범하거나 차트 오른쪽을 벗어나면 건너뛰기
+            if (actualX < leftPriceScaleWidth || actualX > containerWidth) continue;
+
+            const line = document.createElement('div');
+            line.style.position = 'absolute';
+            line.style.left = `${actualX}px`;
+            line.style.top = '0';
+            line.style.width = '1px';
+            line.style.height = `calc(100% - ${timeScaleHeight}px)`; // x축 높이만큼 빼기
+            line.style.backgroundColor = 'rgba(128, 128, 128, 0.3)';
+            line.style.pointerEvents = 'none';
+            gridContainer.appendChild(line);
+        }
+    }, []);
+
     // 차트 시리즈 제거 함수 추가
     const removeChartSeries = useCallback((chart: IChartApi, seriesRef: React.RefObject<any>, errorMessage: string) => {
         if (!seriesRef.current) return;
@@ -473,10 +545,13 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
 
             // 시간 스케일 조정
             chartRef.current.timeScale().fitContent();
+
+            // 년도 그리드 다시 그리기
+            drawYearGridLines();
         } catch (error) {
             console.error("차트 시리즈 업데이트 중 오류:", error);
         }
-    }, [removeChartSeries, showDrawdown, showMaxBalance]);
+    }, [removeChartSeries, showDrawdown, showMaxBalance, drawYearGridLines]);
 
     // DOM 요소 제거 함수 추가
     const removeDOMElement = useCallback((container: HTMLDivElement, elementRef: React.RefObject<HTMLDivElement | null>) => {
@@ -1027,6 +1102,12 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
                         removeDOMElement(container, priceAxisLabelRef);
                         removeDOMElement(container, tooltipRef);
                         removeDOMElement(container, scaleButtonRef);
+                        
+                        // 년도 그리드 컨테이너 제거
+                        if (yearGridContainerRef.current && container.contains(yearGridContainerRef.current)) {
+                            container.removeChild(yearGridContainerRef.current);
+                            yearGridContainerRef.current = null;
+                        }
                     } catch (error) {
                         console.warn('DOM 요소 제거 중 오류 (무시됨):', error);
                     }
@@ -1225,8 +1306,18 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
             // 11. 차트 크기 변경 및 데이터에 맞게 조정
             chart.timeScale().fitContent();
 
+            // 년도 그리드 그리기
+            drawYearGridLines();
+
             // 12. 이벤트 구독
             chart.subscribeCrosshairMove(handleCrosshairMove);
+
+            // timeScale visible range 변경 감지 (줌/팬 시 그리드 업데이트)
+            chart.timeScale().subscribeVisibleLogicalRangeChange(() => {
+                requestAnimationFrame(() => {
+                    drawYearGridLines();
+                });
+            });
 
             // ResizeObserver 설정
             resizeObserver = new ResizeObserver(entries => {
@@ -1234,6 +1325,11 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
 
                 const {width, height} = entries[0].contentRect;
                 chartRef.current.applyOptions({width, height});
+                
+                // 리사이즈 시 년도 그리드 다시 그리기
+                requestAnimationFrame(() => {
+                    drawYearGridLines();
+                });
             });
 
             resizeObserver.observe(container);
