@@ -3,7 +3,7 @@
 .advanced-filter-modal-container {
   background-color: #1c1c24;
   border-radius: 8px;
-  border: 1px solid rgba(255, 215, 0, 0.3);
+  border: 1px solid rgba(255, 215, 0, 0.4);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
   width: auto;
   height: auto;
@@ -353,7 +353,7 @@
 .advanced-filter-footer-button {
   padding: 5px 12px;
   border-radius: 4px;
-  border: 1px solid rgba(255, 215, 0, 0.3);
+  border: 1px solid rgba(255, 215, 0, 0.1);
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -375,7 +375,7 @@
 
 .advanced-filter-footer-button.apply:active {
   background-color: rgba(255, 215, 0, 0.5) !important;
-  border-color: rgba(255, 215, 0, 0.3);
+  border-color: rgba(255, 215, 0, 0.4);
 }
 
 .advanced-filter-footer-button.cancel {
@@ -390,7 +390,7 @@
 
 .advanced-filter-footer-button.cancel:active {
   background-color: #2a2a38 !important;
-  border-color: rgba(255, 215, 0, 0.3);
+  border-color: rgba(255, 215, 0, 0.4);
 }
 
 .advanced-filter-footer-button:focus {

@@ -351,7 +351,7 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
                         overflow: 'visible',
                         background: '#111111',
                         boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)',
-                        border: '1.2px solid rgba(255, 215, 0, 0.3)',
+                        border: '1.2px solid rgba(255, 215, 0, 0.4)',
                         marginTop: '8px',
                         marginLeft: '20px',
                         marginRight: '10px',

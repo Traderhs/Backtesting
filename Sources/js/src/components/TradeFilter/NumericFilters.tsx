@@ -2681,9 +2681,9 @@ const NumericFilters: React.FC = () => {
                         {index > 0 && (
                             <div
                                 style={{
-                                    borderBottom: '1px solid rgba(255, 215, 0, 0.2)',
+                                    borderBottom: '1px solid rgba(255, 215, 0, 0.4)',
                                     marginBottom: '16px',
-                                    paddingBottom: '8px'
+                                    paddingBottom: '0px'
                                 }}
                             />
                         )}
