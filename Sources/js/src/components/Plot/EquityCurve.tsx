@@ -690,7 +690,7 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
             if (container && timeScaleHeight !== undefined) {
                 // 컨테이너 높이에서 시간 축 높이를 빼서 시간 축의 상단 위치 계산
                 // showDrawdown 값에 따라 y 오프셋 조정
-                const yOffset = showDrawdown ? 1 : 2; // 드로우다운 안 그릴 때 1px 더 내리기
+                const yOffset = showDrawdown ? 3 : 2; // 드로우다운 안 그릴 때 1px 더 내리기
                 timeAxisLabel.style.top = `${container.clientHeight - timeScaleHeight + yOffset}px`;
             } else {
                 // 혹시 계산 못하면 예전처럼 아래쪽에 두기 ( fallback )
