@@ -671,7 +671,8 @@ bool OrderHandler::MarketExit(const string& exit_name,
       auto& pending_exits = pending_exits_[symbol_idx];
       for (int order_idx = static_cast<int>(pending_exits.size()) - 1;
            order_idx >= 0; order_idx--) {
-        if (const auto& pending_exit = pending_exits[order_idx];
+        // 참조로 받으므로 객체 삭제 시 로딩 불가하므로 참조 카운트 증가
+        if (const auto pending_exit = pending_exits[order_idx];
             target_name == pending_exit->GetEntryName()) {
           // 청산 대기 주문은 예약 증거금이 필요하지 않기 때문에 삭제만 함
           pending_exits.erase(pending_exits.begin() + order_idx);
@@ -1703,7 +1704,8 @@ void OrderHandler::FillLiquidation(const shared_ptr<Order>& filled_entry,
 
   for (int order_idx = static_cast<int>(pending_exits.size()) - 1;
        order_idx >= 0; order_idx--) {
-    if (const auto& pending_exit = pending_exits[order_idx];
+    // 참조로 받으므로 객체 삭제 시 로딩 불가하므로 참조 카운트 증가
+    if (const auto pending_exit = pending_exits[order_idx];
         target_name == pending_exit->GetEntryName()) {
       // 청산 대기 주문은 예약 증거금이 필요하지 않기 때문에 삭제만 함
       pending_exits.erase(pending_exits.begin() + order_idx);
@@ -2329,13 +2331,15 @@ bool OrderHandler::OrderPendingLitEntry(const shared_ptr<Order>& lit_entry,
                            "사용 가능", "LIT 주문 마진")) {
     LogFormattedInfo(WARN_L, *warn, __FILE__, __LINE__);
 
+    // 참조로 받으므로 객체 삭제 시 이름 로딩 불가하므로 미리 로딩
+    const auto& entry_name = lit_entry->GetEntryName();
+
     // 주문 실패 시 대기 주문에서 삭제
     pending_entries.erase(pending_entries.begin() + order_idx);
 
-    LogFormattedInfo(WARN_L,
-                     format("LIT [{}] 주문 취소 (사용 가능 자금 부족)",
-                            lit_entry->GetEntryName()),
-                     __FILE__, __LINE__);
+    LogFormattedInfo(
+        WARN_L, format("LIT [{}] 주문 취소 (사용 가능 자금 부족)", entry_name),
+        __FILE__, __LINE__);
 
     // CheckPendingEntries에서 주문 순회 시 order_idx를 무조건 증가시키는데,
     // 이 주문이 삭제되면 주문을 하나 건너뛰게 되므로 1을 감소시켜 인덱스를 유지
@@ -2495,14 +2499,17 @@ void OrderHandler::FillPendingExitOrder(
   // 현재 바 시간 로딩
   const auto current_open_time = engine_->GetCurrentOpenTime();
 
+  // 참조 삭제 방지를 위해 참조 카운트 증가
+  const auto exit = exit_order;
+
   // 청산 대기 주문에서 삭제
   auto& pending_exits = pending_exits_[symbol_idx];
   erase(pending_exits, exit_order);
 
   // 주문 정보 로딩
-  const auto& target_name = exit_order->GetEntryName();
-  const auto order_type = exit_order->GetExitOrderType();
-  const auto exit_direction = exit_order->GetExitDirection();
+  const auto& target_name = exit->GetEntryName();
+  const auto order_type = exit->GetExitOrderType();
+  const auto exit_direction = exit->GetExitDirection();
 
   // 원본 진입 주문 로딩
   const shared_ptr<Order>& entry_order = target_entry_order.first;
@@ -2510,24 +2517,23 @@ void OrderHandler::FillPendingExitOrder(
 
   // 총 청산 체결 수량이 진입 체결 수량보다 크지 않게 조정
   const double exit_filled_size =
-      GetAdjustedExitSize(exit_order->GetExitOrderSize(), entry_order);
+      GetAdjustedExitSize(exit->GetExitOrderSize(), entry_order);
 
   // 주문 업데이트
   if (order_type == MIT || order_type == TRAILING) {
-    exit_order->SetExitOrderTime(current_open_time)
-        .SetExitOrderPrice(fill_price);
+    exit->SetExitOrderTime(current_open_time).SetExitOrderPrice(fill_price);
   }
 
-  exit_order->SetExitFilledTime(current_open_time)
+  exit->SetExitFilledTime(current_open_time)
       .SetExitFilledSize(exit_filled_size);
 
   // 슬리피지가 포함된 체결가
   const double slippage_filled_price = CalculateSlippagePrice(
       order_type, exit_direction, fill_price, symbol_idx);
-  exit_order->SetExitFilledPrice(slippage_filled_price);
+  exit->SetExitFilledPrice(slippage_filled_price);
 
   // 수수료
-  exit_order->SetExitFee(
+  exit->SetExitFee(
       CalculateTradingFee(order_type, slippage_filled_price, exit_filled_size));
 
   // 원본 진입 주문에 청산 체결 수량 추가
@@ -2560,7 +2566,7 @@ void OrderHandler::FillPendingExitOrder(
   }
 
   // 자금, 통계 업데이트
-  ExecuteExit(exit_order, symbol_idx);
+  ExecuteExit(exit, symbol_idx);
 }
 
 optional<pair<shared_ptr<Order>, int>> OrderHandler::FindEntryOrder(
