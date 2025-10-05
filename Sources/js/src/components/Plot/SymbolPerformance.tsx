@@ -1293,6 +1293,19 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
             }
 
             if (price !== null && price !== undefined) {
+                // 먼저 innerHTML 업데이트 (offsetWidth를 읽기 전에)
+                if (selectedMetric === '누적 순손익') {
+                    const absPrice = Math.abs(price);
+                    const sign = price >= 0 ? '$' : '-$';
+                    priceAxisLabel.innerHTML = `${sign}${Number(absPrice.toFixed(2)).toLocaleString('en-US', {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2
+                    })}`;
+                } else {
+                    priceAxisLabel.innerHTML = getFormatFunction(selectedMetric, timeframeStr)(price);
+                }
+                priceAxisLabel.style.color = '#ffffff';
+
                 // y축 툴팁 숨김 조건
                 if (
                     ((selectedMetric === '진입 횟수' || selectedMetric === '강제 청산 횟수' || selectedMetric === '펀딩 횟수' || selectedMetric === '승률' || selectedMetric === '손익비' || selectedMetric === '보유 시간 합계') && price < 0) ||
@@ -1306,22 +1319,11 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
 
                     const priceScaleWidth = chartRef.current?.priceScale('left').width();
                     if (priceScaleWidth !== undefined) {
+                        // innerHTML을 업데이트한 후 offsetWidth를 읽어서 위치 계산
                         priceAxisLabel.style.left = `${priceScaleWidth - priceAxisLabel.offsetWidth - 2}px`;
                     } else {
                         priceAxisLabel.style.left = '3px';
                     }
-
-                    if (selectedMetric === '누적 순손익') {
-                        const absPrice = Math.abs(price);
-                        const sign = price >= 0 ? '$' : '-$';
-                        priceAxisLabel.innerHTML = `${sign}${Number(absPrice.toFixed(2)).toLocaleString('en-US', {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2
-                        })}`;
-                    } else {
-                        priceAxisLabel.innerHTML = getFormatFunction(selectedMetric, timeframeStr)(price);
-                    }
-                    priceAxisLabel.style.color = '#ffffff';
                 }
             } else {
                 priceAxisLabel.style.display = 'none';
