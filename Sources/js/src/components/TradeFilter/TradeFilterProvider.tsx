@@ -363,16 +363,16 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
 
     // 즉시 필터링 함수 (디바운스 없음)
     const immediateFiltering = useCallback(async (currentFilter: TradeFilter, trades: TradeItem[]) => {
-        // 필터링 중 상태 설정
-        setIsFiltering(true);
-        setFilteringProgress(0);
-
         // allTrades가 비어있으면 처리하지 않음
         if (!trades.length) {
             setFilteredTrades([]);
             setIsFiltering(false);
             return;
         }
+
+        // 필터링 중 상태 설정
+        setIsFiltering(true);
+        setFilteringProgress(0);
 
         try {
             // 워커의 TradeFilter 형식으로 변환 (recalculateBalance를 boolean으로 확실히 설정)
@@ -442,15 +442,18 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                 workerFilter
             );
 
+            // 결과 적용
             setFilteredTrades(result.trades as TradeItem[]);
             setHasBankruptcy(result.hasBankruptcy); // 파산 여부 저장
-            setIsFiltering(false);
             setFilteringProgress(100);
         } catch (error) {
             console.error('멀티 워커 필터링 실패:', error);
-            setFilteredTrades([]);
-            setIsFiltering(false);
+            // 에러 발생 시 빈 배열 대신 원본 데이터 유지
+            setFilteredTrades(trades);
+            setHasBankruptcy(false);
             setFilteringProgress(0);
+        } finally {
+            setIsFiltering(false);
         }
     }, []);
 
