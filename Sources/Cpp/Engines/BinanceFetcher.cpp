@@ -103,6 +103,9 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
                                            const string& timeframe) const {
   const auto& start = chrono::high_resolution_clock::now();
 
+  // 타임프레임 유효성 검사
+  ParseTimeframe(timeframe);
+
   // 저장 경로 생성
   const string& timeframe_filename = GetFilenameWithTimeframe(timeframe);
   const string& save_directory =
@@ -171,6 +174,9 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
 void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
                                             const string& timeframe) const {
   const auto& start = chrono::high_resolution_clock::now();
+
+  // 타임프레임 유효성 검사
+  ParseTimeframe(timeframe);
 
   const auto& filename_timeframe = GetFilenameWithTimeframe(timeframe);
   const auto& directory_path =
@@ -265,6 +271,9 @@ void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
                                           const string& timeframe) const {
   const auto& start = chrono::high_resolution_clock::now();
 
+  // 타임프레임 유효성 검사
+  ParseTimeframe(timeframe);
+
   // 저장 경로 생성
   const string& timeframe_filename = GetFilenameWithTimeframe(timeframe);
   const string& save_directory = mark_price_klines_directory_ + "/" + symbol;
@@ -327,6 +336,9 @@ void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
 void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
                                            const string& timeframe) const {
   const auto& start = chrono::high_resolution_clock::now();
+
+  // 타임프레임 유효성 검사
+  ParseTimeframe(timeframe);
 
   const auto& filename_timeframe = GetFilenameWithTimeframe(timeframe);
   const auto& directory_path = mark_price_klines_directory_ + "/" + symbol;
