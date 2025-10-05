@@ -599,6 +599,7 @@ export class TradeFilterManager {
             trade["최고 드로우다운"] = maxDrawdown;
             trade["누적 손익"] = currentBalance - initialBalance;
             trade["누적 손익률"] = (currentBalance - initialBalance) / initialBalance * 100;
+            trade["보유 심볼 수"] = "-";
 
             result[i] = trade;
         }
