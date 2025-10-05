@@ -1,5 +1,4 @@
 import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
-import {motion} from 'framer-motion';
 import EquityCurve from './EquityCurve';
 import {useTradeFilter} from '@/components/TradeFilter';
 import LoadingSpinner from '@/components/Common/LoadingSpinner';
@@ -162,22 +161,28 @@ interface PlotProps {
 const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
     // 마운트 추적을 위한 state 및 ref
     const [isMounted, setIsMounted] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
     const [equityInitialized, setEquityInitialized] = useState(false);
     const [netProfitLossInitialized, setNetProfitLossInitialized] = useState(false);
     const [holdingTimePnlInitialized, setHoldingTimePnlInitialized] = useState(false);
     const [symbolPerformanceInitialized, setSymbolPerformanceInitialized] = useState(false);
 
-    // 각 plotType별 애니메이션 실행 완료 상태 추적
-    const [animatedPlots, setAnimatedPlots] = useState<Set<string>>(new Set());
-
     // 필터링된 거래 목록 사용
     const {filteredTrades} = useTradeFilter();
 
-    // 컴포넌트 마운트 시 로그 출력
+    // 컴포넌트 마운트 시 로그 출력 및 로딩 처리
     useEffect(() => {
         setIsMounted(true);
+        setIsLoading(true);
+        
+        // 최소 1초 로딩
+        const timer = setTimeout(() => {
+            setIsLoading(false);
+        }, 1000);
+        
         return () => {
             setIsMounted(false);
+            clearTimeout(timer);
         }
     }, []);
 
@@ -278,21 +283,16 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
         }
     };
 
-    // 현재 plotType의 애니메이션 실행 여부 결정
-    const shouldAnimate = !animatedPlots.has(plotType);
-
-    // plotType이 변경될 때 애니메이션 상태 업데이트
-    useEffect(() => {
-        if (!animatedPlots.has(plotType)) {
-            setAnimatedPlots(prev => new Set([...prev, plotType]));
-        }
-    }, [plotType, animatedPlots]);
-
     // UI 렌더링을 메모이제이션
     return useMemo(() => {
         // 거래 데이터가 없는 경우
         if (!filteredTrades || filteredTrades.length === 1) {
             return <NoDataMessage message="거래 내역이 존재하지 않습니다."/>;
+        }
+
+        // 로딩 중이면 스피너 표시
+        if (isLoading) {
+            return <LoadingSpinner />;
         }
 
         return (
@@ -303,11 +303,7 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
                     marginBottom: '25px',
                     zIndex: 100
                 }}>
-                    <motion.h2
-                        key={plotType} // plotType별로 다른 key
-                        initial={shouldAnimate ? {opacity: 0, x: -20} : {opacity: 1, x: 0}}
-                        animate={{opacity: 1, x: 0}}
-                        transition={shouldAnimate ? {delay: 0.1, duration: 0.5} : {duration: 0}}
+                    <h2
                         style={{
                             color: 'white',
                             fontSize: '2.5rem',
@@ -323,10 +319,7 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
                         {/* 플롯 타입에 따라 동적으로 제목 변경 */}
                         {getPlotTitle(plotType)}
                         {/* 밑줄 */}
-                        <motion.span
-                            initial={shouldAnimate ? {width: 0} : {width: '100%'}}
-                            animate={{width: '100%'}}
-                            transition={shouldAnimate ? {delay: 0.3, duration: 0.5} : {duration: 0}}
+                        <span
                             style={{
                                 position: 'absolute',
                                 bottom: 0,
@@ -334,17 +327,14 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
                                 right: 0,
                                 height: '2px',
                                 background: 'rgba(255, 215, 0, 0.4)',
+                                width: '100%',
                             }}
                         />
-                    </motion.h2>
+                    </h2>
                 </div>
 
                 {/* 에쿼티 곡선 (자금 변화 및 드로우다운) - Overview.tsx 스타일 카드 적용 */}
-                <motion.div
-                    key={plotType} // plotType별로 다른 key
-                    initial={shouldAnimate ? {opacity: 0, scale: 0.98} : {opacity: 1, scale: 1}}
-                    animate={{opacity: 1, scale: 1}}
-                    transition={shouldAnimate ? {delay: 0.5, duration: 0.5} : {duration: 0}}
+                <div
                     style={{
                         flex: 1,
                         borderRadius: '8px',
@@ -423,10 +413,10 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
                             )}
                         </div>
                     </div>
-                </motion.div>
+                </div>
             </div>
         );
-    }, [filteredTrades, isMounted, plotType, equityInitialized, netProfitLossInitialized, holdingTimePnlInitialized, symbolPerformanceInitialized, config]);
+    }, [filteredTrades, isMounted, plotType, equityInitialized, netProfitLossInitialized, holdingTimePnlInitialized, symbolPerformanceInitialized, config, isLoading]);
 };
 
 export default Plot; 
