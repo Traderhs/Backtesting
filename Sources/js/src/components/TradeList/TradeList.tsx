@@ -676,21 +676,37 @@ const TradeRow = React.memo<TradeRowProps>(({
         </div>
     );
 }, (prevProps, nextProps) => {
-    // 깊은 비교를 위한 커스텀 비교 함수
-    return (
-        prevProps.row === nextProps.row &&
-        prevProps.originalIndex === nextProps.originalIndex &&
-        prevProps.isActiveRow === nextProps.isActiveRow &&
-        prevProps.hoverTradeNo === nextProps.hoverTradeNo &&
-        prevProps.hoverColumn === nextProps.hoverColumn &&
-        prevProps.hoverColumnGroup === nextProps.hoverColumnGroup &&
-        prevProps.selectedColumnGroup === nextProps.selectedColumnGroup &&
-        prevProps.selectedCell === nextProps.selectedCell &&
-        prevProps.isDifferentFromNext === nextProps.isDifferentFromNext &&
-        prevProps.isLastRowOfDataset === nextProps.isLastRowOfDataset &&
-        prevProps.columnWidths === nextProps.columnWidths &&
-        prevProps.config === nextProps.config
-    );
+    // 커스텀 비교 함수
+    // 참조가 같으면 리렌더링 불필요
+    if (prevProps === nextProps) return true;
+
+    // row가 변경되었는지 확인 (거래 번호로 판단)
+    if (prevProps.row["거래 번호"] !== nextProps.row["거래 번호"]) return false;
+
+    // 인덱스 변경 확인
+    if (prevProps.originalIndex !== nextProps.originalIndex) return false;
+
+    // 호버/선택 상태 변경 확인
+    if (prevProps.isActiveRow !== nextProps.isActiveRow) return false;
+    if (prevProps.hoverTradeNo !== nextProps.hoverTradeNo) return false;
+    if (prevProps.hoverColumn !== nextProps.hoverColumn) return false;
+    if (prevProps.selectedCell !== nextProps.selectedCell) return false;
+
+    // 배열 비교 (얕은 비교)
+    if (prevProps.hoverColumnGroup.length !== nextProps.hoverColumnGroup.length ||
+        !prevProps.hoverColumnGroup.every((v, i) => v === nextProps.hoverColumnGroup[i])) return false;
+
+    if (prevProps.selectedColumnGroup.length !== nextProps.selectedColumnGroup.length ||
+        !prevProps.selectedColumnGroup.every((v, i) => v === nextProps.selectedColumnGroup[i])) return false;
+
+    // 경계 관련 props
+    if (prevProps.isDifferentFromNext !== nextProps.isDifferentFromNext) return false;
+    if (prevProps.isLastRowOfDataset !== nextProps.isLastRowOfDataset) return false;
+    if (prevProps.isNextRowBankrupt !== nextProps.isNextRowBankrupt) return false;
+
+    // columnWidths와 config는 참조 비교만 (깊은 비교는 성능 저하)
+    if (prevProps.columnWidths !== nextProps.columnWidths) return false;
+    return prevProps.config === nextProps.config;
 });
 
 TradeRow.displayName = 'TradeRow';
@@ -744,6 +760,7 @@ export default function TradeList({config}: TradeListProps) {
     const {filteredTrades, allTrades, filter, hasBankruptcy} = useTradeFilter()
     const [trades, setTrades] = useState<TradeItem[]>([])
     const [isLoading, setIsLoading] = useState(true)
+    const [isUpdating, setIsUpdating] = useState(false) // 업데이트 중 상태
     const tableRef = useRef<HTMLDivElement>(null)
     const [hoverTradeNo, setHoverTradeNo] = useState<number | null>(null)
     const [hoverColumn, setHoverColumn] = useState<string | null>(null)
@@ -825,24 +842,35 @@ export default function TradeList({config}: TradeListProps) {
     const headerRef = useRef<HTMLDivElement>(null);
 
     // allHeaders를 useEffect 외부로 이동하거나, 의존성 배열에서 제거
-    const allHeaders = useMemo(() =>
-            trades.length > 0 ? Object.keys(trades[0]).filter(key => key !== 'originalIdxForSort' && key !== '__isBankruptRow') : []
-        , [trades]);
+    const allHeaders = useMemo(() => {
+        // trades가 비어있거나 변경 중이면 이전 헤더 유지
+        if (trades.length === 0) return [];
+
+        return Object.keys(trades[0]).filter(key => key !== 'originalIdxForSort' && key !== '__isBankruptRow');
+    }, [trades.length]); // trades 자체가 아닌 length만 의존
 
     // 데이터 로딩 처리 - 최적화된 데이터 변환 및 파산 행 추가 (TradeList에서만)
     const prevFilteredTradesRef = useRef<any[]>([]);
     const prevAllTradesRef = useRef<any[]>([]);
     const prevRecalculateBalanceRef = useRef<boolean | undefined>(undefined);
+
     useEffect(() => {
+        // 데이터가 실제로 변경되지 않았으면 스킵
         if (filteredTrades === prevFilteredTradesRef.current &&
             filter.recalculateBalance === prevRecalculateBalanceRef.current) {
-            return; // 데이터가 변경되지 않았으면 스킵
+            return;
         }
 
-        setIsLoading(true);
+        // 첫 로딩이 아니면 업데이트 상태만 표시
+        if (trades.length > 0) {
+            setIsUpdating(true);
+        } else {
+            setIsLoading(true);
+        }
 
-        // 배치 처리를 위한 setTimeout 사용
-        const timeoutId = setTimeout(() => {
+        // requestAnimationFrame을 사용하여 다음 프레임에 업데이트
+        // 이렇게 하면 UI가 먼저 렌더링되고 데이터가 업데이트됨
+        const rafId = requestAnimationFrame(() => {
             // 파산 여부는 컨텍스트에서 가져옴 (워커가 자금 재계산 중 파산을 감지한 경우)
             // 자금 재계산이 켜져 있어야만 파산 행을 표시
             const shouldShowBankruptcy = filter.recalculateBalance && hasBankruptcy;
@@ -872,15 +900,23 @@ export default function TradeList({config}: TradeListProps) {
                 }));
             }
 
+            // 데이터 업데이트
             setTrades(newTrades);
             prevFilteredTradesRef.current = filteredTrades;
             prevAllTradesRef.current = allTrades;
             prevRecalculateBalanceRef.current = filter.recalculateBalance;
-            setIsLoading(false);
-        }, 0);
 
-        return () => clearTimeout(timeoutId);
-    }, [filteredTrades, allTrades, filter.recalculateBalance, hasBankruptcy]);
+            // 다음 프레임에 로딩 상태 해제
+            requestAnimationFrame(() => {
+                setIsLoading(false);
+                setIsUpdating(false);
+            });
+        });
+
+        return () => {
+            cancelAnimationFrame(rafId);
+        };
+    }, [filteredTrades, allTrades, filter.recalculateBalance, hasBankruptcy, trades.length]);
 
     // 필터나 자금 재계산이 변경되면 선택 및 호버 상태 모두 해제
     useEffect(() => {
@@ -898,7 +934,7 @@ export default function TradeList({config}: TradeListProps) {
 
     const calculateColumnWidths = useCallback(() => {
         if (allHeaders.length === 0) {
-            setColumnWidths({});
+            // 헤더가 없으면 빈 객체 설정하지 않고 리턴 (기존 columnWidths 유지)
             return;
         }
 
@@ -1011,9 +1047,11 @@ export default function TradeList({config}: TradeListProps) {
 
     // 열 너비 계산
     useEffect(() => {
+        // trades가 없거나 업데이트 중이면 계산하지 않음
+        if (trades.length === 0 || isUpdating) return;
+
         calculateColumnWidths();
-        // cleanup 불필요: 즉시 실행만
-    }, [calculateColumnWidths]);
+    }, [calculateColumnWidths, trades.length, isUpdating]);
 
     // 보이는 행 계산 로직 최적화 - 스크롤 디바운싱 및 RAF 최적화
     const visibleRangeRef = useRef(visibleRange);
@@ -1022,9 +1060,17 @@ export default function TradeList({config}: TradeListProps) {
 
     useEffect(() => {
         const currentViewport = viewportRef.current;
-        if (!currentViewport || trades.length === 0) {
-            const newRange = {start: 0, end: Math.min(trades.length - 1, overscanCount * 2 + 10)};
-            setVisibleRange(newRange);
+
+        // trades가 없거나 업데이트 중이면 범위 계산 안 함
+        if (!currentViewport || trades.length === 0 || isUpdating) {
+            // 초기 범위만 설정
+            if (trades.length > 0 && !isUpdating) {
+                const newRange = {start: 0, end: Math.min(trades.length - 1, overscanCount * 2 + 10)};
+                if (visibleRangeRef.current.start !== newRange.start ||
+                    visibleRangeRef.current.end !== newRange.end) {
+                    setVisibleRange(newRange);
+                }
+            }
             return;
         }
 
@@ -1053,7 +1099,7 @@ export default function TradeList({config}: TradeListProps) {
                 cancelAnimationFrame(rafRef.current);
             }
         };
-    }, [scrollTop, trades.length, rowHeight, overscanCount]);
+    }, [scrollTop, trades.length, rowHeight, overscanCount, isUpdating]);
 
     const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -1108,7 +1154,7 @@ export default function TradeList({config}: TradeListProps) {
 
     // 렌더링할 가시적 거래 데이터 준비 - 최적화된 계산 및 메모리 절약
     const visibleTradesData = useMemo(() => {
-        if (trades.length === 0) return [];
+        if (trades.length === 0 || isUpdating) return [];
 
         const start = Math.max(0, visibleRange.start);
         const end = Math.min(visibleRange.end, trades.length - 1);
@@ -1125,7 +1171,7 @@ export default function TradeList({config}: TradeListProps) {
         }
 
         return items;
-    }, [trades, visibleRange.start, visibleRange.end]);
+    }, [trades, visibleRange.start, visibleRange.end, isUpdating]);
 
     // 마우스 이벤트 핸들러 최적화 - 디바운싱 제거하고 직접 처리
     const handleMouseEnter = useCallback((tradeNo: number) => {
@@ -1203,7 +1249,10 @@ export default function TradeList({config}: TradeListProps) {
         return <NoDataMessage message="거래 내역이 존재하지 않습니다."/>;
     }
 
-    if (isLoading) return <LoadingSpinner/>
+    // 초기 로딩 중
+    if (isLoading && trades.length === 0) {
+        return <LoadingSpinner/>
+    }
 
     return (
         <motion.div
@@ -1218,7 +1267,10 @@ export default function TradeList({config}: TradeListProps) {
                 display: 'flex',
                 flexDirection: 'column',
                 position: 'relative',
-                minWidth: '0'
+                minWidth: '0',
+                // 업데이트 중에도 투명도 유지하여 깜빡임 방지
+                opacity: isUpdating ? 0.7 : 1,
+                transition: 'opacity 0.2s ease-in-out'
             }}
             className={`trade-list-container${selectedCell ? ' has-selected-cell' : ''}`}
             onClick={handleContainerClick}
@@ -1375,8 +1427,23 @@ export default function TradeList({config}: TradeListProps) {
                                 height: `${Math.floor(trades.length * rowHeight)}px`,
                                 backgroundColor: '#111111',
                                 // GPU 가속 제거하여 메모리 사용량 감소
-                                position: 'relative'
+                                position: 'relative',
+                                // 최소 높이를 보장하여 검은 배경 버그 방지
+                                minHeight: trades.length > 0 ? `${Math.floor(trades.length * rowHeight)}px` : '100px'
                             }}>
+                                {/* 데이터가 없거나 업데이트 중일 때도 기본 메시지 표시 */}
+                                {visibleTradesData.length === 0 && !isLoading && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: '50%',
+                                        left: '50%',
+                                        transform: 'translate(-50%, -50%)',
+                                        color: 'rgba(255, 255, 255, 0.5)',
+                                        fontSize: '16px'
+                                    }}>
+                                        {isUpdating ? '데이터 업데이트 중...' : '표시할 데이터가 없습니다.'}
+                                    </div>
+                                )}
                                 {visibleTradesData.map(({tradeData: row, originalIndex}) => {
                                     // 파산 행인 경우 특별 렌더링
                                     if (row.__isBankruptRow) {
