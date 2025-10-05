@@ -1259,7 +1259,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
             const timeScaleHeight = chartRef.current?.timeScale().height();
 
             if (container && timeScaleHeight !== undefined) {
-                const yOffset = 2;
+                const yOffset = 1;
                 timeAxisLabel.style.top = `${container.clientHeight - timeScaleHeight + yOffset}px`;
             } else {
                 timeAxisLabel.style.bottom = '8px';
