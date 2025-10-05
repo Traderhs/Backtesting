@@ -2,7 +2,6 @@ import {useState, useEffect, useMemo, memo, useRef} from "react";
 import SymbolCard from "./SymbolCard"
 import StrategyIndicatorCard from "./StrategyIndicatorCard"
 import EngineCard from "./EngineCard"
-import {motion} from "framer-motion";
 import LoadingSpinner from "../Common/LoadingSpinner";
 
 export interface BarDataRaw {
@@ -98,10 +97,7 @@ const PageTitle = memo(() => (
         marginBottom: '25px',
         zIndex: 100
     }}>
-        <motion.h2
-            initial={{opacity: 0, x: -20}}
-            animate={{opacity: 1, x: 0}}
-            transition={{delay: 0.1, duration: 0.5}}
+        <h2
             style={{
                 color: 'white',
                 fontSize: '2.5rem',
@@ -115,10 +111,7 @@ const PageTitle = memo(() => (
             }}
         >
             백테스팅 설정
-            <motion.span
-                initial={{width: 0}}
-                animate={{width: '100%'}}
-                transition={{delay: 0.3, duration: 0.5}}
+            <span
                 style={{
                     position: 'absolute',
                     bottom: 0,
@@ -126,9 +119,10 @@ const PageTitle = memo(() => (
                     right: 0,
                     height: '2px',
                     background: 'rgba(255, 215, 0, 0.4)',
+                    width: '100%',
                 }}
             />
-        </motion.h2>
+        </h2>
     </div>
 ));
 
@@ -136,6 +130,7 @@ const PageTitle = memo(() => (
 const Config = memo(({config: rawConfig}: ConfigProps) => {
     const [parsedConfig, setParsedConfig] = useState<ConfigJson | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [showContent, setShowContent] = useState(false);
 
     // 이 컴포넌트가 현재 화면에 보이는지 여부를 추적
     const isVisible = useRef(true);
@@ -165,11 +160,13 @@ const Config = memo(({config: rawConfig}: ConfigProps) => {
         if (!rawConfig) {
             setParsedConfig(null);
             setIsLoading(true);
+            setShowContent(false);
             return;
         }
 
         try {
             setIsLoading(true);
+            setShowContent(false);
 
             // 성능 개선: 데이터 파싱 작업을 requestAnimationFrame 내에서 실행
             const parseData = () => {
@@ -221,8 +218,11 @@ const Config = memo(({config: rawConfig}: ConfigProps) => {
 
                 setParsedConfig({symbols, strategies, settings});
 
-                // 데이터 로딩 완료 처리
-                setIsLoading(false);
+                // 데이터 로딩 완료 처리 - 최소 1초 로딩
+                setTimeout(() => {
+                    setIsLoading(false);
+                    setShowContent(true);
+                }, 1000);
             };
 
             // 비동기적으로 파싱 수행하여 렌더링 블록 방지
@@ -231,6 +231,7 @@ const Config = memo(({config: rawConfig}: ConfigProps) => {
             console.error("Config 데이터 파싱 오류:", error);
             setParsedConfig(null);
             setIsLoading(false);
+            setShowContent(false);
         }
 
         return () => {
@@ -324,35 +325,27 @@ const Config = memo(({config: rawConfig}: ConfigProps) => {
         return isLoading ? <LoadingSpinner/> : null;
     }
 
+    if (!showContent) {
+        return <LoadingSpinner/>;
+    }
+
     return (
-        <motion.div
+        <div
             className="flex flex-col h-full overflow-y-auto gpu-accelerated-heavy"
             style={{overflowY: 'auto'}} /* 명시적으로 스크롤 설정 */
-            initial={{opacity: 0}}
-            animate={{opacity: 1}}
-            transition={{duration: 0.5}}
         >
             <PageTitle/>
 
-            <motion.div
+            <div
                 className="px-8 pb-8 space-y-6 gpu-accelerated-heavy"
-                initial={{y: 20, opacity: 0}}
-                animate={{y: 0, opacity: 1}}
-                transition={{delay: 0.2, duration: 0.4}}
             >
                 {/* 심볼 정보 */}
-                <motion.section
-                    initial={{opacity: 0, x: -20}}
-                    animate={{opacity: 1, x: 0}}
-                    transition={{delay: 0.3, duration: 0.5}}
+                <section
                     className="gpu-accelerated-heavy"
                 >
                     <div className="space-y-4">
-                        <motion.div
+                        <div
                             key="symbol-card"
-                            initial={{opacity: 0, y: 20}}
-                            animate={{opacity: 1, y: 0}}
-                            transition={{delay: 0.4, duration: 0.4}}
                             className="gpu-accelerated-heavy"
                         >
                             <SymbolCard
@@ -371,15 +364,12 @@ const Config = memo(({config: rawConfig}: ConfigProps) => {
                                 }))}
                                 initialSymbol={parsedConfig.symbols.length > 0 ? parsedConfig.symbols[0].symbolName : undefined}
                             />
-                        </motion.div>
+                        </div>
                     </div>
-                </motion.section>
+                </section>
 
                 {/* 전략 및 지표 정보 - 전체 너비 사용 */}
-                <motion.section
-                    initial={{opacity: 0, x: -20}}
-                    animate={{opacity: 1, x: 0}}
-                    transition={{delay: 0.5, duration: 0.5}}
+                <section
                     className="gpu-accelerated-heavy"
                 >
                     <div className="space-y-4">
@@ -394,38 +384,28 @@ const Config = memo(({config: rawConfig}: ConfigProps) => {
                             />
                         ))}
                         {parsedConfig.strategies.length === 0 && (
-                            <motion.p
-                                className="text-muted-foreground italic"
-                                initial={{opacity: 0}}
-                                animate={{opacity: 1}}
-                                transition={{delay: 0.6, duration: 0.3}}
-                            >
+                            <p className="text-muted-foreground italic">
                                 추가된 전략이 없습니다.
-                            </motion.p>
+                            </p>
                         )}
                     </div>
-                </motion.section>
+                </section>
 
                 {/* 엔진 설정 - 맨 아래로 이동 */}
-                <motion.section
-                    initial={{opacity: 0, x: -20}}
-                    animate={{opacity: 1, x: 0}}
-                    transition={{delay: 0.7, duration: 0.5}}
+                <section
                     className="gpu-accelerated-heavy"
                 >
-                    <motion.div
+                    <div
                         key="engine-card"
-                        initial={{opacity: 0, y: 20}}
-                        animate={{opacity: 1, y: 0}}
-                        transition={{delay: 0.8, duration: 0.4}}
                         className="gpu-accelerated-heavy"
                     >
                         <EngineCard settings={parsedConfig.settings}/>
-                    </motion.div>
-                </motion.section>
-            </motion.div>
-        </motion.div>
+                    </div>
+                </section>
+            </div>
+        </div>
     )
 });
 
 export default Config;
+

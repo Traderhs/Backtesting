@@ -288,6 +288,7 @@ interface LogProps {
 const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
     const [allLogLines, setAllLogLines] = useState<string[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
+    const [showContent, setShowContent] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState<string>('');
     const [currentSearchIndex, setCurrentSearchIndex] = useState<number>(0);
@@ -488,7 +489,11 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
             console.error('로그 파일 불러오기 오류:', err);
             setError(err.message || '로그 파일을 불러오는 중 오류가 발생했습니다.');
         } finally {
-            setLoading(false);
+            // 최소 1초 로딩 후 컨텐츠 표시
+            setTimeout(() => {
+                setLoading(false);
+                setShowContent(true);
+            }, 1000);
         }
     }, []);
 
@@ -909,12 +914,9 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
     };
 
     return (
-        <motion.div
+        <div
             ref={containerRef}
             className="h-full w-full flex flex-col p-4 overflow-y-auto log-container"
-            initial={{opacity: 0}}
-            animate={{opacity: 1}}
-            transition={{duration: 0.5}}
             style={{
                 // 뿌옇게 되는 문제 방지를 위한 명시적 스타일 - 강화된 버전
                 filter: 'none',
@@ -938,6 +940,11 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
             {/* 초기 로딩 시 전체 화면 스피너 - 최상위에 배치 */}
             {loading && <LogSpinner/>}
 
+            {/* 로딩 완료 전까지는 컨텐츠 숨기기 */}
+            {!showContent && !error && null}
+
+            {showContent && (
+                <>
             {/* 제목 영역 */}
             <div
                 style={{
@@ -946,10 +953,7 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                     zIndex: 100,
                 }}
             >
-                <motion.h2
-                    initial={{opacity: 0, x: -20}}
-                    animate={{opacity: loading ? 0 : 1, x: loading ? -20 : 0}}
-                    transition={{delay: 0.1, duration: 0.5}}
+                <h2
                     style={{
                         color: 'white',
                         fontSize: '2.5rem',
@@ -964,10 +968,7 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                 >
                     백테스팅 로그
                     {/* 밑줄 */}
-                    <motion.span
-                        initial={{width: 0}}
-                        animate={{width: loading ? 0 : '100%'}}
-                        transition={{delay: 0.3, duration: 0.5}}
+                    <span
                         style={{
                             position: 'absolute',
                             bottom: 0,
@@ -975,16 +976,14 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                             right: 0,
                             height: '2px',
                             background: 'rgba(255, 215, 0, 0.4)',
+                            width: '100%',
                         }}
                     />
-                </motion.h2>
+                </h2>
             </div>
 
             {/* 검색 영역과 청크 네비게이션 */}
-            <motion.div 
-                initial={{opacity: 0, y: -10}}
-                animate={{opacity: loading ? 0 : 1, y: loading ? -10 : 0}}
-                transition={{delay: 0.5, duration: 0.5}}
+            <div 
                 style={{
                 margin: '0 20px 15px 20px',
                 display: 'flex',
@@ -992,10 +991,7 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                 alignItems: 'center',
             }}>
                 {/* 검색 영역 */}
-                <motion.div
-                    initial={{opacity: 0, y: -10}}
-                    animate={{opacity: loading ? 0 : 1, y: loading ? -10 : 0}}
-                    transition={{delay: 0.6, duration: 0.5}}
+                <div
                     style={{
                         padding: '15px 20px',
                         background: '#111111',
@@ -1135,14 +1131,11 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                             : `${(visibleStopIndex + 1).toLocaleString()} / ${logLines.length.toLocaleString()}`
                         }
                     </div>
-                </motion.div>
+                </div>
 
                 {/* 청크 네비게이션 - 대용량 파일일 때만 표시 */}
                 {allLogLines.length > CHUNK_SIZE && (
-                    <motion.div
-                        initial={{opacity: 0, y: -10}}
-                        animate={{opacity: loading ? 0 : 1, y: loading ? -10 : 0}}
-                        transition={{delay: 0.7, duration: 0.5}}
+                    <div
                         style={{
                             width: '260px',
                             height: '71px',
@@ -1246,15 +1239,12 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                                 ⏭
                             </motion.button>
                         </div>
-                    </motion.div>
+                    </div>
                 )}
-            </motion.div>
+            </div>
 
             {/* 컨텐츠 영역 */}
-            <motion.div
-                initial={{opacity: 0}}
-                animate={{opacity: loading ? 0 : 1}}
-                transition={{delay: 0.8, duration: 0.5}}
+            <div
                 style={{
                     flex: 1,
                     borderRadius: '8px',
@@ -1432,9 +1422,16 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                 {!loading && !error && logLines.length === 0 && (
                     <NoDataMessage message="로그 데이터가 없습니다."/>
                 )}
-            </motion.div>
-        </motion.div>
+            </div>
+            </>
+            )}
+
+            {error && !loading && (
+                <NoDataMessage message="로그 파일을 불러올 수 없습니다."/>
+            )}
+        </div>
     );
 };
 
 export default Log;
+
