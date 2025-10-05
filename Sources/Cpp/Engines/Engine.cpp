@@ -1064,7 +1064,7 @@ void Engine::InitializeSymbolInfo() {
 
         // 마크 가격이 빈 문자열로도 존재하기 때문에 조건 분기
         funding_rates_vector[idx] = {
-            stod(funding_rate.at("fundingRate").get<string>()),
+            funding_rate.at("fundingRate").get<double>(),
             funding_rate.at("fundingTime").get<int64_t>(),
             mark_price.empty() ? NAN : stod(mark_price)};
       }
@@ -1428,8 +1428,10 @@ void Engine::UpdateTradingStatus() {
         }
 
         // ※ 2. 하나의 참조 바라도 마지막 참조 바 인덱스 시간부터 참조 바
-        //       타임프레임만큼 시간이 지나면 더이상 참조 바 사용이 불가해지므로
-        //       해당 심볼의 트레이딩 종료
+        //       타임프레임만큼 시간이 지나면 더 이상 참조 바 사용이
+        //       불가해지므로 해당 심볼의 트레이딩 종료 (원래 참조 바
+        //       타임프레임만큼 시간이 지나면 인덱스가 업데이트 되어야하므로
+        //       그때부터 사용 불가해지는 것)
         if (moved_bar_idx == bar_data->GetNumBars(symbol_idx) - 1 &&
             current_close_time_ ==
                 moved_close_time + reference_bar_time_diff_[timeframe]) {
@@ -1580,7 +1582,7 @@ void Engine::CheckFundingTime() {
 
     // 펀딩 시간이 되면 펀딩
     // 만약 펀딩 비율 데이터가 종료되었으면 펀딩비는 없음
-    // -> 종료 시 MAX 값으로 설정되므로 자동으로 조건 미통과
+    // → 데이터 종료 시 펀딩 시간이 MAX 값으로 설정되므로 자동으로 조건 미통과
     if (const auto funding_time = next_funding_times_[symbol_idx];
         current_open_time_ >= funding_time) {
       const double next_funding_price = next_funding_mark_prices_[symbol_idx];
@@ -1726,7 +1728,7 @@ pair<vector<PriceData>, vector<PriceData>> Engine::GetPriceQueue(
     // 실제 심볼 인덱스 (1,5,6 등 활성화된 심볼의 인덱스)
     const auto symbol_idx = symbol_indices[symbol_order];
 
-    // 현재 바를 참조
+    // 각 바 데이터의 현재 바를 참조
     const auto& original_mark_bar = mark_price_bar_data_->GetBar(
         symbol_idx, (*mark_price_indices_)[symbol_idx]);
     const auto& market_bar =
