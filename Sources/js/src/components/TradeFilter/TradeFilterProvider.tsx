@@ -15,7 +15,7 @@ import {filterTradesAsync} from "@/workers/tradeFilterUtils.ts";
 // 필터링 로직을 청크 단위로 처리하는 함수
 export const TradeFilterProvider = ({children}: { children: React.ReactNode }) => {
     const [filter, setFilter] = useState<TradeFilter>({
-        recalculateBalance: true,
+        recalculateBalance: false,
 
         tradeNumberMin: undefined,
         tradeNumberMax: undefined,
