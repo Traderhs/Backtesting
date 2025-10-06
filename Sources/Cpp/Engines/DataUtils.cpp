@@ -70,7 +70,7 @@ int CountDecimalPlaces(const double value) {
     decimal_part.pop_back();
   }
 
-  return decimal_part.length();
+  return static_cast<int>(decimal_part.length());
 }
 
 double RoundToDecimalPlaces(const double value, const size_t decimal_places) {
@@ -134,7 +134,7 @@ bool IsFileMetadataValid(const string& file_path,
     const auto file_size = filesystem::file_size(path);
     const auto last_write_time = filesystem::last_write_time(path);
 
-    return file_size == cached_metadata.file_size &&
+    return static_cast<int64_t>(file_size) == cached_metadata.file_size &&
            last_write_time == cached_metadata.last_write_time;
   } catch (...) {
     return false;
