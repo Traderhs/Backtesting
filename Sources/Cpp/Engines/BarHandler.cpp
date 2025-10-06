@@ -391,9 +391,8 @@ void BarHandler::ProcessBarIndex(const BarType bar_type,
 void BarHandler::ProcessBarIndices(const BarType bar_type,
                                    const string& timeframe,
                                    const int64_t target_close_time) {
-  for (int symbol_idx = 0;
-       symbol_idx < GetBarData(bar_type, timeframe)->GetNumSymbols();
-       symbol_idx++) {
+  const auto num_symbols = GetBarData(bar_type, timeframe)->GetNumSymbols();
+  for (int symbol_idx = 0; symbol_idx < num_symbols; symbol_idx++) {
     ProcessBarIndex(bar_type, timeframe, symbol_idx, target_close_time);
   }
 }

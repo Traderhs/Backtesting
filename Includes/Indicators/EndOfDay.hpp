@@ -17,11 +17,9 @@ class EndOfDay final : public Indicator {
                     const Plot& plot, const string& market_close_time);
 
  private:
-  string market_close_time_;  // 장 마감 시간 (HH:MM:SS 형식)
-  int close_hour_;            // 장 마감 시간 (시)
-  int close_minute_;          // 장 마감 시간 (분)
-  int close_second_;          // 장 마감 시간 (초)
-  int timeframe_minutes_;     // 타임프레임을 분 단위로 변환
+  string market_close_time_;         // 장 마감 시간 (HH:MM:SS 형식)
+  int close_seconds_of_day_;         // 장 마감 시간을 하루 기준 초 단위로 변환
+  int timeframe_minutes_;            // 타임프레임을 분 단위로 변환
 
   shared_ptr<BarData> reference_bar_;  // 참조 바 데이터
   int symbol_idx_;                     // 현재 심볼 인덱스

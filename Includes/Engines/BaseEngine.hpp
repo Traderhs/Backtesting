@@ -7,6 +7,7 @@
 
 // 내부 헤더
 #include "Engines/Analyzer.hpp"
+#include "Engines/DataUtils.hpp"
 
 // 외부 라이브러리
 #include "nlohmann/json_fwd.hpp"
@@ -30,6 +31,7 @@ using namespace nlohmann;
 namespace backtesting {
 using namespace analyzer;
 using namespace logger;
+using namespace utils;
 }  // namespace backtesting
 
 namespace backtesting::engine {
@@ -75,31 +77,53 @@ class BaseEngine {
   [[nodiscard]] static shared_ptr<Config>& GetConfig();
 
   /// 지갑 자금을 반환하는 함수
-  [[nodiscard]] double GetWalletBalance() const;
+  [[nodiscard]] __forceinline double GetWalletBalance() const {
+    return wallet_balance_;
+  }
 
   /// 사용한 마진을 반환하는 함수
-  [[nodiscard]] double GetUsedMargin() const;
+  [[nodiscard]] __forceinline double GetUsedMargin() const {
+    return used_margin_;
+  }
 
   //// 사용 가능 자금을 업데이트하고 반환하는 함수
-  double GetAvailableBalance();
+  [[nodiscard]] __forceinline double GetAvailableBalance() {
+    available_balance_ = wallet_balance_ - used_margin_;
+
+    return available_balance_;
+  }
 
   /// 최고 지갑 자금을 반환하는 함수
-  [[nodiscard]] double GetMaxWalletBalance() const;
+  [[nodiscard]] __forceinline double GetMaxWalletBalance() const {
+    return max_wallet_balance_;
+  }
 
   // 현재 드로우다운을 반환하는 함수
-  [[nodiscard]] double GetDrawdown() const;
+  [[nodiscard]] __forceinline double GetDrawdown() const { return drawdown_; }
 
   // 최고 드로우다운을 반환하는 함수
-  [[nodiscard]] double GetMaxDrawdown() const;
+  [[nodiscard]] __forceinline double GetMaxDrawdown() const {
+    return max_drawdown_;
+  }
 
   /// 자금 관련 통계 항목을 업데이트하는 함수
   void UpdateStatistics();
 
   /// 현재 자금을 로그하는 함수
-  void LogBalance();
+  __forceinline void LogBalance() {
+    logger_->Log(
+        BALANCE_L,
+        format("지갑 자금 [{}] | 사용한 마진 [{}] | 사용 가능 자금 [{}]",
+               FormatDollar(wallet_balance_, true),
+               FormatDollar(used_margin_, true),
+               FormatDollar(GetAvailableBalance(), true)),
+        __FILE__, __LINE__);
+  }
 
   /// '='로 콘솔창을 분리하는 로그를 발생시키는 함수
-  static void LogSeparator(bool log_to_console);
+  __forceinline static void LogSeparator(const bool log_to_console) {
+    logger_->LogNoFormat(INFO_L, string(217, '='), log_to_console);
+  }
 
  protected:
   BaseEngine();

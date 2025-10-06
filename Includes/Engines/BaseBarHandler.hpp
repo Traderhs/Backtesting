@@ -40,8 +40,8 @@ using enum BarType;
 class BaseBarHandler {
  public:
   /// 지정된 바 타입의 바 데이터를 반환하는 함수
-  [[nodiscard]] shared_ptr<BarData> GetBarData(BarType bar_type,
-                                               const string& timeframe = "");
+  [[nodiscard]] shared_ptr<BarData>& GetBarData(BarType bar_type,
+                                                const string& timeframe = "");
 
   /// 지정된 바 타입의 모든 심볼이 포함된 인덱스 벡터를 반환하는 함수
   [[nodiscard]] vector<size_t>& GetBarIndices(BarType bar_type,
