@@ -1992,11 +1992,11 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order,
   // 강제 청산이고 파산 포지션이 아니라면 강제 청산 수수료 부과.
   // 수수료는 청산 시 잔여 마진에서 실현 손실을 뺀 잔여 마진까지만 부과
   if (const auto liquidation_fee = exit_order->GetLiquidationFee();
-      !IsEqual(liquidation_fee, 0.0)) {
+      IsGreater(liquidation_fee, 0.0)) {
     // 파산 포지션이거나, 잔여 마진이 0인 경우에는 강제 청산 수수료는
     // 보험 기금에서 충당
     // -> PnL이 양수여도 펀딩비 부족으로 강제 청산 당할 수 있음
-    if (!is_bankruptcy_position && !IsEqual(left_margin, 0.0)) {
+    if (!is_bankruptcy_position && IsGreater(left_margin, 0.0)) {
       double left_margin_after_exit;
       double real_liquidation_fee;
 
@@ -2499,8 +2499,8 @@ void OrderHandler::FillPendingExitOrder(
   // 현재 바 시간 로딩
   const auto current_open_time = engine_->GetCurrentOpenTime();
 
-  // 참조 삭제 방지를 위해 참조 카운트 증가
-  const auto exit = exit_order;
+  // 참조 삭제 방지를 위해 명시적 복사
+  const auto exit = shared_ptr(exit_order);
 
   // 청산 대기 주문에서 삭제
   auto& pending_exits = pending_exits_[symbol_idx];

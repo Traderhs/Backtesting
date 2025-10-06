@@ -174,7 +174,7 @@ string RemoveParquetExtension(const string& file_path);
 /// 왼쪽 값이 오른쪽 값과 같으면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsEqual(T a, U b) {
-  using CommonType = std::common_type_t<T, U>;
+  using CommonType = common_type_t<T, U>;
 
   // NaN 체크: 둘 중 하나라도 NaN이면 false 반환
   if (std::isnan(static_cast<CommonType>(a)) ||
@@ -187,7 +187,7 @@ template <typename T, typename U>
 
   // 절대적 오차 (매우 작은 값들을 위해) - double precision 기준
   constexpr CommonType abs_tolerance =
-      std::numeric_limits<CommonType>::epsilon() * 100;
+      numeric_limits<CommonType>::epsilon() * 100;
 
   // 상대적 오차
   constexpr CommonType rel_tolerance = 1e-12;
@@ -200,15 +200,49 @@ template <typename T, typename U>
   }
 
   // 상대적 오차 체크 (큰 값들)
-  const CommonType max_val = (std::max)(std::fabs(ca), std::fabs(cb));
+  const CommonType max_val = (max)(std::fabs(ca), std::fabs(cb));
   return diff <= rel_tolerance * max_val;
+}
+
+/// 부동 소수점 같지 않음 비교를 위한 함수.
+/// 왼쪽 값이 오른쪽 값과 같지 않으면 true를 반환함.
+template <typename T, typename U>
+[[nodiscard]] bool IsDiff(T a, U b) {
+  using CommonType = common_type_t<T, U>;
+
+  // NaN 체크: 둘 중 하나라도 NaN이면 true 반환 (NaN은 어떤 값과도 같지 않음)
+  if (std::isnan(static_cast<CommonType>(a)) ||
+      std::isnan(static_cast<CommonType>(b))) {
+    return true;
+  }
+
+  const auto ca = static_cast<CommonType>(a);
+  const auto cb = static_cast<CommonType>(b);
+
+  // 절대적 오차 (매우 작은 값들을 위해) - double precision 기준
+  constexpr CommonType abs_tolerance =
+      numeric_limits<CommonType>::epsilon() * 100;
+
+  // 상대적 오차
+  constexpr CommonType rel_tolerance = 1e-12;
+
+  const CommonType diff = std::fabs(ca - cb);
+
+  // 절대적 오차 체크 (0에 가까운 값들)
+  if (diff <= abs_tolerance) {
+    return false;
+  }
+
+  // 상대적 오차 체크 (큰 값들)
+  const CommonType max_val = (max)(std::fabs(ca), std::fabs(cb));
+  return diff > rel_tolerance * max_val;
 }
 
 /// 부동 소수점 크기 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값보다 크면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsGreater(T a, U b) {
-  using CommonType = std::common_type_t<T, U>;
+  using CommonType = common_type_t<T, U>;
 
   // NaN 체크: 둘 중 하나라도 NaN이면 false 반환
   if (std::isnan(static_cast<CommonType>(a)) ||
@@ -221,7 +255,7 @@ template <typename T, typename U>
 
   // 절대적 오차
   constexpr CommonType abs_tolerance =
-      std::numeric_limits<CommonType>::epsilon() * 100;
+      numeric_limits<CommonType>::epsilon() * 100;
   constexpr CommonType rel_tolerance = 1e-12;
 
   const CommonType diff = ca - cb;
@@ -232,7 +266,7 @@ template <typename T, typename U>
     return false;
   }
 
-  const CommonType max_val = (std::max)(std::fabs(ca), std::fabs(cb));
+  const CommonType max_val = (max)(std::fabs(ca), std::fabs(cb));
   if (abs_diff <= rel_tolerance * max_val) {
     return false;
   }
@@ -244,7 +278,7 @@ template <typename T, typename U>
 /// 왼쪽 값이 오른쪽 값보다 크거나 같으면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsGreaterOrEqual(T a, U b) {
-  using CommonType = std::common_type_t<T, U>;
+  using CommonType = common_type_t<T, U>;
 
   // NaN 체크: 둘 중 하나라도 NaN이면 false 반환
   if (std::isnan(static_cast<CommonType>(a)) ||
@@ -257,7 +291,7 @@ template <typename T, typename U>
 
   // 절대적 오차
   constexpr CommonType abs_tolerance =
-      std::numeric_limits<CommonType>::epsilon() * 100;
+      numeric_limits<CommonType>::epsilon() * 100;
   constexpr CommonType rel_tolerance = 1e-12;
 
   const CommonType diff = ca - cb;
@@ -268,7 +302,7 @@ template <typename T, typename U>
     return true;
   }
 
-  const CommonType max_val = (std::max)(std::fabs(ca), std::fabs(cb));
+  const CommonType max_val = (max)(std::fabs(ca), std::fabs(cb));
   if (abs_diff <= rel_tolerance * max_val) {
     return true;
   }
@@ -280,7 +314,7 @@ template <typename T, typename U>
 /// 왼쪽 값이 오른쪽 값보다 작으면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsLess(T a, U b) {
-  using CommonType = std::common_type_t<T, U>;
+  using CommonType = common_type_t<T, U>;
 
   // NaN 체크: 둘 중 하나라도 NaN이면 false 반환
   if (std::isnan(static_cast<CommonType>(a)) ||
@@ -293,7 +327,7 @@ template <typename T, typename U>
 
   // 절대적 오차
   constexpr CommonType abs_tolerance =
-      std::numeric_limits<CommonType>::epsilon() * 100;
+      numeric_limits<CommonType>::epsilon() * 100;
   constexpr CommonType rel_tolerance = 1e-12;
 
   const CommonType diff = ca - cb;
@@ -304,7 +338,7 @@ template <typename T, typename U>
     return false;
   }
 
-  const CommonType max_val = (std::max)(std::fabs(ca), std::fabs(cb));
+  const CommonType max_val = (max)(std::fabs(ca), std::fabs(cb));
   if (abs_diff <= rel_tolerance * max_val) {
     return false;
   }
@@ -316,7 +350,7 @@ template <typename T, typename U>
 /// 왼쪽 값이 오른쪽 값보다 작거나 같으면 true를 반환함.
 template <typename T, typename U>
 [[nodiscard]] bool IsLessOrEqual(T a, U b) {
-  using CommonType = std::common_type_t<T, U>;
+  using CommonType = common_type_t<T, U>;
 
   // NaN 체크: 둘 중 하나라도 NaN이면 false 반환
   if (std::isnan(static_cast<CommonType>(a)) ||
@@ -329,7 +363,7 @@ template <typename T, typename U>
 
   // 절대적 오차
   constexpr CommonType abs_tolerance =
-      std::numeric_limits<CommonType>::epsilon() * 100;
+      numeric_limits<CommonType>::epsilon() * 100;
   constexpr CommonType rel_tolerance = 1e-12;
 
   const CommonType diff = ca - cb;
@@ -340,7 +374,7 @@ template <typename T, typename U>
     return true;
   }
 
-  const CommonType max_val = (std::max)(std::fabs(ca), std::fabs(cb));
+  const CommonType max_val = (max)(std::fabs(ca), std::fabs(cb));
   if (abs_diff <= rel_tolerance * max_val) {
     return true;
   }

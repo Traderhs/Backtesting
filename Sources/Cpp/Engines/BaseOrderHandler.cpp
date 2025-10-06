@@ -359,7 +359,7 @@ optional<string> BaseOrderHandler::AdjustLeverage(const int leverage,
 
     // Limit 또는 LIT 주문으로 예약 증거금이 잡혀있으면 재설정
     if (const auto entry_margin = pending_entry->GetEntryMargin();
-        !IsEqual(entry_margin, 0.0)) {
+        IsGreater(entry_margin, 0.0)) {
       // 새로운 마진 계산
       // ON_CLOSE, AFTER 전략 모두에서 이 함수가 실행될 수 있으므로
       // 초기 마진 계산 시 미실현 손실을 계산하는 기준 가격 타입은 '시가'로 통일
@@ -563,7 +563,7 @@ optional<string> BaseOrderHandler::IsValidPositionSize(
 
   // 포지션 수량 단위 확인
   if (const auto qty_step = symbol_info.GetQtyStep();
-      !IsEqual(RoundToStep(position_size, qty_step), position_size)) {
+      IsDiff(RoundToStep(position_size, qty_step), position_size)) {
     return format("포지션 크기 [{}] 지정 오류 (조건: 수량 단위 [{}]의 배수)",
                   position_size, qty_step);
   }
@@ -863,7 +863,7 @@ void BaseOrderHandler::DecreaseUsedMarginOnEntryCancel(
     case LIMIT: {
       // 사용한 자금에서 예약 증거금 감소
       if (const auto entry_margin = cancel_order->GetEntryMargin();
-          !IsEqual(entry_margin, 0.0)) {
+          IsGreater(entry_margin, 0.0)) {
         engine_->DecreaseUsedMargin(entry_margin);
       }
 
@@ -876,7 +876,7 @@ void BaseOrderHandler::DecreaseUsedMarginOnEntryCancel(
            Touch 이후에는 지정가로 예약 증거금을 사용하므로 사용한 자금에서 예약
            증거금을 감소시켜야 함 */
         if (const auto entry_margin = cancel_order->GetEntryMargin();
-            !IsEqual(entry_margin, 0.0)) {
+            IsGreater(entry_margin, 0.0)) {
           engine_->DecreaseUsedMargin(entry_margin);
         }
       }

@@ -1908,7 +1908,7 @@ void Engine::SortOrders(vector<FillInfo>& should_fill_orders,
                       [price_direction, get_signal_priority](
                           const FillInfo& a, const FillInfo& b) {
                         // fill_price 기본 정렬
-                        if (!IsEqual(a.fill_price, b.fill_price)) {
+                        if (IsDiff(a.fill_price, b.fill_price)) {
                           switch (price_direction) {
                             case LONG:
                               [[fallthrough]];
