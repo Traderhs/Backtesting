@@ -307,7 +307,7 @@ void Engine::IsValidConfig() {
 
 void Engine::IsValidBarData() {
   try {
-    const auto trading_bar_data = bar_->GetBarData(TRADING);
+    const auto& trading_bar_data = bar_->GetBarData(TRADING);
     const auto trading_num_symbols = trading_bar_data->GetNumSymbols();
 
     // 1.1. 트레이딩 바 데이터가 비었는지 검증
@@ -342,7 +342,7 @@ void Engine::IsValidBarData() {
 
     // =========================================================================
     const auto use_bar_magnifier = *config_->GetUseBarMagnifier();
-    const auto magnifier_bar_data = bar_->GetBarData(MAGNIFIER);
+    const auto& magnifier_bar_data = bar_->GetBarData(MAGNIFIER);
     const auto magnifier_num_symbols = magnifier_bar_data->GetNumSymbols();
 
     if (use_bar_magnifier) {
@@ -465,7 +465,7 @@ void Engine::IsValidBarData() {
     }
 
     // =========================================================================
-    const auto mark_price_bar_data = bar_->GetBarData(MARK_PRICE);
+    const auto& mark_price_bar_data = bar_->GetBarData(MARK_PRICE);
     const auto mark_price_num_symbols = mark_price_bar_data->GetNumSymbols();
 
     // 돋보기 기능 사용 시 마크 가격 바 데이터는 돋보기 바 데이터와 비교
@@ -608,19 +608,19 @@ void Engine::IsValidBarData() {
 
 void Engine::IsValidDateRange() {
   try {
-    const auto& trading_bar = bar_->GetBarData(TRADING);
-    for (int symbol_idx = 0; symbol_idx < trading_bar->GetNumSymbols();
+    const auto& trading_bar_data = bar_->GetBarData(TRADING);
+    for (int symbol_idx = 0; symbol_idx < trading_bar_data->GetNumSymbols();
          symbol_idx++) {
       // 바 데이터 중 가장 처음의 Open Time 값 구하기
-      begin_open_time_ =
-          min(begin_open_time_, trading_bar->GetBar(symbol_idx, 0).open_time);
+      begin_open_time_ = min(begin_open_time_,
+                             trading_bar_data->GetBar(symbol_idx, 0).open_time);
 
       // 바 데이터 중 가장 끝의 Close Time 값 구하기
-      end_close_time_ =
-          max(end_close_time_,
-              trading_bar
-                  ->GetBar(symbol_idx, trading_bar->GetNumBars(symbol_idx) - 1)
-                  .close_time);
+      end_close_time_ = max(
+          end_close_time_,
+          trading_bar_data
+              ->GetBar(symbol_idx, trading_bar_data->GetNumBars(symbol_idx) - 1)
+              .close_time);
     }
 
     // 백테스팅 기간 받아오기
@@ -681,7 +681,7 @@ void Engine::IsValidDateRange() {
 }
 
 void Engine::IsValidSymbolInfo() {
-  const auto trading_bar_data = bar_->GetBarData(TRADING);
+  const auto& trading_bar_data = bar_->GetBarData(TRADING);
   const auto trading_num_symbols = trading_bar_data->GetNumSymbols();
 
   try {
@@ -1543,14 +1543,14 @@ void Engine::ExecuteAllTradingEnd() {
       bar_->SetCurrentBarType(TRADING, "");
       bar_->SetCurrentBarIndex(bar_->GetCurrentBarIndex() - 1);
 
-      order_handler_->CancelAll("백테스트 종료 시간");
+      order_handler_->CancelAll("백테스팅 종료 시간");
       order_handler_->CloseAll();
 
       // 트레이딩이 모두 종료된 전량 청산은 Just Exited로 판단하지 않음
       order_handler_->InitializeJustExited();
 
       logger_->Log(INFO_L,
-                   format("백테스트 종료 시간에 의해 [{}] 심볼의 "
+                   format("백테스팅 종료 시간에 의해 [{}] 심볼의 "
                           "백테스팅을 종료합니다.",
                           trading_bar_data_->GetSymbolName(symbol_idx)),
                    __FILE__, __LINE__, true);
@@ -1642,8 +1642,7 @@ void Engine::CheckFundingTime() {
 
 void Engine::ProcessOhlc(const BarType bar_type,
                          const vector<int>& symbol_indices) {
-  // 체결/강제 청산해야 하는 주문들
-  vector<FillInfo> should_fill_orders;
+  auto& should_fill_orders = order_handler_->should_fill_orders_;
 
   // 매커니즘에 따라 확인할 순서대로 가격을 정렬한 벡터 얻기
   const auto&& [mark_price_queue, market_price_queue] =
@@ -1672,28 +1671,18 @@ void Engine::ProcessOhlc(const BarType bar_type,
       price_type_cache_[market_price_symbol_idx] = market_price_type;
     }
 
-    // 체결/강제 청산 해야하는 주문 모음
-    const auto& should_liquidate = order_handler_->CheckLiquidation(
-        bar_type, mark_price_symbol_idx, mark_price, mark_price_type);
-    const auto& should_entries = order_handler_->CheckPendingEntries(
-        market_price_symbol_idx, market_price, market_price_type);
-    const auto& should_exits = order_handler_->CheckPendingExits(
-        market_price_symbol_idx, market_price, market_price_type);
+    // 체결/강제 청산 해야하는 주문 추가
+    order_handler_->CheckLiquidation(bar_type, mark_price_symbol_idx,
+                                     mark_price, mark_price_type);
+    order_handler_->CheckPendingEntries(market_price_symbol_idx, market_price,
+                                        market_price_type);
+    order_handler_->CheckPendingExits(market_price_symbol_idx, market_price,
+                                      market_price_type);
 
     // 체결/강제 청산 주문이 없는 경우 즉시 다음 가격 확인
-    if (should_liquidate.empty() && should_entries.empty() &&
-        should_exits.empty()) {
+    if (should_fill_orders.empty()) {
       continue;
     }
-
-    should_fill_orders.reserve(should_liquidate.size() + should_entries.size() +
-                               should_exits.size());
-    should_fill_orders.insert(should_fill_orders.end(),
-                              should_liquidate.begin(), should_liquidate.end());
-    should_fill_orders.insert(should_fill_orders.end(), should_entries.begin(),
-                              should_entries.end());
-    should_fill_orders.insert(should_fill_orders.end(), should_exits.begin(),
-                              should_exits.end());
 
     // 전 가격에서 현재 가격으로 올 때의 방향과 체결 우선 순위에 따라
     // 체결 순서대로 정렬
@@ -1713,11 +1702,6 @@ void Engine::ProcessOhlc(const BarType bar_type,
 
     // 다음 루프를 위해 벡터 클리어
     should_fill_orders.clear();
-  }
-
-  // 다음 ProcessOhlc을 대비하여 캐시 초기화
-  for (double& price_cache : price_cache_) {
-    price_cache = NAN;
   }
 }
 

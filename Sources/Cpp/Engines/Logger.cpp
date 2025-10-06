@@ -383,6 +383,8 @@ shared_ptr<Logger>& Logger::GetLogger(const string& debug_log_name,
 
 // 하드웨어 레벨 최적화된 백그라운드 처리 스레드
 NO_INLINE void Logger::ProcessMultiBuffer() {
+  int consecutive_idle_count = 0;
+
   while (!stop_logging_) {
     bool any_work = false;
 
@@ -401,9 +403,17 @@ NO_INLINE void Logger::ProcessMultiBuffer() {
 
     any_work |= FlushBufferIfReady(backtesting_buffer, backtesting_log_);
 
-    // 작업이 없으면 CPU 양보 (스핀락 최적화)
+    // 작업이 없으면 짧은 Sleep (조건 변수보다 빠름)
     if (!any_work) {
-      CPU_RELAX();
+      consecutive_idle_count++;
+#ifdef _WIN32
+      // Windows: 고정밀 Sleep
+      Sleep(0);  // 즉시 양보만
+#else
+      usleep(sleep_time);
+#endif
+    } else {
+      consecutive_idle_count = 0;  // 작업이 있으면 리셋
     }
   }
 

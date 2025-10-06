@@ -1,6 +1,5 @@
 // 표준 라이브러리
 #include <regex>
-#include <sstream>
 
 // 파일 헤더
 #include "Indicators/EndOfDay.hpp"
@@ -13,9 +12,7 @@ EndOfDay::EndOfDay(const string& name, const string& timeframe,
                    const Plot& plot, const string& market_close_time)
     : Indicator(name, timeframe, plot),
       market_close_time_(market_close_time),
-      close_hour_(0),
-      close_minute_(0),
-      close_second_(0),
+      close_seconds_of_day_(0),
       timeframe_minutes_(0),
       symbol_idx_(0) {
   ValidateAndParseTime(market_close_time);
@@ -36,29 +33,19 @@ void EndOfDay::Initialize() {
 }
 
 Numeric<double> EndOfDay::Calculate() {
-  // 시간 부분만 추출 (HH:MM:SS 형태)
-  if (const string& datetime_str = UtcTimestampToUtcDatetime(
-          reference_bar_->GetBar(symbol_idx_, bar_->GetCurrentBarIndex())
-              .close_time);
-      datetime_str.length() >= 19) {  // "YYYY-MM-DD HH:MM:SS" 최소 길이
-    const string time_part = datetime_str.substr(11, 8);  // "HH:MM:SS" 추출
+  // 타임스탬프를 직접 계산하여 초 단위로 비교 (문자열 변환 없이)
+  const int64_t close_time_ms =
+      reference_bar_->GetBar(symbol_idx_, bar_->GetCurrentBarIndex())
+          .close_time;
 
-    // 시간, 분, 초 파싱
-    const int bar_hour = stoi(time_part.substr(0, 2));
-    const int bar_minute = stoi(time_part.substr(3, 2));
-    const int bar_second = stoi(time_part.substr(6, 2));
+  // 밀리초를 초로 변환
+  const int64_t close_time_sec = close_time_ms / 1000;
 
-    // 초 단위로 변환하여 비교
-    const int total_close_seconds =
-        close_hour_ * 3600 + close_minute_ * 60 + close_second_;
-    const int total_bar_close_seconds =
-        bar_hour * 3600 + bar_minute * 60 + bar_second;
+  // UTC 기준으로 하루 중 몇 초인지 계산 (86400초 = 24시간)
+  const int bar_seconds_of_day = static_cast<int>(close_time_sec % 86400);
 
-    // 바의 종료 시간이 지정된 시간 이상인지 확인
-    return total_bar_close_seconds >= total_close_seconds ? 1.0 : 0.0;
-  }
-
-  return 0.0;  // 파싱 실패 시 false(0.0) 반환
+  // 바의 종료 시간이 지정된 시간 이상인지 확인
+  return bar_seconds_of_day >= close_seconds_of_day_ ? 1.0 : 0.0;
 }
 
 void EndOfDay::ValidateAndParseTime(const string& time_str) {
@@ -75,32 +62,35 @@ void EndOfDay::ValidateAndParseTime(const string& time_str) {
   }
 
   // 시간, 분, 초 파싱
-  close_hour_ = stoi(matches[1].str());
-  close_minute_ = stoi(matches[2].str());
-  close_second_ = stoi(matches[3].str());
+  const int close_hour = stoi(matches[1].str());
+  const int close_minute = stoi(matches[2].str());
+  const int close_second = stoi(matches[3].str());
 
   // 범위 검증 (00:00:00 ~ 23:59:59)
-  if (close_hour_ < 0 || close_hour_ > 23) {
+  if (close_hour < 0 || close_hour > 23) {
     Logger::LogAndThrowError(
         format("EndOfDay 지표의 장 마감 시간의 시간 [{}]이(가) 0~23 범위를 "
                "벗어났습니다.",
-               close_hour_),
+               close_hour),
         __FILE__, __LINE__);
   }
 
-  if (close_minute_ < 0 || close_minute_ > 59) {
+  if (close_minute < 0 || close_minute > 59) {
     Logger::LogAndThrowError(
         format("EndOfDay 지표의 장 마감 시간의 분 [{}]이(가) 0~59 범위를 "
                "벗어났습니다.",
-               close_minute_),
+               close_minute),
         __FILE__, __LINE__);
   }
 
-  if (close_second_ < 0 || close_second_ > 59) {
+  if (close_second < 0 || close_second > 59) {
     Logger::LogAndThrowError(
         format("EndOfDay 지표의 장 마감 시간의 초 [{}]이(가) 0~59 범위를 "
                "벗어났습니다.",
-               close_second_),
+               close_second),
         __FILE__, __LINE__);
   }
+
+  // 하루 기준 초 단위로 사전 계산 (한번만 계산)
+  close_seconds_of_day_ = close_hour * 3600 + close_minute * 60 + close_second;
 }

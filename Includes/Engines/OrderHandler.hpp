@@ -18,16 +18,6 @@ class Engine;
 
 namespace backtesting::order {
 
-// 주문 시그널을 나타나는 열거형 클래스
-enum class OrderSignal { LIQUIDATION, EXIT, ENTRY };
-
-// 진입, 청산, 강제 청산해야 하는 주문의 정보를 담은 구조체
-struct FillInfo {
-  shared_ptr<Order> order;   // 주문 객체
-  OrderSignal order_signal;  // 진입 or 청산 or 강제 청산을 지칭
-  double fill_price;         // 슬리피지를 미반영한 체결 가격
-};
-
 /**
  * 주문, 포지션 등과 관련된 세부적인 작업을 처리하는 클래스.
  *
@@ -231,24 +221,22 @@ class OrderHandler final : public BaseOrderHandler {
   // 체결 확인 및 실행 함수
   // ===========================================================================
   /// 트레이딩 중인 심볼에서 지정된 가격에서 강제 청산이 체결됐는지 확인 후
-  /// 해당 주문 정보들을 반환하는 함수
+  /// 체결해야 하는 주문 벡터에 추가하는 함수
   ///
   /// 고저가를 확인할 때 강제 청산되었으면 강제 청산 가격은 청산 가격과 마크
   /// 가격의 차이를 시장 가격에서 조정하므로 실제 가격과 다를 수 있음에 주의
-  [[nodiscard]] vector<FillInfo> CheckLiquidation(BarType market_bar_type,
-                                                  int symbol_idx, double price,
-                                                  PriceType price_type) const;
+  void CheckLiquidation(BarType market_bar_type, int symbol_idx, double price,
+                        PriceType price_type);
 
   /// 트레이딩 중인 심볼에서 지정된 가격을 기준으로 청산 대기 주문들이
-  /// 체결됐는지 확인 후 해당 주문 정보들을 반환하는 함수
-  [[nodiscard]] vector<FillInfo> CheckPendingExits(int symbol_idx, double price,
-                                                   PriceType price_type) const;
+  /// 체결됐는지 확인 후 해당 주문 정보들을 체결해야 하는 주문 벡터에
+  /// 추가하는 함수
+  void CheckPendingExits(int symbol_idx, double price, PriceType price_type);
 
   /// 트레이딩 중인 심볼에서 지정된 가격을 기준으로 진입 대기 주문들이
-  /// 체결됐는지 확인 후 해당 주문 정보들을 반환하는 함수
-  [[nodiscard]] vector<FillInfo> CheckPendingEntries(int symbol_idx,
-                                                     double price,
-                                                     PriceType price_type);
+  /// 체결됐는지 확인 후 해당 주문 정보들을 체결해야 하는 주문 벡터에
+  /// 추가하는 함수
+  void CheckPendingEntries(int symbol_idx, double price, PriceType price_type);
 
   /// 지정된 주문을 시그널과 주문 타입에 적합하게 체결하는 함수
   void FillOrder(const FillInfo& order_info, int symbol_idx,

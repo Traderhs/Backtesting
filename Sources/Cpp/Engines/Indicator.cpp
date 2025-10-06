@@ -287,7 +287,7 @@ void Indicator::CalculateIndicator() {
 
     // 바 데이터 설정
     if (trading_bar_data_ == nullptr) {
-      trading_bar_data_ = bar_->GetBarData(TRADING, "");
+      trading_bar_data_ = bar_->GetBarData(TRADING);
     }
 
     if (reference_bar_data_ == nullptr) {
