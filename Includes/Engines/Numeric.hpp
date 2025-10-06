@@ -47,7 +47,7 @@ class Numeric final {
     return utils::IsEqual(value_, other.value_);
   }
   bool operator!=(const Numeric& other) const {
-    return !utils::IsEqual(value_, other.value_);
+    return utils::IsDiff(value_, other.value_);
   }
   bool operator>(const Numeric& other) const {
     return utils::IsGreater(value_, other.value_);
@@ -97,7 +97,7 @@ class Numeric final {
   }
   template <typename U>
   bool operator!=(U other) const {
-    return !utils::IsEqual(value_, other);
+    return utils::IsDiff(value_, other);
   }
   template <typename U>
   bool operator>(U other) const {
@@ -151,7 +151,7 @@ class Numeric final {
   }
   template <typename U>
   friend bool operator!=(U lhs, const Numeric& rhs) {
-    return !utils::IsEqual(lhs, rhs.value_);
+    return utils::IsDiff(lhs, rhs.value_);
   }
   template <typename U>
   friend bool operator>(U lhs, const Numeric& rhs) {
