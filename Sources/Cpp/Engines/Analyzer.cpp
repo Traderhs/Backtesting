@@ -167,8 +167,8 @@ void Analyzer::SaveIndicatorData() {
     const auto& indicators = strategy->GetIndicators();
 
     // 미리 계산된 값들
-    const auto trading_bar = bar_->GetBarData(TRADING);
-    const int num_symbols = trading_bar->GetNumSymbols();
+    const auto& trading_bar_data = bar_->GetBarData(TRADING);
+    const int num_symbols = trading_bar_data->GetNumSymbols();
     const int64_t trading_time_diff = engine_->trading_bar_time_diff_;
 
     arrow::MemoryPool* pool = arrow::default_memory_pool();
@@ -179,16 +179,16 @@ void Analyzer::SaveIndicatorData() {
       // 예상 크기 계산 및 메모리 예약
       size_t estimated_size = 0;
       for (int symbol_idx = 0; symbol_idx < num_symbols; symbol_idx++) {
-        estimated_size += trading_bar->GetNumBars(symbol_idx);
+        estimated_size += trading_bar_data->GetNumBars(symbol_idx);
       }
       time_vector.reserve(estimated_size);
 
       // 모든 심볼의 모든 바를 순회하며 open_time 값을 수집
       for (int symbol_idx = 0; symbol_idx < num_symbols; symbol_idx++) {
-        const auto num_bars = trading_bar->GetNumBars(symbol_idx);
+        const auto num_bars = trading_bar_data->GetNumBars(symbol_idx);
         for (size_t bar_idx = 0; bar_idx < num_bars; bar_idx++) {
           time_vector.push_back(
-              trading_bar->GetBar(symbol_idx, bar_idx).open_time);
+              trading_bar_data->GetBar(symbol_idx, bar_idx).open_time);
         }
       }
 
@@ -238,7 +238,7 @@ void Analyzer::SaveIndicatorData() {
 
       // 지표의 타임프레임이 트레이딩 바 타임프레임보다 큰지 확인
       const auto& timeframe = indicator->GetTimeframe();
-      const auto reference_bar = bar_->GetBarData(REFERENCE, timeframe);
+      const auto& reference_bar_data = bar_->GetBarData(REFERENCE, timeframe);
       const bool is_indicator_timeframe_larger =
           trading_time_diff < ParseTimeframe(timeframe);
 
@@ -247,13 +247,14 @@ void Analyzer::SaveIndicatorData() {
       if (is_indicator_timeframe_larger) {
         ref_close_times_cache.resize(num_symbols);
         for (int symbol_idx = 0; symbol_idx < num_symbols; symbol_idx++) {
-          const size_t num_ref_bars = reference_bar->GetNumBars(symbol_idx);
+          const size_t num_ref_bars =
+              reference_bar_data->GetNumBars(symbol_idx);
           auto& ref_close_times = ref_close_times_cache[symbol_idx];
           ref_close_times.reserve(num_ref_bars);
 
           for (size_t i = 0; i < num_ref_bars; i++) {
             ref_close_times.push_back(
-                reference_bar->GetBar(symbol_idx, i).close_time);
+                reference_bar_data->GetBar(symbol_idx, i).close_time);
           }
         }
       }
@@ -267,103 +268,107 @@ void Analyzer::SaveIndicatorData() {
       vector<int> symbol_indices(num_indicator_symbols);
       iota(symbol_indices.begin(), symbol_indices.end(), 0);
 
-      for_each(
-          execution::par_unseq, symbol_indices.begin(), symbol_indices.end(),
-          [&](const int symbol_idx) {
-            vector<double> value_vector(total_rows);
+      for_each(execution::par_unseq, symbol_indices.begin(),
+               symbol_indices.end(), [&](const int symbol_idx) {
+                 vector<double> value_vector(total_rows);
 
-            if (is_indicator_timeframe_larger) {
-              // 지표의 타임프레임이 트레이딩 바보다 큰 경우 특별 처리
-              const auto& output = indicator_output[symbol_idx];
-              const auto& ref_close_times = ref_close_times_cache[symbol_idx];
-              const size_t num_ref_bars = ref_close_times.size();
+                 if (is_indicator_timeframe_larger) {
+                   // 지표의 타임프레임이 트레이딩 바보다 큰 경우 특별 처리
+                   const auto& output = indicator_output[symbol_idx];
+                   const auto& ref_close_times =
+                       ref_close_times_cache[symbol_idx];
+                   const size_t num_ref_bars = ref_close_times.size();
 
-              // 시간 정렬이 보장되므로, 마지막으로 사용한 인덱스부터 검색
-              size_t last_found_idx = 0;
+                   // 시간 정렬이 보장되므로, 마지막으로 사용한 인덱스부터 검색
+                   size_t last_found_idx = 0;
 
-              for (size_t row_idx = 0; row_idx < total_rows; row_idx++) {
-                const int64_t current_time = time_vector[row_idx];
-                // 현재 트레이딩 바의 close_time
-                const int64_t current_bar_close_time =
-                    current_time + trading_time_diff - 1;
+                   for (size_t row_idx = 0; row_idx < total_rows; row_idx++) {
+                     const int64_t current_time = time_vector[row_idx];
+                     // 현재 트레이딩 바의 close_time
+                     const int64_t current_bar_close_time =
+                         current_time + trading_time_diff - 1;
 
-                // 지표 바의 인덱스 찾기 (이진 검색으로 최적화)
-                size_t ref_bar_idx = 0;
-                bool found = false;
+                     // 지표 바의 인덱스 찾기 (이진 검색으로 최적화)
+                     size_t ref_bar_idx = 0;
+                     bool found = false;
 
-                // 시간이 순차적으로 증가하므로, 이전에 찾은 인덱스부터 시작
-                for (size_t i = last_found_idx; i < num_ref_bars; i++) {
-                  // 현재 트레이딩 바의 close_time이 참조 바의 close_time보다
-                  // 작으면 아직 완성되지 않은 참조 바이므로 이전 바 사용
-                  if (current_bar_close_time < ref_close_times[i]) {
-                    if (i > 0) {
-                      ref_bar_idx = i - 1;
-                      found = true;
-                      last_found_idx = i - 1;  // 다음 검색 시작점 업데이트
-                    }
-                    break;
-                  }
+                     // 시간이 순차적으로 증가하므로, 이전에 찾은 인덱스부터
+                     // 시작
+                     for (size_t i = last_found_idx; i < num_ref_bars; i++) {
+                       // 현재 트레이딩 바의 close_time이 참조 바의
+                       // close_time보다 작으면 아직 완성되지 않은 참조 바이므로
+                       // 이전 바 사용
+                       if (current_bar_close_time < ref_close_times[i]) {
+                         if (i > 0) {
+                           ref_bar_idx = i - 1;
+                           found = true;
+                           last_found_idx = i - 1;  // 다음 검색 시작점 업데이트
+                         }
+                         break;
+                       }
 
-                  // 마지막 참조 바이거나 현재 참조 바의 close_time과 정확히
-                  // 일치하면
-                  if (i == num_ref_bars - 1 ||
-                      current_bar_close_time == ref_close_times[i]) {
-                    ref_bar_idx = i;
-                    found = true;
-                    last_found_idx = i;  // 다음 검색 시작점 업데이트
-                    break;
-                  }
-                }
+                       // 마지막 참조 바이거나 현재 참조 바의 close_time과
+                       // 정확히 일치하면
+                       if (i == num_ref_bars - 1 ||
+                           current_bar_close_time == ref_close_times[i]) {
+                         ref_bar_idx = i;
+                         found = true;
+                         last_found_idx = i;  // 다음 검색 시작점 업데이트
+                         break;
+                       }
+                     }
 
-                // 아직 첫 번째 지표 바가 완성되지 않은 경우 또는
-                // 지표 바를 찾지 못한 경우
-                if (!found || ref_bar_idx >= output.size()) {
-                  value_vector[row_idx] = NAN;
-                  continue;
-                }
+                     // 아직 첫 번째 지표 바가 완성되지 않은 경우 또는
+                     // 지표 바를 찾지 못한 경우
+                     if (!found || ref_bar_idx >= output.size()) {
+                       value_vector[row_idx] = NAN;
+                       continue;
+                     }
 
-                // 현재 트레이딩 바에 대응하는 지표 값 할당
-                value_vector[row_idx] = output[ref_bar_idx];
-              }
-            } else {
-              // 타임프레임이 같은 경우
-              // 시간 벡터는 모든 심볼의 최대 시간 범위이므로,
-              // output의 시간 범위는 시간 벡터 범위와 다름
-              const auto& output = indicator_output[symbol_idx];
-              size_t bar_idx = 0;
+                     // 현재 트레이딩 바에 대응하는 지표 값 할당
+                     value_vector[row_idx] = output[ref_bar_idx];
+                   }
+                 } else {
+                   // 타임프레임이 같은 경우
+                   // 시간 벡터는 모든 심볼의 최대 시간 범위이므로,
+                   // output의 시간 범위는 시간 벡터 범위와 다름
+                   const auto& output = indicator_output[symbol_idx];
+                   size_t bar_idx = 0;
 
-              for (size_t row_idx = 0; row_idx < total_rows; row_idx++) {
-                if (bar_idx < reference_bar->GetNumBars(symbol_idx)) {
-                  if (const int64_t current_time = time_vector[row_idx];
-                      current_time ==
-                      reference_bar->GetBar(symbol_idx, bar_idx).open_time) {
-                    value_vector[row_idx] = output[bar_idx];
-                    bar_idx++;
-                  } else {
-                    value_vector[row_idx] = NAN;
-                  }
-                } else {
-                  value_vector[row_idx] = NAN;
-                }
-              }
-            }
+                   for (size_t row_idx = 0; row_idx < total_rows; row_idx++) {
+                     if (bar_idx < reference_bar_data->GetNumBars(symbol_idx)) {
+                       if (const int64_t current_time = time_vector[row_idx];
+                           current_time ==
+                           reference_bar_data->GetBar(symbol_idx, bar_idx)
+                               .open_time) {
+                         value_vector[row_idx] = output[bar_idx];
+                         bar_idx++;
+                       } else {
+                         value_vector[row_idx] = NAN;
+                       }
+                     } else {
+                       value_vector[row_idx] = NAN;
+                     }
+                   }
+                 }
 
-            // 값 배열 생성
-            shared_ptr<arrow::Array> value_array;
-            arrow::DoubleBuilder value_builder(pool);
-            auto status = value_builder.AppendValues(value_vector);
+                 // 값 배열 생성
+                 shared_ptr<arrow::Array> value_array;
+                 arrow::DoubleBuilder value_builder(pool);
+                 auto status = value_builder.AppendValues(value_vector);
 
-            if (status.ok()) {
-              status = value_builder.Finish(&value_array);
-            }
+                 if (status.ok()) {
+                   status = value_builder.Finish(&value_array);
+                 }
 
-            if (!status.ok()) {
-              throw runtime_error(status.message());
-            }
+                 if (!status.ok()) {
+                   throw runtime_error(status.message());
+                 }
 
-            symbol_arrays[symbol_idx] = make_pair(
-                reference_bar->GetSymbolName(symbol_idx), move(value_array));
-          });
+                 symbol_arrays[symbol_idx] =
+                     make_pair(reference_bar_data->GetSymbolName(symbol_idx),
+                               move(value_array));
+               });
 
       // 테이블에 컬럼 추가
       for (const auto& [symbol_name, value_array] : symbol_arrays) {

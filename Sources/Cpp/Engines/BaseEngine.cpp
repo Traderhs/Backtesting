@@ -281,22 +281,6 @@ SymbolInfo BaseEngine::GetSymbolInfo(const int symbol_idx) const {
 
 shared_ptr<Config>& BaseEngine::GetConfig() { return config_; }
 
-double BaseEngine::GetWalletBalance() const { return wallet_balance_; }
-
-double BaseEngine::GetUsedMargin() const { return used_margin_; }
-
-double BaseEngine::GetAvailableBalance() {
-  available_balance_ = wallet_balance_ - used_margin_;
-
-  return available_balance_;
-}
-
-double BaseEngine::GetMaxWalletBalance() const { return max_wallet_balance_; }
-
-double BaseEngine::GetDrawdown() const { return drawdown_; }
-
-double BaseEngine::GetMaxDrawdown() const { return max_drawdown_; }
-
 void BaseEngine::UpdateStatistics() {
   max_wallet_balance_ = IsGreater(wallet_balance_, max_wallet_balance_)
                             ? wallet_balance_
@@ -304,19 +288,6 @@ void BaseEngine::UpdateStatistics() {
   drawdown_ = (1 - wallet_balance_ / max_wallet_balance_) * 100;
   max_drawdown_ =
       IsGreater(drawdown_, max_drawdown_) ? drawdown_ : max_drawdown_;
-}
-
-void BaseEngine::LogBalance() {
-  logger_->Log(BALANCE_L,
-               format("지갑 자금 [{}] | 사용한 마진 [{}] | 사용 가능 자금 [{}]",
-                      FormatDollar(wallet_balance_, true),
-                      FormatDollar(used_margin_, true),
-                      FormatDollar(GetAvailableBalance(), true)),
-               __FILE__, __LINE__);
-}
-
-void BaseEngine::LogSeparator(const bool log_to_console) {
-  logger_->LogNoFormat(INFO_L, string(217, '='), log_to_console);
 }
 
 }  // namespace backtesting::engine

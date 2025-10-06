@@ -531,25 +531,6 @@ double BaseOrderHandler::CalculatePnl(const Direction entry_direction,
   [[unlikely]] return NAN;
 }
 
-optional<string> BaseOrderHandler::IsValidDirection(const Direction direction) {
-  if (direction == DIRECTION_NONE) [[unlikely]] {
-    return format("방향 [NONE] 오류 (조건: [LONG] 또는 [SHORT])");
-  }
-
-  return nullopt;
-}
-
-optional<string> BaseOrderHandler::IsValidPrice(const double price,
-                                                const int symbol_idx) {
-  if (IsLessOrEqual(price, 0.0) || isnan(price)) [[unlikely]] {
-    return format(
-        "가격 [{}] 오류 (조건: 0 초과 및 NaN이 아닌 실수)",
-        ToFixedString(price, symbol_info_[symbol_idx].GetPricePrecision()));
-  }
-
-  return nullopt;
-}
-
 optional<string> BaseOrderHandler::IsValidPositionSize(
     const double position_size, const OrderType order_type,
     const int symbol_idx) const {
@@ -623,141 +604,6 @@ optional<string> BaseOrderHandler::IsValidPositionSize(
   return nullopt;
 }
 
-optional<string> BaseOrderHandler::IsValidNotionalValue(
-    const double order_price, const double position_size,
-    const int symbol_idx) {
-  // 명목 가치가 해당 심볼의 최소 명목 가치보다 작으면 오류
-  const auto notional = order_price * position_size;
-  if (const auto min_notional = symbol_info_[symbol_idx].GetMinNotionalValue();
-      IsLess(notional, min_notional)) {
-    return format("명목 가치 [{}] 부족 (조건: 심볼의 최소 명목 가치 [{}] 이상)",
-                  FormatDollar(notional, true),
-                  FormatDollar(min_notional, true));
-  }
-
-  return nullopt;
-}
-
-optional<string> BaseOrderHandler::IsValidLeverage(const int leverage,
-                                                   const double order_price,
-                                                   const double position_size,
-                                                   const int symbol_idx) {
-  if (const auto max_leverage =
-          GetLeverageBracket(symbol_idx, order_price, position_size)
-              .max_leverage;
-      leverage < 1 || leverage > max_leverage) {
-    return format(
-        "레버리지 [{}x] 조건 미만족 (조건: [1x] 이상 및 명목 가치 [{}] "
-        "레버리지 구간의 최대 레버리지 [{}x] 이하)",
-        leverage, FormatDollar(order_price * position_size, true),
-        max_leverage);
-  }
-
-  return nullopt;
-}
-
-optional<string> BaseOrderHandler::IsValidEntryName(
-    const string& entry_name, const int symbol_idx) const {
-  /* 같은 이름으로 체결된 Entry Name이 여러 개 존재하면, 청산 시 Target Entry
-     지정할 때의 로직이 꼬이기 때문에 하나의 Entry Name은 하나의 진입 체결로
-     제한 */
-  for (const auto& filled_entry : filled_entries_[symbol_idx]) {
-    /* 체결된 진입 주문 중 같은 이름이 하나라도 존재하면
-       해당 entry_name으로 진입 불가 */
-    if (entry_name == filled_entry->GetEntryName()) {
-      return format("중복된 진입 이름 [{}] 동시 체결 불가", entry_name);
-    }
-  }
-
-  return nullopt;
-}
-
-optional<string> BaseOrderHandler::IsValidExitName(
-    const string& exit_name) const {
-  // 강제 청산을 청산 이름으로 사용하면 혼선이 있을 수 있으며,
-  // 백보드에서 강제 청산 카운트에서 오류가 생기므로 원칙적 금지
-  if (exit_name.find("강제 청산") != string::npos) [[unlikely]] {
-    return "청산 이름에 \"강제 청산\" 단어 포함 금지";
-  }
-
-  // 리버스는 리버스 청산을 위한 시스템 이름이므로 사용 금지
-  if (!is_reverse_exit_) {
-    if (exit_name.find("리버스") != string::npos) [[unlikely]] {
-      return "청산 이름에 \"리버스\" 단어 포함 금지";
-    }
-  }
-
-  return nullopt;
-}
-
-optional<string> BaseOrderHandler::IsValidLimitOrderPrice(
-    const double limit_price, const double base_price,
-    const Direction direction, const int symbol_idx) {
-  if (direction == LONG && IsGreater(limit_price, base_price)) {
-    const auto price_precision = symbol_info_[symbol_idx].GetPricePrecision();
-    return format("[{}]에서 지정가 주문 불가 (조건: 기준가 [{}] 이하)",
-                  ToFixedString(limit_price, price_precision),
-                  ToFixedString(base_price, price_precision));
-  }
-
-  if (direction == SHORT && IsLess(limit_price, base_price)) {
-    const auto price_precision = symbol_info_[symbol_idx].GetPricePrecision();
-    return format("[{}]에서 지정가 주문 불가 (조건: 기준가 [{}] 이상)",
-                  ToFixedString(limit_price, price_precision),
-                  ToFixedString(base_price, price_precision));
-  }
-
-  return nullopt;
-}
-
-optional<string> BaseOrderHandler::IsValidTrailingTouchPrice(
-    const double touch_price, const int symbol_idx) {
-  if (IsLess(touch_price, 0.0)) [[unlikely]] {
-    return format("트레일링 터치 가격 [{}] 미달 (조건: 0 이상)",
-                  ToFixedString(touch_price,
-                                symbol_info_[symbol_idx].GetPricePrecision()));
-  }
-
-  return nullopt;
-}
-
-optional<string> BaseOrderHandler::IsValidTrailPoint(const double trail_point,
-                                                     const int symbol_idx) {
-  if (IsLessOrEqual(trail_point, 0.0)) [[unlikely]] {
-    return format("트레일링 포인트 [{}] 미달 (조건: 0 초과)",
-                  ToFixedString(trail_point,
-                                symbol_info_[symbol_idx].GetPricePrecision()));
-  }
-
-  return nullopt;
-}
-
-bool BaseOrderHandler::IsLimitPriceSatisfied(const Direction order_direction,
-                                             const double price,
-                                             const double order_price) {
-  return (order_direction == LONG && IsLessOrEqual(price, order_price)) ||
-         (order_direction == SHORT && IsGreaterOrEqual(price, order_price));
-}
-
-bool BaseOrderHandler::IsPriceTouched(const Direction touch_direction,
-                                      const double price,
-                                      const double touch_price) {
-  return (touch_direction == LONG && IsGreaterOrEqual(price, touch_price)) ||
-         (touch_direction == SHORT && IsLessOrEqual(price, touch_price));
-}
-
-optional<string> BaseOrderHandler::HasEnoughBalance(
-    const double balance, const double needed_balance,
-    const string& balance_type_msg, const string& purpose_msg) {
-  if (IsLess(balance, needed_balance)) {
-    return format("{} 자금 [{}] 부족 (필요 자금: {} [{}])", balance_type_msg,
-                  FormatDollar(balance, true), purpose_msg,
-                  FormatDollar(needed_balance, true));
-  }
-
-  return nullopt;
-}
-
 void BaseOrderHandler::UpdateLastEntryBarIndex(const int symbol_idx) {
   const auto original_bar_type = bar_->GetCurrentBarType();
 
@@ -793,6 +639,9 @@ void BaseOrderHandler::Initialize(const int num_symbols) {
   pending_entries_.resize(num_symbols);
   filled_entries_.resize(num_symbols);
   pending_exits_.resize(num_symbols);
+
+  // 적당한 크기로 할당
+  should_fill_orders_.reserve(32);
 
   // 마지막으로 진입 및 청산한 트레이딩 바 인덱스를 심볼 개수로 초기화
   last_entry_bar_indices_.resize(num_symbols);

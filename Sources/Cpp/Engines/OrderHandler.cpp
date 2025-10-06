@@ -1150,16 +1150,10 @@ size_t OrderHandler::CountEntryOrder(
   return count;
 }
 
-vector<FillInfo> OrderHandler::CheckLiquidation(
-    const BarType market_bar_type, const int symbol_idx, const double price,
-    const PriceType price_type) const {
-  const auto market_bar_data = bar_->GetBarData(market_bar_type);
-
-  const auto& filled_entries = filled_entries_[symbol_idx];
-  vector<FillInfo> should_liquidate_filled_entries;
-  should_liquidate_filled_entries.reserve(filled_entries.size());
-
-  for (const auto& filled_entry : filled_entries) {
+void OrderHandler::CheckLiquidation(const BarType market_bar_type,
+                                    const int symbol_idx, const double price,
+                                    const PriceType price_type) {
+  for (const auto& filled_entry : filled_entries_[symbol_idx]) {
     const auto liquidation_price = filled_entry->GetLiquidationPrice();
 
     // 매수 진입 → 현재 가격이 강제 청산 가격과 같거나 밑일 때
@@ -1169,6 +1163,9 @@ vector<FillInfo> OrderHandler::CheckLiquidation(
         (entry_direction == SHORT &&
          IsGreaterOrEqual(price, liquidation_price))) {
       // 실제 시장 가격 찾기
+      const auto& market_bar_data = market_bar_type == TRADING
+                                        ? engine_->trading_bar_data_
+                                        : engine_->magnifier_bar_data_;
       double fill_price = NAN;
 
       // 마크 가격과 시장 가격이 다르기 때문에 실제 시장 체결 가격으로 조정 필요
@@ -1209,29 +1206,22 @@ vector<FillInfo> OrderHandler::CheckLiquidation(
       }
 
       // 체결된 진입을 넣음에 주의
-      should_liquidate_filled_entries.push_back(
+      should_fill_orders_.push_back(
           FillInfo{filled_entry, OrderSignal::LIQUIDATION, fill_price});
     }
   }
-
-  return should_liquidate_filled_entries;
 }
 
-vector<FillInfo> OrderHandler::CheckPendingExits(
-    const int symbol_idx, const double price,
-    const PriceType price_type) const {
-  const auto& pending_exits = pending_exits_[symbol_idx];
-  vector<FillInfo> should_fill_pending_exits;
-  should_fill_pending_exits.reserve(pending_exits.size());
-
-  for (const auto& pending_exit : pending_exits) {
+void OrderHandler::CheckPendingExits(const int symbol_idx, const double price,
+                                     const PriceType price_type) {
+  for (const auto& pending_exit : pending_exits_[symbol_idx]) {
     // 주문 타입별로 조건이 만족되면 체결해야 하는 청산 주문 목록에 주문을 추가
     switch (pending_exit->GetExitOrderType()) {
       case MARKET: {
         // 시장가 대기 주문은 ON_CLOSE 주문에서만 생기므로,
         // 이 함수에 들어온 타이밍은 무조건 시가이기 때문에 즉시 체결 가능
         // 체결 가격은 시장가 정의에 따라 시가로 결정
-        should_fill_pending_exits.push_back(
+        should_fill_orders_.push_back(
             FillInfo{pending_exit, OrderSignal::EXIT, price});
 
         continue;
@@ -1240,7 +1230,7 @@ vector<FillInfo> OrderHandler::CheckPendingExits(
       case LIMIT: {
         if (const auto& order_info =
                 CheckPendingLimitExit(pending_exit, price, price_type)) {
-          should_fill_pending_exits.push_back(*order_info);
+          should_fill_orders_.push_back(*order_info);
         }
 
         continue;
@@ -1249,7 +1239,7 @@ vector<FillInfo> OrderHandler::CheckPendingExits(
       case MIT: {
         if (const auto& order_info =
                 CheckPendingMitExit(pending_exit, price, price_type)) {
-          should_fill_pending_exits.push_back(*order_info);
+          should_fill_orders_.push_back(*order_info);
         }
 
         continue;
@@ -1258,7 +1248,7 @@ vector<FillInfo> OrderHandler::CheckPendingExits(
       case LIT: {
         if (const auto& order_info = CheckPendingLitExit(
                 pending_exit, symbol_idx, price, price_type)) {
-          should_fill_pending_exits.push_back(*order_info);
+          should_fill_orders_.push_back(*order_info);
         }
 
         continue;
@@ -1267,7 +1257,7 @@ vector<FillInfo> OrderHandler::CheckPendingExits(
       case TRAILING: {
         if (const auto& order_info =
                 CheckPendingTrailingExit(pending_exit, price, price_type)) {
-          should_fill_pending_exits.push_back(*order_info);
+          should_fill_orders_.push_back(*order_info);
         }
 
         continue;
@@ -1281,17 +1271,11 @@ vector<FillInfo> OrderHandler::CheckPendingExits(
       }
     }
   }
-
-  return should_fill_pending_exits;
 }
 
-vector<FillInfo> OrderHandler::CheckPendingEntries(const int symbol_idx,
-                                                   const double price,
-                                                   const PriceType price_type) {
+void OrderHandler::CheckPendingEntries(const int symbol_idx, const double price,
+                                       const PriceType price_type) {
   const auto& pending_entries = pending_entries_[symbol_idx];
-  vector<FillInfo> should_fill_pending_entries;
-  should_fill_pending_entries.reserve(pending_entries.size());
-
   for (int order_idx = 0; order_idx < pending_entries.size(); order_idx++) {
     // 주문 타입별로 조건이 만족되면 체결해야 하는 진입 주문 목록에 주문을 추가
     switch (const auto& pending_entry = pending_entries[order_idx];
@@ -1300,7 +1284,7 @@ vector<FillInfo> OrderHandler::CheckPendingEntries(const int symbol_idx,
         // 시장가 대기 주문은 ON_CLOSE 주문에서만 생기므로,
         // 이 함수에 들어온 타이밍은 무조건 시가이기 때문에 즉시 체결 가능
         // 체결 가격은 시장가 정의에 따라 시가로 결정
-        should_fill_pending_entries.push_back(
+        should_fill_orders_.push_back(
             FillInfo{pending_entry, OrderSignal::ENTRY, price});
 
         continue;
@@ -1309,7 +1293,7 @@ vector<FillInfo> OrderHandler::CheckPendingEntries(const int symbol_idx,
       case LIMIT: {
         if (const auto& order_info =
                 CheckPendingLimitEntry(pending_entry, price, price_type)) {
-          should_fill_pending_entries.push_back(*order_info);
+          should_fill_orders_.push_back(*order_info);
         }
 
         continue;
@@ -1318,7 +1302,7 @@ vector<FillInfo> OrderHandler::CheckPendingEntries(const int symbol_idx,
       case MIT: {
         if (const auto& order_info =
                 CheckPendingMitEntry(pending_entry, price, price_type)) {
-          should_fill_pending_entries.push_back(*order_info);
+          should_fill_orders_.push_back(*order_info);
         }
 
         continue;
@@ -1327,7 +1311,7 @@ vector<FillInfo> OrderHandler::CheckPendingEntries(const int symbol_idx,
       case LIT: {
         if (const auto& order_info = CheckPendingLitEntry(
                 pending_entry, order_idx, symbol_idx, price, price_type)) {
-          should_fill_pending_entries.push_back(*order_info);
+          should_fill_orders_.push_back(*order_info);
         }
 
         continue;
@@ -1336,7 +1320,7 @@ vector<FillInfo> OrderHandler::CheckPendingEntries(const int symbol_idx,
       case TRAILING: {
         if (const auto& order_info =
                 CheckPendingTrailingEntry(pending_entry, price, price_type)) {
-          should_fill_pending_entries.push_back(*order_info);
+          should_fill_orders_.push_back(*order_info);
         }
 
         continue;
@@ -1350,8 +1334,6 @@ vector<FillInfo> OrderHandler::CheckPendingEntries(const int symbol_idx,
       }
     }
   }
-
-  return should_fill_pending_entries;
 }
 
 void OrderHandler::FillOrder(const FillInfo& order_info, const int symbol_idx,

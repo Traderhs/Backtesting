@@ -61,13 +61,13 @@ target_link_libraries(Backtesting PRIVATE # Backtesting 타겟에 외부 라이�
         ZLIB::ZLIB)
 
 # 프로파일링을 위한 컴파일 옵션
-target_compile_options(Backtesting PRIVATE
-        /Zi          # 디버그 정보 생성
-        /DEBUG:FULL  # 전체 디버그 정보
-)
+#target_compile_options(Backtesting PRIVATE
+#        /Zi          # 디버그 정보 생성
+#        /DEBUG:FULL  # 전체 디버그 정보
+#)
 
 # 프로파일링을 위한 링커 옵션
-target_link_options(Backtesting PRIVATE
-        /PROFILE     # 프로파일링 활성화
-        /DEBUG:FULL  # 전체 디버그 정보
-)
+#target_link_options(Backtesting PRIVATE
+#        /PROFILE     # 프로파일링 활성화
+#        /DEBUG:FULL  # 전체 디버그 정보
+#)
