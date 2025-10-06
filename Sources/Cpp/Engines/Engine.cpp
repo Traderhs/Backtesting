@@ -624,7 +624,7 @@ void Engine::IsValidDateRange() {
     }
 
     // 백테스팅 기간 받아오기
-    const auto& backtest_period = *config_->GetBacktestPeriod();
+    const auto backtest_period = *config_->GetBacktestPeriod();
     const auto& start_time = backtest_period.GetStartTime();
     const auto& end_time = backtest_period.GetEndTime();
     const auto& format = backtest_period.GetFormat();
@@ -1089,11 +1089,18 @@ void Engine::InitializeSymbolInfo() {
       }
 
       if (!funding_rate_exist) {
-        throw invalid_argument(
+        logger_->Log(
+            WARN_L,
             format("[{}] 백테스팅 기간 [{} - {}]에 해당되는 펀딩 비율 데이터가 "
-                   "존재하지 않습니다.",
+                   "존재하지 않으므로 해당 심볼의 펀딩비는 정산되지 않습니다.",
                    symbol_name, UtcTimestampToUtcDatetime(begin_open_time_),
-                   UtcTimestampToUtcDatetime(end_close_time_)));
+                   UtcTimestampToUtcDatetime(end_close_time_)),
+            __FILE__, __LINE__, true);
+
+        funding_rates_indices_[symbol_idx] = SIZE_MAX;
+        next_funding_rates_[symbol_idx] = NAN;
+        next_funding_times_[symbol_idx] = INT64_MAX;
+        next_funding_mark_prices_[symbol_idx] = NAN;
       }
 
       symbol_info.SetFundingRates(funding_rates_vector);
