@@ -149,6 +149,9 @@ class Engine final : public BaseEngine {
   // 현재 트레이딩 바 시간에서 트레이딩을 진행하는 심볼 인덱스
   vector<int> activated_symbol_indices_;
 
+  // 심볼 이름들
+  vector<string> symbol_names_;
+
   /// 백테스팅의 메인 로직 시작 전 엔진의 유효성 검사와 초기화를 하는 함수
   void Initialize();
 

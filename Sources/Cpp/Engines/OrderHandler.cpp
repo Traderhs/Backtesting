@@ -2630,7 +2630,7 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
   // 거래 내역에 거래 추가
   analyzer_->AddTrade(
       Trade()
-          .SetSymbolName(bar_->GetBarData(TRADING)->GetSymbolName(symbol_idx))
+          .SetSymbolName(symbol_names_[symbol_idx])
           .SetEntryName(exit_order->GetEntryName())
           .SetExitName(exit_order->GetExitName())
           .SetEntryDirection(exit_order->GetEntryDirection() == LONG ? "매수"
