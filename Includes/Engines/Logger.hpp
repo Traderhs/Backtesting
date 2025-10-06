@@ -34,6 +34,8 @@ using namespace analyzer;
 
 namespace backtesting::logger {
 
+#pragma warning(disable : 4324)
+
 // 하드웨어 레벨 최적화 매크로
 #ifdef _WIN32
 #define PREFETCH_READ(addr) _mm_prefetch((const char*)(addr), _MM_HINT_T0)
@@ -73,8 +75,10 @@ using enum LogLevel;
  */
 struct alignas(64) FastLogBuffer {
   static constexpr size_t buffer_size =
-      4 * 1024 * 1024;                      // 4MB 버퍼 (L3 캐시 고려)
+      8 * 1024 * 1024;                      // 8MB 버퍼 (더 큰 배치 처리)
   static constexpr size_t max_buffers = 2;  // 더블 버퍼링
+  static constexpr size_t flush_threshold =
+      buffer_size * 3 / 4;  // 버퍼 75% 찼을 때 플러시 고려
 
   /**
    * 개별 버퍼 구조체 - 캐시 라인 정렬 및 하드웨어 최적화
@@ -93,27 +97,28 @@ struct alignas(64) FastLogBuffer {
      */
     [[nodiscard]] bool try_write(const char* RESTRICT msg,
                                  const size_t len) noexcept {
-      PREFETCH_WRITE(this);
+      const size_t current_pos = write_pos.load(memory_order_relaxed);
 
-      if (const size_t current_pos = write_pos.load(memory_order_relaxed);
-          LIKELY(current_pos + len <= buffer_size)) {
-        PREFETCH_WRITE(data + current_pos);
-        if (LIKELY(write_pos.compare_exchange_strong(
-                const_cast<size_t&>(current_pos), current_pos + len,
-                memory_order_acq_rel))) {
-#ifdef _WIN32
-          __movsb(reinterpret_cast<unsigned char*>(data + current_pos),
-                  reinterpret_cast<const unsigned char*>(msg), len);
-#else
-          __builtin_memcpy(data + current_pos, msg, len);
-#endif
-          MEMORY_BARRIER();
-          return true;
-        }
+      if (UNLIKELY(current_pos + len > buffer_size)) {
+        return false;
       }
 
-      CPU_RELAX();
-      return false;
+      // Relaxed ordering으로 빠른 예약
+      if (UNLIKELY(!write_pos.compare_exchange_weak(
+              const_cast<size_t&>(current_pos), current_pos + len,
+              memory_order_relaxed, memory_order_relaxed))) {
+        return false;
+      }
+
+      // 프리페치 후 고속 복사
+      PREFETCH_WRITE(data + current_pos);
+#ifdef _WIN32
+      __movsb(reinterpret_cast<unsigned char*>(data + current_pos),
+              reinterpret_cast<const unsigned char*>(msg), len);
+#else
+      __builtin_memcpy(data + current_pos, msg, len);
+#endif
+      return true;
     }
 
     /**
@@ -137,21 +142,20 @@ struct alignas(64) FastLogBuffer {
    * @param len 메시지 길이
    * @return 성공 여부
    */
-  [[nodiscard]] bool write_message(const char* RESTRICT msg,
-                                   const size_t len) noexcept {
-    PREFETCH_READ(this);
+  [[nodiscard]] FORCE_INLINE bool write_message(const char* RESTRICT msg,
+                                                const size_t len) noexcept {
     const size_t buf_idx = current_buffer.load(memory_order_relaxed);
     Buffer& buffer = buffers[buf_idx];
-
-    PREFETCH_READ(&buffer);
 
     if (LIKELY(buffer.try_write(msg, len))) {
       return true;
     }
 
+    // 버퍼 전환 (Relaxed ordering으로 최적화)
     if (const size_t next_buf = (buf_idx + 1) % max_buffers;
-        UNLIKELY(current_buffer.compare_exchange_strong(
-            const_cast<size_t&>(buf_idx), next_buf, memory_order_acq_rel))) {
+        current_buffer.compare_exchange_weak(const_cast<size_t&>(buf_idx),
+                                             next_buf, memory_order_relaxed,
+                                             memory_order_relaxed)) {
       buffer.ready_to_flush.store(true, memory_order_release);
       PREFETCH_WRITE(&buffers[next_buf]);
     }
