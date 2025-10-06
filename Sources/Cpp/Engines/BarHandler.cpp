@@ -489,7 +489,7 @@ size_t BarHandler::GetCurrentBarIndex() {
     }
   }
 
-  return -1;
+  return SIZE_MAX;
 }
 
 string BarHandler::CalculateTimeframe(const shared_ptr<arrow::Table>& bar_data,
@@ -500,7 +500,7 @@ string BarHandler::CalculateTimeframe(const shared_ptr<arrow::Table>& bar_data,
   vector<int64_t> time_diffs;
 
   // 앞 10개 차이 계산
-  for (size_t i = 1; i <= 10 && i < num_bars; i++) {
+  for (auto i = 1; i <= 10 && i < num_bars; i++) {
     const auto fst_open_time = any_cast<int64_t>(
         GetCellValue(bar_data, open_time_column, static_cast<int64_t>(i - 1)));
     const auto snd_open_time = any_cast<int64_t>(
@@ -509,7 +509,7 @@ string BarHandler::CalculateTimeframe(const shared_ptr<arrow::Table>& bar_data,
   }
 
   // 뒤 10개 차이 계산
-  for (size_t i = num_bars - 1; i >= num_bars - 10 && i > 0; i--) {
+  for (auto i = num_bars - 1; i >= num_bars - 10 && i > 0; i--) {
     const auto fst_open_time = any_cast<int64_t>(
         GetCellValue(bar_data, open_time_column, static_cast<int64_t>(i - 1)));
     const auto snd_open_time = any_cast<int64_t>(

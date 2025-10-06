@@ -23,7 +23,12 @@ namespace backtesting::indicator {
 
 Indicator::Indicator(const string& name, const string& timeframe,
                      const Plot& plot)
-    : is_calculated_(false), is_higher_timeframe_indicator_(false) {
+    : is_calculated_(false),
+      is_higher_timeframe_indicator_(false),
+      cached_symbol_idx_(SIZE_MAX),
+      cached_trading_bar_idx_(SIZE_MAX),
+      cached_target_bar_idx_(SIZE_MAX),
+      cached_ref_bar_idx_(SIZE_MAX) {
   try {
     if (name.empty()) {
       Logger::LogAndThrowError("지표 이름이 비어있습니다.", __FILE__, __LINE__);
@@ -290,10 +295,10 @@ void Indicator::CalculateIndicator() {
     }
 
     // 캐시 무효화 - 새로운 계산 시작 (메모리 효율적으로 초기화)
-    cached_symbol_idx_ = -1;
-    cached_trading_bar_idx_ = -1;
-    cached_target_bar_idx_ = -1;
-    cached_ref_bar_idx_ = -1;
+    cached_symbol_idx_ = SIZE_MAX;
+    cached_trading_bar_idx_ = SIZE_MAX;
+    cached_target_bar_idx_ = SIZE_MAX;
+    cached_ref_bar_idx_ = SIZE_MAX;
 
     // ===========================================================================
     // 사전 설정 - 공통 변수들 미리 캐시

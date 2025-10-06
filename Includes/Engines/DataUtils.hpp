@@ -190,9 +190,9 @@ template <typename T, typename U>
       numeric_limits<CommonType>::epsilon() * 100;
 
   // 상대적 오차
-  constexpr CommonType rel_tolerance = 1e-12;
+  constexpr CommonType rel_tolerance = CommonType(1e-12);
 
-  const CommonType diff = std::fabs(ca - cb);
+  const CommonType diff = std::abs(ca - cb);
 
   // 절대적 오차 체크 (0에 가까운 값들)
   if (diff <= abs_tolerance) {
@@ -200,7 +200,7 @@ template <typename T, typename U>
   }
 
   // 상대적 오차 체크 (큰 값들)
-  const CommonType max_val = (max)(std::fabs(ca), std::fabs(cb));
+  const CommonType max_val = (max)(std::abs(ca), std::abs(cb));
   return diff <= rel_tolerance * max_val;
 }
 
@@ -224,9 +224,9 @@ template <typename T, typename U>
       numeric_limits<CommonType>::epsilon() * 100;
 
   // 상대적 오차
-  constexpr CommonType rel_tolerance = 1e-12;
+  constexpr CommonType rel_tolerance = CommonType(1e-12);
 
-  const CommonType diff = std::fabs(ca - cb);
+  const CommonType diff = std::abs(ca - cb);
 
   // 절대적 오차 체크 (0에 가까운 값들)
   if (diff <= abs_tolerance) {
@@ -234,7 +234,7 @@ template <typename T, typename U>
   }
 
   // 상대적 오차 체크 (큰 값들)
-  const CommonType max_val = (max)(std::fabs(ca), std::fabs(cb));
+  const CommonType max_val = (max)(std::abs(ca), std::abs(cb));
   return diff > rel_tolerance * max_val;
 }
 
@@ -256,17 +256,17 @@ template <typename T, typename U>
   // 절대적 오차
   constexpr CommonType abs_tolerance =
       numeric_limits<CommonType>::epsilon() * 100;
-  constexpr CommonType rel_tolerance = 1e-12;
+  constexpr CommonType rel_tolerance = CommonType(1e-12);
 
   const CommonType diff = ca - cb;
-  const CommonType abs_diff = std::fabs(diff);
+  const CommonType abs_diff = std::abs(diff);
 
   // 같은 값인지 체크
   if (abs_diff <= abs_tolerance) {
     return false;
   }
 
-  const CommonType max_val = (max)(std::fabs(ca), std::fabs(cb));
+  const CommonType max_val = (max)(std::abs(ca), std::abs(cb));
   if (abs_diff <= rel_tolerance * max_val) {
     return false;
   }
@@ -292,17 +292,17 @@ template <typename T, typename U>
   // 절대적 오차
   constexpr CommonType abs_tolerance =
       numeric_limits<CommonType>::epsilon() * 100;
-  constexpr CommonType rel_tolerance = 1e-12;
+  constexpr CommonType rel_tolerance = CommonType(1e-12);
 
   const CommonType diff = ca - cb;
-  const CommonType abs_diff = std::fabs(diff);
+  const CommonType abs_diff = std::abs(diff);
 
   // 같은 값인지 체크
   if (abs_diff <= abs_tolerance) {
     return true;
   }
 
-  const CommonType max_val = (max)(std::fabs(ca), std::fabs(cb));
+  const CommonType max_val = (max)(std::abs(ca), std::abs(cb));
   if (abs_diff <= rel_tolerance * max_val) {
     return true;
   }
@@ -328,17 +328,17 @@ template <typename T, typename U>
   // 절대적 오차
   constexpr CommonType abs_tolerance =
       numeric_limits<CommonType>::epsilon() * 100;
-  constexpr CommonType rel_tolerance = 1e-12;
+  constexpr CommonType rel_tolerance = CommonType(1e-12);
 
   const CommonType diff = ca - cb;
-  const CommonType abs_diff = std::fabs(diff);
+  const CommonType abs_diff = std::abs(diff);
 
   // 같은 값인지 체크
   if (abs_diff <= abs_tolerance) {
     return false;
   }
 
-  const CommonType max_val = (max)(std::fabs(ca), std::fabs(cb));
+  const CommonType max_val = (max)(std::abs(ca), std::abs(cb));
   if (abs_diff <= rel_tolerance * max_val) {
     return false;
   }
@@ -364,17 +364,17 @@ template <typename T, typename U>
   // 절대적 오차
   constexpr CommonType abs_tolerance =
       numeric_limits<CommonType>::epsilon() * 100;
-  constexpr CommonType rel_tolerance = 1e-12;
+  constexpr CommonType rel_tolerance = CommonType(1e-12);
 
   const CommonType diff = ca - cb;
-  const CommonType abs_diff = std::fabs(diff);
+  const CommonType abs_diff = std::abs(diff);
 
   // 같은 값인지 체크
   if (abs_diff <= abs_tolerance) {
     return true;
   }
 
-  const CommonType max_val = (max)(std::fabs(ca), std::fabs(cb));
+  const CommonType max_val = (max)(std::abs(ca), std::abs(cb));
   if (abs_diff <= rel_tolerance * max_val) {
     return true;
   }
