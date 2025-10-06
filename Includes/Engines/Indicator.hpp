@@ -237,11 +237,11 @@ class Indicator {
   // 성능 최적화를 위한 캐시 변수들
   mutable shared_ptr<BarData> trading_bar_data_;  // 트레이딩 바 데이터
   mutable shared_ptr<BarData>
-      reference_bar_data_;              // 현재 지표 타임프레임의 참조 바 데이터
-  mutable size_t cached_symbol_idx_{};  // 캐시된 심볼 인덱스
-  mutable size_t cached_trading_bar_idx_{};  // 캐시된 트레이딩 바 인덱스
-  mutable size_t cached_target_bar_idx_{};   // 캐시된 대상 바 인덱스
-  mutable size_t cached_ref_bar_idx_{};      // 캐시된 참조 바 인덱스
+      reference_bar_data_;            // 현재 지표 타임프레임의 참조 바 데이터
+  mutable size_t cached_symbol_idx_;  // 캐시된 심볼 인덱스
+  mutable size_t cached_trading_bar_idx_;  // 캐시된 트레이딩 바 인덱스
+  mutable size_t cached_target_bar_idx_;   // 캐시된 대상 바 인덱스
+  mutable size_t cached_ref_bar_idx_;      // 캐시된 참조 바 인덱스
 
   // 플롯 정보
   string plot_type_;       // 플롯 클래스명
