@@ -19,7 +19,6 @@
 #include <array>
 #include <atomic>
 #include <chrono>
-#include <condition_variable>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -196,15 +195,33 @@ Logger::Logger(const string& debug_log_name, const string& info_log_name,
   backtesting_log_temp_path_ = backtesting_log_path;
   backtesting_log_created_in_current_session_ = true;
 
-  // 파일 버퍼 비활성화
-  debug_log_.rdbuf()->pubsetbuf(nullptr, 0);
-  info_log_.rdbuf()->pubsetbuf(nullptr, 0);
-  warn_log_.rdbuf()->pubsetbuf(nullptr, 0);
-  error_log_.rdbuf()->pubsetbuf(nullptr, 0);
-  backtesting_log_.rdbuf()->pubsetbuf(nullptr, 0);
+  // 파일 버퍼 크기 최적화 (128KB - 대용량 배치 쓰기에 최적)
+  static char debug_file_buf[128 * 1024];
+  static char info_file_buf[128 * 1024];
+  static char warn_file_buf[128 * 1024];
+  static char error_file_buf[128 * 1024];
+  static char backtesting_file_buf[128 * 1024];
+
+  debug_log_.rdbuf()->pubsetbuf(debug_file_buf, sizeof(debug_file_buf));
+  info_log_.rdbuf()->pubsetbuf(info_file_buf, sizeof(info_file_buf));
+  warn_log_.rdbuf()->pubsetbuf(warn_file_buf, sizeof(warn_file_buf));
+  error_log_.rdbuf()->pubsetbuf(error_file_buf, sizeof(error_file_buf));
+  backtesting_log_.rdbuf()->pubsetbuf(backtesting_file_buf,
+                                      sizeof(backtesting_file_buf));
 
   // 고성능 비동기 스레드 시작
   logging_thread_ = thread(&Logger::ProcessMultiBuffer, this);
+
+  // 스레드 우선순위 최적화 (백그라운드 작업이므로 낮은 우선순위)
+#ifdef _WIN32
+  SetThreadPriority(logging_thread_.native_handle(),
+                    THREAD_PRIORITY_BELOW_NORMAL);
+#else
+  sched_param sch_params;
+  sch_params.sched_priority = sched_get_priority_min(SCHED_IDLE);
+  pthread_setschedparam(logging_thread_.native_handle(), SCHED_IDLE,
+                        &sch_params);
+#endif
 }
 
 Logger::~Logger() {
@@ -366,8 +383,6 @@ shared_ptr<Logger>& Logger::GetLogger(const string& debug_log_name,
 
 // 하드웨어 레벨 최적화된 백그라운드 처리 스레드
 NO_INLINE void Logger::ProcessMultiBuffer() {
-  auto last_flush_time = chrono::steady_clock::now();
-
   while (!stop_logging_) {
     bool any_work = false;
 
@@ -386,15 +401,7 @@ NO_INLINE void Logger::ProcessMultiBuffer() {
 
     any_work |= FlushBufferIfReady(backtesting_buffer, backtesting_log_);
 
-    // 주기적으로 강제 플러시 (1초마다)
-    if (const auto now = chrono::steady_clock::now();
-        chrono::duration_cast<chrono::milliseconds>(now - last_flush_time)
-            .count() >= 1000) {
-      ForceFlushAll();
-      last_flush_time = now;
-      any_work = true;
-    }
-
+    // 작업이 없으면 CPU 양보 (스핀락 최적화)
     if (!any_work) {
       CPU_RELAX();
     }
@@ -407,15 +414,22 @@ bool Logger::FlushBufferIfReady(FastLogBuffer& buffer, ofstream& file) {
   bool did_work = false;
 
   for (auto& buf : buffer.buffers) {
-    if (buf.ready_to_flush.load(memory_order_acquire)) {
-      if (const size_t data_size = buf.write_pos.load(memory_order_acquire);
-          data_size > 0) {
-        file.write(buf.data, static_cast<streamsize>(data_size));
-        file.flush();
-        did_work = true;
-      }
+    // ready_to_flush 플래그가 설정되었거나, 버퍼가 충분히 찼을 때 플러시
+    const size_t data_size = buf.write_pos.load(memory_order_acquire);
+    const bool should_flush = buf.ready_to_flush.load(memory_order_acquire) ||
+                              (data_size >= FastLogBuffer::flush_threshold);
+
+    if (should_flush && data_size > 0) {
+      // 배치 쓰기 최적화 - flush 호출 최소화
+      file.write(buf.data, static_cast<streamsize>(data_size));
+      did_work = true;
       buf.reset();
     }
+  }
+
+  // 모든 버퍼 처리 후 한 번만 flush
+  if (did_work) {
+    file.flush();
   }
 
   return did_work;
