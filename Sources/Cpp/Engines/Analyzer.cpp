@@ -365,9 +365,8 @@ void Analyzer::SaveIndicatorData() {
                    throw runtime_error(status.message());
                  }
 
-                 symbol_arrays[symbol_idx] =
-                     make_pair(reference_bar_data->GetSymbolName(symbol_idx),
-                               move(value_array));
+                 symbol_arrays[symbol_idx] = make_pair(
+                     engine_->symbol_names_[symbol_idx], move(value_array));
                });
 
       // 테이블에 컬럼 추가
@@ -496,8 +495,7 @@ void Analyzer::SaveConfig() {
         ordered_json& symbol = symbol_configs[symbol_idx];
 
         // 심볼 이름 미리 저장
-        const string symbol_name = trading_bar_data->GetSymbolName(symbol_idx);
-        symbol["심볼 이름"] = symbol_name;
+        symbol["심볼 이름"] = engine_->symbol_names_[symbol_idx];
 
         // 심볼 정보 참조
         auto& symbol_info = symbol_info_[symbol_idx];

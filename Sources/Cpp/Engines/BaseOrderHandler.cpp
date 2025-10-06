@@ -150,10 +150,6 @@ double BaseOrderHandler::LastExitPrice() const {
   return last_exit_prices_[bar_->GetCurrentSymbolIndex()];
 }
 
-double BaseOrderHandler::GetCurrentPositionSize() const {
-  return current_position_size_;
-}
-
 double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
                                            const PriceType price_type) const {
   const auto& filled_entries = filled_entries_[symbol_idx];
@@ -221,20 +217,6 @@ double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
 
   bar_->SetCurrentBarType(original_bar_type, "");
   return sum_loss;
-}
-
-bool BaseOrderHandler::IsJustEntered() const { return just_entered_; }
-bool BaseOrderHandler::IsJustExited() const { return just_exited_; }
-
-void BaseOrderHandler::LogFormattedInfo(const LogLevel log_level,
-                                        const string& formatted_message,
-                                        const char* file, const int line) {
-  logger_->Log(log_level,
-               format("[{}] {}",
-                      bar_->GetBarData(bar_->GetCurrentBarType())
-                          ->GetSymbolName(bar_->GetCurrentSymbolIndex()),
-                      formatted_message),
-               file, line);
 }
 
 double BaseOrderHandler::CalculateMargin(const double price,
@@ -628,12 +610,16 @@ void BaseOrderHandler::UpdateLastExitBarIndex(const int symbol_idx) {
   bar_->SetCurrentBarType(original_bar_type, "");
 }
 
-void BaseOrderHandler::Initialize(const int num_symbols) {
+void BaseOrderHandler::Initialize(const int num_symbols,
+                                  const vector<string>& symbol_names) {
   if (is_initialized_) [[unlikely]] {
     Logger::LogAndThrowError(
         "주문 핸들러가 이미 초기화가 완료되어 다시 초기화할 수 없습니다.",
         __FILE__, __LINE__);
   }
+
+  // 심볼 이름 초기화
+  symbol_names_ = symbol_names;
 
   // 주문들을 심볼 개수로 초기화
   pending_entries_.resize(num_symbols);

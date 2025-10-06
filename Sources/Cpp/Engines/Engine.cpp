@@ -361,8 +361,8 @@ void Engine::IsValidBarData() {
               순서가 같은지 검증 */
       for (int symbol_idx = 0; symbol_idx < trading_num_symbols; ++symbol_idx) {
         if (const auto& symbol_name =
-                trading_bar_data->GetSymbolName(symbol_idx);
-            symbol_name != magnifier_bar_data->GetSymbolName(symbol_idx)) {
+                trading_bar_data->GetSafeSymbolName(symbol_idx);
+            symbol_name != magnifier_bar_data->GetSafeSymbolName(symbol_idx)) {
           Logger::LogAndThrowError(
               format(
                   "돋보기 바 데이터에 [{}]이(가) 존재하지 않거나 "
@@ -428,8 +428,8 @@ void Engine::IsValidBarData() {
               순서가 같은지 검증 */
       for (int symbol_idx = 0; symbol_idx < trading_num_symbols; ++symbol_idx) {
         if (const auto& symbol_name =
-                trading_bar_data->GetSymbolName(symbol_idx);
-            symbol_name != reference_bar_data->GetSymbolName(symbol_idx)) {
+                trading_bar_data->GetSafeSymbolName(symbol_idx);
+            symbol_name != reference_bar_data->GetSafeSymbolName(symbol_idx)) {
           Logger::LogAndThrowError(
               format(
                   "참조 바 데이터에 [{} {}]이(가) 존재하지 않거나 "
@@ -502,8 +502,9 @@ void Engine::IsValidBarData() {
     /* 4.3. 타겟 바 데이터의 심볼들이 마크 가격 바 데이터에 존재하고
             순서가 같은지 검증 */
     for (int symbol_idx = 0; symbol_idx < target_num_symbols; ++symbol_idx) {
-      if (const auto& symbol_name = target_bar_data->GetSymbolName(symbol_idx);
-          symbol_name != mark_price_bar_data->GetSymbolName(symbol_idx)) {
+      if (const auto& symbol_name =
+              target_bar_data->GetSafeSymbolName(symbol_idx);
+          symbol_name != mark_price_bar_data->GetSafeSymbolName(symbol_idx)) {
         Logger::LogAndThrowError(
             format("마크 가격 바 데이터에 [{}]이(가) 존재하지 않거나 "
                    "{} 바 데이터에 추가된 심볼 순서와 일치하지 않습니다.",
@@ -566,9 +567,10 @@ void Engine::IsValidBarData() {
                 format(
                     "마크 가격 바 데이터의 심볼 [{}]와(과) {} 바 데이터의 심볼 "
                     "[{}]이(가) 중복된 데이터일 가능성이 있습니다.",
-                    mark_price_bar_data->GetSymbolName(mark_price_symbol_idx),
+                    mark_price_bar_data->GetSafeSymbolName(
+                        mark_price_symbol_idx),
                     use_bar_magnifier ? "돋보기" : "트레이딩",
-                    target_bar_data->GetSymbolName(target_symbol_idx)),
+                    target_bar_data->GetSafeSymbolName(target_symbol_idx)),
                 __FILE__, __LINE__, true);
             Logger::LogAndThrowError(
                 "이 검사를 비활성화하고 싶다면 "
@@ -702,7 +704,8 @@ void Engine::IsValidSymbolInfo() {
     }
 
     for (int symbol_idx = 0; symbol_idx < trading_num_symbols; ++symbol_idx) {
-      if (const auto& symbol_name = trading_bar_data->GetSymbolName(symbol_idx);
+      if (const auto& symbol_name =
+              trading_bar_data->GetSafeSymbolName(symbol_idx);
           symbol_name !=
           funding_rates_[symbol_idx][0]["symbol"].get<string>()) {
         Logger::LogAndThrowError(
@@ -901,6 +904,13 @@ void Engine::InitializeEngine() {
     trading_ended_[symbol_idx] = false;
   }
 
+  symbol_names_.resize(trading_bar_num_symbols_);
+  for (int symbol_idx = 0; symbol_idx < trading_bar_num_symbols_;
+       symbol_idx++) {
+    symbol_names_[symbol_idx] =
+        trading_bar_data_->GetSafeSymbolName(symbol_idx);
+  }
+
   // 분석기 초기화
   analyzer_->Initialize(begin_open_time_, end_close_time_, initial_balance);
 
@@ -914,7 +924,7 @@ void Engine::InitializeSymbolInfo() {
   for (int symbol_idx = 0; symbol_idx < trading_bar_num_symbols_;
        symbol_idx++) {
     SymbolInfo symbol_info;
-    const string& symbol_name = trading_bar_data_->GetSymbolName(symbol_idx);
+    const string& symbol_name = symbol_names_[symbol_idx];
 
     // 거래소 정보 초기화
     try {
@@ -1125,7 +1135,7 @@ void Engine::InitializeSymbolInfo() {
 void Engine::InitializeStrategy() {
   // 주문 핸들러 및 전략 초기화
   order_handler_ = strategy_->GetOrderHandler();
-  order_handler_->Initialize(trading_bar_num_symbols_);
+  order_handler_->Initialize(trading_bar_num_symbols_, symbol_names_);
   strategy_->Initialize();
 
   Strategy::SetTradingTimeframe(trading_bar_timeframe_);
@@ -1250,7 +1260,7 @@ void Engine::BacktestingMain() {
                 WARN_L,
                 format("[{}] 심볼의 [{}] 돋보기 바가 누락되어 체결 확인을 "
                        "건너뜁니다. (돋보기 바 다음 시간: [{}])",
-                       trading_bar_data_->GetSymbolName(symbol_idx),
+                       symbol_names_[symbol_idx],
                        UtcTimestampToUtcDatetime(current_open_time_),
                        magnifier_next_open_time),
                 __FILE__, __LINE__, false);
@@ -1362,7 +1372,7 @@ void Engine::UpdateTradingStatus() {
             WARN_L,
             format("[{}] 심볼의 [{}] 트레이딩 바가 누락되어 이번 시간의 "
                    "트레이딩을 건너뜁니다. (트레이딩 바 다음 시간: [{}])",
-                   trading_bar_data_->GetSymbolName(symbol_idx),
+                   symbol_names_[symbol_idx],
                    UtcTimestampToUtcDatetime(current_open_time_),
                    UtcTimestampToUtcDatetime(trading_bar_open_time)),
             __FILE__, __LINE__, true);
@@ -1425,7 +1435,7 @@ void Engine::UpdateTradingStatus() {
               format("[{} {}] 참조 바 데이터가 아직 시작되지 않아 해당 심볼의 "
                      "트레이딩을 진행할 수 없습니다. (참조 바가 시작되는 기준 "
                      "Close Time: [{}])",
-                     trading_bar_data_->GetSymbolName(symbol_idx), timeframe,
+                     symbol_names_[symbol_idx], timeframe,
                      UtcTimestampToUtcDatetime(moved_close_time)),
               __FILE__, __LINE__, false);
 
@@ -1481,7 +1491,7 @@ void Engine::UpdateTradingStatus() {
             WARN_L,
             format("[{}] 돋보기 바 데이터가 아직 시작되지 않아 해당 심볼의 "
                    "트레이딩을 진행할 수 없습니다. (돋보기 바 시작 시간: [{}])",
-                   trading_bar_data_->GetSymbolName(symbol_idx),
+                   symbol_names_[symbol_idx],
                    UtcTimestampToUtcDatetime(
                        magnifier_bar_data_->GetBar(symbol_idx, moved_bar_idx)
                            .open_time)),
@@ -1519,12 +1529,11 @@ void Engine::ExecuteTradingEnd(const int symbol_idx,
   // 바가 끝난 전량 청산은 Just Exited로 판단하지 않음
   order_handler_->InitializeJustExited();
 
-  logger_->Log(
-      INFO_L,
-      format("[{}] 심볼의 {} 바 데이터가 끝나 해당 심볼의 "
-             "백테스팅을 종료합니다.",
-             trading_bar_data_->GetSymbolName(symbol_idx), bar_type_str),
-      __FILE__, __LINE__, true);
+  logger_->Log(INFO_L,
+               format("[{}] 심볼의 {} 바 데이터가 끝나 해당 심볼의 "
+                      "백테스팅을 종료합니다.",
+                      symbol_names_[symbol_idx], bar_type_str),
+               __FILE__, __LINE__, true);
 }
 
 void Engine::ExecuteAllTradingEnd() {
@@ -1552,7 +1561,7 @@ void Engine::ExecuteAllTradingEnd() {
       logger_->Log(INFO_L,
                    format("백테스팅 종료 시간에 의해 [{}] 심볼의 "
                           "백테스팅을 종료합니다.",
-                          trading_bar_data_->GetSymbolName(symbol_idx)),
+                          symbol_names_[symbol_idx]),
                    __FILE__, __LINE__, true);
     }
   }
@@ -1575,7 +1584,7 @@ void Engine::CheckFundingTime() {
       logger_->Log(WARN_L,
                    format("[{}] 펀딩 비율 데이터가 종료되었으므로 해당 심볼의 "
                           "펀딩비는 더 이상 정산되지 않습니다.",
-                          trading_bar_data_->GetSymbolName(symbol_idx)),
+                          symbol_names_[symbol_idx]),
                    __FILE__, __LINE__);
 
       next_funding_rates_[symbol_idx] = -1;
@@ -1615,7 +1624,7 @@ void Engine::CheckFundingTime() {
         funding_price = current_market_bar.open;
       } else [[unlikely]] {
         // 4. 모든 일치하는 데이터가 없다면 펀딩비 정산 불가
-        OrderHandler::LogFormattedInfo(
+        order_handler_->LogFormattedInfo(
             WARN_L,
             format("펀딩 시간 [{}] 데이터에 마크 가격이 존재하지 않으며, "
                    "현재 진행 시간 [{}]과 일치하는 마크 가격 바와 시장 가격 "
@@ -1837,7 +1846,7 @@ Direction Engine::CalculatePriceDirection(
       const auto price_type_cache = price_type_cache_[symbol_idx];
 
       if (isnan(price_cache)) [[unlikely]] {
-        OrderHandler::LogFormattedInfo(
+        order_handler_->LogFormattedInfo(
             ERROR_L,
             "가격 캐시가 NaN이므로 CLOSE로 오는 가격 방향을 계산할 수 "
             "없습니다.",
@@ -1871,7 +1880,7 @@ Direction Engine::CalculatePriceDirection(
 
     default:
       [[unlikely]] {
-        OrderHandler::LogFormattedInfo(
+        order_handler_->LogFormattedInfo(
             ERROR_L, "가격 방향 계산 오류: 잘못된 가격 타입 (엔진 오류)",
             __FILE__, __LINE__);
         throw;
