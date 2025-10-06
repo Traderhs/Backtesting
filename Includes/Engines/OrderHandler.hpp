@@ -326,7 +326,7 @@ class OrderHandler final : public BaseOrderHandler {
       const shared_ptr<Order>& mit_exit, double price, PriceType price_type);
 
   /// LIT 청산 대기 주문의 체결을 확인하고 해당 주문 정보를 반환하는 함수
-  [[nodiscard]] static optional<FillInfo> CheckPendingLitExit(
+  [[nodiscard]] optional<FillInfo> CheckPendingLitExit(
       const shared_ptr<Order>& lit_exit, int symbol_idx, double price,
       PriceType price_type);
 

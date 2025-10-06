@@ -98,7 +98,7 @@ string BarData::GetBarDataPath(const int symbol_idx) const {
   return bar_data_path_[symbol_idx];
 }
 
-string& BarData::GetSymbolName(const int symbol_idx) {
+string& BarData::GetSafeSymbolName(const int symbol_idx) {
   try {
     IsValidSymbolIndex(symbol_idx);
   } catch (const IndexOutOfRange& e) {

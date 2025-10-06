@@ -6,6 +6,7 @@
 #include <vector>
 
 // 내부 헤더
+#include "Engines/BarHandler.hpp"  // 이제 BarHandler에서 여기 include 하면 에러 발생
 #include "Engines/Config.hpp"
 #include "Engines/DataUtils.hpp"
 #include "Engines/Order.hpp"
@@ -107,7 +108,9 @@ class BaseOrderHandler {
   /// 전략 실횅 시점에 무조건 값을 업데이트하기 때문에 전략 내에서는 이 함수로
   /// 값을 사용하면 됨.\n\n
   /// 양수면 매수 진입, 음수면 매도 진입.
-  [[nodiscard]] double GetCurrentPositionSize() const;
+  [[nodiscard]] __forceinline double GetCurrentPositionSize() const {
+    return current_position_size_;
+  }
 
   /// 지정된 심볼 마크 가격의 지정된 가격 타입을 기준으로 계산한 미실현 손실의
   /// 절댓값의 합계를 반환하는 함수.
@@ -118,15 +121,24 @@ class BaseOrderHandler {
                                          PriceType price_type) const;
 
   /// 현재 심볼과 바에서 진입이 이루어졌는지 여부를 반환하는 함수
-  [[nodiscard]] bool IsJustEntered() const;
+  [[nodiscard]] __forceinline bool IsJustEntered() const {
+    return just_entered_;
+  }
 
   /// 현재 심볼과 바에서 청산이 이루어졌는지 여부를 반환하는 함수
-  [[nodiscard]] bool IsJustExited() const;
+  [[nodiscard]] __forceinline bool IsJustExited() const {
+    return just_exited_;
+  }
 
   /// 심볼 이름으로 포맷된 로그를 발생시키는 함수
-  static void LogFormattedInfo(LogLevel log_level,
-                               const string& formatted_message,
-                               const char* file, int line);
+  __forceinline void LogFormattedInfo(const LogLevel log_level,
+                                      const string& formatted_message,
+                                      const char* file, const int line) {
+    logger_->Log(log_level,
+                 format("[{}] {}", symbol_names_[bar_->GetCurrentSymbolIndex()],
+                        formatted_message),
+                 file, line, false);
+  }
 
   /// 진입 마진을 계산하여 반환하는 함수
   ///
@@ -153,13 +165,16 @@ class BaseOrderHandler {
   // 심볼 정보
   static vector<SymbolInfo> symbol_info_;
 
+  // 심볼 이름들
+  vector<string> symbol_names_;
+
   // 진입 및 청산 주문: 심볼 인덱스<주문>
   vector<deque<shared_ptr<Order>>> pending_entries_;  // 대기 중인 진입 주문
   vector<deque<shared_ptr<Order>>> filled_entries_;   // 체결된 진입 주문
   vector<deque<shared_ptr<Order>>> pending_exits_;    // 대기 중인 청산 주문
 
   // 체결해야 하는 주문 목록 (강제 청산 + 청산 + 진입)
-  vector<FillInfo> should_fill_orders_;;
+  vector<FillInfo> should_fill_orders_;
 
   /// 현재 심볼의 포지션 사이즈. 양수면 매수 진입, 음수면 매도 진입.
   double current_position_size_;
@@ -419,7 +434,7 @@ class BaseOrderHandler {
   vector<int> leverages_;
 
   /// 엔진 설정을 불러오고 주문들과 기타 설정을 초기화하는 함수
-  void Initialize(int num_symbols);
+  void Initialize(int num_symbols, const vector<string>& symbol_names);
 
   /// 심볼 정보를 초기화하는 함수
   static void SetSymbolInfo(const vector<SymbolInfo>& symbol_info);
