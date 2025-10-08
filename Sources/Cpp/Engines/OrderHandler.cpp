@@ -2613,8 +2613,7 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
       liquidation_fee;
 
   const auto current_wallet_balance = engine_->GetWalletBalance();
-  const auto initial_balance = config_->GetInitialBalance();
-  const auto cum_pnl = current_wallet_balance - initial_balance;
+  const auto cum_pnl = current_wallet_balance - initial_balance_;
 
   // 동시 보유 심볼 개수 카운트
   int symbol_count = 0;
@@ -2669,7 +2668,7 @@ void OrderHandler::AddTrade(const shared_ptr<Order>& exit_order,
           .SetDrawdown(engine_->GetDrawdown())
           .SetMaxDrawdown(engine_->GetMaxDrawdown())
           .SetCumPnl(cum_pnl)
-          .SetCumPnlPer(cum_pnl / initial_balance * 100)
+          .SetCumPnlPer(cum_pnl / initial_balance_ * 100)
           .SetSymbolCount(symbol_count),
       exit_order->GetExitCount());
 }

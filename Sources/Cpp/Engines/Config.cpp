@@ -44,8 +44,8 @@ Config& Config::SetRootDirectory(const string& root_directory) {
 }
 
 Config& Config::SetBacktestPeriod(const string& start_time,
-                                     const string& end_time,
-                                     const string& format) {
+                                  const string& end_time,
+                                  const string& format) {
   backtest_period_ = Period{start_time, end_time, format};
   return *this;
 }
@@ -82,6 +82,31 @@ Config& Config::SetMakerSlippagePercentage(
   return *this;
 }
 
+Config& Config::SetCheckLimitMaxQty(bool check_limit_max_qty) {
+  check_limit_max_qty_ = check_limit_max_qty;
+  return *this;
+}
+
+Config& Config::SetCheckLimitMinQty(bool check_limit_min_qty) {
+  check_limit_min_qty_ = check_limit_min_qty;
+  return *this;
+}
+
+Config& Config::SetCheckMarketMaxQty(bool check_market_max_qty) {
+  check_market_max_qty_ = check_market_max_qty;
+  return *this;
+}
+
+Config& Config::SetCheckMarketMinQty(bool check_market_min_qty) {
+  check_market_min_qty_ = check_market_min_qty;
+  return *this;
+}
+
+Config& Config::SetCheckMinNotionalValue(bool check_min_notional_value) {
+  check_min_notional_value_ = check_min_notional_value;
+  return *this;
+}
+
 Config& Config::DisableSameBarDataCheck(BarType bar_type) {
   check_same_bar_data_[static_cast<size_t>(bar_type)] = false;
   return *this;
@@ -93,9 +118,7 @@ Config& Config::DisableSameBarDataWithTargetCheck() {
 }
 
 string Config::GetRootDirectory() { return root_directory_; }
-optional<Period> Config::GetBacktestPeriod() const {
-  return backtest_period_;
-}
+optional<Period> Config::GetBacktestPeriod() const { return backtest_period_; }
 optional<bool> Config::GetUseBarMagnifier() const { return use_bar_magnifier_; }
 double Config::GetInitialBalance() const { return initial_balance_; }
 double Config::GetTakerFeePercentage() const { return taker_fee_percentage_; }
@@ -105,6 +128,21 @@ double Config::GetTakerSlippagePercentage() const {
 }
 double Config::GetMakerSlippagePercentage() const {
   return maker_slippage_percentage_;
+}
+optional<bool> Config::GetCheckLimitMaxQty() const {
+  return check_limit_max_qty_;
+}
+optional<bool> Config::GetCheckLimitMinQty() const {
+  return check_limit_min_qty_;
+}
+optional<bool> Config::GetCheckMarketMaxQty() const {
+  return check_market_max_qty_;
+}
+optional<bool> Config::GetCheckMarketMinQty() const {
+  return check_market_min_qty_;
+}
+optional<bool> Config::GetCheckMinNotionalValue() const {
+  return check_min_notional_value_;
 }
 vector<bool> Config::GetCheckSameBarData() const {
   return check_same_bar_data_;

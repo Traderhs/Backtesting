@@ -106,6 +106,21 @@ class Config final {
   // (퍼센트로 지정: 0.05% -> O: 0.05 X: 0.0005)
   Config& SetMakerSlippagePercentage(double maker_slippage_percentage);
 
+  // 지정가 최대 수량 검사를 하는지 여부를 설정하는 함수
+  Config& SetCheckLimitMaxQty(bool check_limit_max_qty);
+
+  // 지정가 최소 수량 검사를 하는지 여부를 설정하는 함수
+  Config& SetCheckLimitMinQty(bool check_limit_min_qty);
+
+  // 시장가 최대 수량 검사를 하는지 여부를 설정하는 함수
+  Config& SetCheckMarketMaxQty(bool check_market_max_qty);
+
+  // 시장가 최소 수량 검사를 하는지 여부를 설정하는 함수
+  Config& SetCheckMarketMinQty(bool check_market_min_qty);
+
+  // 최소 명목 가치 검사를 하는지 여부를 설정하는 함수
+  Config& SetCheckMinNotionalValue(bool check_min_notional_value);
+
   // 심볼 간 바 데이터 중복 검사를 비활성화하는 함수
   Config& DisableSameBarDataCheck(BarType bar_type);
 
@@ -120,6 +135,11 @@ class Config final {
   [[nodiscard]] double GetMakerFeePercentage() const;
   [[nodiscard]] double GetTakerSlippagePercentage() const;
   [[nodiscard]] double GetMakerSlippagePercentage() const;
+  [[nodiscard]] optional<bool> GetCheckLimitMaxQty() const;
+  [[nodiscard]] optional<bool> GetCheckLimitMinQty() const;
+  [[nodiscard]] optional<bool> GetCheckMarketMaxQty() const;
+  [[nodiscard]] optional<bool> GetCheckMarketMinQty() const;
+  [[nodiscard]] optional<bool> GetCheckMinNotionalValue() const;
   [[nodiscard]] vector<bool> GetCheckSameBarData() const;
   [[nodiscard]] bool GetCheckSameBarDataWithTarget() const;
 
@@ -163,6 +183,12 @@ class Config final {
   ///
   /// 백분율로 지정 시 100 곱한 값 (5%면 5로 지정)
   double maker_slippage_percentage_;
+
+  optional<bool> check_limit_max_qty_;       // 지정가 최대 수량 검사 여부
+  optional<bool> check_limit_min_qty_;       // 지정가 최소 수량 검사 여부
+  optional<bool> check_market_max_qty_;      // 시장가 최대 수량 검사 여부
+  optional<bool> check_market_min_qty_;      // 시장가 최소 수량 검사 여부
+  optional<bool> check_min_notional_value_;  // 최소 명목 가치 검사 여부
 
   /// 심볼 간 중복된 바 데이터 검사를 하는지 여부를 결정하는 플래그.
   ///

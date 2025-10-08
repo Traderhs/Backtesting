@@ -12,7 +12,6 @@
 #include <numeric>
 #include <ranges>
 #include <set>
-#include <sstream>
 #include <thread>
 #include <unordered_set>
 
@@ -733,25 +732,30 @@ void Analyzer::SaveConfig() {
   }
 
   // 엔진 설정 저장
-  // 수수료 및 슬리피지 문자열 미리 계산
-  const auto format_percentage = [](const double value) {
-    ostringstream oss;
-    oss << fixed << setprecision(10) << value << "%";
-    return oss.str();
-  };
-
   config["엔진 설정"] = {
       {"루트 폴더", Config::GetRootDirectory()},
       {"백테스팅 기간",
        {{"시작", begin_open_time_}, {"종료", end_close_time_}}},
       {"바 돋보기 기능", use_bar_magnifier ? "활성화" : "비활성화"},
       {"초기 자금", FormatDollar(config_->GetInitialBalance(), true)},
-      {"테이커 수수료율", format_percentage(config_->GetTakerFeePercentage())},
-      {"메이커 수수료율", format_percentage(config_->GetMakerFeePercentage())},
+      {"테이커 수수료율",
+       FormatPercentage(config_->GetTakerFeePercentage(), false)},
+      {"메이커 수수료율",
+       FormatPercentage(config_->GetMakerFeePercentage(), false)},
       {"테이커 슬리피지율",
-       format_percentage(config_->GetTakerSlippagePercentage())},
+       FormatPercentage(config_->GetTakerSlippagePercentage(), false)},
       {"메이커 슬리피지율",
-       format_percentage(config_->GetMakerSlippagePercentage())},
+       FormatPercentage(config_->GetMakerSlippagePercentage(), false)},
+      {"지정가 최대 수량 검사",
+       *config_->GetCheckLimitMaxQty() ? "활성화" : "비활성화"},
+      {"지정가 최소 수량 검사",
+       *config_->GetCheckLimitMinQty() ? "활성화" : "비활성화"},
+      {"시장가 최대 수량 검사",
+       *config_->GetCheckMarketMaxQty() ? "활성화" : "비활성화"},
+      {"시장가 최소 수량 검사",
+       *config_->GetCheckMarketMinQty() ? "활성화" : "비활성화"},
+      {"최소 명목 가치 검사",
+       *config_->GetCheckMinNotionalValue() ? "활성화" : "비활성화"},
       {"마크 가격 바 데이터와 목표 바 데이터 중복 검사",
        config_->GetCheckSameBarDataWithTarget() ? "활성화" : "비활성화"}};
 

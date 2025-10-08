@@ -25,7 +25,17 @@ using namespace utils;
 namespace backtesting::order {
 
 BaseOrderHandler::BaseOrderHandler()
-    : current_position_size_(0),
+    : initial_balance_(NAN),
+      taker_slippage_percentage_(NAN),
+      maker_slippage_percentage_(NAN),
+      taker_fee_percentage_(NAN),
+      maker_fee_percentage_(NAN),
+      check_limit_max_qty_(true),
+      check_limit_min_qty_(true),
+      check_market_max_qty_(true),
+      check_market_min_qty_(true),
+      check_min_notional_value_(true),
+      current_position_size_(0),
       just_entered_(false),
       just_exited_(false),
       is_reverse_exit_(false),
@@ -391,7 +401,7 @@ int BaseOrderHandler::GetLeverage(const int symbol_idx) const {
 double BaseOrderHandler::CalculateSlippagePrice(const OrderType order_type,
                                                 const Direction direction,
                                                 const double order_price,
-                                                const int symbol_idx) {
+                                                const int symbol_idx) const {
   double slippage_points = 0;
 
   // 시장가, 지정가에 따라 슬리피지가 달라짐
@@ -402,8 +412,7 @@ double BaseOrderHandler::CalculateSlippagePrice(const OrderType order_type,
       [[fallthrough]];
     case TRAILING: {
       // 테이커 슬리피지 포인트 계산
-      slippage_points =
-          order_price * config_->GetTakerSlippagePercentage() / 100;
+      slippage_points = order_price * (taker_slippage_percentage_ / 100);
       break;
     }
 
@@ -411,8 +420,7 @@ double BaseOrderHandler::CalculateSlippagePrice(const OrderType order_type,
       [[fallthrough]];
     case LIT: {
       // 메이커 슬리피지 포인트 계산
-      slippage_points =
-          order_price * config_->GetMakerSlippagePercentage() / 100;
+      slippage_points = order_price * (maker_slippage_percentage_ / 100);
       break;
     }
 
@@ -446,7 +454,7 @@ double BaseOrderHandler::CalculateSlippagePrice(const OrderType order_type,
 
 double BaseOrderHandler::CalculateTradingFee(const OrderType order_type,
                                              const double filled_price,
-                                             const double filled_size) {
+                                             const double filled_size) const {
   // 테이커, 메이커에 따라 수수료가 달라짐
   switch (order_type) {
     case MARKET:
@@ -454,15 +462,13 @@ double BaseOrderHandler::CalculateTradingFee(const OrderType order_type,
     case MIT:
       [[fallthrough]];
     case TRAILING: {
-      return filled_price * filled_size *
-             (config_->GetTakerFeePercentage() / 100);
+      return filled_price * filled_size * (taker_fee_percentage_ / 100);
     }
 
     case LIMIT:
       [[fallthrough]];
     case LIT: {
-      return filled_price * filled_size *
-             (config_->GetMakerFeePercentage() / 100);
+      return filled_price * filled_size * (maker_fee_percentage_ / 100);
     }
 
     [[unlikely]] case ORDER_NONE: {
@@ -539,17 +545,26 @@ optional<string> BaseOrderHandler::IsValidPositionSize(
       case MIT:
         [[fallthrough]];
       case TRAILING: {
-        // 시장가 최고 수량보다 많거나 최저 수량보다 적으면 오류
-        const auto max_qty = symbol_info.GetMarketMaxQty();
-        if (const auto min_qty = symbol_info.GetMarketMinQty();
-            IsGreater(position_size, max_qty) ||
-            IsLess(position_size, min_qty)) {
-          return format(
-              "포지션 크기 [{}] 지정 오류 (조건: 시장가 최대 수량 [{}] 이하 및 "
-              "최소 수량 [{}] 이상)",
-              ToFixedString(position_size, qty_precision),
-              ToFixedString(max_qty, qty_precision),
-              ToFixedString(min_qty, qty_precision));
+        if (check_market_max_qty_) {
+          // 시장가 최고 수량보다 많으면 오류
+          if (const auto max_qty = symbol_info.GetMarketMaxQty();
+              IsGreater(position_size, max_qty)) {
+            return format(
+                "포지션 크기 [{}] 지정 오류 (조건: 시장가 최대 수량 [{}] 이하)",
+                ToFixedString(position_size, qty_precision),
+                ToFixedString(max_qty, qty_precision));
+          }
+        }
+
+        if (check_market_min_qty_) {
+          // 시장가 최저 수량보다 적으면 오류
+          if (const auto min_qty = symbol_info.GetMarketMinQty();
+              IsLess(position_size, min_qty)) {
+            return format(
+                "포지션 크기 [{}] 지정 오류 (조건: 시장가 최소 수량 [{}] 이상)",
+                ToFixedString(position_size, qty_precision),
+                ToFixedString(min_qty, qty_precision));
+          }
         }
 
         break;
@@ -558,17 +573,26 @@ optional<string> BaseOrderHandler::IsValidPositionSize(
       case LIMIT:
         [[fallthrough]];
       case LIT: {
-        // 지정가 최고 수량보다 많거나 최저 수량보다 적으면 오류
-        const auto max_qty = symbol_info.GetLimitMaxQty();
-        if (const auto min_qty = symbol_info.GetLimitMinQty();
-            IsGreater(position_size, max_qty) ||
-            IsLess(position_size, min_qty)) {
-          return format(
-              "포지션 크기 [{}] 지정 오류 (조건: 지정가 최대 수량 [{}] 이하 및 "
-              "최소 수량 [{}] 이상)",
-              ToFixedString(position_size, qty_precision),
-              ToFixedString(max_qty, qty_precision),
-              ToFixedString(min_qty, qty_precision));
+        if (check_limit_max_qty_) {
+          // 지정가 최고 수량보다 많으면 오류
+          if (const auto max_qty = symbol_info.GetLimitMaxQty();
+              IsGreater(position_size, max_qty)) {
+            return format(
+                "포지션 크기 [{}] 지정 오류 (조건: 지정가 최대 수량 [{}] 이하)",
+                ToFixedString(position_size, qty_precision),
+                ToFixedString(max_qty, qty_precision));
+          }
+        }
+
+        if (check_limit_min_qty_) {
+          // 지정가 최저 수량보다 적으면 오류
+          if (const auto min_qty = symbol_info.GetLimitMinQty();
+              IsLess(position_size, min_qty)) {
+            return format(
+                "포지션 크기 [{}] 지정 오류 (조건: 지정가 최소 수량 [{}] 이상)",
+                ToFixedString(position_size, qty_precision),
+                ToFixedString(min_qty, qty_precision));
+          }
         }
 
         break;
@@ -617,6 +641,18 @@ void BaseOrderHandler::Initialize(const int num_symbols,
         "주문 핸들러가 이미 초기화가 완료되어 다시 초기화할 수 없습니다.",
         __FILE__, __LINE__);
   }
+
+  // 엔진 설정 초기화
+  initial_balance_ = config_->GetInitialBalance();
+  taker_slippage_percentage_ = config_->GetTakerSlippagePercentage();
+  maker_slippage_percentage_ = config_->GetMakerSlippagePercentage();
+  taker_fee_percentage_ = config_->GetTakerFeePercentage();
+  maker_fee_percentage_ = config_->GetMakerFeePercentage();
+  check_limit_max_qty_ = *config_->GetCheckLimitMaxQty();
+  check_limit_min_qty_ = *config_->GetCheckLimitMinQty();
+  check_market_max_qty_ = *config_->GetCheckMarketMaxQty();
+  check_market_min_qty_ = *config_->GetCheckMarketMinQty();
+  check_min_notional_value_ = *config_->GetCheckMinNotionalValue();
 
   // 심볼 이름 초기화
   symbol_names_ = symbol_names;
