@@ -175,6 +175,12 @@ void Engine::IsValidConfig() {
     const auto initial_balance = config_->GetInitialBalance();
     const auto taker_fee_percentage = config_->GetTakerFeePercentage();
     const auto maker_fee_percentage = config_->GetMakerFeePercentage();
+    const auto& opt_check_limit_max_qty = config_->GetCheckLimitMaxQty();
+    const auto& opt_check_limit_min_qty = config_->GetCheckLimitMinQty();
+    const auto& opt_check_market_max_qty = config_->GetCheckMarketMaxQty();
+    const auto& opt_check_market_min_qty = config_->GetCheckMarketMinQty();
+    const auto& opt_check_min_notional_value =
+        config_->GetCheckMinNotionalValue();
     const auto taker_slippage_percentage =
         config_->GetTakerSlippagePercentage();
     const auto maker_slippage_percentage =
@@ -294,6 +300,42 @@ void Engine::IsValidConfig() {
           format("지정된 메이커 슬리피지 퍼센트 [{}%]는 100% 초과 혹은 "
                  "0% 미만으로 설정할 수 없습니다.",
                  maker_slippage_percentage),
+          __FILE__, __LINE__);
+    }
+
+    if (!opt_check_limit_max_qty) {
+      Logger::LogAndThrowError(
+          "지정가 최대 수량 검사 여부가 초기화되지 않았습니다. "
+          "Backtesting::SetConfig().SetCheckLimitMaxQty 함수를 호출해 주세요.",
+          __FILE__, __LINE__);
+    }
+
+    if (!opt_check_limit_min_qty) {
+      Logger::LogAndThrowError(
+          "지정가 최소 수량 검사 여부가 초기화되지 않았습니다. "
+          "Backtesting::SetConfig().SetCheckLimitMinQty 함수를 호출해 주세요.",
+          __FILE__, __LINE__);
+    }
+
+    if (!opt_check_market_max_qty) {
+      Logger::LogAndThrowError(
+          "시장가 최대 수량 검사 여부가 초기화되지 않았습니다. "
+          "Backtesting::SetConfig().SetCheckMarketMaxQty 함수를 호출해 주세요.",
+          __FILE__, __LINE__);
+    }
+
+    if (!opt_check_market_min_qty) {
+      Logger::LogAndThrowError(
+          "시장가 최소 수량 검사 여부가 초기화되지 않았습니다. "
+          "Backtesting::SetConfig().SetCheckMarketMinQty 함수를 호출해 주세요.",
+          __FILE__, __LINE__);
+    }
+
+    if (!opt_check_min_notional_value) {
+      Logger::LogAndThrowError(
+          "최소 명목 가치 검사 여부가 초기화되지 않았습니다. "
+          "Backtesting::SetConfig().SetCheckMinNotionalValue 함수를 호출해 "
+          "주세요.",
           __FILE__, __LINE__);
     }
 
