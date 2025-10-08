@@ -126,9 +126,7 @@ class BaseOrderHandler {
   }
 
   /// 현재 심볼과 바에서 청산이 이루어졌는지 여부를 반환하는 함수
-  [[nodiscard]] __forceinline bool IsJustExited() const {
-    return just_exited_;
-  }
+  [[nodiscard]] __forceinline bool IsJustExited() const { return just_exited_; }
 
   /// 심볼 이름으로 포맷된 로그를 발생시키는 함수
   __forceinline void LogFormattedInfo(const LogLevel log_level,
@@ -161,6 +159,18 @@ class BaseOrderHandler {
   static shared_ptr<Config>& config_;
   static shared_ptr<Engine>& engine_;
   static shared_ptr<Logger>& logger_;
+
+  // 엔진 설정들
+  double initial_balance_;            // 초기 자금
+  double taker_slippage_percentage_;  // 테이커 슬리피지율
+  double maker_slippage_percentage_;  // 메이커 슬리피지율
+  double taker_fee_percentage_;       // 테이커 수수료율
+  double maker_fee_percentage_;       // 메이커 수수료율
+  bool check_limit_max_qty_;          // 지정가 최대 수량 검사 여부
+  bool check_limit_min_qty_;          // 지정가 최소 수량 검사 여부
+  bool check_market_max_qty_;         // 시장가 최대 수량 검사 여부
+  bool check_market_min_qty_;         // 시장가 최소 수량 검사 여부
+  bool check_min_notional_value_;     // 최소 명목 가치 검사 여부
 
   // 심볼 정보
   static vector<SymbolInfo> symbol_info_;
@@ -211,15 +221,15 @@ class BaseOrderHandler {
   [[nodiscard]] int GetLeverage(int symbol_idx) const;
 
   /// 주문 정보에 따라 슬리피지를 반영한 체결 가격을 반환하는 함수.
-  [[nodiscard]] static double CalculateSlippagePrice(OrderType order_type,
-                                                     Direction direction,
-                                                     double order_price,
-                                                     int symbol_idx);
+  [[nodiscard]] double CalculateSlippagePrice(OrderType order_type,
+                                              Direction direction,
+                                              double order_price,
+                                              int symbol_idx) const;
 
   /// 주문 정보에 따라 수수료 금액을 계산하여 반환하는 함수
-  [[nodiscard]] static double CalculateTradingFee(OrderType order_type,
-                                                  double filled_price,
-                                                  double filled_size);
+  [[nodiscard]] double CalculateTradingFee(OrderType order_type,
+                                           double filled_price,
+                                           double filled_size) const;
 
   /// 지정된 심볼과 명목 가치에 해당되는 레버리지 구간을 찾아 반환하는 함수
   [[nodiscard]] static LeverageBracket GetLeverageBracket(int symbol_idx,
@@ -261,17 +271,19 @@ class BaseOrderHandler {
 
   // 명목 가치(가격 * 포지션 크기)가 최소 기준을 통과하여
   // 유효한 값인지 확인하는 함수
-  [[nodiscard]] __forceinline static optional<string> IsValidNotionalValue(
+  [[nodiscard]] __forceinline optional<string> IsValidNotionalValue(
       const double order_price, const double position_size,
-      const int symbol_idx) {
-    // 명목 가치가 해당 심볼의 최소 명목 가치보다 작으면 오류
-    const auto notional = order_price * position_size;
-    if (const auto min_notional =
-            symbol_info_[symbol_idx].GetMinNotionalValue();
-        IsLess(notional, min_notional)) {
-      return format(
-          "명목 가치 [{}] 부족 (조건: 심볼의 최소 명목 가치 [{}] 이상)",
-          FormatDollar(notional, true), FormatDollar(min_notional, true));
+      const int symbol_idx) const {
+    if (check_min_notional_value_) {
+      // 명목 가치가 해당 심볼의 최소 명목 가치보다 작으면 오류
+      const auto notional = order_price * position_size;
+      if (const auto min_notional =
+              symbol_info_[symbol_idx].GetMinNotionalValue();
+          IsLess(notional, min_notional)) {
+        return format(
+            "명목 가치 [{}] 부족 (조건: 심볼의 최소 명목 가치 [{}] 이상)",
+            FormatDollar(notional, true), FormatDollar(min_notional, true));
+      }
     }
 
     return nullopt;
