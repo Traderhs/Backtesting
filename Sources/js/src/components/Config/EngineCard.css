@@ -5,13 +5,15 @@
     border-radius: 8px;
     background: #1A1A1A;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    max-width: 767px;
-    max-height: 500px;
+    height: 100%;
     position: relative;
     overflow: hidden;
+    margin-right: 3px;
     margin-left: 3px;
     transition: background-color 0.2s ease;
     border: 1px solid transparent;
+    max-height: 500px;
+    min-height: 500px;
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
     will-change: transform, opacity;
@@ -88,8 +90,8 @@
 }
 
 .engine-card-left-section {
-    width: 375px;
-    min-width: 375px;
+    min-width: fit-content; /* 동적 너비 조정을 위해 변경 */
+    width: fit-content; /* 동적 너비 조정을 위해 변경 */
     position: sticky;
     left: 0;
     z-index: 3;
@@ -97,7 +99,7 @@
     border-radius: 0;
     padding: 0;
     overflow-x: hidden;
-    overflow-y: hidden;
+    overflow-y: scroll;
     scrollbar-width: none;  /* Firefox */
     -ms-overflow-style: none;  /* IE and Edge */
     top: 0;
@@ -115,7 +117,7 @@
 }
 
 .engine-card-left-section .engine-card-row:first-child {
-    margin-top: 15px;
+    margin-top: 20px;
 }
 
 .engine-card-right-section {
@@ -125,27 +127,31 @@
     z-index: 2;
     padding-top: 0;
     white-space: nowrap;
-    overflow-x: auto;
-    overflow-y: hidden;
+    overflow-x: auto !important;
+    overflow-y: auto !important;
     text-overflow: ellipsis;
     height: auto;
     box-sizing: border-box;
 }
 
 .engine-card-right-section .engine-card-row:first-child {
-    margin-top: 15px;
+    margin-top: 20px;
 }
 
-/* 엔진 카드 텍스트 간격 조정 */
-.engine-card-left-section .engine-card-row,
-.engine-card-right-section .engine-card-row {
-    margin-bottom: 14px;
+/* 오른쪽 영역 패딩 조정 */
+.engine-card-right-section .engine-card-row-inner {
+    padding-right: 8px;
+}
+
+/* 스크롤바가 있을 때 더 많은 패딩 적용 */
+.engine-card-right-section.scrollable-x .engine-card-row-inner {
+    padding-right: 24px;
 }
 
 .engine-card-row {
-    margin-bottom: 12px;
-    height: auto;
+    margin-bottom: 14px;
     min-height: 18px;
+    height: 18px;
     display: flex;
     align-items: center;
     margin-top: 4px;
@@ -157,15 +163,21 @@
     display: flex;
     align-items: center;
     min-height: 18px;
-    height: auto;
+    height: 18px;
+    line-height: 18px;
+    width: 100%;
+    min-width: min-content;
 }
 
 .engine-card-bullet {
-    color: rgba(255, 215, 0, 0.6);
+    color: rgba(255, 215, 0, 0.8);
     margin-right: 8px;
     font-size: 15px;
     line-height: 18px;
-    margin-top: -3px;
+    margin-top: -1px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
 }
 
 .engine-card-label {
@@ -187,7 +199,11 @@
     line-height: 18px;
     display: flex;
     align-items: center;
-    padding-right: 18px; /* 값 오른쪽에 여백 추가 */
+    white-space: nowrap;
+    overflow: visible;
+    width: max-content;
+    min-width: 100%;
+    padding-top: 1px;
 }
 
 .engine-card-path-value {
@@ -200,6 +216,38 @@
 }
 
 /* 중첩된 객체를 위한 스타일 */
+
+/* 왼쪽 영역의 중첩 객체 공간 확보용 spacer */
+.engine-card-nested-spacer {
+    display: flex;
+    flex-direction: column;
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+.engine-card-nested-spacer .engine-card-nested-row {
+    display: flex;
+    margin-bottom: 8px;
+    align-items: center;
+    min-height: 20px;
+}
+
+.engine-card-nested-spacer .engine-card-nested-row:last-child {
+    margin-bottom: 0;
+}
+
+/* 중첩 객체가 있는 행은 높이를 자동으로 조정 */
+.engine-card-row:has(.engine-card-nested-object) {
+    height: auto;
+    min-height: auto;
+}
+
+.engine-card-row-inner:has(.engine-card-nested-object) {
+    height: auto;
+    min-height: auto;
+    align-items: flex-start;
+}
+
 .engine-card-nested-object {
     display: flex;
     flex-direction: row; /* 가로 정렬 */
@@ -253,16 +301,6 @@
     font-size: 14px;
     font-weight: 400; /* 명시적으로 추가 */
     line-height: 1.4; /* 상하 정렬을 위해 추가 */
-}
-
-/* 스크롤바 스타일 */
-.engine-card-content.scrollable-y {
-    overflow-y: auto;
-}
-
-.engine-card-left-section.scrollable-x,
-.engine-card-right-section.scrollable-x {
-    overflow-x: auto;
 }
 
 /* 애니메이션 효과 */
