@@ -607,7 +607,7 @@ bool OrderHandler::MarketExit(const string& exit_name,
   shared_ptr<Order> entry_order;
   int entry_order_idx;
 
-  if (const auto& result = FindEntryOrder(target_name, symbol_idx)) {
+  if (const auto& result = FindFilledEntryOrder(target_name, symbol_idx)) {
     const auto& [order, index] = *result;
     entry_order = order;
     entry_order_idx = index;
@@ -739,7 +739,7 @@ bool OrderHandler::LimitExit(const string& exit_name, const string& target_name,
   // 원본 진입 주문 찾기
   shared_ptr<Order> entry_order;
 
-  if (const auto& result = FindEntryOrder(target_name, symbol_idx)) {
+  if (const auto& result = FindFilledEntryOrder(target_name, symbol_idx)) {
     entry_order = result->first;
   } else [[unlikely]] {
     // 원본 진입 주문을 찾지 못하면 청산 실패
@@ -830,7 +830,7 @@ bool OrderHandler::MitExit(const string& exit_name, const string& target_name,
   // 원본 진입 주문 찾기
   shared_ptr<Order> entry_order;
 
-  if (const auto& result = FindEntryOrder(target_name, symbol_idx)) {
+  if (const auto& result = FindFilledEntryOrder(target_name, symbol_idx)) {
     entry_order = result->first;
   } else [[unlikely]] {
     // 원본 진입 주문을 찾지 못하면 청산 실패
@@ -921,7 +921,7 @@ bool OrderHandler::LitExit(const string& exit_name, const string& target_name,
   // 원본 진입 주문 찾기
   shared_ptr<Order> entry_order;
 
-  if (const auto& result = FindEntryOrder(target_name, symbol_idx)) {
+  if (const auto& result = FindFilledEntryOrder(target_name, symbol_idx)) {
     entry_order = result->first;
   } else [[unlikely]] {
     // 원본 진입 주문을 찾지 못하면 청산 실패
@@ -1019,7 +1019,7 @@ bool OrderHandler::TrailingExit(const string& exit_name,
   // 원본 진입 주문 찾기
   shared_ptr<Order> entry_order;
 
-  if (const auto& result = FindEntryOrder(target_name, symbol_idx)) {
+  if (const auto& result = FindFilledEntryOrder(target_name, symbol_idx)) {
     entry_order = result->first;
   } else [[unlikely]] {
     // 원본 진입 주문을 찾지 못하면 청산 실패
@@ -1127,7 +1127,7 @@ void OrderHandler::CloseAll() {
   engine_->SetCurrentStrategyType(original_strategy_type);
 }
 
-bool OrderHandler::HasEntryOrder(const string& entry_name) const {
+bool OrderHandler::HasFilledEntryOrder(const string& entry_name) const {
   // 현재 심볼의 체결된 진입들 순회
   // entry_name과 같은 이름의 진입이 있으면 true를 반환
   return ranges::any_of(filled_entries_[bar_->GetCurrentSymbolIndex()],
@@ -1341,11 +1341,12 @@ void OrderHandler::FillOrder(const FillInfo& order_info, const int symbol_idx,
   switch (const auto& [order, order_signal, fill_price] = order_info;
           order_signal) {
     case OrderSignal::LIQUIDATION: {
-      // 먼저 다른 주문에서 원본 진입 주문을 청산했으면
-      // 강제 청산의 의미가 없으므로 바로 리턴
-      if (FindEntryOrder(order->GetEntryName(), symbol_idx)) {
-        // 강제 청산의 order는 CheckLiquidation에서 filled_entry에 있는
-        // 체결된 진입을 추가함 (강제 청산은 대기 주문 미존재)
+      // ※ 강제 청산의 order는 CheckLiquidation에서 filled_entry에 있는
+      //    체결된 진입을 추가함 (강제 청산은 대기 주문이 없기 때문에)
+
+      // 1. 먼저 다른 주문에서 원본 진입 주문을 청산했으면
+      //    강제 청산의 의미가 없으므로 체결하지 않음
+      if (FindFilledEntryOrder(order->GetEntryName(), symbol_idx)) {
         FillLiquidation(order, "강제 청산 (청산가)", symbol_idx, fill_price);
       }
 
@@ -1353,42 +1354,54 @@ void OrderHandler::FillOrder(const FillInfo& order_info, const int symbol_idx,
     }
 
     case OrderSignal::EXIT: {
-      // 먼저 다른 주문에서 원본 진입 주문을 청산했으면 청산 불가
-      // → 이 청산 주문 자체는 다른 청산 체결 시 이미 취소됨
-      if (const auto& entry_order =
-              FindEntryOrder(order->GetEntryName(), symbol_idx)) {
-        FillPendingExitOrder(order, *entry_order, symbol_idx, fill_price);
+      // ※ 청산의 order는 청산 대기 주문 그자체
+
+      // 1. 먼저 다른 주문에서 원본 진입 주문을 청산했으면 청산 불가
+      //    → 이 청산 주문 자체는 다른 청산 체결 시 이미 취소됨
+      // 2. 다른 AFTER 주문에서 이 청산 대기 주문을 취소했을 수도 있으므로
+      //    이 청산 대기 주문의 유효성 검증 필요
+      const auto& target_entry_order =
+          FindFilledEntryOrder(order->GetEntryName(), symbol_idx);
+      if (target_entry_order &&
+          ExistsPendingOrder(order, OrderSignal::EXIT, symbol_idx)) {
+        FillPendingExitOrder(order, *target_entry_order, symbol_idx,
+                             fill_price);
       }
 
       return;
     }
 
-    // 진입 대기 주문은 다른 체결 주문에 의해 영향 없음
     case OrderSignal::ENTRY: {
-      switch (order->GetEntryOrderType()) {
-        case MARKET:
-          [[fallthrough]];
-        case MIT:
-          [[fallthrough]];
-        case TRAILING: {
-          FillPendingMarketEntry(order, symbol_idx, fill_price, price_type);
+      // ※ 진입의 order는 진입 대기 주문 그자체
 
-          return;
-        }
+      // 1. 다른 AFTER 주문에서 해당 진입 대기 주문을 취소했을 수도 있으므로
+      //    이 진입 대기 주문의 유효성 검증 필요
+      if (ExistsPendingOrder(order, OrderSignal::ENTRY, symbol_idx)) {
+        switch (order->GetEntryOrderType()) {
+          case MARKET:
+            [[fallthrough]];
+          case MIT:
+            [[fallthrough]];
+          case TRAILING: {
+            FillPendingMarketEntry(order, symbol_idx, fill_price, price_type);
 
-        case LIMIT:
-          [[fallthrough]];
-        case LIT: {
-          FillPendingLimitEntry(order, symbol_idx, fill_price, price_type);
+            return;
+          }
 
-          return;
-        }
+          case LIMIT:
+            [[fallthrough]];
+          case LIT: {
+            FillPendingLimitEntry(order, symbol_idx, fill_price, price_type);
 
-        default: {
-          Logger::LogAndThrowError(
-              "엔진 오류: 잘못된 전략 타입 ORDER_NONE이 지정되었으므로 "
-              "주문을 실행할 수 없습니다.",
-              __FILE__, __LINE__);
+            return;
+          }
+
+          default: {
+            Logger::LogAndThrowError(
+                "엔진 오류: 잘못된 전략 타입 ORDER_NONE이 지정되었으므로 "
+                "주문을 실행할 수 없습니다.",
+                __FILE__, __LINE__);
+          }
         }
       }
     }
@@ -1844,7 +1857,7 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order,
   engine_->LogBalance();
 
   // 원본 진입 찾기 (존재하면 분할 청산, 미존재하면 전량 청산)
-  if (const auto& result = FindEntryOrder(entry_name, symbol_idx)) {
+  if (const auto& result = FindFilledEntryOrder(entry_name, symbol_idx)) {
     const auto& entry_order = result->first;
 
     // 이번 청산 실행 전 보유 포지션 수량 대비 청산 수량 비율 계산
@@ -2551,7 +2564,7 @@ void OrderHandler::FillPendingExitOrder(
   ExecuteExit(exit, symbol_idx);
 }
 
-optional<pair<shared_ptr<Order>, int>> OrderHandler::FindEntryOrder(
+optional<pair<shared_ptr<Order>, int>> OrderHandler::FindFilledEntryOrder(
     const string& entry_name, const int symbol_idx) const {
   const auto& filled_entries = filled_entries_[symbol_idx];
 
@@ -2567,6 +2580,27 @@ optional<pair<shared_ptr<Order>, int>> OrderHandler::FindEntryOrder(
 
   // 원본 진입 주문을 찾지 못하면 nullopt 반환
   return nullopt;
+}
+
+bool OrderHandler::ExistsPendingOrder(const shared_ptr<Order>& pending_order,
+                                      const OrderSignal order_signal,
+                                      const int symbol_idx) const {
+  const auto& target_pending_orders = [&]() -> const auto& {
+    if (order_signal == OrderSignal::ENTRY) {
+      return pending_entries_[symbol_idx];
+    }
+
+    if (order_signal == OrderSignal::EXIT) {
+      return pending_exits_[symbol_idx];
+    }
+
+    Logger::LogAndThrowError("엔진 오류: 대기 주문을 찾는데 LIQUIDATION 존재",
+                             __FILE__, __LINE__);
+    throw;  // 컴파일러 만족용
+  }();
+
+  return ranges::find(target_pending_orders, pending_order) !=
+         target_pending_orders.end();
 }
 
 double OrderHandler::GetAdjustedExitSize(const double exit_size,

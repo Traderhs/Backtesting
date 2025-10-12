@@ -199,7 +199,7 @@ class OrderHandler final : public BaseOrderHandler {
 
   /// 체결된 진입 주문에서 Entry Name과 같은 이름의 진입 주문이 있는지 여부를
   /// 반환하는 함수
-  [[nodiscard]] bool HasEntryOrder(const string& entry_name) const;
+  [[nodiscard]] bool HasFilledEntryOrder(const string& entry_name) const;
 
   /// 체결된 진입 주문에서 Entry Names 중에서 같은 이름의 진입 주문이
   /// 몇 개 존재하는지 찾아 개수를 반환하는 함수
@@ -345,8 +345,14 @@ class OrderHandler final : public BaseOrderHandler {
   // ===========================================================================
   /// 체결된 진입 주문에서 Entry Name과 같은 이름의 진입 주문을 찾아
   /// 주문 인덱스와 함께 반환하는 함수
-  [[nodiscard]] optional<pair<shared_ptr<Order>, int>> FindEntryOrder(
+  [[nodiscard]] optional<pair<shared_ptr<Order>, int>> FindFilledEntryOrder(
       const string& entry_name, int symbol_idx) const;
+
+  // 지정된 주문 시그널에서 해당 대기 주문이 존재하는지 여부를 반환하는 함수
+  // (LIQUIDATION은 오류)
+  [[nodiscard]] bool ExistsPendingOrder(const shared_ptr<Order>& pending_order,
+                                        OrderSignal order_signal,
+                                        int symbol_idx) const;
 
   /// 청산 주문 크기와 이미 체결된 청산 크기의 합이 진입 체결 크기를 넘지 않도록
   /// 조정하여 반환하는 함수
