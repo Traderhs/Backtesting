@@ -78,7 +78,10 @@ class BaseOrderHandler {
   // ===========================================================================
   /// 대기 주문 취소를 위해 사용하는 함수.
   ///
-  /// order_name이 진입 대기 주문과 청산 대기 주문에 동시에 존재하면 모두 취소.
+  /// @param order_name 취소할 주문의 이름
+  /// @param cancel_type 진입 주문, 청산 주문, 전체 주문 중 어디서
+  ///                    취소를 할 것인지 명시
+  /// @param cancellation_reason 취소 사유
   void Cancel(const string& order_name, CancelType cancel_type,
               const string& cancellation_reason);
 
