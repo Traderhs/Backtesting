@@ -40,8 +40,7 @@ Indicator::Indicator(const string& name, const string& timeframe,
           __LINE__);
     }
   } catch ([[maybe_unused]] const exception& e) {
-    Logger::LogAndThrowError("지표를 추가하는 중 오류가 발생했습니다.",
-                             __FILE__, __LINE__);
+    throw runtime_error("지표를 추가하는 중 오류가 발생했습니다.");
   }
 
   // 증가 카운터는 AddIndicator 함수로만 증가하는데 AddIndicator 없이 직접
@@ -50,10 +49,8 @@ Indicator::Indicator(const string& name, const string& timeframe,
     logger_->Log(ERROR_L,
                  "지표의 추가는 AddIndicator 함수의 호출로만 가능합니다.",
                  __FILE__, __LINE__, true);
-    Logger::LogAndThrowError(
-        format("[{} {}] 지표를 추가하는 중 에러가 발생했습니다.", name,
-               timeframe),
-        __FILE__, __LINE__);
+    throw runtime_error(format(
+        "[{} {}] 지표를 추가하는 중 에러가 발생했습니다.", name, timeframe));
   }
 
   // 정상적으로 AddIndicator 함수를 통했다면 전 증가 가운터에 현재 카운터를 대입
