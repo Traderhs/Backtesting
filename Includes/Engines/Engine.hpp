@@ -100,6 +100,9 @@ class Engine final : public BaseEngine {
     void operator()(const Engine* p) const;
   };
 
+  // 백테스팅 시작 시간
+  static chrono::steady_clock::time_point backtesting_start_time_;
+
   static mutex mutex_;
   static shared_ptr<Engine> instance_;
 
