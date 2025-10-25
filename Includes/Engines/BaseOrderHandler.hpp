@@ -10,6 +10,7 @@
 #include "Engines/Config.hpp"
 #include "Engines/DataUtils.hpp"
 #include "Engines/Order.hpp"
+#include "Engines/Slippage.hpp"
 #include "Engines/SymbolInfo.hpp"
 
 // 전방 선언
@@ -34,6 +35,7 @@ enum class LogLevel;
 }  // namespace backtesting::logger
 
 namespace backtesting::order {
+class Slippage;
 class SymbolInfo;
 class Order;
 enum class Direction;
@@ -164,16 +166,15 @@ class BaseOrderHandler {
   static shared_ptr<Logger>& logger_;
 
   // 엔진 설정들
-  double initial_balance_;            // 초기 자금
-  double taker_slippage_percentage_;  // 테이커 슬리피지율
-  double maker_slippage_percentage_;  // 메이커 슬리피지율
-  double taker_fee_percentage_;       // 테이커 수수료율
-  double maker_fee_percentage_;       // 메이커 수수료율
-  bool check_limit_max_qty_;          // 지정가 최대 수량 검사 여부
-  bool check_limit_min_qty_;          // 지정가 최소 수량 검사 여부
-  bool check_market_max_qty_;         // 시장가 최대 수량 검사 여부
-  bool check_market_min_qty_;         // 시장가 최소 수량 검사 여부
-  bool check_min_notional_value_;     // 최소 명목 가치 검사 여부
+  double initial_balance_;         // 초기 자금
+  shared_ptr<Slippage> slippage_;  // 슬리피지 계산 방법
+  double taker_fee_percentage_;    // 테이커 수수료율
+  double maker_fee_percentage_;    // 메이커 수수료율
+  bool check_limit_max_qty_;       // 지정가 최대 수량 검사 여부
+  bool check_limit_min_qty_;       // 지정가 최소 수량 검사 여부
+  bool check_market_max_qty_;      // 시장가 최대 수량 검사 여부
+  bool check_market_min_qty_;      // 시장가 최소 수량 검사 여부
+  bool check_min_notional_value_;  // 최소 명목 가치 검사 여부
 
   // 심볼 정보
   static vector<SymbolInfo> symbol_info_;
@@ -224,10 +225,14 @@ class BaseOrderHandler {
   [[nodiscard]] int GetLeverage(int symbol_idx) const;
 
   /// 주문 정보에 따라 슬리피지를 반영한 체결 가격을 반환하는 함수.
-  [[nodiscard]] double CalculateSlippagePrice(OrderType order_type,
-                                              Direction direction,
-                                              double order_price,
-                                              int symbol_idx) const;
+  [[nodiscard]] __forceinline double CalculateSlippagePrice(
+      const OrderType order_type, const Direction direction,
+      const double order_price, const int symbol_idx) const {
+    // slippage_ 객체를 통해 슬리피지 가격 계산
+    return slippage_->CalculateSlippagePrice(
+        order_type, direction, order_price,
+        symbol_info_[symbol_idx].GetPriceStep());
+  }
 
   /// 주문 정보에 따라 수수료 금액을 계산하여 반환하는 함수
   [[nodiscard]] double CalculateTradingFee(OrderType order_type,

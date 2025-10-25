@@ -51,6 +51,9 @@ Engine::Engine()
 
 void Engine::Deleter::operator()(const Engine* p) const { delete p; }
 
+chrono::steady_clock::time_point Engine::backtesting_start_time_ =
+    chrono::high_resolution_clock::now();
+
 mutex Engine::mutex_;
 shared_ptr<Engine> Engine::instance_;
 
@@ -66,8 +69,6 @@ shared_ptr<Engine>& Engine::GetEngine() {
 }
 
 void Engine::Backtesting() {
-  const auto& start = chrono::high_resolution_clock::now();
-
   LogSeparator(true);
   Initialize();
 
@@ -108,12 +109,12 @@ void Engine::Backtesting() {
   LogSeparator(true);
   logger_->Log(INFO_L, "백테스팅이 완료되었습니다.", __FILE__, __LINE__, true);
 
-  const auto& end = chrono::high_resolution_clock::now();
   logger_->Log(
       INFO_L,
-      "소요 시간: " +
-          FormatTimeDiff(
-              duration_cast<chrono::milliseconds>(end - start).count()),
+      "소요 시간: " + FormatTimeDiff(duration_cast<chrono::milliseconds>(
+                                         chrono::high_resolution_clock::now() -
+                                         backtesting_start_time_)
+                                         .count()),
       __FILE__, __LINE__, true);
 
   // 백테스팅 로그 저장
@@ -181,10 +182,7 @@ void Engine::IsValidConfig() {
     const auto& opt_check_market_min_qty = config_->GetCheckMarketMinQty();
     const auto& opt_check_min_notional_value =
         config_->GetCheckMinNotionalValue();
-    const auto taker_slippage_percentage =
-        config_->GetTakerSlippagePercentage();
-    const auto maker_slippage_percentage =
-        config_->GetMakerSlippagePercentage();
+    const auto& slippage = config_->GetSlippage();
 
     // 각 항목에 대해 초기화되지 않았을 경우 예외를 던짐
     if (root_directory.empty()) {
@@ -237,19 +235,10 @@ void Engine::IsValidConfig() {
           __FILE__, __LINE__);
     }
 
-    if (isnan(taker_slippage_percentage)) {
+    if (!slippage) {
       Logger::LogAndThrowError(
-          "테이커 슬리피지 퍼센트가 초기화되지 않았습니다. "
-          "Backtesting::SetConfig().SetTakerSlippagePercentage 함수를 호출해 "
-          "주세요.",
-          __FILE__, __LINE__);
-    }
-
-    if (isnan(maker_slippage_percentage)) {
-      Logger::LogAndThrowError(
-          "메이커 슬리피지 퍼센트가 초기화되지 않았습니다. "
-          "Backtesting::SetConfig().SetMakerSlippagePercentage 함수를 호출해 "
-          "주세요.",
+          "슬리피지가 초기화되지 않았습니다. "
+          "Backtesting::SetConfig().SetSlippage 함수를 호출해 주세요.",
           __FILE__, __LINE__);
     }
 
@@ -285,22 +274,12 @@ void Engine::IsValidConfig() {
           __FILE__, __LINE__);
     }
 
-    if (IsGreater(taker_slippage_percentage, 100.0) ||
-        IsLess(taker_slippage_percentage, 0.0)) {
-      Logger::LogAndThrowError(
-          format("지정된 테이커 슬리피지 퍼센트 [{}%]는 100% 초과 혹은 "
-                 "0% 미만으로 설정할 수 없습니다.",
-                 taker_slippage_percentage),
-          __FILE__, __LINE__);
+    if (const auto& error_msg = slippage->ValidateTakerSlippage()) {
+      Logger::LogAndThrowError(*error_msg, __FILE__, __LINE__);
     }
 
-    if (IsGreater(maker_slippage_percentage, 100.0) ||
-        IsLess(maker_slippage_percentage, 0.0)) {
-      Logger::LogAndThrowError(
-          format("지정된 메이커 슬리피지 퍼센트 [{}%]는 100% 초과 혹은 "
-                 "0% 미만으로 설정할 수 없습니다.",
-                 maker_slippage_percentage),
-          __FILE__, __LINE__);
+    if (const auto& error_msg = slippage->ValidateMakerSlippage()) {
+      Logger::LogAndThrowError(*error_msg, __FILE__, __LINE__);
     }
 
     if (!opt_check_limit_max_qty) {

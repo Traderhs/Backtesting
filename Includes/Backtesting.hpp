@@ -11,6 +11,7 @@
 #include "Engines/Config.hpp"
 #include "Engines/Engine.hpp"
 #include "Engines/Logger.hpp"
+#include "Engines/Slippage.hpp"
 #include "Strategies/TestStrategy.hpp"
 
 // 네임 스페이스
