@@ -17,6 +17,10 @@ enum class BarType;
 namespace logger {
 class Logger;
 }
+
+namespace order {
+class Slippage;
+}
 }  // namespace backtesting
 
 // 네임 스페이스
@@ -98,13 +102,15 @@ class Config final {
   // (퍼센트로 지정: 0.05% -> O: 0.05 X: 0.0005)
   Config& SetMakerFeePercentage(double maker_fee_percentage);
 
-  // 테이커(시장가) 슬리피지율을 설정하는 함수
-  // (퍼센트로 지정: 0.05% -> O: 0.05 X: 0.0005)
-  Config& SetTakerSlippagePercentage(double taker_slippage_percentage);
-
-  // 메이커(지정가) 수수료율을 설정하는 함수
-  // (퍼센트로 지정: 0.05% -> O: 0.05 X: 0.0005)
-  Config& SetMakerSlippagePercentage(double maker_slippage_percentage);
+  // 슬리피지 계산 방법을 설정하는 함수
+  template <typename T>
+  Config& SetSlippage(const T& slippage) {
+    static_assert(is_base_of_v<Slippage, T>,
+                  "슬리피지 설정은 Slippage 클래스를 상속받은 클래스를 "
+                  "매개변수로 사용해야 합니다.");
+    slippage_ = slippage.clone();
+    return *this;
+  }
 
   // 지정가 최대 수량 검사를 하는지 여부를 설정하는 함수
   Config& SetCheckLimitMaxQty(bool check_limit_max_qty);
@@ -133,8 +139,7 @@ class Config final {
   [[nodiscard]] double GetInitialBalance() const;
   [[nodiscard]] double GetTakerFeePercentage() const;
   [[nodiscard]] double GetMakerFeePercentage() const;
-  [[nodiscard]] double GetTakerSlippagePercentage() const;
-  [[nodiscard]] double GetMakerSlippagePercentage() const;
+  [[nodiscard]] shared_ptr<Slippage> GetSlippage() const;
   [[nodiscard]] optional<bool> GetCheckLimitMaxQty() const;
   [[nodiscard]] optional<bool> GetCheckLimitMinQty() const;
   [[nodiscard]] optional<bool> GetCheckMarketMaxQty() const;
@@ -174,15 +179,8 @@ class Config final {
   /// 백분율로 지정 시 100 곱한 값 (5%면 5로 지정)
   double maker_fee_percentage_;
 
-  /// 시장가 슬리피지율
-  ///
-  /// 백분율로 지정 시 100 곱한 값 (5%면 5로 지정)
-  double taker_slippage_percentage_;
-
-  /// 지정가 슬리피지율
-  ///
-  /// 백분율로 지정 시 100 곱한 값 (5%면 5로 지정)
-  double maker_slippage_percentage_;
+  /// 슬리피지 계산 방법
+  shared_ptr<Slippage> slippage_;
 
   optional<bool> check_limit_max_qty_;       // 지정가 최대 수량 검사 여부
   optional<bool> check_limit_min_qty_;       // 지정가 최소 수량 검사 여부

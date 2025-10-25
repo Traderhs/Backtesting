@@ -3,6 +3,7 @@
 
 // 내부 헤더
 #include "Engines/Logger.hpp"
+#include "Engines/Slippage.hpp"
 
 namespace backtesting::engine {
 
@@ -10,8 +11,6 @@ Config::Config()
     : initial_balance_(NAN),
       taker_fee_percentage_(NAN),
       maker_fee_percentage_(NAN),
-      taker_slippage_percentage_(NAN),
-      maker_slippage_percentage_(NAN),
       check_same_bar_data_(4, true),
       check_same_bar_data_with_target_(true) {
   // 증가 카운터는 SetConfig 함수로만 증가하는데 SetConfig 없이 직접 생성자
@@ -70,18 +69,6 @@ Config& Config::SetMakerFeePercentage(const double maker_fee_percentage) {
   return *this;
 }
 
-Config& Config::SetTakerSlippagePercentage(
-    const double taker_slippage_percentage) {
-  taker_slippage_percentage_ = taker_slippage_percentage;
-  return *this;
-}
-
-Config& Config::SetMakerSlippagePercentage(
-    const double maker_slippage_percentage) {
-  maker_slippage_percentage_ = maker_slippage_percentage;
-  return *this;
-}
-
 Config& Config::SetCheckLimitMaxQty(bool check_limit_max_qty) {
   check_limit_max_qty_ = check_limit_max_qty;
   return *this;
@@ -123,12 +110,7 @@ optional<bool> Config::GetUseBarMagnifier() const { return use_bar_magnifier_; }
 double Config::GetInitialBalance() const { return initial_balance_; }
 double Config::GetTakerFeePercentage() const { return taker_fee_percentage_; }
 double Config::GetMakerFeePercentage() const { return maker_fee_percentage_; }
-double Config::GetTakerSlippagePercentage() const {
-  return taker_slippage_percentage_;
-}
-double Config::GetMakerSlippagePercentage() const {
-  return maker_slippage_percentage_;
-}
+shared_ptr<Slippage> Config::GetSlippage() const { return slippage_; }
 optional<bool> Config::GetCheckLimitMaxQty() const {
   return check_limit_max_qty_;
 }

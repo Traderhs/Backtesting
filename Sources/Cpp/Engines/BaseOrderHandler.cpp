@@ -26,8 +26,6 @@ namespace backtesting::order {
 
 BaseOrderHandler::BaseOrderHandler()
     : initial_balance_(NAN),
-      taker_slippage_percentage_(NAN),
-      maker_slippage_percentage_(NAN),
       taker_fee_percentage_(NAN),
       maker_fee_percentage_(NAN),
       check_limit_max_qty_(true),
@@ -398,60 +396,6 @@ int BaseOrderHandler::GetLeverage(const int symbol_idx) const {
   return leverages_[symbol_idx];
 }
 
-double BaseOrderHandler::CalculateSlippagePrice(const OrderType order_type,
-                                                const Direction direction,
-                                                const double order_price,
-                                                const int symbol_idx) const {
-  double slippage_points = 0;
-
-  // 시장가, 지정가에 따라 슬리피지가 달라짐
-  switch (order_type) {
-    case MARKET:
-      [[fallthrough]];
-    case MIT:
-      [[fallthrough]];
-    case TRAILING: {
-      // 테이커 슬리피지 포인트 계산
-      slippage_points = order_price * (taker_slippage_percentage_ / 100);
-      break;
-    }
-
-    case LIMIT:
-      [[fallthrough]];
-    case LIT: {
-      // 메이커 슬리피지 포인트 계산
-      slippage_points = order_price * (maker_slippage_percentage_ / 100);
-      break;
-    }
-
-    [[unlikely]] case ORDER_NONE: {
-      Logger::LogAndThrowError(
-          "슬리피지 계산 오류: 주문 타입이 NONE으로 지정됨.", __FILE__,
-          __LINE__);
-    }
-  }
-
-  // 계산된 슬리피지 포인트가 0이면 슬리피지는 없음
-  if (IsEqual(slippage_points, 0.0)) {
-    return order_price;
-  }
-
-  // 방향에 따라 덧셈과 뺄셈이 달라짐
-  if (direction == LONG) {
-    return RoundToStep(order_price + slippage_points,
-                       symbol_info_[symbol_idx].GetPriceStep());
-  }
-
-  if (direction == SHORT) {
-    return RoundToStep(order_price - slippage_points,
-                       symbol_info_[symbol_idx].GetPriceStep());
-  }
-
-  [[unlikely]] Logger::LogAndThrowError(
-      "슬리피지 계산 오류: 체결 방향이 NONE으로 지정됨.", __FILE__, __LINE__);
-  [[unlikely]] throw;
-}
-
 double BaseOrderHandler::CalculateTradingFee(const OrderType order_type,
                                              const double filled_price,
                                              const double filled_size) const {
@@ -644,8 +588,7 @@ void BaseOrderHandler::Initialize(const int num_symbols,
 
   // 엔진 설정 초기화
   initial_balance_ = config_->GetInitialBalance();
-  taker_slippage_percentage_ = config_->GetTakerSlippagePercentage();
-  maker_slippage_percentage_ = config_->GetMakerSlippagePercentage();
+  slippage_ = config_->GetSlippage();
   taker_fee_percentage_ = config_->GetTakerFeePercentage();
   maker_fee_percentage_ = config_->GetMakerFeePercentage();
   check_limit_max_qty_ = *config_->GetCheckLimitMaxQty();
