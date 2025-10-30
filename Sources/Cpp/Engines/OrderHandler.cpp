@@ -150,7 +150,7 @@ bool OrderHandler::MarketEntry(const string& entry_name,
   if (entry_now) {
     // 슬리피지가 포함된 체결가
     const double slippage_filled_price = CalculateSlippagePrice(
-        MARKET, entry_direction, order_price, symbol_idx);
+        MARKET, entry_direction, order_price, order_size, symbol_idx);
     market_entry->SetEntryFilledPrice(slippage_filled_price);
 
     // 수수료
@@ -647,8 +647,9 @@ bool OrderHandler::MarketExit(const string& exit_name,
 
   if (exit_now) {
     // 슬리피지가 포함된 체결가
-    const double slippage_filled_price = CalculateSlippagePrice(
-        MARKET, market_exit->GetExitDirection(), order_price, symbol_idx);
+    const double slippage_filled_price =
+        CalculateSlippagePrice(MARKET, market_exit->GetExitDirection(),
+                               order_price, order_size, symbol_idx);
     market_exit->SetExitFilledPrice(slippage_filled_price);
 
     // 수수료
@@ -1683,8 +1684,9 @@ void OrderHandler::FillLiquidation(const shared_ptr<Order>& filled_entry,
   erase(filled_entries_[symbol_idx], filled_entry);
 
   // 슬리피지가 포함된 체결가 계산
-  const double slippage_filled_price = CalculateSlippagePrice(
-      MARKET, liquidation_exit->GetExitDirection(), fill_price, symbol_idx);
+  const double slippage_filled_price =
+      CalculateSlippagePrice(MARKET, liquidation_exit->GetExitDirection(),
+                             fill_price, exit_size, symbol_idx);
 
   // 체결가 및 청산/강제 청산 수수료 설정
   liquidation_exit->SetExitFilledPrice(slippage_filled_price)
@@ -2181,8 +2183,8 @@ void OrderHandler::FillPendingMarketEntry(const shared_ptr<Order>& market_entry,
       .SetEntryFilledSize(entry_filled_size);
 
   // 슬리피지가 포함된 체결가
-  const double slippage_filled_price =
-      CalculateSlippagePrice(MARKET, entry_direction, fill_price, symbol_idx);
+  const double slippage_filled_price = CalculateSlippagePrice(
+      MARKET, entry_direction, fill_price, entry_filled_size, symbol_idx);
   market_entry->SetEntryFilledPrice(slippage_filled_price);
 
   // 수수료
@@ -2224,8 +2226,8 @@ void OrderHandler::FillPendingLimitEntry(const shared_ptr<Order>& limit_entry,
       .SetEntryFilledSize(entry_filled_size);
 
   // 슬리피지가 포함된 체결가
-  const double slippage_filled_price =
-      CalculateSlippagePrice(LIMIT, entry_direction, fill_price, symbol_idx);
+  const double slippage_filled_price = CalculateSlippagePrice(
+      LIMIT, entry_direction, fill_price, entry_filled_size, symbol_idx);
   limit_entry->SetEntryFilledPrice(slippage_filled_price);
 
   // 수수료
@@ -2524,7 +2526,7 @@ void OrderHandler::FillPendingExitOrder(
 
   // 슬리피지가 포함된 체결가
   const double slippage_filled_price = CalculateSlippagePrice(
-      order_type, exit_direction, fill_price, symbol_idx);
+      order_type, exit_direction, fill_price, exit_filled_size, symbol_idx);
   exit->SetExitFilledPrice(slippage_filled_price);
 
   // 수수료

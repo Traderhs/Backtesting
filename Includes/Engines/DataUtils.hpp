@@ -175,11 +175,11 @@ template <typename T, typename U>
 [[nodiscard]] __forceinline bool IsEqual(T a, U b) noexcept {
   using CommonType = common_type_t<T, U>;
 
-  const CommonType ca = static_cast<CommonType>(a);
-  const CommonType cb = static_cast<CommonType>(b);
+  const auto ca = static_cast<CommonType>(a);
+  const auto cb = static_cast<CommonType>(b);
 
-  // NaN 체크: NaN은 자기 자신과 같지 않다는 속성 이용
-  if (ca != ca | cb != cb) [[unlikely]] {
+  // NaN 체크
+  if (std::isnan(ca) | std::isnan(cb)) [[unlikely]] {
     return false;
   }
 
@@ -210,11 +210,11 @@ template <typename T, typename U>
 [[nodiscard]] __forceinline bool IsDiff(T a, U b) noexcept {
   using CommonType = common_type_t<T, U>;
 
-  const CommonType ca = static_cast<CommonType>(a);
-  const CommonType cb = static_cast<CommonType>(b);
+  const auto ca = static_cast<CommonType>(a);
+  const auto cb = static_cast<CommonType>(b);
 
-  // NaN 체크: NaN은 자기 자신과 같지 않다는 속성 이용
-  if (ca != ca | cb != cb) [[unlikely]] {
+  // NaN 체크
+  if (std::isnan(ca) | std::isnan(cb)) [[unlikely]] {
     return true;
   }
 
@@ -245,11 +245,11 @@ template <typename T, typename U>
 [[nodiscard]] __forceinline bool IsGreater(T a, U b) noexcept {
   using CommonType = common_type_t<T, U>;
 
-  const CommonType ca = static_cast<CommonType>(a);
-  const CommonType cb = static_cast<CommonType>(b);
+  const auto ca = static_cast<CommonType>(a);
+  const auto cb = static_cast<CommonType>(b);
 
-  // NaN 체크: NaN은 자기 자신과 같지 않다는 속성 이용
-  if (ca != ca | cb != cb) [[unlikely]] {
+  // NaN 체크
+  if (std::isnan(ca) | std::isnan(cb)) [[unlikely]] {
     return false;
   }
 
@@ -282,11 +282,11 @@ template <typename T, typename U>
 [[nodiscard]] __forceinline bool IsGreaterOrEqual(T a, U b) noexcept {
   using CommonType = common_type_t<T, U>;
 
-  const CommonType ca = static_cast<CommonType>(a);
-  const CommonType cb = static_cast<CommonType>(b);
+  const auto ca = static_cast<CommonType>(a);
+  const auto cb = static_cast<CommonType>(b);
 
-  // NaN 체크: NaN은 자기 자신과 같지 않다는 속성 이용
-  if (ca != ca | cb != cb) [[unlikely]] {
+  // NaN 체크
+  if (std::isnan(ca) | std::isnan(cb)) [[unlikely]] {
     return false;
   }
 
@@ -319,11 +319,11 @@ template <typename T, typename U>
 [[nodiscard]] __forceinline bool IsLess(T a, U b) noexcept {
   using CommonType = common_type_t<T, U>;
 
-  const CommonType ca = static_cast<CommonType>(a);
-  const CommonType cb = static_cast<CommonType>(b);
+  const auto ca = static_cast<CommonType>(a);
+  const auto cb = static_cast<CommonType>(b);
 
-  // NaN 체크: NaN은 자기 자신과 같지 않다는 속성 이용
-  if (ca != ca | cb != cb) [[unlikely]] {
+  // NaN 체크
+  if (std::isnan(ca) | std::isnan(cb)) [[unlikely]] {
     return false;
   }
 
@@ -356,11 +356,11 @@ template <typename T, typename U>
 [[nodiscard]] __forceinline bool IsLessOrEqual(T a, U b) noexcept {
   using CommonType = common_type_t<T, U>;
 
-  const CommonType ca = static_cast<CommonType>(a);
-  const CommonType cb = static_cast<CommonType>(b);
+  const auto ca = static_cast<CommonType>(a);
+  const auto cb = static_cast<CommonType>(b);
 
-  // NaN 체크: NaN은 자기 자신과 같지 않다는 속성 이용
-  if (ca != ca | cb != cb) [[unlikely]] {
+  // NaN 체크
+  if (std::isnan(ca) | std::isnan(cb)) [[unlikely]] {
     return false;
   }
 
