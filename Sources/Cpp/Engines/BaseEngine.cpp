@@ -246,15 +246,16 @@ void BaseEngine::DecreaseUsedMargin(const double decrease_margin) {
     throw runtime_error("사용한 마진 감소 실패");
   }
 
+  // 마이너스는 부동 소수점 오류이므로 0으로 클리핑
   if (IsGreater(decrease_margin, used_margin_)) {
-    logger_->Log(
-        ERROR_L,
-        format("사용한 마진 감소를 위해 주어진 [{}]는 사용한 마진 [{}]를 "
-               "초과할 수 없습니다.",
-               FormatDollar(decrease_margin, true),
-               FormatDollar(used_margin_, true)),
-        __FILE__, __LINE__, true);
-    throw runtime_error("사용한 마진 감소 실패");
+    logger_->Log(WARN_L,
+                 format("사용한 마진 감소를 위해 주어진 [{}]가 사용한 마진 "
+                        "[{}]를 초과하므로 [$0.00]로 조정합니다.",
+                        FormatDollar(decrease_margin, true),
+                        FormatDollar(used_margin_, true)),
+                 __FILE__, __LINE__, true);
+    used_margin_ = 0.0;
+    return;
   }
 
   // 감소할 마진이 현재 사용한 마진과 같으면 0으로 설정 (부동 소수점 오차 방지)

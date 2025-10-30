@@ -235,7 +235,7 @@ void Engine::IsValidConfig() {
           __FILE__, __LINE__);
     }
 
-    if (!slippage) {
+    if (slippage == nullptr) {
       Logger::LogAndThrowError(
           "슬리피지가 초기화되지 않았습니다. "
           "Backtesting::SetConfig().SetSlippage 함수를 호출해 주세요.",
@@ -1146,8 +1146,10 @@ void Engine::InitializeSymbolInfo() {
     symbol_info_[symbol_idx] = symbol_info;
   }
 
+  // 심볼 정보 복사
   Analyzer::SetSymbolInfo(symbol_info_);
   BaseOrderHandler::SetSymbolInfo(symbol_info_);
+  Slippage::SetSymbolInfo(symbol_info_);
 
   logger_->Log(INFO_L, "심볼 정보 초기화가 완료되었습니다.", __FILE__, __LINE__,
                true);
@@ -1155,11 +1157,12 @@ void Engine::InitializeSymbolInfo() {
 
 void Engine::InitializeStrategy() {
   // 주문 핸들러 및 전략 초기화
+  Strategy::SetTradingTimeframe(trading_bar_timeframe_);
+
   order_handler_ = strategy_->GetOrderHandler();
   order_handler_->Initialize(trading_bar_num_symbols_, symbol_names_);
+  order_handler_->slippage_->Initialize();
   strategy_->Initialize();
-
-  Strategy::SetTradingTimeframe(trading_bar_timeframe_);
 
   logger_->Log(INFO_L, "전략 초기화가 완료되었습니다.", __FILE__, __LINE__,
                true);
