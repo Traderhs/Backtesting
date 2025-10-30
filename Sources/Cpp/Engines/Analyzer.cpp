@@ -31,6 +31,7 @@
 #include "Engines/DataUtils.hpp"
 #include "Engines/Engine.hpp"
 #include "Engines/Logger.hpp"
+#include "Engines/Slippage.hpp"
 #include "Engines/Strategy.hpp"
 #include "Engines/SymbolInfo.hpp"
 #include "Engines/TimeUtils.hpp"
@@ -100,7 +101,7 @@ void Analyzer::Initialize(const int64_t begin_open_time,
 void Analyzer::SetSymbolInfo(const vector<SymbolInfo>& symbol_info) {
   if (symbol_info_.empty()) {
     symbol_info_ = symbol_info;
-  } else {
+  } else [[unlikely]] {
     Logger::LogAndThrowError(
         "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.", __FILE__,
         __LINE__);
@@ -741,24 +742,37 @@ void Analyzer::SaveConfig() {
       {"테이커 수수료율",
        FormatPercentage(config_->GetTakerFeePercentage(), false)},
       {"메이커 수수료율",
-       FormatPercentage(config_->GetMakerFeePercentage(), false)},
-      // TODO 수정
-      //{"테이커 슬리피지율",
-       //FormatPercentage(config_->GetTakerSlippagePercentage(), false)},
-      //{"메이커 슬리피지율",
-      // FormatPercentage(config_->GetMakerSlippagePercentage(), false)},
-      {"지정가 최대 수량 검사",
-       *config_->GetCheckLimitMaxQty() ? "활성화" : "비활성화"},
-      {"지정가 최소 수량 검사",
-       *config_->GetCheckLimitMinQty() ? "활성화" : "비활성화"},
-      {"시장가 최대 수량 검사",
-       *config_->GetCheckMarketMaxQty() ? "활성화" : "비활성화"},
-      {"시장가 최소 수량 검사",
-       *config_->GetCheckMarketMinQty() ? "활성화" : "비활성화"},
-      {"최소 명목 가치 검사",
-       *config_->GetCheckMinNotionalValue() ? "활성화" : "비활성화"},
-      {"마크 가격 바 데이터와 목표 바 데이터 중복 검사",
-       config_->GetCheckSameBarDataWithTarget() ? "활성화" : "비활성화"}};
+       FormatPercentage(config_->GetMakerFeePercentage(), false)}};
+
+  // 슬리피지 정보 저장
+  const auto& slippage = config_->GetSlippage();
+  if (const auto* percentage_slippage =
+          dynamic_cast<PercentageSlippage*>(slippage.get())) {
+    config["엔진 설정"]["슬리피지 모델"] = "퍼센트 슬리피지";
+    config["엔진 설정"]["테이커 슬리피지율"] = FormatPercentage(
+        percentage_slippage->GetTakerSlippagePercentage(), false);
+    config["엔진 설정"]["메이커 슬리피지율"] = FormatPercentage(
+        percentage_slippage->GetMakerSlippagePercentage(), false);
+  } else if (const auto* market_impact_slippage =
+                 dynamic_cast<MarketImpactSlippage*>(slippage.get())) {
+    config["엔진 설정"]["슬리피지 모델"] = "시장 충격 슬리피지";
+    config["엔진 설정"]["슬리피지 스트레스 계수"] =
+        format("{}배", market_impact_slippage->GetStressMultiplier());
+  }
+
+  // 검사 옵션들 추가
+  config["엔진 설정"]["지정가 최대 수량 검사"] =
+      *config_->GetCheckLimitMaxQty() ? "활성화" : "비활성화";
+  config["엔진 설정"]["지정가 최소 수량 검사"] =
+      *config_->GetCheckLimitMinQty() ? "활성화" : "비활성화";
+  config["엔진 설정"]["시장가 최대 수량 검사"] =
+      *config_->GetCheckMarketMaxQty() ? "활성화" : "비활성화";
+  config["엔진 설정"]["시장가 최소 수량 검사"] =
+      *config_->GetCheckMarketMinQty() ? "활성화" : "비활성화";
+  config["엔진 설정"]["최소 명목 가치 검사"] =
+      *config_->GetCheckMinNotionalValue() ? "활성화" : "비활성화";
+  config["엔진 설정"]["마크 가격 바 데이터와 목표 바 데이터 중복 검사"] =
+      config_->GetCheckSameBarDataWithTarget() ? "활성화" : "비활성화";
 
   // 심볼 간 바 데이터 중복 검사 설정
   const vector<string> bar_type_names = {"트레이딩 바 데이터",

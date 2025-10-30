@@ -7,6 +7,7 @@
 
 // 내부 헤더
 #include "Engines/BaseEngine.hpp"
+#include "Engines/Slippage.hpp"
 
 // 전방 선언
 namespace backtesting {
@@ -17,16 +18,13 @@ enum class BarType;
 namespace logger {
 class Logger;
 }
-
-namespace order {
-class Slippage;
-}
 }  // namespace backtesting
 
 // 네임 스페이스
 using namespace std;
 namespace backtesting {
 using namespace engine;
+using namespace order;
 using namespace logger;
 }  // namespace backtesting
 
@@ -108,7 +106,7 @@ class Config final {
     static_assert(is_base_of_v<Slippage, T>,
                   "슬리피지 설정은 Slippage 클래스를 상속받은 클래스를 "
                   "매개변수로 사용해야 합니다.");
-    slippage_ = slippage.clone();
+    slippage_ = slippage.Clone();
     return *this;
   }
 

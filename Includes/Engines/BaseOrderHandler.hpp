@@ -227,11 +227,11 @@ class BaseOrderHandler {
   /// 주문 정보에 따라 슬리피지를 반영한 체결 가격을 반환하는 함수.
   [[nodiscard]] __forceinline double CalculateSlippagePrice(
       const OrderType order_type, const Direction direction,
-      const double order_price, const int symbol_idx) const {
+      const double order_price, const double order_size,
+      const int symbol_idx) const {
     // slippage_ 객체를 통해 슬리피지 가격 계산
-    return slippage_->CalculateSlippagePrice(
-        order_type, direction, order_price,
-        symbol_info_[symbol_idx].GetPriceStep());
+    return slippage_->CalculateSlippagePrice(order_type, direction, order_price,
+                                             order_size, symbol_idx);
   }
 
   /// 주문 정보에 따라 수수료 금액을 계산하여 반환하는 함수
