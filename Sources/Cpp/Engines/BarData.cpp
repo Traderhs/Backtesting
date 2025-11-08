@@ -79,7 +79,7 @@ void BarData::SetBarData(const string& symbol_name, const string& timeframe,
 
   // 데이터 복사
 #pragma omp parallel for schedule(static, 16384) if (total_rows > 100000)
-  for (size_t bar_idx = 0; bar_idx < total_rows; bar_idx++) {
+  for (auto bar_idx = 0; bar_idx < total_rows; bar_idx++) {
     target_bar_data[bar_idx] = {open_time_data[bar_idx], open_data[bar_idx],
                                 high_data[bar_idx],      low_data[bar_idx],
                                 close_data[bar_idx],     volume_data[bar_idx],
