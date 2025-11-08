@@ -177,7 +177,7 @@ class Config final {
   /// 백분율로 지정 시 100 곱한 값 (5%면 5로 지정)
   double maker_fee_percentage_;
 
-  /// 슬리피지 계산 방법
+  /// 슬리피지 계산 모델
   shared_ptr<Slippage> slippage_;
 
   optional<bool> check_limit_max_qty_;       // 지정가 최대 수량 검사 여부
