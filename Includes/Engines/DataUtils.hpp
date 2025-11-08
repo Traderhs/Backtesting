@@ -2,6 +2,7 @@
 
 // 표준 라이브러리
 #include <any>
+#include <chrono>
 #include <future>
 #include <locale>
 #include <regex>
@@ -50,21 +51,24 @@ namespace backtesting::utils {
 [[nodiscard]] string ExtractClassName(const string& type_name);
 
 /**
- * 지정된 경로의 Parquet 파일을 읽고 테이블로 변환하여 반환하는 함수 (최적화됨)
+ * 지정된 경로의 Parquet 파일에서 특정 컬럼만 읽어오는 함수
  *
  * @param file_path 읽을 Parquet 파일의 경로
+ * @param column_indices 읽을 컬럼의 인덱스 목록 (빈 벡터면 모든 컬럼 읽기)
  * @return 변환된 테이블을 포함하는 shared_ptr 객체
  */
-[[nodiscard]] shared_ptr<arrow::Table> ReadParquet(const string& file_path);
+[[nodiscard]] shared_ptr<arrow::Table> ReadParquet(
+    const string& file_path, const vector<int>& column_indices = {});
 
 /**
- * 여러 Parquet 파일을 병렬로 읽어들이는 최적화된 함수
+ * 여러 Parquet 파일을 병렬로 읽어들이는 함수
  *
  * @param file_paths 읽을 Parquet 파일들의 경로 목록
+ * @param column_indices 읽을 컬럼의 인덱스 목록
  * @return 변환된 테이블들을 포함하는 vector
  */
 [[nodiscard]] vector<shared_ptr<arrow::Table>> ReadParquetBatch(
-    const vector<string>& file_paths);
+    const vector<string>& file_paths, const vector<int>& column_indices);
 
 /**
  * Parquet 파일 메타데이터 캐시를 정리하는 함수

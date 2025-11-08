@@ -3,17 +3,16 @@
 #include <any>
 #include <chrono>
 #include <cstdlib>
+#include <execution>
 #include <filesystem>
 #include <format>
 #include <future>
 #include <iomanip>
 #include <iostream>
-#include <mutex>
+#include <numeric>
 #include <thread>
-#include <unordered_map>
 
 // 외부 라이브러리
-#include "arrow/io/api.h"
 #include "arrow/io/file.h"
 #include "arrow/memory_pool.h"
 #include "arrow/scalar.h"
@@ -37,15 +36,6 @@ using namespace logger;
 }  // namespace backtesting
 
 namespace backtesting::utils {
-
-// 파일 메타데이터 캐시
-struct FileMetadata {
-  int64_t file_size{};
-  chrono::time_point<chrono::file_clock> last_write_time;
-  shared_ptr<parquet::FileMetaData> parquet_metadata;
-};
-static unordered_map<string, FileMetadata> metadata_cache;
-static mutex metadata_cache_mutex;
 
 int CountDecimalPlaces(const double value) {
   // 0이거나 정수인 경우 0 반환
@@ -122,129 +112,53 @@ string ExtractClassName(const string& type_name) {
   return name;
 }
 
-// 파일 메타데이터 검증 및 캐싱
-bool IsFileMetadataValid(const string& file_path,
-                         const FileMetadata& cached_metadata) {
+shared_ptr<arrow::Table> ReadParquet(const string& file_path,
+                                     const vector<int>& column_indices) {
   try {
-    const filesystem::path path(file_path);
-    if (!filesystem::exists(path)) {
-      return false;
+    // 메모리 맵 파일 열기
+    const auto& memory_mapped_result =
+        arrow::io::MemoryMappedFile::Open(file_path, arrow::io::FileMode::READ);
+
+    if (!memory_mapped_result.ok()) {
+      Logger::LogAndThrowError("파일을 열 수 없습니다: " + file_path, __FILE__,
+                               __LINE__);
     }
 
-    const auto file_size = filesystem::file_size(path);
-    const auto last_write_time = filesystem::last_write_time(path);
+    const auto& random_access_file = memory_mapped_result.ValueOrDie();
+    const auto memory_pool = arrow::default_memory_pool();
 
-    return static_cast<int64_t>(file_size) == cached_metadata.file_size &&
-           last_write_time == cached_metadata.last_write_time;
-  } catch (...) {
-    return false;
-  }
-}
-
-shared_ptr<arrow::Table> ReadParquet(const string& file_path) {
-  try {
-    // 파일 크기 확인을 통한 최적화된 읽기 방식 선택
-    filesystem::path path(file_path);
-    if (!filesystem::exists(path)) {
-      Logger::LogAndThrowError("파일이 존재하지 않습니다: " + file_path,
-                               __FILE__, __LINE__);
-    }
-
-    const auto file_size = filesystem::file_size(path);
-    constexpr int64_t memory_map_threshold = 50 * 1024 * 1024;  // 50MB
-
-    // 파일 메타데이터 캐시 확인
-    {
-      std::lock_guard lock(metadata_cache_mutex);
-      if (auto cache_it = metadata_cache.find(file_path);
-          cache_it != metadata_cache.end()) {
-        if (!IsFileMetadataValid(file_path, cache_it->second)) {
-          metadata_cache.erase(cache_it);
-        }
-      }
-    }
-
-    // 최적화된 메모리 풀 사용
-    auto memory_pool = arrow::default_memory_pool();
-
-    shared_ptr<arrow::io::ReadableFile> infile;
-    shared_ptr<arrow::io::RandomAccessFile> random_access_file;
-
-    // 파일 크기에 따른 최적화된 읽기 방식 선택
-    if (file_size > memory_map_threshold) {
-      // 큰 파일: 메모리 맵 사용
-      auto memory_mapped_result = arrow::io::MemoryMappedFile::Open(
-          file_path, arrow::io::FileMode::READ);
-      if (memory_mapped_result.ok()) {
-        random_access_file = memory_mapped_result.ValueOrDie();
-      } else {
-        // 메모리 맵 실패 시 일반 파일 읽기로 폴백
-        PARQUET_ASSIGN_OR_THROW(
-            infile, arrow::io::ReadableFile::Open(file_path, memory_pool));
-        random_access_file = infile;
-      }
-    } else {
-      // 작은 파일: 일반 파일 읽기 (버퍼링은 parquet 레벨에서 처리)
-      PARQUET_ASSIGN_OR_THROW(
-          infile, arrow::io::ReadableFile::Open(file_path, memory_pool));
-      random_access_file = infile;
-    }
-
-    // Parquet Reader 속성 최적화
-    parquet::ReaderProperties reader_props =
+    // Parquet Reader 속성
+    parquet::ReaderProperties parquet_props =
         parquet::default_reader_properties();
-    reader_props.set_buffer_size(
-        std::min(static_cast<int64_t>(1024 * 1024 * 4),
-                 static_cast<int64_t>(file_size)));  // 최대 4MB
-    reader_props.enable_buffered_stream();
+    parquet_props.set_buffer_size(128 * 1024 * 1024);  // 128MB
+    parquet_props.enable_buffered_stream();
 
-    // Arrow Reader 속성 최적화
+    // Arrow Reader 속성
     parquet::ArrowReaderProperties arrow_props;
-    arrow_props.set_batch_size(
-        std::min(65536, static_cast<int>(file_size / 1000)));  // 동적 배치 크기
-    arrow_props.set_pre_buffer(true);   // 프리버퍼링 활성화
-    arrow_props.set_use_threads(true);  // 멀티스레딩 활성화
+    arrow_props.set_batch_size(1048576);  // 1M
+    arrow_props.set_pre_buffer(true);
+    arrow_props.set_use_threads(true);
 
-    // Parquet Arrow의 FileReader 생성 (최적화된 속성 사용)
-    arrow::Result<unique_ptr<parquet::arrow::FileReader>> result =
-        parquet::arrow::OpenFile(random_access_file, memory_pool);
+    // Parquet FileReader 생성
+    auto parquet_reader =
+        parquet::ParquetFileReader::Open(random_access_file, parquet_props);
 
-    PARQUET_THROW_NOT_OK(result.status());
-    const unique_ptr<parquet::arrow::FileReader> reader =
-        std::move(result).ValueOrDie();
+    // Arrow FileReader 생성
+    unique_ptr<parquet::arrow::FileReader> arrow_reader;
+    PARQUET_THROW_NOT_OK(parquet::arrow::FileReader::Make(
+        memory_pool, move(parquet_reader), arrow_props, &arrow_reader));
+    arrow_reader->set_use_threads(true);
 
-    // 메타데이터 캐싱
-    auto parquet_metadata = reader->parquet_reader()->metadata();
-    {
-      std::lock_guard lock(metadata_cache_mutex);
-      if (filesystem::exists(path)) {
-        FileMetadata metadata;
-        metadata.file_size = static_cast<int64_t>(file_size);
-        metadata.last_write_time = filesystem::last_write_time(path);
-        metadata.parquet_metadata = parquet_metadata;
-        metadata_cache[file_path] = std::move(metadata);
-      }
-    }
-
-    // 최적화된 Table 읽기
+    // Table 읽기
     shared_ptr<arrow::Table> table;
 
-    // 행 그룹 수에 따른 읽기 방식 최적화
-    if (const int num_row_groups = parquet_metadata->num_row_groups();
-        num_row_groups > 1) {
-      // 여러 행 그룹: 병렬 읽기
-      vector<int> row_groups;
-      for (int i = 0; i < num_row_groups; ++i) {
-        row_groups.push_back(i);
-      }
-      PARQUET_THROW_NOT_OK(reader->ReadRowGroups(row_groups, &table));
+    if (column_indices.empty()) {
+      // 모든 컬럼 읽기
+      PARQUET_THROW_NOT_OK(arrow_reader->ReadTable(&table));
     } else {
-      // 단일 행 그룹: 일반 읽기
-      PARQUET_THROW_NOT_OK(reader->ReadTable(&table));
+      // 지정된 컬럼만 읽기
+      PARQUET_THROW_NOT_OK(arrow_reader->ReadTable(column_indices, &table));
     }
-
-    // 안전한 스트림 닫기
-    PARQUET_THROW_NOT_OK(random_access_file->Close());
 
     return table;
   } catch (const parquet::ParquetException& e) {
@@ -261,51 +175,29 @@ shared_ptr<arrow::Table> ReadParquet(const string& file_path) {
 }
 
 vector<shared_ptr<arrow::Table>> ReadParquetBatch(
-    const vector<string>& file_paths) {
+    const vector<string>& file_paths, const vector<int>& column_indices) {
   if (file_paths.empty()) {
     return {};
   }
 
   const size_t num_files = file_paths.size();
-  const size_t num_threads = std::min(
-      num_files, static_cast<size_t>(std::thread::hardware_concurrency()));
-
   vector<shared_ptr<arrow::Table>> results(num_files);
-  vector<std::future<void>> futures;
 
-  // 파일들을 스레드별로 분할하여 병렬 처리
-  const size_t chunk_size = (num_files + num_threads - 1) / num_threads;
+  // 인덱스 벡터 생성
+  vector<size_t> indices(num_files);
+  iota(indices.begin(), indices.end(), 0);
 
-  for (size_t thread_idx = 0; thread_idx < num_threads; ++thread_idx) {
-    size_t start_idx = thread_idx * chunk_size;
-    size_t end_idx = std::min(start_idx + chunk_size, num_files);
-
-    if (start_idx >= num_files) break;
-
-    futures.emplace_back(
-        std::async(std::launch::async, [&, start_idx, end_idx]() {
-          for (size_t i = start_idx; i < end_idx; ++i) {
-            try {
-              results[i] = ReadParquet(file_paths[i]);
-            } catch (...) {
-              results[i] = nullptr;
-            }
-          }
-        }));
-  }
-
-  // 모든 병렬 작업 완료 대기
-  for (auto& future : futures) {
-    future.wait();
-  }
+  // 완전 병렬 처리 - 컬럼 프로젝션 적용
+  for_each(execution::par_unseq, indices.begin(), indices.end(),
+           [&](const size_t idx) {
+             try {
+               results[idx] = ReadParquet(file_paths[idx], column_indices);
+             } catch (...) {
+               results[idx] = nullptr;
+             }
+           });
 
   return results;
-}
-
-void ClearParquetMetadataCache() {
-  std::lock_guard lock(metadata_cache_mutex);
-  metadata_cache.clear();
-  // 메모리 풀 캐시는 제거됨 (직접 arrow::system_memory_pool 사용)
 }
 
 any GetCellValue(const shared_ptr<arrow::Table>& table,
@@ -433,7 +325,7 @@ void TableToParquet(const shared_ptr<arrow::Table>& table,
 
   // 테이블을 10000행씩 분할하여 저장
   for (int64_t offset = 0; offset < total_rows; offset += chunk_size) {
-    int64_t current_chunk_size = std::min(chunk_size, total_rows - offset);
+    int64_t current_chunk_size = min(chunk_size, total_rows - offset);
     auto table_chunk = table->Slice(offset, current_chunk_size);
 
     // "Open Time" 컬럼은 chunked array 형태이므로 첫 청크와 마지막 청크에서
