@@ -200,6 +200,7 @@ class MarketImpactSlippage final : public Slippage {
   double epsilon_;                 // 0으로 나누기 방지
   double stress_multiplier_;       // 스트레스 테스트 용도 슬리피지 틱 계수
 
+  // 각 타임프레임이 15분보다 이하인지 여부
   bool is_trading_low_tf_;
   bool is_magnifier_low_tf_;
 

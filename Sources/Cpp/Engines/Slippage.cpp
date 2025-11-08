@@ -21,7 +21,6 @@ namespace backtesting::order {
 using namespace bar;
 using namespace engine;
 using namespace numeric;
-using namespace order;
 using namespace utils;
 
 vector<SymbolInfo> Slippage::symbol_info_;
@@ -143,8 +142,13 @@ void MarketImpactSlippage::Initialize() {
   const auto& magnifier_bar_data = bar_->GetBarData(MAGNIFIER);
   is_trading_low_tf_ =
       ParseTimeframe(trading_bar_data->GetTimeframe()) <= parsed_15_min_tf;
-  is_magnifier_low_tf_ =
-      ParseTimeframe(magnifier_bar_data->GetTimeframe()) <= parsed_15_min_tf;
+
+  // 돋보기 기능 미사용 시 Timeframe은 Empty이므로 false로 처리
+  // 돋보기 기능 미사용 시 어차피 미사용 변수이므로 false 처리하는 것
+  const auto& magnifier_tf = magnifier_bar_data->GetTimeframe();
+  is_magnifier_low_tf_ = magnifier_tf.empty()
+                             ? false
+                             : ParseTimeframe(magnifier_tf) <= parsed_15_min_tf;
 
   // 심볼별 스프레드 저장 벡터 초기화
   previous_spread_bps_.resize(trading_bar_data->GetNumSymbols(), 0.0);
