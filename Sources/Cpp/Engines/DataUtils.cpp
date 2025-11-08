@@ -149,15 +149,22 @@ shared_ptr<arrow::Table> ReadParquet(const string& file_path,
         memory_pool, move(parquet_reader), arrow_props, &arrow_reader));
     arrow_reader->set_use_threads(true);
 
+    // Row Group 병렬 읽기
+    const int num_row_groups = arrow_reader->num_row_groups();
+    vector<int> row_group_indices(num_row_groups);
+    iota(row_group_indices.begin(), row_group_indices.end(), 0);
+
     // Table 읽기
     shared_ptr<arrow::Table> table;
 
     if (column_indices.empty()) {
-      // 모든 컬럼 읽기
-      PARQUET_THROW_NOT_OK(arrow_reader->ReadTable(&table));
+      // 모든 컬럼을 Row Group 단위로 병렬 읽기
+      PARQUET_THROW_NOT_OK(
+          arrow_reader->ReadRowGroups(row_group_indices, &table));
     } else {
-      // 지정된 컬럼만 읽기
-      PARQUET_THROW_NOT_OK(arrow_reader->ReadTable(column_indices, &table));
+      // 지정된 컬럼만 Row Group 단위로 병렬 읽기
+      PARQUET_THROW_NOT_OK(arrow_reader->ReadRowGroups(row_group_indices,
+                                                       column_indices, &table));
     }
 
     return table;
