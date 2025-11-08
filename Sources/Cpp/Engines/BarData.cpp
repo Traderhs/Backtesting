@@ -1,4 +1,5 @@
 // 표준 라이브러리
+#include <chrono>
 #include <format>
 
 // 외부 라이브러리
@@ -74,13 +75,15 @@ void BarData::SetBarData(const string& symbol_name, const string& timeframe,
   const double* volume_data = volume_array->raw_values();
   const int64_t* close_time_data = close_time_array->raw_values();
 
+  Bar* target_bar_data = bar_data_[symbol_idx].data();
+
   // 데이터 복사
-#pragma omp parallel for
-  for (int64_t row = 0; row < total_rows; row++) {
-    bar_data_[symbol_idx][row] = {open_time_data[row], open_data[row],
-                                  high_data[row],      low_data[row],
-                                  close_data[row],     volume_data[row],
-                                  close_time_data[row]};
+#pragma omp parallel for schedule(static, 16384) if (total_rows > 100000)
+  for (size_t bar_idx = 0; bar_idx < total_rows; bar_idx++) {
+    target_bar_data[bar_idx] = {open_time_data[bar_idx], open_data[bar_idx],
+                                high_data[bar_idx],      low_data[bar_idx],
+                                close_data[bar_idx],     volume_data[bar_idx],
+                                close_time_data[bar_idx]};
   }
 }
 
