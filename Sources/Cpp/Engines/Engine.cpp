@@ -658,8 +658,8 @@ void Engine::IsValidDateRange() {
               UtcDatetimeToUtcTimestamp(start_time, format);
           start_time_ts < begin_open_time_) {
         Logger::LogAndThrowError(
-            std::format("지정된 Start 시간 [{}]은(는) 최소 시간 [{}]의 "
-                        "전으로 지정할 수 없습니다.",
+            std::format("지정된 백테스팅 시작 시간 [{}]은(는) 바 데이터 최소 "
+                        "시간 [{}]의 전으로 지정할 수 없습니다.",
                         start_time,
                         UtcTimestampToUtcDatetime(begin_open_time_)),
             __FILE__, __LINE__);
@@ -673,8 +673,8 @@ void Engine::IsValidDateRange() {
       if (const auto end_time_ts = UtcDatetimeToUtcTimestamp(end_time, format);
           end_time_ts > end_close_time_) {
         Logger::LogAndThrowError(
-            std::format("지정된 End 시간 [{}]은(는) 최대 시간 [{}]의 "
-                        "후로 지정할 수 없습니다.",
+            std::format("지정된 백테스팅 종료 시간 [{}]은(는) 바 데이터 최대 "
+                        "시간 [{}]의 후로 지정할 수 없습니다.",
                         end_time, UtcTimestampToUtcDatetime(end_close_time_)),
             __FILE__, __LINE__);
       } else {
@@ -687,10 +687,9 @@ void Engine::IsValidDateRange() {
       if (UtcDatetimeToUtcTimestamp(start_time, format) >
           UtcDatetimeToUtcTimestamp(end_time, format)) {
         Logger::LogAndThrowError(
-            std::format(
-                "지정된 시작 시간 [{}]은(는) 지정된 종료 시간 [{}]의 후로 "
-                "지정할 수 없습니다.",
-                start_time, end_time),
+            std::format("지정된 백테스팅 시작 시간 [{}]은(는) 지정된 백테스팅 "
+                        "종료 시간 [{}]의 후로 지정할 수 없습니다.",
+                        start_time, end_time),
             __FILE__, __LINE__);
       }
     }
