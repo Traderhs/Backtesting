@@ -421,28 +421,24 @@ NO_INLINE void Logger::ProcessMultiBuffer() {
 }
 
 bool Logger::FlushBufferIfReady(FastLogBuffer& buffer, ofstream& file) {
-  bool did_work = false;
+  // 현재 사용 중인 버퍼의 반대편 버퍼만 체크 (더블 버퍼링 최적화)
+  const size_t current_idx = buffer.current_buffer.load(memory_order_acquire);
+  const size_t flush_idx = (current_idx + 1) % FastLogBuffer::max_buffers;
 
-  for (auto& buf : buffer.buffers) {
-    // ready_to_flush 플래그가 설정되었거나, 버퍼가 충분히 찼을 때 플러시
-    const size_t data_size = buf.write_pos.load(memory_order_acquire);
-    const bool should_flush = buf.ready_to_flush.load(memory_order_acquire) ||
-                              (data_size >= FastLogBuffer::flush_threshold);
+  auto& buf = buffer.buffers[flush_idx];
 
-    if (should_flush && data_size > 0) {
-      // 배치 쓰기 최적화 - flush 호출 최소화
+  // ready_to_flush가 true인 버퍼만 플러시
+  if (buf.ready_to_flush.load(memory_order_acquire)) {
+    if (const size_t data_size = buf.write_pos.load(memory_order_acquire);
+        data_size > 0) {
       file.write(buf.data, static_cast<streamsize>(data_size));
-      did_work = true;
+      file.flush();
       buf.reset();
+      return true;
     }
   }
 
-  // 모든 버퍼 처리 후 한 번만 flush
-  if (did_work) {
-    file.flush();
-  }
-
-  return did_work;
+  return false;
 }
 
 void Logger::FlushAllBuffers() {
