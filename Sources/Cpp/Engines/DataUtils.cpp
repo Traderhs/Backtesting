@@ -484,45 +484,76 @@ string FormatDollar(const double price, const bool use_rounding) {
   return oss.str();
 }
 
-string FormatPercentage(const double percentage, const bool use_rounding) {
-  // 음수 0 처리 - 매우 작은 값들은 0으로 처리
-  double adjusted_percentage = percentage;
-  if (fabs(percentage) < 1e-10) {
-    adjusted_percentage = 0.0;
+string FormatPercentage(double percentage, const bool use_rounding) {
+  // 1. 음수 0 및 작은 값 처리 (분기 예측 최적화를 위해 간단한 비교 유지)
+  if (abs(percentage) < 1e-10) {
+    percentage = 0.0;
   }
 
-  ostringstream oss;
-  oss.imbue(global_locale);
+  // 2. 스택 버퍼 할당 (힙 할당 제거)
+  // double의 최대 자릿수 + 부호 + 소수점 + '%' + 여유분 고려 시 64바이트면 충분
+  char buffer[64];
+  char* ptr = buffer;
+
+  // 3. 부호 처리 (변환 함수에 넘기기 전 직접 처리하여 제어권 확보)
+  if (percentage < 0) {
+    *ptr++ = '-';
+    percentage = -percentage;
+  }
+
+  // 4. 숫자 변환
+  to_chars_result result;
 
   if (use_rounding) {
-    // rounding 모드: 적절한 precision으로 반올림
-    oss << showpoint << fixed;
+    int precision = 2;  // 기본 정밀도
 
-    int precision = 2;  // 기본 2자리
-
-    if (adjusted_percentage != 0.0) {
-      // 2자리로 반올림했을 때 0이 되는지 빠르게 확인
-      if (const double abs_percentage = fabs(adjusted_percentage);
-          abs_percentage < 0.01) {
-        // 로그를 이용한 빠른 정밀도 계산
-        const double log_val = -log10(abs_percentage);
-        precision = min(10, static_cast<int>(ceil(log_val)) + 1);
-      }
+    // 0이 아니고 0.01 미만일 때만 정밀도 계산 (log 연산 비용 최소화)
+    if (percentage > 0.0 && percentage < 0.01) {
+      // log10은 무겁지만 필요악. 근사치 테이블을 쓰지 않는 한 유지.
+      // 하지만 호출 빈도가 낮다면 큰 문제 없음.
+      const double log_val = -log10(percentage);
+      precision = min(10, static_cast<int>(ceil(log_val)) + 1);
     }
 
-    oss << setprecision(precision);
+    // fixed 포맷으로 변환
+    result = to_chars(ptr, buffer + sizeof(buffer), percentage,
+                      chars_format::fixed, precision);
   } else {
-    // non-rounding 모드: trailing zeros 제거하고 원본 값 그대로 사용
-    oss << noshowpoint;  // trailing zeros 제거
+    // [Non-rounding 모드]
+    // 과학적 표기법 방지를 위해 fixed 사용.
+    // precision을 15(double 유효자리)로 넉넉히 주어 잘림 방지.
+    result = to_chars(ptr, buffer + sizeof(buffer), percentage,
+                      chars_format::fixed, 15);
+
+    // [Trailing Zeros 제거 - 포인터 연산 최적화]
+    // result.ptr은 숫자가 쓰여진 바로 다음 위치를 가리킴
+    char* end_ptr = result.ptr - 1;
+
+    // 소수점이 있는지 확인 (정수일 경우 0을 지우면 안 되므로)
+    // to_chars의 fixed는 항상 소수점을 포함할 수 있으므로 안전하게 처리
+    // 스캔 비용을 줄이기 위해 일단 뒤에서부터 '0'을 찾음
+    while (end_ptr > ptr && *end_ptr == '0') {
+      end_ptr--;
+    }
+
+    // 만약 마지막이 소수점('.')이라면 그것도 제거
+    if (end_ptr > ptr && *end_ptr == '.') {
+      end_ptr--;
+    }
+
+    // 유효한 끝 지점으로 포인터 업데이트
+    result.ptr = end_ptr + 1;
   }
 
-  if (adjusted_percentage < 0.0) {
-    oss << "-" << -adjusted_percentage << "%";
-  } else {
-    oss << adjusted_percentage << "%";
+  // 5. '%' 기호 추가
+  if (result.ec == errc()) {
+    *result.ptr = '%';
+    result.ptr++;
   }
 
-  return oss.str();
+  // 6. string 생성 (여기서만 힙 할당 1회 발생 - 반환 타입이 string이므로
+  // 불가피) 포인터 차이를 이용해 길이를 계산하므로 strlen() 비용 없음
+  return string(buffer, result.ptr - buffer);
 }
 
 string ToFixedString(const double value, const int precision) {
