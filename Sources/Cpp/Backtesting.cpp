@@ -12,6 +12,7 @@
 //  ============================================================================
 //   ● 기본 작동 ●
 //
+//   ◆ MSVC만 지원
 //   ◆ 시간은 GMT 기준
 //   ◆ 바 데이터 형식은 Parquet만 지원하며,
 //     Open Time, Open, High, Low, Close, Volume, Close Time 열이 존재해야 함.
@@ -53,28 +54,25 @@ int main() {
   Backtesting::SetMarketDataDirectory("D:/Programming/Backtesting/Data");
   Backtesting::FetchExchangeInfo();
   Backtesting::FetchLeverageBracket();
-  //const vector<string>& symbol_list = {"BTCUSDT"};
-  
+
+  // const vector<string>& symbol_list = {"BTCUSDT"};
 
   const vector<string>& symbol_list = {
-    "BTCUSDT",  "APTUSDT", "ETHUSDT",  "BNBUSDT",  "SOLUSDT",
-    "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT",  "XRPUSDT"};
+      "BTCUSDT"};
 
-  Backtesting::AddBarDataBatch(
-      symbol_list, "1h", "D:/Programming/Backtesting/Data/Continuous Klines",
-      TRADING);
+  Backtesting::AddBarData(symbol_list, "1m",
+                          "D:/Programming/Backtesting/Data/Continuous Klines",
+                          TRADING);
 
-  Backtesting::AddBarDataBatch(
-      symbol_list, "1m", "D:/Programming/Backtesting/Data/Continuous Klines",
-      MAGNIFIER);
 
-  Backtesting::AddBarDataBatch(
-      symbol_list, "1d", "D:/Programming/Backtesting/Data/Continuous Klines",
-      REFERENCE);
 
-  Backtesting::AddBarDataBatch(
-      symbol_list, "1m", "D:/Programming/Backtesting/Data/Mark Price Klines",
-      MARK_PRICE);
+  Backtesting::AddBarData(symbol_list, "1d",
+                          "D:/Programming/Backtesting/Data/Continuous Klines",
+                          REFERENCE);
+
+  Backtesting::AddBarData(symbol_list, "1m",
+                          "D:/Programming/Backtesting/Data/Mark Price Klines",
+                          MARK_PRICE);
 
   Backtesting::AddExchangeInfo(
       "D:/Programming/Backtesting/Data/exchange_info.json");
@@ -87,12 +85,16 @@ int main() {
   Backtesting::SetConfig()
       .SetRootDirectory("D:/Programming/Backtesting")
       .SetBacktestPeriod()
-      .SetUseBarMagnifier(true)
+      .SetUseBarMagnifier(false)
       .SetInitialBalance(10000)
       .SetTakerFeePercentage(0.045)
       .SetMakerFeePercentage(0.018)
-      .SetTakerSlippagePercentage(0.1)
-      .SetMakerSlippagePercentage(0);
+      .SetSlippage(MarketImpactSlippage(1.5))
+      .SetCheckLimitMaxQty(false)
+      .SetCheckLimitMinQty(false)
+      .SetCheckMarketMaxQty(false)
+      .SetCheckMarketMinQty(false)
+      .SetCheckMinNotionalValue(true);
 
   Backtesting::AddStrategy<DiceSystem>("Dice System");
 

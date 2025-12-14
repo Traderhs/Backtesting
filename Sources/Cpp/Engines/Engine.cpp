@@ -1242,7 +1242,7 @@ void Engine::BacktestingMain() {
       const auto original_close_time = current_close_time_;
       bar_->SetCurrentBarType(MAGNIFIER, "");
 
-      // 루프 시작하자마자 시간을 증가시키므로 전 돋보기 바로 시간을 설정
+      // do-while 루프 시작하자마자 시간을 증가시키므로 전 돋보기 바로 시간을 설정
       current_open_time_ = original_open_time - magnifier_bar_time_diff_;
       current_close_time_ = original_open_time - 1;
 
