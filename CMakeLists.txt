@@ -16,7 +16,13 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Build types" FORCE)
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Zi /W4")
 
 # 릴리즈 빌드 설정 (MSVC)
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Oi /Ot /GL /arch:AVX2 /fp:strict /DNDEBUG")
+# /O2: 속도 최적화, /Oi: 내장 함수 사용, /Ot: 빠른 코드 우선
+# /GL: 전체 프로그램 최적화, /arch:AVX2: AVX2 SIMD 명령어
+# /fp:strict: 부동소수점 정밀도, /GS-: 버퍼 보안 검사 비활성화 (성능)
+# /Gy: 함수 수준 링킹, /favor:AMD64: x64 최적화
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Oi /Ot /GL /arch:AVX2 /fp:strict /DNDEBUG /GS- /Gy /favor:AMD64")
+
+# /LTCG: 링크 타임 코드 생성, /OPT:REF: 미사용 함수 제거, /OPT:ICF: 동일 함수 병합
 set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /LTCG /OPT:REF /OPT:ICF /RELEASE")
 
 # 빌드 결과물 경로 설정
