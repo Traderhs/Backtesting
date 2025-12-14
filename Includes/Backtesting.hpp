@@ -11,7 +11,6 @@
 #include "Engines/Config.hpp"
 #include "Engines/Engine.hpp"
 #include "Engines/Logger.hpp"
-#include "Engines/Slippage.hpp"
 #include "Strategies/TestStrategy.hpp"
 
 // 네임 스페이스
@@ -172,33 +171,8 @@ class Backtesting {
         .FetchLeverageBracket();
   }
 
-  /// 주어진 파일 경로에서 Parquet 데이터를 읽고
-  /// 지정된 바 타입으로 처리하여 바 핸들러에 추가하는 함수
-  ///
-  /// @param symbol_name 바 데이터로 추가할 심볼 이름
-  /// @param file_path Parquet 파일의 경로
-  /// @param bar_type 추가할 데이터의 바 타입
-  /// @param open_time_column Open Time 컬럼 인덱스
-  /// @param open_column Open 컬럼 인덱스
-  /// @param high_column High 컬럼 인덱스
-  /// @param low_column Low 컬럼 인덱스
-  /// @param close_column Close 컬럼 인덱스
-  /// @param volume_column Volume 컬럼 인덱스
-  /// @param close_time_column Close Time 컬럼 인덱스
-  static void AddBarData(const string& symbol_name, const string& file_path,
-                         const BarType bar_type, const int open_time_column = 0,
-                         const int open_column = 1, const int high_column = 2,
-                         const int low_column = 3, const int close_column = 4,
-                         const int volume_column = 5,
-                         const int close_time_column = 6) {
-    BarHandler::GetBarHandler()->AddBarData(
-        symbol_name, file_path, bar_type, open_time_column, open_column,
-        high_column, low_column, close_column, volume_column,
-        close_time_column);
-  }
-
   /// 주어진 데이터 폴더에서 각 심볼들의 폴더를 찾아 Parquet 데이터를 읽고
-  /// 지정된 바 타입으로 처리하여 바 핸들러에 추가하는 함수 (병렬 처리 최적화)
+  /// 지정된 바 타입으로 처리하여 바 핸들러에 추가하는 함수
   ///
   /// ※ 바 유형별로 해당 경로를 만족해야 함 ※\n
   /// 트레이딩(돋보기, 참조): 디렉토리/심볼 이름/타임프레임/타임프레임.parquet\n
@@ -215,7 +189,7 @@ class Backtesting {
   /// @param close_column Close 컬럼 인덱스
   /// @param volume_column Volume 컬럼 인덱스
   /// @param close_time_column Close Time 컬럼 인덱스
-  static void AddBarDataBatch(
+  static void AddBarData(
       const vector<string>& symbol_names, const string& timeframe,
       const string& klines_directory, const BarType bar_type,
       const int open_time_column = 0, const int open_column = 1,
@@ -242,8 +216,8 @@ class Backtesting {
       file_paths.emplace_back(move(file_path));
     }
 
-    // 최적화된 배치 처리 함수 사용
-    BarHandler::GetBarHandler()->AddBarDataBatch(
+    // 엔진에 바 데이터 추가
+    BarHandler::GetBarHandler()->AddBarData(
         symbol_names, file_paths, bar_type, open_time_column, open_column,
         high_column, low_column, close_column, volume_column,
         close_time_column);
