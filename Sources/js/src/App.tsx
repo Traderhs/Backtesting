@@ -19,6 +19,7 @@ const plotlyPreloadPromise = import('react-plotly.js').then(module => {
 (window as any).__plotlyPreload = plotlyPreloadPromise;
 
 // 코드 스플리팅으로 탭 컴포넌트들을 lazy 로딩
+const StrategyEditor = lazy(() => import("@/components/StrategyEditor/StrategyEditor"));
 const Overview = lazy(() => import("@/components/Overview/Overview"));
 const Performance = lazy(() => import("@/components/Performance/Performance"));
 const Plot = lazy(() => import("@/components/Plot/Plot"));
@@ -55,20 +56,21 @@ const getMainContentStyle = () => {
 function AppContent() {
     const {serverError} = useWebSocket();
     const {isGlobalLoading} = useLogo(); // 전체 로딩 상태 가져오기
-    const [tab, setTab] = useState("Overview");
-    const [prevTab, setPrevTab] = useState("Overview");
+    const [tab, setTab] = useState("StrategyEditor");
+    const [prevTab, setPrevTab] = useState("StrategyEditor");
     const [animationDirection, setAnimationDirection] = useState<"" | "slide-in-left" | "slide-in-right">("");
     const [isAnimating, setIsAnimating] = useState(false);
     const [isLogTextOptimizing, setIsLogTextOptimizing] = useState(false); // Log 탭 텍스트 최적화 중 상태
 
     // 탭 순서 정의
-    const tabOrder = ["Overview", "Performance", "Plot", "Chart", "TradeList", "Config", "Log"];
+    const tabOrder = ["StrategyEditor", "Overview", "Performance", "Plot", "Chart", "TradeList", "Config", "Log"];
     // 플롯 타입 순서 정의 (애니메이션 방향 결정용)
     const plotTypeOrder = ["equity-drawdown", "profit-loss-comparison", "holding-time-pnl-distribution", "symbol-performance"];
 
     // 각 탭의 방문 상태 추적
     const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>({
-        Overview: true, // 초기 탭은 기본으로 방문한 것으로 설정
+        StrategyEditor: true, // 초기 탭은 기본으로 방문한 것으로 설정
+        Overview: false,
         Performance: false,
         Plot: false,
         Chart: false,
@@ -482,6 +484,19 @@ function AppContent() {
                 <div className={`tab-container ${animationDirection}`}
                      style={{overflow: "hidden", height: "100%"}}>
                     {/* 각 탭 컨텐츠를 방문 상태에 기반하여 조건부 렌더링 */}
+
+                    <div
+                        className={getTabClass("StrategyEditor")}
+                        style={getTabStyle("StrategyEditor")}
+                        data-tab="StrategyEditor"
+                    >
+                        {/* StrategyEditor는 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
+                        {visitedTabs["StrategyEditor"] && (
+                            <Suspense fallback={<div/>}>
+                                <StrategyEditor/>
+                            </Suspense>
+                        )}
+                    </div>
 
                     <div
                         className={getTabClass("Overview")}
