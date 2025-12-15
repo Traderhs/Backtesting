@@ -33,10 +33,12 @@
 //   ◆ 커스텀 전략 및 지표 생성 방법은 Strategy, Indicator 헤더 파일 참조
 //   ◆ 한 백테스팅에는 한 전략만 추가 가능하며, 백보드에서 전략 합성 기능 제공
 //     → 각 전략마다 독립 계좌로 작동 가정
-//   @TODO 추후 자동 매매 전략 가동 시, 코드 따라가며 사소해서 안 했던 거 모두
-//         하고 (슬리피지 시뮬레이션 등), 엔진 최대한 최적화할 것.
-//         또한 백보드에 분석 도구도 많이 추가할 것 (엔진과 연계해서라도)
 //  ============================================================================
+
+// 표준 라이브러리
+#include <iostream>
+#include <sstream>
+#include <string>
 
 // 파일 헤더
 #include "Backtesting.hpp"
@@ -48,7 +50,16 @@ string Backtesting::market_data_directory_;
 string Backtesting::api_key_env_var_;
 string Backtesting::api_secret_env_var_;
 
-int main() {
+int main(int argc, char** argv) {
+  // 서버 모드 플래그 확인
+  bool server_mode = false;
+  for (int i = 1; i < argc; ++i) {
+    if (std::string(argv[i]) == "--server") {
+      server_mode = true;
+      break;
+    }
+  }
+
   // 거래소 정책은 계속 변화하므로 매번 저장
   Backtesting::SetApiEnvVars("BINANCE_API_KEY", "BINANCE_API_SECRET");
   Backtesting::SetMarketDataDirectory("D:/Programming/Backtesting/Data");
@@ -58,13 +69,16 @@ int main() {
   // const vector<string>& symbol_list = {"BTCUSDT"};
 
   const vector<string>& symbol_list = {
-      "BTCUSDT"};
+      "BTCUSDT",  "APTUSDT", "ETHUSDT",  "BNBUSDT", "SOLUSDT",
+      "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT", "XRPUSDT"};
 
-  Backtesting::AddBarData(symbol_list, "1m",
+  Backtesting::AddBarData(symbol_list, "1h",
                           "D:/Programming/Backtesting/Data/Continuous Klines",
                           TRADING);
 
-
+  Backtesting::AddBarData(symbol_list, "1m",
+                          "D:/Programming/Backtesting/Data/Continuous Klines",
+                          MAGNIFIER);
 
   Backtesting::AddBarData(symbol_list, "1d",
                           "D:/Programming/Backtesting/Data/Continuous Klines",
@@ -85,7 +99,7 @@ int main() {
   Backtesting::SetConfig()
       .SetRootDirectory("D:/Programming/Backtesting")
       .SetBacktestPeriod()
-      .SetUseBarMagnifier(false)
+      .SetUseBarMagnifier(true)
       .SetInitialBalance(10000)
       .SetTakerFeePercentage(0.045)
       .SetMakerFeePercentage(0.018)
@@ -98,5 +112,37 @@ int main() {
 
   Backtesting::AddStrategy<DiceSystem>("Dice System");
 
-  Backtesting::Run();
+  // 서버 모드가 아니면 기존처럼 즉시 실행
+  if (!server_mode) {
+    Backtesting::Run();
+    return 0;
+  }
+
+  // 서버 모드: stdin 명령 루프
+  std::cout << "Backtesting server started. Commands: run, shutdown\n" << std::flush;
+  std::string line;
+  while (std::getline(std::cin, line)) {
+    if (line.empty()) continue;
+    
+    std::istringstream iss(line);
+    std::string cmd;
+    iss >> cmd;
+
+    try {
+      if (cmd == "run") {
+        std::cout << "Starting backtest...\n" << std::flush;
+        Backtesting::Run();
+        std::cout << "OK run finished\n" << std::flush;
+      } else if (cmd == "shutdown") {
+        std::cout << "Shutting down\n" << std::flush;
+        break;
+      } else {
+        std::cout << "Unknown command: " << cmd << "\n" << std::flush;
+      }
+    } catch (const std::exception& e) {
+      std::cout << "ERR " << e.what() << "\n" << std::flush;
+    }
+  }
+
+  return 0;
 }

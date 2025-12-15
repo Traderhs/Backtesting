@@ -1,7 +1,7 @@
 const fs = require("fs");
 const fsPromises = fs.promises;
 const path = require("path");
-const {exec} = require("child_process");
+const {exec, spawn} = require("child_process");
 const express = require("express");
 const {readFileSync} = require("fs");
 const {Server: WebSocketServer} = require("ws");
@@ -69,6 +69,14 @@ if (isDevelopment) {
     } catch (e) {
         baseDir = process.cwd();
     }
+}
+
+// 기본적으로 터미널 출력을 완전히 비활성화합니다. 필요 시 환경변수로 활성화하세요.
+// 활성화: $env:LAUNCH_DEBUG_LOGS = "1"
+const DEBUG_LOGS = process.env.LAUNCH_DEBUG_LOGS === '1';
+if (!DEBUG_LOGS) {
+    console.log = () => {};
+    console.error = () => {};
 }
 
 console.log(`[INFO] Running in ${isDevelopment ? 'development' : 'production'} mode`);
@@ -682,9 +690,9 @@ startServer().then(server => {
     // -------------------------------
     const wss = new WebSocketServer({server});
 
-// 서버 종료를 위한 타이머 (모든 클라이언트 연결 종료 후 5초 후 종료)
+// 서버 종료를 위한 타이머 (모든 클라이언트 연결 종료 후 0.5초 후 종료)
     let shutdownTimer = null;
-    const SHUTDOWN_DELAY = 5000;
+    const SHUTDOWN_DELAY = 500;
 
     function scheduleShutdown() {
         if (!shutdownTimer) {
@@ -1087,9 +1095,225 @@ startServer().then(server => {
     }
 
 // -------------------------------
-// 8. WebSocket 메시지 핸들러 등록
+// 8. C++ 백테스트 프로세스 관리
+// -------------------------------
+    let cppProcess = null;
+    const activeClients = new Set();
+    let cppProcessReady = false;
+
+    function broadcastLog(level, message, timestamp, fileInfo) {
+        activeClients.forEach(client => {
+            if (client.readyState === 1) { // WebSocket.OPEN
+                client.send(JSON.stringify({
+                    action: "backtestLog",
+                    level: level,
+                    message: message,
+                    timestamp: timestamp,
+                    fileInfo: fileInfo
+                }));
+            }
+        });
+    }
+
+    // 프로젝트 루트에서 재귀적으로 Backtesting.exe를 찾는 단순화된 탐색기
+    // - 일부 폴더는 탐색에서 제외하여 속도 저하를 방지
+    // - 깊이 제한을 사용하여 무한 루프 방지
+    function findBacktestingExe(startDir) {
+        const ignoredDirs = new Set(['node_modules', '.git', '.vs', 'dist', 'Backboard']);
+        let found = null;
+
+        function walk(dir, depth) {
+            if (found || depth > 10) return;
+            let entries;
+            try {
+                entries = fs.readdirSync(dir, { withFileTypes: true });
+            } catch (e) {
+                return;
+            }
+
+            // 먼저 현재 디렉터리에서 파일 매칭
+            for (const entry of entries) {
+                if (entry.isFile() && entry.name === 'Backtesting.exe') {
+                    found = path.join(dir, entry.name);
+                    return;
+                }
+            }
+
+            // 하위 디렉터리 재귀 탐색
+            for (const entry of entries) {
+                if (found) break;
+                if (!entry.isDirectory()) continue;
+                if (ignoredDirs.has(entry.name)) continue;
+                walk(path.join(dir, entry.name), depth + 1);
+            }
+        }
+
+        walk(startDir, 0);
+        return found;
+    }
+
+    function startCppProcess() {
+        if (cppProcess) {
+            console.log('[INFO] | C++ 프로세스가 이미 실행 중입니다.');
+            return;
+        }
+        // 요청하신 세 경로만 검사합니다.
+        const possiblePaths = [
+            // 1) Backboard.exe와 같은 폴더
+            path.join(path.dirname(process.execPath), 'Backtesting.exe'),
+            // 2) Backboard.exe 폴더 하위의 ./Backboard/Backtesting.exe
+            path.join(path.dirname(process.execPath), 'Backboard', 'Backtesting.exe'),
+            // 3) 고정 경로 (프로젝트 빌드 출력)
+            path.join('d:', 'Programming', 'Backtesting', 'Builds', 'Release', 'Release', 'Backtesting.exe')
+        ];
+
+        let exePath = null;
+        for (const tryPath of possiblePaths) {
+            if (fs.existsSync(tryPath)) {
+                exePath = tryPath;
+                break;
+            }
+        }
+        
+        // 파일 존재 여부 확인
+        if (!exePath) {
+            console.error('[ERROR] | Backtesting.exe 파일을 찾을 수 없습니다. (검사된 경로만 확인됨)');
+            console.error('[ERROR] | 시도한 경로들:', possiblePaths);
+            console.error('[ERROR] | 먼저 C++ 프로젝트를 빌드하거나 지정된 위치로 파일을 복사하세요.');
+            broadcastLog("ERROR", " | Backtesting.exe 파일을 찾을 수 없습니다. C++ 프로젝트를 빌드하거나 지정된 위치로 파일을 복사하세요.", null, null);
+            return;
+        }
+        
+        console.log('[INFO] | C++ 백테스팅 프로세스를 시작합니다...');
+        console.log('[INFO] | 실행 파일:', exePath);
+        console.log('[INFO] | 작업 디렉터리:', baseDir);
+        // 진단용: 시작 시간 측정
+        const spawnStartTime = Date.now();
+        const NO_PARSE = process.env.LAUNCH_NO_PARSE === '1' || process.env.BACKBOARD_NO_PARSE === '1';
+        if (NO_PARSE) console.log('[INFO] | LAUNCH NO_PARSE 모드 활성화: 로그 파싱을 최소화합니다.');
+        
+        try {
+            cppProcess = spawn(exePath, ["--server"], {
+                cwd: baseDir,
+                stdio: ['pipe', 'pipe', 'pipe'],
+                windowsHide: false // 디버깅을 위해 콘솔 창 표시
+            });
+
+            console.log('[INFO] | C++ 프로세스 PID:', cppProcess.pid);
+
+            cppProcess.stdout.on('data', (data) => {
+                const output = data.toString().trim();
+                // 콘솔에 원본 출력은 기본 비활성화(성능 저하 방지).
+                // 디버깅용으로 필요하면 env `LAUNCH_DEBUG_LOGS=1`로 활성화하세요.
+                if (process.env.LAUNCH_DEBUG_LOGS === '1') {
+                    console.log('[INFO] | C++ STDOUT:', output);
+                }
+
+                // ANSI 컬러 코드 제거용 정규식
+                const ansiRegex = /\x1b\[[0-9;]*[mGKHF]/g;
+
+                const lines = output.split('\n');
+                lines.forEach(line => {
+                    if (!line || !line.trim()) return;
+
+                    // 컬러 코드 제거 및 앞뒤 공백 정리
+                    const cleaned = line.replace(ansiRegex, '').trim();
+
+                        // 구분선 최우선 감지 (LogNoFormat으로 전송된 경우 타임스탬프 없이 옴)
+                        if (/^=+$/.test(cleaned) && cleaned.length >= 50) {
+                            broadcastLog("SEPARATOR", "", null, null);
+                            return;
+                        }
+
+                        // "Backtesting server started" 메시지를 받으면 준비 완료
+                        if (cleaned.includes('Backtesting server started')) {
+                            cppProcessReady = true;
+                            const elapsed = Date.now() - spawnStartTime;
+                            console.log(`[INFO] | C++ 엔진 준비 시간: ${elapsed} ms`);
+                            broadcastLog("INFO", ` | C++ 백테스팅 엔진이 준비되었습니다. (${elapsed} ms)`, null, null);
+                            return;
+                        }
+
+                        if (NO_PARSE) {
+                            // 최소 파싱: 에러 키워드 포함 여부로 레벨 추정 후 전송
+                            const level = cleaned.includes('[ERROR]') ? 'ERROR' : 'INFO';
+                            broadcastLog(level, cleaned, null, null);
+                            return;
+                        }
+
+                        // C++ 로그 형식 파싱: [2025-12-15 15:55:10] [INFO] [파일:줄] | 메시지
+                        const logMatch = cleaned.match(/^\[([^\]]+)\]\s*\[([^\]]+?)\]\s*(?:\[([^\]]+)\]\s*)?\|\s*(.*)$/);
+                        if (logMatch) {
+                            const [, timestamp, level, fileInfo, message] = logMatch;
+                            
+                            // 날짜와 시간 사이의 하이픈만 공백으로 변경
+                            const formattedTimestamp = timestamp ? timestamp.replace(/-(?=\d{2}:\d{2}:\d{2}$)/, ' ') : null;
+                            broadcastLog(level, message, formattedTimestamp, fileInfo || null);
+                        } else {
+                            // 파싱 실패 시 컬러 없는 문자열로 원본 전송
+                            broadcastLog("INFO", cleaned, null, null);
+                        }
+                });
+            });
+
+            cppProcess.stderr.on('data', (data) => {
+                const output = data.toString().trim();
+                // ANSI 제거
+                const ansiRegex = /\x1b\[[0-9;]*[mGKHF]/g;
+                const cleaned = output.replace(ansiRegex, '').trim();
+                // STDERR도 기본적으로 콘솔 출력 비활성화. 디버그가 필요하면 env 사용.
+                if (process.env.LAUNCH_DEBUG_LOGS === '1') {
+                    console.error('[C++ STDERR]', cleaned);
+                }
+                broadcastLog("ERROR", cleaned, null, null);
+            });
+
+            cppProcess.on('error', (err) => {
+                console.error('[ERROR] | C++ 프로세스 실행 실패:', err);
+                broadcastLog("ERROR", ` | C++ 프로세스 실행 실패: ${err.message}`, null, null);
+                cppProcess = null;
+                cppProcessReady = false;
+            });
+
+            cppProcess.on('exit', (code, signal) => {
+                console.log(`[INFO] | C++ 프로세스 종료 - 코드: ${code}, 시그널: ${signal}`);
+                broadcastLog(code === 0 ? "INFO" : "ERROR", ` | C++ 프로세스 종료 (코드: ${code})`, null, null);
+                cppProcess = null;
+                cppProcessReady = false;
+            });
+
+            cppProcess.on('close', (code, signal) => {
+                console.log(`[INFO] | C++ 프로세스 close 이벤트 - 코드: ${code}, 시그널: ${signal}`);
+            });
+        } catch (err) {
+            console.error('[ERROR] | C++ 프로세스 spawn 실패:', err);
+            broadcastLog("ERROR", ` | C++ 프로세스 시작 실패: ${err.message}`, null, null);
+        }
+    }
+
+    function runBacktest(ws) {
+        if (!cppProcess || !cppProcessReady) {
+            ws.send(JSON.stringify({action: "backtestLog", level: "ERROR", message: " | C++ 프로세스가 준비되지 않았습니다. 잠시 후 다시 시도해주세요.", timestamp: null, fileInfo: null}));
+            return;
+        }
+
+        broadcastLog("INFO", " | 백테스트를 시작합니다...", null, null);
+        cppProcess.stdin.write("run\n");
+    }
+
+    // launch.js 시작 시 C++ 프로세스 자동 시작
+    startCppProcess();
+
+// -------------------------------
+// 9. WebSocket 메시지 핸들러 등록
 // -------------------------------
     wss.on("connection", (ws) => {
+        activeClients.add(ws);
+
+        ws.on("close", () => {
+            activeClients.delete(ws);
+        });
+
         ws.on("message", async (message) => {
             try {
                 const msg = JSON.parse(message);
@@ -1097,6 +1321,9 @@ startServer().then(server => {
                 switch (msg.action) {
                     case "loadChartData": // 새로운 통합 액션 핸들러
                         await handleLoadChartData(ws, msg);
+                        break;
+                    case "runBacktest":
+                        runBacktest(ws);
                         break;
                     // 기존 loadMore, loadIndicator, loadIndicators 케이스들은 삭제
                     default:
@@ -1110,9 +1337,13 @@ startServer().then(server => {
     });
 
 // -------------------------------
-// 9. 강제 종료 API
+// 10. 강제 종료 API
 // -------------------------------
     function forceShutdown() {
+        if (cppProcess) {
+            cppProcess.stdin.write("shutdown\n");
+            cppProcess.kill();
+        }
         process.exit(0);
     }
 
@@ -1122,7 +1353,7 @@ startServer().then(server => {
     });
 
 // -------------------------------
-// 10. index.html 라우팅 (다른 모든 라우트 뒤)
+// 11. index.html 라우팅 (다른 모든 라우트 뒤)
 // -------------------------------
     app.get("*", (req, res) => {
         res.sendFile(path.join(distPath, "index.html"));

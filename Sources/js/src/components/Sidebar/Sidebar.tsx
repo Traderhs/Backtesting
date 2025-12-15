@@ -7,7 +7,7 @@ import FilterSection from "./FilterSection";
 import './Sidebar.css';
 
 // 탭 순서 정의 (애니메이션 방향 결정에 사용)
-const tabOrder = ["Overview", "Performance", "Plot", "Chart", "TradeList", "Config", "Log"];
+const tabOrder = ["StrategyEditor", "Overview", "Performance", "Plot", "Chart", "TradeList", "Config", "Log"];
 
 // Plot 탭 내부 순서 정의
 const plotTypeOrder = ["equity-drawdown", "profit-loss-comparison", "holding-time-pnl-distribution", "symbol-performance"];
@@ -377,9 +377,29 @@ export default function Sidebar({
 
                 {/* 사이드바 내비게이션 버튼 영역 */}
                 <div className="space-y-5 mt-2 flex flex-col">
+                    {/* 전략 에디터 버튼 - 백테스팅 전략 편집 및 실행 */}
+                    <motion.div
+                        custom={{ index: 0, isActive: activeTab === "StrategyEditor" }}
+                        variants={itemVariants}
+                        initial="hidden"
+                        animate="visible"
+                        whileHover="hover"
+                        whileTap="tap"
+                        className={`gpu-accelerated sidebar-button-container main-button-container ${activeTab === "StrategyEditor" ? "active-sidebar-button" : ""}`}
+                    >
+                        <Button
+                            variant={activeTab === "StrategyEditor" ? "default" : "ghost"}
+                            className={`w-full justify-start sidebar-button ${activeTab === "StrategyEditor" ? "active" : ""}`}
+                            onClick={() => handleTabChange("StrategyEditor")}
+                        >
+                            <img src="Backboard/icon/overview.ico" alt="StrategyEditor" className="sidebar-icon" />
+                            <span className="ml-2 button-text">전략 에디터</span>
+                        </Button>
+                    </motion.div>
+
                     {/* 전체 요약 버튼 - 백테스팅 결과의 전체적인 요약 정보 제공 */}
                     <motion.div
-                        custom={{ index: 0, isActive: activeTab === "Overview" }}
+                        custom={{ index: 1, isActive: activeTab === "Overview" }}
                         variants={itemVariants}
                         initial="hidden"
                         animate="visible"
@@ -399,7 +419,7 @@ export default function Sidebar({
 
                     {/* 성과 지표 버튼 - 백테스팅 성능 메트릭 및 통계 지표 제공 */}
                     <motion.div
-                        custom={{ index: 1, isActive: activeTab === "Performance" }}
+                        custom={{ index: 2, isActive: activeTab === "Performance" }}
                         variants={itemVariants}
                         initial="hidden"
                         animate="visible"
@@ -419,7 +439,7 @@ export default function Sidebar({
 
                     {/* 분석 그래프 버튼 - 백테스팅 결과를 시각화한 그래프 모음 제공 */}
                     <motion.div
-                        custom={{ index: 2, isActive: activeTab === "Plot" }}
+                        custom={{ index: 3, isActive: activeTab === "Plot" }}
                         variants={itemVariants}
                         initial="hidden"
                         animate="visible"
@@ -563,7 +583,7 @@ export default function Sidebar({
 
                     {/* 거래 차트 버튼 - 개별 심볼의 가격 차트와 거래 포인트 표시 */}
                     <motion.div
-                        custom={{ index: 3, isActive: activeTab === "Chart" }}
+                        custom={{ index: 4, isActive: activeTab === "Chart" }}
                         variants={itemVariants}
                         initial="hidden"
                         animate="visible"
@@ -680,7 +700,7 @@ export default function Sidebar({
                     >
                         {/* 거래 내역 버튼 */}
                         <motion.div
-                            custom={{ index: 4, isActive: activeTab === "TradeList" }}
+                            custom={{ index: 5, isActive: activeTab === "TradeList" }}
                             variants={itemVariants}
                             initial="hidden"
                             animate="visible"
@@ -706,7 +726,7 @@ export default function Sidebar({
 
                         {/* 백테스팅 설정 버튼 */}
                         <motion.div
-                            custom={{ index: 5, isActive: activeTab === "Config" }}
+                            custom={{ index: 6, isActive: activeTab === "Config" }}
                             variants={itemVariants}
                             initial="hidden"
                             animate="visible"
@@ -726,7 +746,7 @@ export default function Sidebar({
 
                         {/* 백테스팅 로그 버튼 */}
                         <motion.div
-                            custom={{ index: 6, isActive: activeTab === "Log" }}
+                            custom={{ index: 7, isActive: activeTab === "Log" }}
                             variants={itemVariants}
                             initial="hidden"
                             animate="visible"
