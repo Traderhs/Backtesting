@@ -5,13 +5,13 @@
 #include <string>
 
 // 내부 헤더
-#include "Engines/BarHandler.hpp"
-#include "Engines/BaseBarHandler.hpp"
-#include "Engines/BinanceFetcher.hpp"
-#include "Engines/Config.hpp"
-#include "Engines/Engine.hpp"
-#include "Engines/Logger.hpp"
-#include "Strategies/TestStrategy.hpp"
+#include "BarHandler.hpp"
+#include "BaseBarHandler.hpp"
+#include "BinanceFetcher.hpp"
+#include "Config.hpp"
+#include "Engine.hpp"
+#include "Logger.hpp"
+#include "Strategy.hpp"
 
 // 네임 스페이스
 using namespace backtesting;
@@ -25,19 +25,15 @@ class Backtesting {
   ~Backtesting() = delete;
 
   /// 백테스팅을 실행하는 함수
-  static void Run() {
-    try {
-      Engine::GetEngine()->Backtesting();
-    } catch (...) {
-      Logger::LogAndThrowError("백테스팅 진행 중 오류가 발생했습니다.",
-                               __FILE__, __LINE__);
-    }
-  }
+  static void Run();
+
+  // 서버용 단일 백테스팅 실행
+  static void RunSingleBacktesting(const string& json_str);
 
   /// 엔진에 설정값을 추가하는 함수.
   ///
   /// 반환받은 객체를 통해 설정 함수를 호출하면 됨.
-  static Config& SetConfig() { return Config::SetConfig(); }
+  static Config& SetConfig();
 
   /**
    * API 환경변수 이름을 설정하는 함수
@@ -46,25 +42,14 @@ class Backtesting {
    * @param api_secret_env_var API 시크릿을 저장한 환경변수 이름
    */
   static void SetApiEnvVars(const string& api_key_env_var,
-                            const string& api_secret_env_var) {
-    api_key_env_var_ = api_key_env_var;
-    api_secret_env_var_ = api_secret_env_var;
-  }
+                            const string& api_secret_env_var);
 
   /**
    * 시장 데이터 경로를 설정하는 함수
    *
    * @param market_data_directory 설정할 시장 데이터 폴더
    */
-  static void SetMarketDataDirectory(const string& market_data_directory) {
-    if (!filesystem::exists(market_data_directory)) {
-      Logger::LogAndThrowError(
-          format("지정된 시장 데이터 폴더 [{}]이(가) 존재하지 않습니다: ",
-                 market_data_directory),
-          __FILE__, __LINE__);
-    }
-    market_data_directory_ = market_data_directory;
-  }
+  static void SetMarketDataDirectory(const string& market_data_directory);
 
   /**
    * 지정된 심볼과 시간 프레임에 대해 연속 선물 klines 데이터를
@@ -75,12 +60,7 @@ class Backtesting {
    * @param timeframe 연속 선물 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
    */
   static void FetchContinuousKlines(const string& symbol,
-                                    const string& timeframe) {
-    ValidateSettings();
-    BinanceFetcher(api_key_env_var_, api_secret_env_var_,
-                   market_data_directory_)
-        .FetchContinuousKlines(symbol, timeframe);
-  }
+                                    const string& timeframe);
 
   /**
    * 주어진 심볼과 시간 프레임에 대한 연속 선물 캔들스틱 데이터를
@@ -91,12 +71,7 @@ class Backtesting {
    * @param timeframe 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
    */
   static void UpdateContinuousKlines(const string& symbol,
-                                     const string& timeframe) {
-    ValidateSettings();
-    BinanceFetcher(api_key_env_var_, api_secret_env_var_,
-                   market_data_directory_)
-        .UpdateContinuousKlines(symbol, timeframe);
-  }
+                                     const string& timeframe);
 
   /**
    * 지정된 심볼과 시간 프레임에 대해 마크 가격 캔들스틱 데이터를
@@ -107,12 +82,7 @@ class Backtesting {
    * @param timeframe 마크 가격 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
    */
   static void FetchMarkPriceKlines(const string& symbol,
-                                   const string& timeframe) {
-    ValidateSettings();
-    BinanceFetcher(api_key_env_var_, api_secret_env_var_,
-                   market_data_directory_)
-        .FetchMarkPriceKlines(symbol, timeframe);
-  }
+                                   const string& timeframe);
 
   /**
    * 주어진 심볼과 시간 프레임에 대한 마크 가격 캔들스틱 데이터를
@@ -123,24 +93,14 @@ class Backtesting {
    * @param timeframe 마크 가격 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
    */
   static void UpdateMarkPriceKlines(const string& symbol,
-                                    const string& timeframe) {
-    ValidateSettings();
-    BinanceFetcher(api_key_env_var_, api_secret_env_var_,
-                   market_data_directory_)
-        .UpdateMarkPriceKlines(symbol, timeframe);
-  }
+                                    const string& timeframe);
   /**
    * 지정된 심볼에 대해 펀딩 비율 데이터를 Fetch 후 json 형식으로 저장하는 함수
    *
    * @param symbol 펀딩 비율 데이터를 가져올
    *               거래 쌍 심볼(예: "BTCUSDT")
    */
-  static void FetchFundingRates(const string& symbol) {
-    ValidateSettings();
-    BinanceFetcher(api_key_env_var_, api_secret_env_var_,
-                   market_data_directory_)
-        .FetchFundingRates(symbol);
-  }
+  static void FetchFundingRates(const string& symbol);
 
   /**
    * 주어진 심볼에 대한 펀딩 비율 데이터를 업데이트하는 함수
@@ -148,28 +108,13 @@ class Backtesting {
    * @param symbol 업데이트 할 펀딩 비율 데이터의
    *               거래 쌍 심볼(예: "BTCUSDT")
    */
-  static void UpdateFundingRates(const string& symbol) {
-    ValidateSettings();
-    BinanceFetcher(api_key_env_var_, api_secret_env_var_,
-                   market_data_directory_)
-        .UpdateFundingRates(symbol);
-  }
+  static void UpdateFundingRates(const string& symbol);
 
   /// 바이낸스 선물 거래소 정보를 Fetch하고 저장하는 함수
-  static void FetchExchangeInfo() {
-    ValidateSettings();
-    BinanceFetcher(api_key_env_var_, api_secret_env_var_,
-                   market_data_directory_)
-        .FetchExchangeInfo();
-  }
+  static void FetchExchangeInfo();
 
   /// 바이낸스 레버리지 구간을 Fecth하고 저장하는 함수
-  static void FetchLeverageBracket() {
-    ValidateSettings();
-    BinanceFetcher(api_key_env_var_, api_secret_env_var_,
-                   market_data_directory_)
-        .FetchLeverageBracket();
-  }
+  static void FetchLeverageBracket();
 
   /// 주어진 데이터 폴더에서 각 심볼들의 폴더를 찾아 Parquet 데이터를 읽고
   /// 지정된 바 타입으로 처리하여 바 핸들러에 추가하는 함수
@@ -189,49 +134,20 @@ class Backtesting {
   /// @param close_column Close 컬럼 인덱스
   /// @param volume_column Volume 컬럼 인덱스
   /// @param close_time_column Close Time 컬럼 인덱스
-  static void AddBarData(
-      const vector<string>& symbol_names, const string& timeframe,
-      const string& klines_directory, const BarType bar_type,
-      const int open_time_column = 0, const int open_column = 1,
-      const int high_column = 2, const int low_column = 3,
-      const int close_column = 4, const int volume_column = 5,
-      const int close_time_column = 6) {
-    if (symbol_names.empty()) {
-      return;
-    }
-
-    // 파일 경로들을 미리 계산
-    vector<string> file_paths;
-    file_paths.reserve(symbol_names.size());
-
-    for (const string& symbol_name : symbol_names) {
-      string file_path;
-      if (bar_type == MARK_PRICE) {
-        file_path = format("{}/{}/{}.parquet", klines_directory, symbol_name,
-                           timeframe);
-      } else {
-        file_path = format("{}/{}/{}/{}.parquet", klines_directory, symbol_name,
-                           timeframe, timeframe);
-      }
-      file_paths.emplace_back(move(file_path));
-    }
-
-    // 엔진에 바 데이터 추가
-    BarHandler::GetBarHandler()->AddBarData(
-        symbol_names, file_paths, bar_type, open_time_column, open_column,
-        high_column, low_column, close_column, volume_column,
-        close_time_column);
-  }
+  static void AddBarData(const vector<string>& symbol_names,
+                         const string& timeframe,
+                         const string& klines_directory, const BarType bar_type,
+                         const int open_time_column = 0,
+                         const int open_column = 1, const int high_column = 2,
+                         const int low_column = 3, const int close_column = 4,
+                         const int volume_column = 5,
+                         const int close_time_column = 6);
 
   /// 거래소 정보를 엔진에 추가하는 함수
-  static void AddExchangeInfo(const string& exchange_info_path) {
-    Engine::AddExchangeInfo(exchange_info_path);
-  }
+  static void AddExchangeInfo(const string& exchange_info_path);
 
   /// 레버리지 구간을 엔진에 추가하는 함수
-  static void AddLeverageBracket(const string& leverage_bracket_path) {
-    Engine::AddLeverageBracket(leverage_bracket_path);
-  }
+  static void AddLeverageBracket(const string& leverage_bracket_path);
 
   /**
    * 펀딩 비율 데이터를 엔진에 추가하는 함수
@@ -241,9 +157,7 @@ class Backtesting {
    * @param funding_rates_directory 펀딩 비율 JSON 파일들이 위치한 디렉토리 경로
    */
   static void AddFundingRates(const vector<string>& symbol_names,
-                              const string& funding_rates_directory) {
-    Engine::AddFundingRates(symbol_names, funding_rates_directory);
-  }
+                              const string& funding_rates_directory);
 
   /// 엔진에 전략을 추가하는 함수.
   ///
@@ -262,21 +176,7 @@ class Backtesting {
 
  private:
   /// 설정값들이 올바르게 설정되었는지 검증하는 함수
-  static void ValidateSettings() {
-    if (market_data_directory_.empty()) {
-      Logger::LogAndThrowError(
-          "시장 데이터 경로가 설정되지 않았습니다. "
-          "Backtesting::SetMarketDataDirectory 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
-    }
-
-    if (api_key_env_var_.empty() || api_secret_env_var_.empty()) {
-      Logger::LogAndThrowError(
-          "API 환경변수가 설정되지 않았습니다. "
-          "Backtesting::SetApiEnvVars 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
-    }
-  }
+  static void ValidateSettings();
 
   static string market_data_directory_;
   static string api_key_env_var_;

@@ -40,20 +40,18 @@ find_package(ZLIB REQUIRED)
 # ======================================================================================================================
 # Backtesting 설정
 file(GLOB HEADERS   # 해당 경로에서 hpp 파일들을 GLOB
-        "Includes/Backtesting.hpp"
-        "Includes/Engines/*.hpp"
-        "Includes/Indicators/*.hpp"
-        "Includes/Strategies/*.hpp")
-file(GLOB SOURCES  # 해당 경로에서 cpp 파일들을 GLOB
-        "Sources/cpp/Backtesting.cpp"
-        "Sources/cpp/Engines/*.cpp"
-        "Sources/cpp/Indicators/*.cpp"
-        "Sources/cpp/Strategies/*.cpp")
+        "Includes/*.hpp"                        # 엔진 헤더
+        "Backboard/Includes/Indicators/*.hpp"   # 지표 헤더
+        "Backboard/Includes/Strategies/*.hpp")  # 전략 헤더
+file(GLOB SOURCES  # 해당 경로에서 cpp 파일들을 GLOB 
+        "Sources/cpp/*.cpp"                        # 엔진 소스
+        "Backboard/Sources/Indicators/*.cpp"       # Backboard 지표 소스
+        "Backboard/Sources/Strategies/*.cpp")      # Backboard 전략 소스
 
 add_executable(Backtesting ${SOURCES}) # 실행 파일 Backtesting을 ${SOURCES} 소스 파일로 생성
 target_include_directories(Backtesting PRIVATE # Backtesting 타겟에 포함 디렉터리 경로 추가
-        Includes
-        Sources/Cpp
+        ${CMAKE_SOURCE_DIR}/Includes
+        ${CMAKE_SOURCE_DIR}/Backboard/Includes
         D:/vcpkg/installed/x64-windows/include)
 target_link_directories(Backtesting PRIVATE
         D:/vcpkg/installed/x64-windows/lib)

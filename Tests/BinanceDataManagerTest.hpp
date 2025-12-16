@@ -6,7 +6,7 @@
 #include <gtest/gtest.h>
 
 // 내부 헤더
-#include "Engines/BinanceBarDataManager.hpp"
+#include "BinanceBarDataManager.hpp"
 
 using namespace std;
 
