@@ -14,10 +14,26 @@ const Month = 30 * Day; // 대략적인 한 달
 
 // timeframe 파싱 함수 - 초 단위로 반환
 function parseTimeframe(timeframe: string): number {
-    const unit = timeframe.slice(-1);
-    const value = parseInt(timeframe.slice(0, -1));
+    // ms는 두 글자 단위
+    let unit: string;
+    let valueStr: string;
+
+    if (timeframe.endsWith('ms')) {
+        unit = 'ms';
+        valueStr = timeframe.slice(0, -2);
+    } else {
+        unit = timeframe.slice(-1);
+        valueStr = timeframe.slice(0, -1);
+    }
+
+    const value = parseInt(valueStr);
     if (isNaN(value)) return Minute;
+
     switch (unit) {
+        case 'ms':
+            return value / 1000; // ms -> seconds
+        case 's':
+            return value; // seconds
         case 'm':
             return value * Minute;  // 분 단위를 초로 변환
         case 'h':
@@ -35,9 +51,18 @@ function parseTimeframe(timeframe: string): number {
 
 // timeframe 단위 → 한글 단위 변환 함수
 const timeframeUnitToKorean = (timeframe: string): string => {
-    if (!timeframe) return '초';
+    if (!timeframe) {
+        return '초';
+    }
+
+    if (timeframe.endsWith('ms')) {
+        return '밀리초';
+    }
+
     const unit = timeframe.slice(-1);
     switch (unit) {
+        case 's':
+            return '초';
         case 'm':
             return '분';
         case 'h':

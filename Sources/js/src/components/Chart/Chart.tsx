@@ -36,10 +36,28 @@ const Week = 7 * Day;
 const Month = 30 * Day;
 
 function parseTimeframe(timeframe: string): number {
-    const unit = timeframe.slice(-1);
-    const value = parseInt(timeframe.slice(0, -1));
-    if (isNaN(value)) return Minute / 1000;
+    // 'ms' (밀리초)는 두 글자 단위이므로 우선 처리
+    let unit: string;
+    let valueStr: string;
+
+    if (timeframe.endsWith('ms')) {
+        unit = 'ms';
+        valueStr = timeframe.slice(0, -2);
+    } else {
+        unit = timeframe.slice(-1);
+        valueStr = timeframe.slice(0, -1);
+    }
+
+    const value = parseInt(valueStr);
+    if (isNaN(value)) {
+        return Minute / 1000;
+    }
+
     switch (unit) {
+        case 'ms':
+            return (value) / 1000; // ms -> seconds
+        case 's':
+            return (value * Second) / 1000;
         case 'm':
             return (value * Minute) / 1000;
         case 'h':
