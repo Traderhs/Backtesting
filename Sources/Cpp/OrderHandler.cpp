@@ -2554,7 +2554,7 @@ void OrderHandler::FillPendingExitOrder(
 
         LogFormattedInfo(
             INFO_L,
-            format("{} [{}] 주문 취소 (원본 진입 강제 청산)",
+            format("{} [{}] 주문 취소 (원본 진입 전량 청산)",
                    Order::OrderTypeToString(pending_exit->GetExitOrderType()),
                    pending_exit->GetExitName()),
             __FILE__, __LINE__);
