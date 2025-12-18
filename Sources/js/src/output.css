@@ -22096,7 +22096,7 @@
 }
 
 .font-sans{
-  font-family: Inter, sans-serif;
+  font-family: Inter, Pretendard, sans-serif;
 }
 
 .font-serif{
@@ -53993,7 +53993,7 @@ body {
   }
 
   .sm\:font-sans{
-    font-family: Inter, sans-serif;
+    font-family: Inter, Pretendard, sans-serif;
   }
 
   .sm\:font-serif{
@@ -84920,7 +84920,7 @@ body {
   }
 
   .md\:font-sans{
-    font-family: Inter, sans-serif;
+    font-family: Inter, Pretendard, sans-serif;
   }
 
   .md\:font-serif{
@@ -115847,7 +115847,7 @@ body {
   }
 
   .lg\:font-sans{
-    font-family: Inter, sans-serif;
+    font-family: Inter, Pretendard, sans-serif;
   }
 
   .lg\:font-serif{
@@ -146774,7 +146774,7 @@ body {
   }
 
   .xl\:font-sans{
-    font-family: Inter, sans-serif;
+    font-family: Inter, Pretendard, sans-serif;
   }
 
   .xl\:font-serif{
@@ -177701,7 +177701,7 @@ body {
   }
 
   .\32xl\:font-sans{
-    font-family: Inter, sans-serif;
+    font-family: Inter, Pretendard, sans-serif;
   }
 
   .\32xl\:font-serif{

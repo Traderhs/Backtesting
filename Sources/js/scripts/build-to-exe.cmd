@@ -1,6 +1,7 @@
 @echo off
 
-set PATH=C:\Users\0908r\AppData\Roaming\JetBrains\WebStorm2025.1\node\versions\22.18.0;%PATH%
+rem 스크립트 실행 위치와 무관하게 Sources/js를 기준으로 동작
+pushd "%~dp0.."
 
 echo [Build] PKG 기반 단일 EXE 빌드를 시작합니다.
 
@@ -29,3 +30,5 @@ xcopy /E /I /H /Y Backboard dist\Backboard\
 echo [Complete] PKG 빌드가 완료되었습니다!
 
 pause
+
+popd
