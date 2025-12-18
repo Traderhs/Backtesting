@@ -1,7 +1,8 @@
 ﻿@echo off
 setlocal enabledelayedexpansion
 
-cd d:\Programming\Backtesting\Sources\js
+rem 스크립트 실행 위치와 무관하게 Sources/js를 기준으로 동작
+pushd "%~dp0.."
 
 echo [Tailwind] 빌드 여부를 확인합니다.
 set TW_SRC_TICKS=0
@@ -21,9 +22,15 @@ if "!RES!"=="GTR" (
 :TW_DONE
 if "%NEEDS_TW_BUILD%"=="true" (
   echo [Tailwind] 빌드를 시작합니다.
-  call "C:\Users\0908r\AppData\Roaming\JetBrains\WebStorm2025.1\node\versions\22.18.0\npx.cmd" tailwindcss-cli -i src\index.css -o src\output.css
+  if not exist node_modules\\.bin\\tailwindcss-cli.cmd (
+    echo [Tailwind] node_modules가 없습니다. 먼저 npm install을 실행하세요.
+    popd
+    exit /b 1
+  )
+  call node_modules\\.bin\\tailwindcss-cli.cmd -c config\tailwind.config.js -i src\index.css -o src\output.css
   if errorlevel 1 (
     echo [Tailwind] 빌드가 실패했습니다.
+    popd
     exit /b 1
   ) else (
     echo [Tailwind] 빌드가 완료되었습니다.
@@ -79,6 +86,8 @@ for /f "skip=1 tokens=1" %%p in ('wmic process where "CommandLine like '%%launch
 echo.
 echo [Launch] 앱을 실행합니다.
 start "" /B node launch.js
+
+popd
 
 exit /b 0
 

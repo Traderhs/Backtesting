@@ -26,7 +26,7 @@ export default defineConfig({
             },
         },
         chunkSizeWarningLimit: 1000,
-        sourcemap: false,
+        sourcemap: true,
         reportCompressedSize: false,
     },
     esbuild: {
@@ -37,7 +37,7 @@ export default defineConfig({
     },
     resolve: {
         alias: {
-            '@': path.resolve(__dirname, 'src'),
+            '@': path.resolve(__dirname, '..', 'src'),
         }
     },
     server: {
