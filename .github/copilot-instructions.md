@@ -1,6 +1,14 @@
 ## 요약
 이 파일은 AI 코딩 에이전트가 이 리포지토리에서 즉시 생산적으로 작업할 수 있도록 핵심 정보를 제공합니다. 다중 심볼 포트폴리오 백테스팅 시스템으로, C++ 고성능 엔진과 React/TypeScript 웹 UI로 구성되어 있습니다.
 
+## 코딩 및 답변 스타일
+0. 명령한 작업만 수행할 것.
+1. 사용자의 코딩 스타일을 그대로 유지
+2. 코드는 구글 스타일 가이드에 맞게 예쁘게 작성할 것.
+3. 주석은 한글로 작성
+4. 주석은 '기능 추가'에 대한 설명은 금지. 기능에 대한 단순 설명만 허용.
+5. 사용자에 대한 답변도 한글로 작성
+
 ## 한 줄로 보는 큰 그림
 - **메인 엔진**: C++20 백테스팅 실행 파일 (`Backtesting.exe`) — 벡터화된 고속 백테스팅, Parquet 기반 데이터 처리
 - **웹 UI**: Vite + React + TypeScript 앱 (`Backboard.exe`) — 성과 분석, 차트 시각화, 트레이드 리스트
@@ -25,7 +33,7 @@
    - `operator[]`: 지표 값 참조 (예: `sma[0]`은 현재 바, `sma[1]`은 1봉 전)
 5. **OrderHandler** (`OrderHandler.hpp`): 주문 접수, 체결 확인, 포지션 관리.
    - 진입 유형: `MarketEntry`, `LimitEntry`, `MitEntry`, `LitEntry`, `TrailingEntry`
-   - 청산 유형: `MarketExit`, `LimitExit`, `StopExit`, `TrailingExit`
+   - 청산 유형: `MarketExit`, `LimitExit`, `MitExit`, `LitExit`, `TrailingExit`
    - **격리 마진(Isolated)**: 각 진입은 독립적으로 마진 관리, 단방향 동시 진입만 가능
 6. **BarHandler** (`BarHandler.hpp`, `BarData.hpp`): Parquet 데이터 로드 및 벡터화 저장.
    - `Bar` 구조체: `{open_time, open, high, low, close, volume, close_time}`
@@ -402,31 +410,6 @@ Numeric<double> MyIndicator::Calculate() {
 ## 통합 포인트 & 의존성
 
 ### C++ ↔ 프론트엔드 데이터 계약
-**출력 디렉터리 구조**:
-```
-Results/
-  └── {YYYYMMDD_HHMMSS}/
-      ├── config.json          # 백테스팅 설정 (Config 클래스 직렬화)
-      ├── equity.parquet       # 시간별 자산 곡선 (wallet_balance, unrealized_pnl)
-      ├── trades.parquet       # 개별 트레이드 상세
-      └── indicators.parquet   # 지표 값 (플롯 활성화 시)
-```
-
-**Parquet 스키마** (`trades.parquet`):
-| 컬럼             | 타입     | 설명                          |
-|------------------|----------|-------------------------------|
-| `symbol`         | `string` | 심볼 이름                     |
-| `entry_name`     | `string` | 진입 주문 이름                |
-| `exit_name`      | `string` | 청산 주문 이름                |
-| `direction`      | `string` | `"LONG"` / `"SHORT"`          |
-| `entry_price`    | `double` | 진입 가격                     |
-| `exit_price`     | `double` | 청산 가격                     |
-| `size`           | `double` | 포지션 크기 (레버리지 미포함) |
-| `pnl`            | `double` | 실현 손익                     |
-| `entry_time`     | `int64`  | 진입 시각 (밀리초 epoch)      |
-| `exit_time`      | `int64`  | 청산 시각 (밀리초 epoch)      |
-| `leverage`       | `int`    | 레버리지                      |
-
 **JSON 스키마** (`config.json`):
 ```json
 {

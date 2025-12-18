@@ -7,14 +7,25 @@
 #include "BaseBarHandler.hpp"
 
 // 전방 선언
+namespace backtesting::main {
+class Backtesting;
+}
+
 namespace arrow {
 class Table;
+}
+
+// 네임 스페이스
+namespace backtesting {
+using namespace main;
 }
 
 namespace backtesting::bar {
 
 /// 바 데이터를 추가하고 세부 관리 및 처리를 하는 클래스
 class BarHandler final : public BaseBarHandler {
+  friend class Backtesting;
+
  public:
   // 싱글톤 특성 유지
   BarHandler(const BarHandler&) = delete;             // 복사 생성자 삭제
@@ -28,7 +39,7 @@ class BarHandler final : public BaseBarHandler {
   ///
   /// @param symbol_names 심볼 이름들
   /// @param file_paths 각 심볼에 대응하는 Parquet 파일 경로들
-  /// @param bar_type 추가할 데이터의 바 타입
+  /// @param bar_type 추가할 데이터의 바 데이터 유형
   /// @param open_time_column Open Time 컬럼 인덱스
   /// @param open_column Open 컬럼 인덱스
   /// @param high_column High 컬럼 인덱스
@@ -122,6 +133,9 @@ class BarHandler final : public BaseBarHandler {
 
   /// 지정된 타임프레임이 레퍼런스 바에 존재하는지 검증하는 함수
   void IsValidReferenceBarTimeframe(const string& timeframe);
+
+  /// 모든 바 데이터를 초기화하는 함수
+  void ClearBarData();
 };
 
 }  // namespace backtesting::bar

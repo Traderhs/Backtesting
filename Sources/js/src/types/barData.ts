@@ -1,8 +1,8 @@
 /**
  * 바 데이터 타입 열거형
- * C++ BarType enum과 일치
+ * C++ BarDataType enum과 일치
  */
-export enum BarType {
+export enum BarDataType {
     TRADING = '트레이딩',
     MAGNIFIER = '돋보기',
     REFERENCE = '참조',
@@ -34,10 +34,9 @@ export interface TimeframeConfig {
  * 바 데이터 설정
  */
 export interface BarDataConfig {
-    symbols: string[];          // 심볼 목록
-    timeframe: TimeframeConfig; // 타임프레임 (숫자 + 단위)
-    directoryPath: string;      // 바 데이터 폴더 경로
-    type: BarType;             // 바 데이터 타입
+    timeframe: TimeframeConfig;   // 타임프레임 (숫자 + 단위)
+    klinesDirectory: string;      // 바 데이터 폴더 경로
+    barDataType: BarDataType;     // 바 데이터 타입
 }
 
 /**
