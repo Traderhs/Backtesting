@@ -1,6 +1,7 @@
 ﻿// 표준 라이브러리
 #include <algorithm>
 #include <any>
+#include <atomic>
 #include <chrono>
 #include <cstdlib>
 #include <execution>
@@ -9,6 +10,7 @@
 #include <future>
 #include <iomanip>
 #include <iostream>
+#include <mutex>
 #include <numeric>
 #include <thread>
 
@@ -114,71 +116,59 @@ string ExtractClassName(const string& type_name) {
 
 shared_ptr<arrow::Table> ReadParquet(const string& file_path,
                                      const vector<int>& column_indices) {
-  try {
-    // 메모리 맵 파일 열기
-    const auto& memory_mapped_result =
-        arrow::io::MemoryMappedFile::Open(file_path, arrow::io::FileMode::READ);
+  // 메모리 맵 파일 열기
+  const auto& memory_mapped_result =
+      arrow::io::MemoryMappedFile::Open(file_path, arrow::io::FileMode::READ);
 
-    if (!memory_mapped_result.ok()) {
-      Logger::LogAndThrowError("파일을 열 수 없습니다: " + file_path, __FILE__,
-                               __LINE__);
-    }
-
-    const auto& random_access_file = memory_mapped_result.ValueOrDie();
-    const auto memory_pool = arrow::default_memory_pool();
-
-    // Parquet Reader 속성
-    parquet::ReaderProperties parquet_props =
-        parquet::default_reader_properties();
-    parquet_props.set_buffer_size(128 * 1024 * 1024);  // 128MB
-    parquet_props.enable_buffered_stream();
-
-    // Arrow Reader 속성
-    parquet::ArrowReaderProperties arrow_props;
-    arrow_props.set_batch_size(1048576);  // 1M
-    arrow_props.set_pre_buffer(true);
-    arrow_props.set_use_threads(true);
-
-    // Parquet FileReader 생성
-    auto parquet_reader =
-        parquet::ParquetFileReader::Open(random_access_file, parquet_props);
-
-    // Arrow FileReader 생성
-    unique_ptr<parquet::arrow::FileReader> arrow_reader;
-    PARQUET_THROW_NOT_OK(parquet::arrow::FileReader::Make(
-        memory_pool, move(parquet_reader), arrow_props, &arrow_reader));
-    arrow_reader->set_use_threads(true);
-
-    // Row Group 병렬 읽기
-    const int num_row_groups = arrow_reader->num_row_groups();
-    vector<int> row_group_indices(num_row_groups);
-    iota(row_group_indices.begin(), row_group_indices.end(), 0);
-
-    // Table 읽기
-    shared_ptr<arrow::Table> table;
-
-    if (column_indices.empty()) {
-      // 모든 컬럼을 Row Group 단위로 병렬 읽기
-      PARQUET_THROW_NOT_OK(
-          arrow_reader->ReadRowGroups(row_group_indices, &table));
-    } else {
-      // 지정된 컬럼만 Row Group 단위로 병렬 읽기
-      PARQUET_THROW_NOT_OK(arrow_reader->ReadRowGroups(row_group_indices,
-                                                       column_indices, &table));
-    }
-
-    return table;
-  } catch (const parquet::ParquetException& e) {
-    Logger::LogAndThrowError(
-        "Parquet 데이터 경로가 유효하지 않습니다.: " + string(e.what()),
-        __FILE__, __LINE__);
-    return nullptr;
-  } catch (const exception& e) {
-    Logger::LogAndThrowError(
-        "파일 읽기 중 오류가 발생했습니다: " + string(e.what()), __FILE__,
-        __LINE__);
-    return nullptr;
+  if (!memory_mapped_result.ok()) {
+    throw runtime_error(
+        format("[{}] 경로의 Parquet 파일을 열 수 없습니다.", file_path));
   }
+
+  const auto& random_access_file = memory_mapped_result.ValueOrDie();
+  const auto memory_pool = arrow::default_memory_pool();
+
+  // Parquet Reader 속성
+  parquet::ReaderProperties parquet_props =
+      parquet::default_reader_properties();
+  parquet_props.set_buffer_size(128 * 1024 * 1024);  // 128MB
+  parquet_props.enable_buffered_stream();
+
+  // Arrow Reader 속성
+  parquet::ArrowReaderProperties arrow_props;
+  arrow_props.set_batch_size(1048576);  // 1M
+  arrow_props.set_pre_buffer(true);
+  arrow_props.set_use_threads(true);
+
+  // Parquet FileReader 생성
+  auto parquet_reader =
+      parquet::ParquetFileReader::Open(random_access_file, parquet_props);
+
+  // Arrow FileReader 생성
+  unique_ptr<parquet::arrow::FileReader> arrow_reader;
+  PARQUET_THROW_NOT_OK(parquet::arrow::FileReader::Make(
+      memory_pool, move(parquet_reader), arrow_props, &arrow_reader));
+  arrow_reader->set_use_threads(true);
+
+  // Row Group 병렬 읽기
+  const int num_row_groups = arrow_reader->num_row_groups();
+  vector<int> row_group_indices(num_row_groups);
+  iota(row_group_indices.begin(), row_group_indices.end(), 0);
+
+  // Table 읽기
+  shared_ptr<arrow::Table> table;
+
+  if (column_indices.empty()) {
+    // 모든 컬럼을 Row Group 단위로 병렬 읽기
+    PARQUET_THROW_NOT_OK(
+        arrow_reader->ReadRowGroups(row_group_indices, &table));
+  } else {
+    // 지정된 컬럼만 Row Group 단위로 병렬 읽기
+    PARQUET_THROW_NOT_OK(
+        arrow_reader->ReadRowGroups(row_group_indices, column_indices, &table));
+  }
+
+  return table;
 }
 
 vector<shared_ptr<arrow::Table>> ReadParquetBatch(
@@ -195,14 +185,36 @@ vector<shared_ptr<arrow::Table>> ReadParquetBatch(
   iota(indices.begin(), indices.end(), 0);
 
   // 완전 병렬 처리 - 컬럼 프로젝션 적용
+  exception_ptr first_exception = nullptr;
+  mutex exc_mutex;
+  atomic stop_flag{false};
+
   for_each(execution::par_unseq, indices.begin(), indices.end(),
            [&](const size_t idx) {
+             // 이미 예외가 발생했으면 즉시 종료
+             if (stop_flag.load(memory_order_acquire)) {
+               return;
+             }
+
              try {
                results[idx] = ReadParquet(file_paths[idx], column_indices);
              } catch (...) {
+               // 첫 번째 예외만 저장하고 즉시 stop_flag를 세워 다른 작업을 종료
+               lock_guard lock(exc_mutex);
+
+               if (!first_exception) {
+                 first_exception = current_exception();
+                 stop_flag.store(true, memory_order_release);
+               }
+
                results[idx] = nullptr;
              }
            });
+
+  // 병렬 루프에서 예외가 발생했으면 즉시 상위로 전파
+  if (first_exception) {
+    rethrow_exception(first_exception);
+  }
 
   return results;
 }
@@ -493,67 +505,69 @@ string FormatPercentage(double percentage, const bool use_rounding) {
   // 2. 스택 버퍼 할당 (힙 할당 제거)
   // double의 최대 자릿수 + 부호 + 소수점 + '%' + 여유분 고려 시 64바이트면 충분
   char buffer[64];
-  char* ptr = buffer;
+  char* pt = buffer;
 
   // 3. 부호 처리 (변환 함수에 넘기기 전 직접 처리하여 제어권 확보)
   if (percentage < 0) {
-    *ptr++ = '-';
+    *pt++ = '-';
     percentage = -percentage;
   }
 
   // 4. 숫자 변환
-  to_chars_result result;
+  auto [ptr, ec] = [&]() -> to_chars_result {
+    if (use_rounding) {
+      int precision = 2;  // 기본 정밀도
 
-  if (use_rounding) {
-    int precision = 2;  // 기본 정밀도
+      // 0이 아니고 0.01 미만일 때만 정밀도 계산 (log 연산 비용 최소화)
+      if (percentage > 0.0 && percentage < 0.01) {
+        // log10은 무겁지만 필요악. 근사치 테이블을 쓰지 않는 한 유지.
+        // 하지만 호출 빈도가 낮다면 큰 문제 없음.
+        const double log_val = -log10(percentage);
+        precision = min(10, static_cast<int>(ceil(log_val)) + 1);
+      }
 
-    // 0이 아니고 0.01 미만일 때만 정밀도 계산 (log 연산 비용 최소화)
-    if (percentage > 0.0 && percentage < 0.01) {
-      // log10은 무겁지만 필요악. 근사치 테이블을 쓰지 않는 한 유지.
-      // 하지만 호출 빈도가 낮다면 큰 문제 없음.
-      const double log_val = -log10(percentage);
-      precision = min(10, static_cast<int>(ceil(log_val)) + 1);
+      // fixed 포맷으로 변환
+      return to_chars(pt, buffer + sizeof(buffer), percentage,
+                      chars_format::fixed, precision);
     }
 
-    // fixed 포맷으로 변환
-    result = to_chars(ptr, buffer + sizeof(buffer), percentage,
-                      chars_format::fixed, precision);
-  } else {
     // [Non-rounding 모드]
     // 과학적 표기법 방지를 위해 fixed 사용.
     // precision을 15(double 유효자리)로 넉넉히 주어 잘림 방지.
-    result = to_chars(ptr, buffer + sizeof(buffer), percentage,
+    auto r = to_chars(pt, buffer + sizeof(buffer), percentage,
                       chars_format::fixed, 15);
 
     // [Trailing Zeros 제거 - 포인터 연산 최적화]
-    // result.ptr은 숫자가 쓰여진 바로 다음 위치를 가리킴
-    char* end_ptr = result.ptr - 1;
+    // r.ptr은 숫자가 쓰여진 바로 다음 위치를 가리킴
+    char* end_ptr = r.ptr - 1;
 
     // 소수점이 있는지 확인 (정수일 경우 0을 지우면 안 되므로)
     // to_chars의 fixed는 항상 소수점을 포함할 수 있으므로 안전하게 처리
     // 스캔 비용을 줄이기 위해 일단 뒤에서부터 '0'을 찾음
-    while (end_ptr > ptr && *end_ptr == '0') {
+    while (end_ptr > pt && *end_ptr == '0') {
       end_ptr--;
     }
 
     // 만약 마지막이 소수점('.')이라면 그것도 제거
-    if (end_ptr > ptr && *end_ptr == '.') {
+    if (end_ptr > pt && *end_ptr == '.') {
       end_ptr--;
     }
 
     // 유효한 끝 지점으로 포인터 업데이트
-    result.ptr = end_ptr + 1;
-  }
+    r.ptr = end_ptr + 1;
+
+    return r;
+  }();
 
   // 5. '%' 기호 추가
-  if (result.ec == errc()) {
-    *result.ptr = '%';
-    result.ptr++;
+  if (ec == errc()) {
+    *ptr = '%';
+    ptr++;
   }
 
   // 6. string 생성 (여기서만 힙 할당 1회 발생 - 반환 타입이 string이므로
   // 불가피) 포인터 차이를 이용해 길이를 계산하므로 strlen() 비용 없음
-  return string(buffer, result.ptr - buffer);
+  return {buffer, static_cast<string::size_type>(ptr - buffer)};
 }
 
 string ToFixedString(const double value, const int precision) {

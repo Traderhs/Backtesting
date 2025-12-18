@@ -12,7 +12,7 @@ import Calendar from './Calendar';
 import LoadingSpinner from '@/components/Common/LoadingSpinner';
 import NoDataMessage from '@/components/Common/NoDataMessage';
 import {terminateWorker} from './workerUtil';
-import '@/components/Common/LoadingSpinner.css'; // spin 애니메이션을 위해 추가
+import '@/components/Common/LoadingSpinner.css';
 
 // 메인 차트 높이 설정 (페인 개수에 따라 변화하는 함수)
 // 페인 차트 비율은 1개 25%로 시작하여 70%까지 수렴
