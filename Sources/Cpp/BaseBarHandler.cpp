@@ -18,9 +18,9 @@ BaseBarHandler::~BaseBarHandler() = default;
 
 shared_ptr<Logger>& BaseBarHandler::logger_ = Logger::GetLogger();
 
-shared_ptr<BarData>& BaseBarHandler::GetBarData(const BarType bar_type,
+shared_ptr<BarData>& BaseBarHandler::GetBarData(const BarDataType bar_data_type,
                                                 const string& timeframe) {
-  switch (bar_type) {
+  switch (bar_data_type) {
     case TRADING: {
       return trading_bar_data_;
     }
@@ -52,9 +52,9 @@ shared_ptr<BarData>& BaseBarHandler::GetBarData(const BarType bar_type,
   }
 }
 
-vector<size_t>& BaseBarHandler::GetBarIndices(const BarType bar_type,
+vector<size_t>& BaseBarHandler::GetBarIndices(const BarDataType bar_data_type,
                                               const string& timeframe) {
-  switch (bar_type) {
+  switch (bar_data_type) {
     case TRADING: {
       return trading_index_;
     }

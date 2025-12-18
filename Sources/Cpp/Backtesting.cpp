@@ -235,7 +235,7 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
         const auto& bar_data_type_str =
             bar_data_config.at("barDataType").get<string>();
 
-        BarType bar_data_type{};
+        BarDataType bar_data_type{};
         if (bar_data_type_str == "트레이딩") {
           bar_data_type = TRADING;
         } else if (bar_data_type_str == "돋보기") {
@@ -342,7 +342,7 @@ void Backtesting::FetchLeverageBracket() {
 void Backtesting::AddBarData(const vector<string>& symbol_names,
                              const string& timeframe,
                              const string& klines_directory,
-                             const BarType bar_type, const int open_time_column,
+                             const BarDataType bar_data_type, const int open_time_column,
                              const int open_column, const int high_column,
                              const int low_column, const int close_column,
                              const int volume_column,
@@ -357,7 +357,7 @@ void Backtesting::AddBarData(const vector<string>& symbol_names,
   for (const string& symbol_name : symbol_names) {
     string file_path;
 
-    if (bar_type == MARK_PRICE) {
+    if (bar_data_type == MARK_PRICE) {
       file_path =
           format("{}/{}/{}.parquet", klines_directory, symbol_name, timeframe);
     } else {
@@ -369,7 +369,7 @@ void Backtesting::AddBarData(const vector<string>& symbol_names,
   }
 
   BarHandler::GetBarHandler()->AddBarData(
-      symbol_names, file_paths, bar_type, open_time_column, open_column,
+      symbol_names, file_paths, bar_data_type, open_time_column, open_column,
       high_column, low_column, close_column, volume_column, close_time_column);
 }
 

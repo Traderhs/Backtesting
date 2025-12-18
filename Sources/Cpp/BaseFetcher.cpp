@@ -29,8 +29,6 @@ BaseFetcher::~BaseFetcher() = default;
 
 shared_ptr<Logger>& BaseFetcher::logger_ = Logger::GetLogger();
 
-void BaseFetcher::PrintSeparator() { cout << string(217, '=') << endl; }
-
 future<json> BaseFetcher::Fetch(
     const string& url, const unordered_map<string, string>& params,
     const bool need_signature, const bool sort_params, const string& header_msg,

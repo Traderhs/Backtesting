@@ -10,7 +10,7 @@
 namespace backtesting::bar {
 class BarData;
 class BarHandler;
-enum class BarType;
+enum class BarDataType;
 struct Bar;
 }  // namespace backtesting::bar
 

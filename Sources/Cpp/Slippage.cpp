@@ -164,7 +164,7 @@ double MarketImpactSlippage::CalculateSlippagePrice(
   }
 
   // 정보 로딩
-  const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarType());
+  const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarDataType());
   const auto bar_idx = bar_->GetCurrentBarIndex();
   const auto& bar = bar_data->GetBar(symbol_idx, bar_idx);
   const auto price_step = symbol_info_[symbol_idx].GetPriceStep();
@@ -207,7 +207,7 @@ double MarketImpactSlippage::CalculateSlippagePrice(
   // 고빈도 타임프레임(≤15분)에만 EMA 스무딩 적용
   // 학술적 근거: 1m~15m은 마이크로스트럭처 노이즈가 크므로 평활화 필요,
   // 30m 이상은 이미 자연 평활화되어 있어 불필요
-  const bool apply_ema_smoothing = bar_->GetCurrentBarType() == TRADING
+  const bool apply_ema_smoothing = bar_->GetCurrentBarDataType() == TRADING
                                        ? is_trading_low_tf_
                                        : is_magnifier_low_tf_;
 

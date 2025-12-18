@@ -119,7 +119,8 @@ Numeric<double> Indicator::operator[](const size_t index) {
 
   // =========================================================================
   // CASE 1: 지표 계산 시 타 지표 참조
-  // - 원본 바 타입: REFERENCE, 원본 타임프레임: 계산 중인 지표의 타임프레임
+  // - 원본 바 데이터 유형: REFERENCE
+  //   원본 타임프레임: 계산 중인 지표의 타임프레임
   // - 계산 중인 지표와 같은 타임프레임의 지표인 케이스만 존재
   //   (다른 타임프레임은 사전 검증에서 에러 발생)
   // =========================================================================
@@ -139,7 +140,8 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // =========================================================================
   // CASE 2-1: 전략 실행 시 지표 참조
   //           트레이딩 바 타임프레임과 같은 타임프레임의 지표인 경우
-  // - 원본 바 타입: TRADING, 원본 타임프레임: NONE
+  // - 원본 바 데이터 유형: TRADING
+  //   원본 타임프레임: NONE
   // =========================================================================
   if (!is_higher_timeframe_indicator_) {
     const auto bar_idx = bar_->GetCurrentBarIndex();
@@ -157,13 +159,14 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // =========================================================================
   // CASE 2-2: 전략 실행 시 지표 참조
   //           트레이딩 바 타임프레임보다 큰 타임프레임의 지표인 경우
-  // - 원본 바 타입: TRADING, 원본 타임프레임: NONE
-  // - 현재 바 타입과 타임프레임 캐시
+  // - 원본 바 데이터 유형: TRADING
+  //   원본 타임프레임: NONE
+  // - 현재 바 데이터 유형과 타임프레임 캐시
   // - Close Time 기반 복잡한 계산 필요
   // =========================================================================
 
   // 호출 시점의 데이터 환경 정보 저장
-  const auto original_bar_type = bar_->GetCurrentBarType();
+  const auto original_bar_data_type = bar_->GetCurrentBarDataType();
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
   const auto trading_bar_idx = bar_->GetCurrentBarIndex();
 
@@ -204,7 +207,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
       trading_bar_data_->GetBar(symbol_idx, target_trading_bar_idx).close_time;
 
   // 해당 시점에서 사용 가능했던 상위 TF 바 인덱스 계산
-  bar_->SetCurrentBarType(REFERENCE, timeframe_);
+  bar_->SetCurrentBarDataType(REFERENCE, timeframe_);
   size_t ref_bar_idx = bar_->GetCurrentBarIndex();
 
   // =========================================================================
@@ -231,7 +234,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
     cached_ref_bar_idx_ = SIZE_MAX;  // NaN 표시
 
     // 원래 데이터 환경 복구
-    bar_->SetCurrentBarType(original_bar_type, "");
+    bar_->SetCurrentBarDataType(original_bar_data_type, "");
 
     return NAN;
   }
@@ -267,7 +270,7 @@ Numeric<double> Indicator::operator[](const size_t index) {
   cached_ref_bar_idx_ = ref_bar_idx;
 
   // 원래 데이터 환경 복구
-  bar_->SetCurrentBarType(original_bar_type, "");
+  bar_->SetCurrentBarDataType(original_bar_data_type, "");
 
   return output_[symbol_idx][ref_bar_idx];
 }
@@ -315,8 +318,8 @@ void Indicator::CalculateIndicator() {
     reference_num_bars_.reserve(num_symbols);
     reference_num_bars_.resize(num_symbols);
 
-    // 지표 설정에 맞게 바 타입 설정
-    bar_->SetCurrentBarType(REFERENCE, timeframe_);
+    // 지표 설정에 맞게 바 데이터 유형 및 타임프레임 설정
+    bar_->SetCurrentBarDataType(REFERENCE, timeframe_);
 
     // 전체 트레이딩 심볼들을 순회하며 지표 계산
     for (int symbol_idx = 0; symbol_idx < num_symbols; ++symbol_idx) {

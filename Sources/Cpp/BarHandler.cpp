@@ -30,7 +30,7 @@ using namespace utils;
 namespace backtesting::bar {
 
 BarHandler::BarHandler()
-    : current_bar_type_(TRADING), current_symbol_index_(-1) {}
+    : current_bar_data_type_(TRADING), current_symbol_index_(-1) {}
 void BarHandler::Deleter::operator()(const BarHandler* p) const { delete p; }
 
 mutex BarHandler::mutex_;
@@ -50,10 +50,10 @@ shared_ptr<BarHandler>& BarHandler::GetBarHandler() {
 
 void BarHandler::AddBarData(const vector<string>& symbol_names,
                             const vector<string>& file_paths,
-                            const BarType bar_type, const int open_time_column,
-                            const int open_column, const int high_column,
-                            const int low_column, const int close_column,
-                            const int volume_column,
+                            const BarDataType bar_data_type,
+                            const int open_time_column, const int open_column,
+                            const int high_column, const int low_column,
+                            const int close_column, const int volume_column,
                             const int close_time_column) {
   if (symbol_names.size() != file_paths.size()) {
     throw InvalidValue(format(
@@ -67,7 +67,7 @@ void BarHandler::AddBarData(const vector<string>& symbol_names,
 
   // 로그용 바 데이터 타입 문자열
   string bar_data_type_str;
-  switch (bar_type) {
+  switch (bar_data_type) {
     case TRADING: {
       bar_data_type_str = "트레이딩 및 참조";
       break;
@@ -128,7 +128,7 @@ void BarHandler::AddBarData(const vector<string>& symbol_names,
 
                // 타임프레임 유효성 검증
                IsValidTimeframeBetweenBars(bar_data_infos[symbol_idx].timeframe,
-                                           bar_type);
+                                           bar_data_type);
 
                bar_data_infos[symbol_idx].success = true;
 
@@ -159,7 +159,7 @@ void BarHandler::AddBarData(const vector<string>& symbol_names,
 
     // 데이터 추가 (새 인덱스 사용)
     // 컬럼 프로젝션 사용 후 인덱스가 0부터 재배치됨
-    switch (bar_type) {
+    switch (bar_data_type) {
       case TRADING: {
         trading_bar_data_->SetBarData(symbol_name, bar_data_timeframe,
                                       file_path, bar_data, 0, 1, 2, 3, 4, 5, 6);
@@ -225,11 +225,11 @@ void BarHandler::AddBarData(const vector<string>& symbol_names,
   }
 }
 
-void BarHandler::ProcessBarIndex(const BarType bar_type,
+void BarHandler::ProcessBarIndex(const BarDataType bar_data_type,
                                  const string& timeframe, const int symbol_idx,
                                  const int64_t target_close_time) {
-  const auto& bar_data = GetBarData(bar_type, timeframe);
-  auto& bar_indices = GetBarIndices(bar_type, timeframe);
+  const auto& bar_data = GetBarData(bar_data_type, timeframe);
+  auto& bar_indices = GetBarIndices(bar_data_type, timeframe);
   const auto max_bar_idx = bar_data->GetNumBars(symbol_idx) - 1;
 
   while (true) {
@@ -257,20 +257,21 @@ void BarHandler::ProcessBarIndex(const BarType bar_type,
   }
 }
 
-void BarHandler::ProcessBarIndices(const BarType bar_type,
+void BarHandler::ProcessBarIndices(const BarDataType bar_data_type,
                                    const string& timeframe,
                                    const int64_t target_close_time) {
-  const auto num_symbols = GetBarData(bar_type, timeframe)->GetNumSymbols();
+  const auto num_symbols =
+      GetBarData(bar_data_type, timeframe)->GetNumSymbols();
   for (int symbol_idx = 0; symbol_idx < num_symbols; symbol_idx++) {
-    ProcessBarIndex(bar_type, timeframe, symbol_idx, target_close_time);
+    ProcessBarIndex(bar_data_type, timeframe, symbol_idx, target_close_time);
   }
 }
 
-void BarHandler::SetCurrentBarType(const BarType bar_type,
-                                   const string& timeframe) {
-  current_bar_type_ = bar_type;
+void BarHandler::SetCurrentBarDataType(const BarDataType bar_data_type,
+                                       const string& timeframe) {
+  current_bar_data_type_ = bar_data_type;
 
-  if (bar_type == REFERENCE) {
+  if (bar_data_type == REFERENCE) {
     IsValidReferenceBarTimeframe(timeframe);
 
     current_reference_timeframe_ = timeframe;
@@ -282,7 +283,7 @@ void BarHandler::SetCurrentSymbolIndex(const int symbol_index) {
 }
 
 void BarHandler::SetCurrentBarIndex(const size_t bar_index) {
-  switch (current_bar_type_) {
+  switch (current_bar_data_type_) {
     case TRADING: {
       trading_index_[current_symbol_index_] = bar_index;
       return;
@@ -305,10 +306,10 @@ void BarHandler::SetCurrentBarIndex(const size_t bar_index) {
   }
 }
 
-size_t BarHandler::IncreaseBarIndex(const BarType bar_type,
+size_t BarHandler::IncreaseBarIndex(const BarDataType bar_data_type,
                                     const string& timeframe,
                                     const int symbol_index) {
-  switch (bar_type) {
+  switch (bar_data_type) {
     case TRADING: {
       return ++trading_index_[symbol_index];
     }
@@ -329,7 +330,9 @@ size_t BarHandler::IncreaseBarIndex(const BarType bar_type,
   [[unlikely]] throw;
 }
 
-BarType BarHandler::GetCurrentBarType() const { return current_bar_type_; }
+BarDataType BarHandler::GetCurrentBarDataType() const {
+  return current_bar_data_type_;
+}
 
 string BarHandler::GetCurrentReferenceTimeframe() const {
   return current_reference_timeframe_;
@@ -338,7 +341,7 @@ string BarHandler::GetCurrentReferenceTimeframe() const {
 int BarHandler::GetCurrentSymbolIndex() const { return current_symbol_index_; }
 
 size_t BarHandler::GetCurrentBarIndex() {
-  switch (current_bar_type_) {
+  switch (current_bar_data_type_) {
     case TRADING: {
       return trading_index_[current_symbol_index_];
     }
@@ -406,10 +409,10 @@ string BarHandler::CalculateTimeframe(const shared_ptr<arrow::Table>& bar_data,
 }
 
 void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
-                                             const BarType bar_type) {
+                                             const BarDataType bar_data_type) {
   const auto parsed_bar_data_tf = ParseTimeframe(timeframe);
 
-  switch (bar_type) {
+  switch (bar_data_type) {
     case TRADING: {
       if (const string& magnifier_tf = magnifier_bar_data_->GetTimeframe();
           !magnifier_tf.empty()) {
@@ -565,7 +568,7 @@ void BarHandler::ClearBarData() {
   mark_price_index_.clear();
 
   // 현재 상태 초기화
-  current_bar_type_ = TRADING;
+  current_bar_data_type_ = TRADING;
   current_symbol_index_ = -1;
   current_reference_timeframe_.clear();
 }

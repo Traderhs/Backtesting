@@ -119,7 +119,7 @@ class Backtesting {
   static void FetchLeverageBracket();
 
   /// 주어진 데이터 폴더에서 각 심볼들의 폴더를 찾아 Parquet 데이터를 읽고
-  /// 지정된 바 타입으로 처리하여 바 핸들러에 추가하는 함수
+  /// 지정된 바 데이터 유형으로 처리하여 바 핸들러에 추가하는 함수
   ///
   /// ※ 바 유형별로 해당 경로를 만족해야 함 ※\n
   /// 트레이딩(돋보기, 참조): 디렉토리/심볼 이름/타임프레임/타임프레임.parquet\n
@@ -128,7 +128,7 @@ class Backtesting {
   /// @param symbol_names 바 데이터로 추가할 심볼 이름들
   /// @param timeframe 추가할 데이터의 타임프레임
   /// @param klines_directory Parquet 파일들이 위치한 데이터 폴더
-  /// @param bar_type 추가할 데이터의 바 타입
+  /// @param bar_data_type 추가할 바 데이터 유형
   /// @param open_time_column Open Time 컬럼 인덱스
   /// @param open_column Open 컬럼 인덱스
   /// @param high_column High 컬럼 인덱스
@@ -138,11 +138,11 @@ class Backtesting {
   /// @param close_time_column Close Time 컬럼 인덱스
   static void AddBarData(const vector<string>& symbol_names,
                          const string& timeframe,
-                         const string& klines_directory, BarType bar_type,
-                         int open_time_column = 0, int open_column = 1,
-                         int high_column = 2, int low_column = 3,
-                         int close_column = 4, int volume_column = 5,
-                         int close_time_column = 6);
+                         const string& klines_directory,
+                         BarDataType bar_data_type, int open_time_column = 0,
+                         int open_column = 1, int high_column = 2,
+                         int low_column = 3, int close_column = 4,
+                         int volume_column = 5, int close_time_column = 6);
 
   /// 거래소 정보를 엔진에 추가하는 함수
   static void AddExchangeInfo(const string& exchange_info_path);
