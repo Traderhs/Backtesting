@@ -91,7 +91,7 @@ bool OrderHandler::MarketEntry(const string& entry_name,
 
   if (const auto& strategy_type = engine_->GetCurrentStrategyType();
       strategy_type == ON_CLOSE) {
-    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarType());
+    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarDataType());
 
     // 현재 바가 마지막 바가 아닐 때만 진입 대기 주문 가능
     if (const auto current_bar_idx = bar_->GetCurrentBarIndex();
@@ -180,7 +180,7 @@ bool OrderHandler::LimitEntry(const string& entry_name,
 
   if (const auto& strategy_type = engine_->GetCurrentStrategyType();
       strategy_type == ON_CLOSE) {
-    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarType());
+    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarDataType());
 
     // 현재 바가 마지막 바가 아닐 때만 진입 대기 주문 가능
     if (const auto current_bar_idx = bar_->GetCurrentBarIndex();
@@ -277,7 +277,7 @@ bool OrderHandler::MitEntry(const string& entry_name,
 
   if (const auto& strategy_type = engine_->GetCurrentStrategyType();
       strategy_type == ON_CLOSE) {
-    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarType());
+    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarDataType());
 
     // 현재 바가 마지막 바가 아닐 때만 진입 대기 주문 가능
     if (const auto current_bar_idx = bar_->GetCurrentBarIndex();
@@ -356,7 +356,7 @@ bool OrderHandler::LitEntry(const string& entry_name,
 
   if (const auto& strategy_type = engine_->GetCurrentStrategyType();
       strategy_type == ON_CLOSE) {
-    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarType());
+    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarDataType());
 
     // 현재 바가 마지막 바가 아닐 때만 진입 대기 주문 가능
     if (const auto current_bar_idx = bar_->GetCurrentBarIndex();
@@ -442,7 +442,7 @@ bool OrderHandler::TrailingEntry(const string& entry_name,
 
   if (const auto& strategy_type = engine_->GetCurrentStrategyType();
       strategy_type == ON_CLOSE) {
-    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarType());
+    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarDataType());
 
     // 현재 바가 마지막 바가 아닐 때만 진입 대기 주문 가능
     if (const auto current_bar_idx = bar_->GetCurrentBarIndex();
@@ -546,7 +546,7 @@ bool OrderHandler::MarketExit(const string& exit_name,
   // 바 종가에 시장가 청산하도록 만드는 람다 함수
   const auto market_exit_on_close = [&] {
     const auto& current_bar =
-        bar_->GetBarData(bar_->GetCurrentBarType())
+        bar_->GetBarData(bar_->GetCurrentBarDataType())
             ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
 
     order_time = current_bar.close_time;
@@ -568,7 +568,7 @@ bool OrderHandler::MarketExit(const string& exit_name,
       exit_now = true;
     } else if (const auto& strategy_type = engine_->GetCurrentStrategyType();
                strategy_type == ON_CLOSE) {
-      const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarType());
+      const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarDataType());
 
       // 현재 바가 마지막 바가 아닐 때만 청산 대기 주문 가능
       if (const auto current_bar_idx = bar_->GetCurrentBarIndex();
@@ -709,7 +709,7 @@ bool OrderHandler::LimitExit(const string& exit_name, const string& target_name,
 
   if (const auto& strategy_type = engine_->GetCurrentStrategyType();
       strategy_type == ON_CLOSE) {
-    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarType());
+    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarDataType());
 
     // 현재 바가 마지막 바가 아닐 때만 청산 대기 주문 가능
     if (const auto current_bar_idx = bar_->GetCurrentBarIndex();
@@ -803,7 +803,7 @@ bool OrderHandler::MitExit(const string& exit_name, const string& target_name,
 
   if (const auto& strategy_type = engine_->GetCurrentStrategyType();
       strategy_type == ON_CLOSE) {
-    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarType());
+    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarDataType());
 
     // 현재 바가 마지막 바가 아닐 때만 청산 대기 주문 가능
     if (const auto current_bar_idx = bar_->GetCurrentBarIndex();
@@ -894,7 +894,7 @@ bool OrderHandler::LitExit(const string& exit_name, const string& target_name,
 
   if (const auto& strategy_type = engine_->GetCurrentStrategyType();
       strategy_type == ON_CLOSE) {
-    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarType());
+    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarDataType());
 
     // 현재 바가 마지막 바가 아닐 때만 청산 대기 주문 가능
     if (const auto current_bar_idx = bar_->GetCurrentBarIndex();
@@ -992,7 +992,7 @@ bool OrderHandler::TrailingExit(const string& exit_name,
 
   if (const auto& strategy_type = engine_->GetCurrentStrategyType();
       strategy_type == ON_CLOSE) {
-    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarType());
+    const auto& bar_data = bar_->GetBarData(bar_->GetCurrentBarDataType());
 
     // 현재 바가 마지막 바가 아닐 때만 청산 대기 주문 가능
     if (const auto current_bar_idx = bar_->GetCurrentBarIndex();
@@ -1151,7 +1151,7 @@ size_t OrderHandler::CountEntryOrder(
   return count;
 }
 
-void OrderHandler::CheckLiquidation(const BarType market_bar_type,
+void OrderHandler::CheckLiquidation(const BarDataType market_bar_data_type,
                                     const int symbol_idx, const double price,
                                     const PriceType price_type) {
   for (const auto& filled_entry : filled_entries_[symbol_idx]) {
@@ -1164,7 +1164,7 @@ void OrderHandler::CheckLiquidation(const BarType market_bar_type,
         (entry_direction == SHORT &&
          IsGreaterOrEqual(price, liquidation_price))) {
       // 실제 시장 가격 찾기
-      const auto& market_bar_data = market_bar_type == TRADING
+      const auto& market_bar_data = market_bar_data_type == TRADING
                                         ? engine_->trading_bar_data_
                                         : engine_->magnifier_bar_data_;
       double fill_price = NAN;
@@ -1639,7 +1639,7 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
           // 펀딩비는 부과되지 않으므로 이 함수 실행 시점에서는 단순히 Open
           // 가격만 가져와서 사용하면 됨
           FillLiquidation(filled_entry, "강제 청산 (펀딩비)", symbol_idx,
-                          (bar_->GetCurrentBarType() == TRADING
+                          (bar_->GetCurrentBarDataType() == TRADING
                                ? bar_->GetBarData(TRADING)
                                : bar_->GetBarData(MAGNIFIER))
                               ->GetBar(symbol_idx, bar_->GetCurrentBarIndex())

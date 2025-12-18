@@ -12,7 +12,7 @@
 // 전방 선언
 namespace backtesting::bar {
 class BarData;
-enum class BarType;
+enum class BarDataType;
 struct Bar;
 }  // namespace backtesting::bar
 
@@ -202,7 +202,7 @@ class Engine final : public BaseEngine {
 
   /// 트레이딩이 끝난 심볼의 상태 변화와 체결된 진입 주문의
   /// 전량 청산을 하는 함수
-  void ExecuteTradingEnd(int symbol_idx, const string& bar_type_str);
+  void ExecuteTradingEnd(int symbol_idx, const string& bar_data_type_str);
 
   // 트레이딩이 끝나지 않은 심볼의 종료를 위하여 상태 변화와 체결된 진입 주문의
   // 전량 청산을 하는 함수
@@ -212,19 +212,21 @@ class Engine final : public BaseEngine {
   /// 실행하는 함수
   void CheckFundingTime();
 
-  /// 주어진 바 타입과 심볼들의 현재 바 인덱스에서 OHLC 가격을 기준으로
+  /// 주어진 바 데이터 유형과 심볼들의 현재 바 인덱스에서 OHLC 가격을 기준으로
   /// 강제 청산 및 대기 중인 주문의 체결을 확인하는 함수
-  void ProcessOhlc(BarType bar_type, const vector<int>& symbol_indices);
+  void ProcessOhlc(BarDataType bar_data_type,
+                   const vector<int>& symbol_indices);
 
-  /// 주어진 바 타입과 심볼들의 현재 바 인덱스에서 마크 가격과 시장 가격의 시가,
-  /// 고가/저가, 종가를 순서대로 확인하여 강제 청산 및 대기 중인 주문의 체결을
-  /// 확인할 수 있도록 정보를 구조체 형태로 저장한 벡터를 반환하는 함수.
+  /// 주어진 바 데이터 유형과 심볼들의 현재 바 인덱스에서 마크 가격과
+  /// 시장 가격의 시가, 고가/저가, 종가를 순서대로 확인하여
+  /// 강제 청산 및 대기 중인 주문의 체결을 확인할 수 있도록
+  /// 정보를 구조체 형태로 저장한 벡터를 반환하는 함수.
   [[nodiscard]] pair<vector<PriceData>, vector<PriceData>> GetPriceQueue(
-      BarType market_bar_type, const vector<int>& symbol_indices) const;
+      BarDataType market_bar_data_type, const vector<int>& symbol_indices) const;
 
   /// 전 가격에서 현재 가격으로 올 때의 가격 방향을 계산하는 함수
   [[nodiscard]] Direction CalculatePriceDirection(
-      BarType bar_type, int symbol_idx, double current_price,
+      BarDataType bar_data_type, int symbol_idx, double current_price,
       PriceType current_price_type) const;
 
   /// 전 가격에서 현재 가격으로 올 때의 가격 방향과 체결 우선 순위에 따라

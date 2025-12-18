@@ -145,7 +145,8 @@ void Analyzer::CreateDirectories() {
 
     // 최종 경로로 수정
     // ':' 문자 언더 스코어화 시 드라이브 경로가 변경되므로 마지막에 수정
-    main_directory = Config::GetProjectDirectory() + "/Results/" + main_directory;
+    main_directory =
+        Config::GetProjectDirectory() + "/Results/" + main_directory;
     main_directory_ = main_directory;
 
     // 지표 데이터 저장 폴더 생성
@@ -775,14 +776,14 @@ void Analyzer::SaveConfig() {
       config_->GetCheckSameBarDataWithTarget() ? "활성화" : "비활성화";
 
   // 심볼 간 바 데이터 중복 검사 설정
-  const vector<string> bar_type_names = {"트레이딩 바 데이터",
-                                         "돋보기 바 데이터", "참조 바 데이터",
-                                         "마크 가격 바 데이터"};
+  const vector<string> bar_data_type_str = {
+      "트레이딩 바 데이터", "돋보기 바 데이터", "참조 바 데이터",
+      "마크 가격 바 데이터"};
   const auto& check_same_bar_data = config_->GetCheckSameBarData();
 
   auto& same_bar_check = config["엔진 설정"]["심볼 간 바 데이터 중복 검사"];
   for (int i = 0; i < 4; i++) {
-    same_bar_check[bar_type_names[i]] =
+    same_bar_check[bar_data_type_str[i]] =
         check_same_bar_data[i] ? "활성화" : "비활성화";
   }
 

@@ -9,7 +9,7 @@
 
 // 전방 선언
 namespace backtesting::bar {
-enum class BarType;
+enum class BarDataType;
 }
 
 namespace backtesting::engine {
@@ -225,7 +225,7 @@ class OrderHandler final : public BaseOrderHandler {
   ///
   /// 고저가를 확인할 때 강제 청산되었으면 강제 청산 가격은 청산 가격과 마크
   /// 가격의 차이를 시장 가격에서 조정하므로 실제 가격과 다를 수 있음에 주의
-  void CheckLiquidation(BarType market_bar_type, int symbol_idx, double price,
+  void CheckLiquidation(BarDataType market_bar_data_type, int symbol_idx, double price,
                         PriceType price_type);
 
   /// 트레이딩 중인 심볼에서 지정된 가격을 기준으로 청산 대기 주문들이

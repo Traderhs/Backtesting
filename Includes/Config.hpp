@@ -12,7 +12,7 @@
 // 전방 선언
 namespace backtesting {
 namespace bar {
-enum class BarType;
+enum class BarDataType;
 }
 
 namespace logger {
@@ -126,7 +126,7 @@ class Config final {
   Config& SetCheckMinNotionalValue(bool check_min_notional_value);
 
   // 심볼 간 바 데이터 중복 검사를 비활성화하는 함수
-  Config& DisableSameBarDataCheck(BarType bar_type);
+  Config& DisableSameBarDataCheck(BarDataType bar_data_type);
 
   // 마크 가격 바 데이터와 목표 바 데이터의 중복 검사를 비활성화하는 함수
   Config& DisableSameBarDataWithTargetCheck();
@@ -188,7 +188,7 @@ class Config final {
 
   /// 심볼 간 중복된 바 데이터 검사를 하는지 여부를 결정하는 플래그.
   ///
-  /// 바 타입마다 분리하여 작동.
+  /// 바 데이터 유형마다 분리하여 작동.
   vector<bool> check_same_bar_data_;
 
   /// 마크 가격 바 데이터에서 목표 바 데이터와의 중복된 바 데이터 검사를 하는지

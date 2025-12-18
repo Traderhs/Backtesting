@@ -35,11 +35,11 @@ class BarHandler final : public BaseBarHandler {
   static shared_ptr<BarHandler>& GetBarHandler();
 
   /// 주어진 파일 경로에서 Parquet 데이터를 읽고
-  /// 지정된 바 타입으로 처리하여 핸들러에 추가하는 함수
+  /// 지정된 바 데이터 유형으로 처리하여 바 핸들러에 추가하는 함수
   ///
   /// @param symbol_names 심볼 이름들
   /// @param file_paths 각 심볼에 대응하는 Parquet 파일 경로들
-  /// @param bar_type 추가할 데이터의 바 데이터 유형
+  /// @param bar_data_type 추가할 바 데이터 유형
   /// @param open_time_column Open Time 컬럼 인덱스
   /// @param open_column Open 컬럼 인덱스
   /// @param high_column High 컬럼 인덱스
@@ -48,7 +48,7 @@ class BarHandler final : public BaseBarHandler {
   /// @param volume_column Volume 컬럼 인덱스
   /// @param close_time_column Close Time 컬럼 인덱스
   void AddBarData(const vector<string>& symbol_names,
-                  const vector<string>& file_paths, BarType bar_type,
+                  const vector<string>& file_paths, BarDataType bar_data_type,
                   int open_time_column, int open_column, int high_column,
                   int low_column, int close_column, int volume_column,
                   int close_time_column);
@@ -56,17 +56,18 @@ class BarHandler final : public BaseBarHandler {
   // ===========================================================================
   /// 지정된 바 데이터 및 심볼에 해당되는 인덱스를 target_close_time 시점의
   /// 인덱스까지 최대한 진행시키는 함수
-  void ProcessBarIndex(BarType bar_type, const string& timeframe,
+  void ProcessBarIndex(BarDataType bar_data_type, const string& timeframe,
                        int symbol_idx, int64_t target_close_time);
 
   /// 지정된 바 데이터의 모든 심볼의 인덱스를 target_close_time 시점의
   /// 인덱스까지 진행시키는 함수
-  void ProcessBarIndices(BarType bar_type, const string& timeframe,
+  void ProcessBarIndices(BarDataType bar_data_type, const string& timeframe,
                          int64_t target_close_time);
   // ===========================================================================
-  /// 현재 사용 중인 바의 타입을 설정하는 함수.
+  /// 현재 사용 중인 바 데이터 유형을 설정하는 함수.
   /// 타임프레임은 참조 바 사용 시에만 지정.
-  void SetCurrentBarType(BarType bar_type, const string& timeframe);
+  void SetCurrentBarDataType(BarDataType bar_data_type,
+                             const string& timeframe);
 
   /// 현재 사용 중인 심볼의 인덱스를 설정하는 함수
   void SetCurrentSymbolIndex(int symbol_index);
@@ -77,12 +78,12 @@ class BarHandler final : public BaseBarHandler {
 
   /// 지정된 바 데이터 타입 및 심볼에 해당되는 바 데이터의
   /// 인덱스를 하나 증가시키고 증가한 인덱스를 반환하는 함수
-  size_t IncreaseBarIndex(BarType bar_type, const string& timeframe,
+  size_t IncreaseBarIndex(BarDataType bar_data_type, const string& timeframe,
                           int symbol_index);
 
   // ===========================================================================
   /// 현재 사용 중인 바의 타입을 반환하는 함수
-  [[nodiscard]] BarType GetCurrentBarType() const;
+  [[nodiscard]] BarDataType GetCurrentBarDataType() const;
 
   /// 현재 참조 바 데이터에서 사용 중인 타임프레임을 반환하는 함수
   [[nodiscard]] string GetCurrentReferenceTimeframe() const;
@@ -105,8 +106,8 @@ class BarHandler final : public BaseBarHandler {
   static mutex mutex_;
   static shared_ptr<BarHandler> instance_;
 
-  /// 현재 사용 중인 바의 타입: TRADING, MAGNIFIER, REFERENCE, MARK
-  BarType current_bar_type_;
+  /// 현재 사용 중인 바 데이터의 유형: TRADING, MAGNIFIER, REFERENCE, MARK PRICE
+  BarDataType current_bar_data_type_;
 
   /// 현재 사용 중인 심볼의 인덱스
   int current_symbol_index_;
@@ -129,7 +130,8 @@ class BarHandler final : public BaseBarHandler {
       const shared_ptr<arrow::Table>& bar_data, int open_time_column);
 
   /// 바 데이터 타입간 타임프레임이 유효한지 검증하는 함수
-  void IsValidTimeframeBetweenBars(const string& timeframe, BarType bar_type);
+  void IsValidTimeframeBetweenBars(const string& timeframe,
+                                   BarDataType bar_data_type);
 
   /// 지정된 타임프레임이 레퍼런스 바에 존재하는지 검증하는 함수
   void IsValidReferenceBarTimeframe(const string& timeframe);

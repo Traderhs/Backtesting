@@ -94,8 +94,8 @@ Config& Config::SetCheckMinNotionalValue(bool check_min_notional_value) {
   return *this;
 }
 
-Config& Config::DisableSameBarDataCheck(BarType bar_type) {
-  check_same_bar_data_[static_cast<size_t>(bar_type)] = false;
+Config& Config::DisableSameBarDataCheck(BarDataType bar_data_type) {
+  check_same_bar_data_[static_cast<size_t>(bar_data_type)] = false;
   return *this;
 }
 

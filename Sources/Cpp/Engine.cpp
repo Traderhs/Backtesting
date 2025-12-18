@@ -1243,7 +1243,7 @@ void Engine::BacktestingMain() {
     if (use_bar_magnifier_) {
       const auto original_open_time = current_open_time_;
       const auto original_close_time = current_close_time_;
-      bar_->SetCurrentBarType(MAGNIFIER, "");
+      bar_->SetCurrentBarDataType(MAGNIFIER, "");
 
       // do-while 루프 시작하자마자 시간을 증가시키므로 전 돋보기 바로 시간을
       // 설정
@@ -1318,7 +1318,7 @@ void Engine::BacktestingMain() {
       current_close_time_ = original_close_time;
     } else {
       // 돋보기 기능 미사용 시 트레이딩 바를 이용하여 체결 확인
-      bar_->SetCurrentBarType(TRADING, "");
+      bar_->SetCurrentBarDataType(TRADING, "");
 
       for (const auto symbol_idx : activated_symbol_indices_) {
         // 마크 가격 바 인덱스를 현재 트레이딩 바 Close Time으로 일치
@@ -1374,7 +1374,7 @@ void Engine::UpdateTradingStatus() {
     // 트레이딩 바가 사용 가능한지 검증
     // =========================================================================
     // 사용 중인 바 정보 업데이트
-    bar_->SetCurrentBarType(TRADING, "");
+    bar_->SetCurrentBarDataType(TRADING, "");
     const auto bar_idx = bar_->GetCurrentBarIndex();
 
     if (trading_began_[symbol_idx]) {
@@ -1437,7 +1437,7 @@ void Engine::UpdateTradingStatus() {
     bool can_use_reference = true;
 
     for (const auto& [timeframe, bar_data] : reference_bar_data_) {
-      bar_->SetCurrentBarType(REFERENCE, timeframe);
+      bar_->SetCurrentBarDataType(REFERENCE, timeframe);
 
       if (timeframe == trading_bar_timeframe_) {
         // 참조 바의 타임프레임이 트레이딩 바의 타임프레임과 같을 때
@@ -1500,7 +1500,7 @@ void Engine::UpdateTradingStatus() {
          아직 사용 불가능하므로 트레이딩 불가 */
     // =========================================================================
     if (use_bar_magnifier_) {
-      bar_->SetCurrentBarType(MAGNIFIER, "");
+      bar_->SetCurrentBarDataType(MAGNIFIER, "");
 
       bar_->ProcessBarIndex(MAGNIFIER, "", symbol_idx, current_open_time_ - 1);
       const auto moved_bar_idx = bar_->GetCurrentBarIndex();
@@ -1541,16 +1541,16 @@ void Engine::UpdateTradingStatus() {
 }
 
 void Engine::ExecuteTradingEnd(const int symbol_idx,
-                               const string& bar_type_str) {
+                               const string& bar_data_type_str) {
   trading_ended_[symbol_idx] = true;
 
   // 진입 및 청산 대기 주문을 취소하고 체결된 진입 주문 잔량을 종가에 청산
   // 메인 루프 전 트레이딩 바 인덱스를 하나 증가시켰으므로 하나 감소시켜야
   // 마지막 바를 가리킴
-  bar_->SetCurrentBarType(TRADING, "");
+  bar_->SetCurrentBarDataType(TRADING, "");
   bar_->SetCurrentBarIndex(bar_->GetCurrentBarIndex() - 1);
 
-  order_handler_->CancelAll(bar_type_str + " 바 데이터 종료");
+  order_handler_->CancelAll(bar_data_type_str + " 바 데이터 종료");
   order_handler_->CloseAll();
 
   // 바가 끝난 전량 청산은 Just Exited로 판단하지 않음
@@ -1559,7 +1559,7 @@ void Engine::ExecuteTradingEnd(const int symbol_idx,
   logger_->Log(INFO_L,
                format("[{}] 심볼의 {} 바 데이터가 끝나 해당 심볼의 "
                       "백테스팅을 종료합니다.",
-                      symbol_names_[symbol_idx], bar_type_str),
+                      symbol_names_[symbol_idx], bar_data_type_str),
                __FILE__, __LINE__, true);
 }
 
@@ -1576,7 +1576,7 @@ void Engine::ExecuteAllTradingEnd() {
       // 진입 및 청산 대기 주문을 취소하고 체결된 진입 주문 잔량을 종가 청산
       // 메인 루프 전 트레이딩 바 인덱스를 하나 증가시켰으므로 하나
       // 감소시켜야 마지막 바를 가리킴
-      bar_->SetCurrentBarType(TRADING, "");
+      bar_->SetCurrentBarDataType(TRADING, "");
       bar_->SetCurrentBarIndex(bar_->GetCurrentBarIndex() - 1);
 
       order_handler_->CancelAll("백테스팅 종료 시간");
@@ -1643,7 +1643,7 @@ void Engine::CheckFundingTime() {
         //    마크 가격의 Open 가격을 사용
         funding_price = current_mark_price_bar.open;
       } else if (const auto& current_market_bar =
-                     bar_->GetBarData(bar_->GetCurrentBarType())
+                     bar_->GetBarData(bar_->GetCurrentBarDataType())
                          ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
                  current_close_time_ == current_market_bar.close_time) {
         // 3. 시장 가격의 Close Time이 현재 진행 시간의 Close Time과 같다면
@@ -1676,13 +1676,13 @@ void Engine::CheckFundingTime() {
   }
 }
 
-void Engine::ProcessOhlc(const BarType bar_type,
+void Engine::ProcessOhlc(const BarDataType bar_data_type,
                          const vector<int>& symbol_indices) {
   auto& should_fill_orders = order_handler_->should_fill_orders_;
 
   // 매커니즘에 따라 확인할 순서대로 가격을 정렬한 벡터 얻기
   const auto&& [mark_price_queue, market_price_queue] =
-      GetPriceQueue(bar_type, symbol_indices);
+      GetPriceQueue(bar_data_type, symbol_indices);
 
   // 순서: 한 가격에서 가격 확인 후 다음 심볼 및 가격으로 넘어감
   // 한 심볼에서 모든 가격 체크 후 다음 가격 체크하면 논리상 시간을 한 번
@@ -1708,7 +1708,7 @@ void Engine::ProcessOhlc(const BarType bar_type,
     }
 
     // 체결/강제 청산 해야하는 주문 추가
-    order_handler_->CheckLiquidation(bar_type, mark_price_symbol_idx,
+    order_handler_->CheckLiquidation(bar_data_type, mark_price_symbol_idx,
                                      mark_price, mark_price_type);
     order_handler_->CheckPendingEntries(market_price_symbol_idx, market_price,
                                         market_price_type);
@@ -1724,7 +1724,7 @@ void Engine::ProcessOhlc(const BarType bar_type,
     // 체결 순서대로 정렬
     // -> 체결은 시장 가격 기준이므로 Market 변수 사용
     SortOrders(should_fill_orders,
-               CalculatePriceDirection(bar_type, market_price_symbol_idx,
+               CalculatePriceDirection(bar_data_type, market_price_symbol_idx,
                                        market_price, market_price_type));
 
     // 정렬된 순서에 따라 주문 체결
@@ -1742,7 +1742,8 @@ void Engine::ProcessOhlc(const BarType bar_type,
 }
 
 pair<vector<PriceData>, vector<PriceData>> Engine::GetPriceQueue(
-    const BarType market_bar_type, const vector<int>& symbol_indices) const {
+    const BarDataType market_bar_data_type,
+    const vector<int>& symbol_indices) const {
   const auto num_symbols = symbol_indices.size();
 
   // 총 크기를 미리 계산하여 한 번에 할당 (심볼 개수 * OHLC 4개)
@@ -1759,7 +1760,7 @@ pair<vector<PriceData>, vector<PriceData>> Engine::GetPriceQueue(
     const auto& original_mark_bar = mark_price_bar_data_->GetBar(
         symbol_idx, (*mark_price_indices_)[symbol_idx]);
     const auto& market_bar =
-        market_bar_type == TRADING
+        market_bar_data_type == TRADING
             ? trading_bar_data_->GetBar(symbol_idx,
                                         (*trading_indices_)[symbol_idx])
             : magnifier_bar_data_->GetBar(symbol_idx,
@@ -1823,8 +1824,8 @@ pair<vector<PriceData>, vector<PriceData>> Engine::GetPriceQueue(
 }
 
 Direction Engine::CalculatePriceDirection(
-    const BarType bar_type, const int symbol_idx, const double current_price,
-    const PriceType current_price_type) const {
+    const BarDataType bar_data_type, const int symbol_idx,
+    const double current_price, const PriceType current_price_type) const {
   switch (current_price_type) {
     case OPEN: {
       if (const auto current_bar_idx = bar_->GetCurrentBarIndex();
@@ -1833,7 +1834,7 @@ Direction Engine::CalculatePriceDirection(
         // 강제 청산의 경우에도, 실제 체결은 시장 가격이므로 시장 가격을
         // 기준으로 방향을 결정하면 됨
         const auto previous_close =
-            bar_->GetBarData(bar_type)
+            bar_->GetBarData(bar_data_type)
                 ->GetBar(symbol_idx, current_bar_idx - 1)
                 .close;
 
@@ -1978,12 +1979,12 @@ void Engine::SortOrders(vector<FillInfo>& should_fill_orders,
 
 void Engine::ExecuteStrategy(const StrategyType strategy_type,
                              const int symbol_idx) {
-  // = 원본 바 타입을 저장 =
-  // 종가 전략 실행인 경우 원본 바 타입은 트레이딩 바
+  // = 원본 바 데이터 유형을 저장 =
+  // 종가 전략 실행인 경우 원본 바 데이터 유형은 트레이딩 바
   //
-  // ProcessOhlc에서 전략 실행인 경우 원본 바 타입은 트레이딩 바 혹은 돋보기
-  // 바
-  const auto original_bar_type = bar_->GetCurrentBarType();
+  // ProcessOhlc에서 전략 실행인 경우 원본 바 데이터 유형은
+  // 트레이딩 바 혹은 돋보기 바
+  const auto original_bar_data_type = bar_->GetCurrentBarDataType();
 
   // 트레이딩 바의 지정된 심볼에서 전략 실행
   // 돋보기 바에서 AFTER EXIT, AFTER ENTRY 전략이 실행되더라도
@@ -1993,7 +1994,7 @@ void Engine::ExecuteStrategy(const StrategyType strategy_type,
   // 1분의 high 값을 얻으면 안 되므로 TRADING으로 설정하는 것
   // 단, 이러한 설정 때문에 미래 값 참조를 방지하기 위하여 AFTER 전략에서는
   // [0]으로 참조할 수 없음
-  bar_->SetCurrentBarType(TRADING, "");
+  bar_->SetCurrentBarDataType(TRADING, "");
   bar_->SetCurrentSymbolIndex(symbol_idx);
 
   // 현재 심볼의 포지션 사이즈 업데이트
@@ -2019,7 +2020,7 @@ void Engine::ExecuteStrategy(const StrategyType strategy_type,
   }
 
   // 원본 설정을 복원
-  bar_->SetCurrentBarType(original_bar_type, "");
+  bar_->SetCurrentBarDataType(original_bar_data_type, "");
 }
 
 void Engine::ExecuteChainedAfterStrategies(const int symbol_idx) {
