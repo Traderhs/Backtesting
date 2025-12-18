@@ -17,6 +17,7 @@
 
 // 내부 헤더
 #include "DataUtils.hpp"
+#include "Engine.hpp"
 #include "Logger.hpp"
 #include "TimeUtils.hpp"
 
@@ -120,7 +121,7 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
         format("[{} {}] 연속 선물 캔들스틱 파일이 [{}] 경로에 이미 존재합니다.",
                symbol, timeframe_filename, ConvertBackslashToSlash(file_path)),
         __FILE__, __LINE__, true);
-    PrintSeparator();
+    Engine::LogSeparator(true);
     return;
   }
 
@@ -144,7 +145,7 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
   if (transformed_klines.empty()) {
     logger_->Log(ERROR_L, "선물 데이터가 비어있습니다. 처리를 중단합니다.",
                  __FILE__, __LINE__, true);
-    PrintSeparator();
+    Engine::LogSeparator(true);
     return;
   }
 
@@ -168,7 +169,7 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
       __FILE__, __LINE__, true);
-  PrintSeparator();
+  Engine::LogSeparator(true);
 }
 
 void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
@@ -190,12 +191,17 @@ void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
                         "업데이트할 수 없습니다.",
                         symbol, filename_timeframe),
                  __FILE__, __LINE__, true);
-    PrintSeparator();
+    Engine::LogSeparator(true);
     return;
   }
 
   // Parquet 파일 읽기
-  const auto& klines_file = ReadParquet(file_path);
+  shared_ptr<arrow::Table> klines_file;
+  try {
+    klines_file = ReadParquet(file_path);
+  } catch (const exception& e) {
+    Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
+  }
 
   logger_->Log(
       INFO_L,
@@ -264,7 +270,8 @@ void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
       __FILE__, __LINE__, true);
-  PrintSeparator();
+
+  Engine::LogSeparator(true);
 }
 
 void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
@@ -287,7 +294,8 @@ void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
         format("[{} {}] 마크 가격 캔들스틱 파일이 [{}] 경로에 이미 존재합니다.",
                symbol, timeframe_filename, ConvertBackslashToSlash(file_path)),
         __FILE__, __LINE__, true);
-    PrintSeparator();
+    
+    Engine::LogSeparator(true);
     return;
   }
 
@@ -330,7 +338,7 @@ void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
       __FILE__, __LINE__, true);
-  PrintSeparator();
+  Engine::LogSeparator(true);
 }
 
 void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
@@ -351,12 +359,17 @@ void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
                         "업데이트할 수 없습니다.",
                         symbol, filename_timeframe),
                  __FILE__, __LINE__, true);
-    PrintSeparator();
+    Engine::LogSeparator(true);
     return;
   }
 
   // Parquet 파일 읽기
-  const auto& klines_file = ReadParquet(file_path);
+  shared_ptr<arrow::Table> klines_file;
+  try {
+    klines_file = ReadParquet(file_path);
+  } catch (const exception& e) {
+    Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
+  }
 
   logger_->Log(
       INFO_L,
@@ -424,7 +437,7 @@ void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
       __FILE__, __LINE__, true);
-  PrintSeparator();
+  Engine::LogSeparator(true);
 }
 
 void BinanceFetcher::FetchFundingRates(const string& symbol) const {
@@ -437,7 +450,7 @@ void BinanceFetcher::FetchFundingRates(const string& symbol) const {
                  format("[{}] 펀딩 비율 파일이 [{}] 경로에 이미 존재합니다.",
                         symbol, ConvertBackslashToSlash(file_path)),
                  __FILE__, __LINE__, true);
-    PrintSeparator();
+    Engine::LogSeparator(true);
     return;
   }
 
@@ -459,7 +472,7 @@ void BinanceFetcher::FetchFundingRates(const string& symbol) const {
   if (funding_rates.empty()) {
     logger_->Log(ERROR_L, "펀딩 비율 데이터가 비어있습니다. 처리를 중단합니다.",
                  __FILE__, __LINE__, true);
-    PrintSeparator();
+    Engine::LogSeparator(true);
     return;
   }
 
@@ -470,7 +483,7 @@ void BinanceFetcher::FetchFundingRates(const string& symbol) const {
         ERROR_L,
         format("파일을 열 수 없습니다: {}", ConvertBackslashToSlash(file_path)),
         __FILE__, __LINE__, true);
-    PrintSeparator();
+    Engine::LogSeparator(true);
     return;
   }
 
@@ -499,7 +512,7 @@ void BinanceFetcher::FetchFundingRates(const string& symbol) const {
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
       __FILE__, __LINE__, true);
-  PrintSeparator();
+  Engine::LogSeparator(true);
 }
 
 void BinanceFetcher::UpdateFundingRates(const string& symbol) const {
@@ -513,7 +526,7 @@ void BinanceFetcher::UpdateFundingRates(const string& symbol) const {
                         "업데이트할 수 없습니다.",
                         symbol),
                  __FILE__, __LINE__, true);
-    PrintSeparator();
+    Engine::LogSeparator(true);
     return;
   }
 
@@ -601,7 +614,7 @@ void BinanceFetcher::UpdateFundingRates(const string& symbol) const {
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
       __FILE__, __LINE__, true);
-  PrintSeparator();
+  Engine::LogSeparator(true);
 }
 
 void BinanceFetcher::FetchExchangeInfo() const {

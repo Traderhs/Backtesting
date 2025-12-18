@@ -354,6 +354,8 @@ void Engine::IsValidBarData() {
             "트레이딩 바 데이터에 중복된 데이터가 다른 심볼로 추가되었을 "
             "가능성이 있습니다.",
             __FILE__, __LINE__, true);
+
+        // TODO 서버 모드면 로그 다르게 하기. 이런 거 모두 찾아 수정
         Logger::LogAndThrowError(
             "이 검사를 비활성화하고 싶다면 "
             "Backtesting::SetConfig().DisableSameBarDataCheck 함수를 "

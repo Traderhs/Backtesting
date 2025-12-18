@@ -166,19 +166,16 @@ void BarData::IsValidSettings(const string& symbol_name,
 
   for (const auto& symbol : symbol_names_) {
     if (symbol == symbol_name) {
-      Logger::LogAndThrowError(
-          format("[{}]은(는) 이미 추가된 심볼입니다.", symbol_name), __FILE__,
-          __LINE__);
-      return;
+      throw InvalidValue(
+          format("[{}]은(는) 이미 추가된 심볼입니다.", symbol_name));
     }
   }
 
   if (!timeframe_.empty() && timeframe != timeframe_) {
-    Logger::LogAndThrowError(
+    throw InvalidValue(
         format("주어진 타임프레임 [{}]은(는) 바 데이터로 추가된 타임프레임 "
                "[{}]와(과) 일치하지 않습니다.",
-               timeframe, timeframe_),
-        __FILE__, __LINE__);
+               timeframe, timeframe_));
   }
 
   int columns[7] = {open_time_column, open_column,  high_column,
@@ -186,53 +183,46 @@ void BarData::IsValidSettings(const string& symbol_name,
                     close_time_column};
 
   if (ranges::any_of(columns, [&](const int column) { return column < 0; })) {
-    Logger::LogAndThrowError("지정된 열 인덱스가 0보다 작습니다.", __FILE__,
-                             __LINE__);
+    throw InvalidValue("지정된 열 인덱스가 0보다 작습니다.");
   }
 
   // 열 인덱스가 num_columns보다 큰지 검사
   if (ranges::any_of(columns, [&](const int column) {
         return column >= bar_data->num_columns();
       })) {
-    Logger::LogAndThrowError(
+    throw InvalidValue(
         format("지정된 열 인덱스가 데이터 열의 최대 개수 {}을(를) 초과합니다.",
-               bar_data->num_columns()),
-        __FILE__, __LINE__);
+               bar_data->num_columns()));
   }
 
   // 데이터 타입 검사
   if (bar_data->schema()->field(columns[0])->type()->id() !=
       arrow::Type::INT64) {
-    Logger::LogAndThrowError(
-        format("[Open Time] 데이터로 사용되는 인덱스 {}의 데이터 타입이 "
-               "Int64_t가 아닙니다. 현재 타입: {}",
-               columns[0],
-               bar_data->schema()->field(columns[0])->type()->ToString()),
-        __FILE__, __LINE__);
+    throw InvalidValue(format(
+        "[Open Time] 데이터로 사용되는 인덱스 {}의 데이터 타입이 "
+        "Int64_t가 아닙니다. 현재 타입: {}",
+        columns[0], bar_data->schema()->field(columns[0])->type()->ToString()));
   }
 
   string data_str[5] = {"Open", "High", "Low", "Close", "Volume"};
 
-  for (int i = 1; i <= 5; ++i) {
+  for (int i = 1; i <= 5; i++) {
     if (bar_data->schema()->field(columns[i])->type()->id() !=
         arrow::Type::DOUBLE) {
-      Logger::LogAndThrowError(
+      throw InvalidValue(
           format("[{}] 데이터로 사용되는 인덱스 {}의 데이터 타입이 Double이 "
                  "아닙니다. 현재 타입: {}",
                  data_str[i - 1], columns[i],
-                 bar_data->schema()->field(columns[i])->type()->ToString()),
-          __FILE__, __LINE__);
+                 bar_data->schema()->field(columns[i])->type()->ToString()));
     }
   }
 
   if (bar_data->schema()->field(columns[6])->type()->id() !=
       arrow::Type::INT64) {
-    Logger::LogAndThrowError(
-        format("[Close Time] 데이터로 사용되는 인덱스 {}의 데이터 타입이 "
-               "Int64_t가 아닙니다. 현재 타입: {}",
-               columns[6],
-               bar_data->schema()->field(columns[6])->type()->ToString()),
-        __FILE__, __LINE__);
+    throw InvalidValue(format(
+        "[Close Time] 데이터로 사용되는 인덱스 {}의 데이터 타입이 "
+        "Int64_t가 아닙니다. 현재 타입: {}",
+        columns[6], bar_data->schema()->field(columns[6])->type()->ToString()));
   }
 }
 
