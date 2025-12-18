@@ -1,15 +1,11 @@
 #pragma once
 
 // 표준 라이브러리
-#include <filesystem>
 #include <string>
 
 // 내부 헤더
-#include "BarHandler.hpp"
 #include "BaseBarHandler.hpp"
 #include "BinanceFetcher.hpp"
-#include "Config.hpp"
-#include "Engine.hpp"
 #include "Logger.hpp"
 #include "Strategy.hpp"
 
@@ -17,7 +13,7 @@
 using namespace backtesting;
 using namespace fetcher;
 
-namespace backtesting {
+namespace backtesting::main {
 
 class Backtesting {
  public:
@@ -25,7 +21,13 @@ class Backtesting {
   ~Backtesting() = delete;
 
   /// 백테스팅을 실행하는 함수
-  static void Run();
+  static void RunBacktesting();
+
+  // 로컬용 메인 실행
+  static void RunLocal();
+
+  // 서버용 메인 실행
+  static void RunServer();
 
   // 서버용 단일 백테스팅 실행
   static void RunSingleBacktesting(const string& json_str);
@@ -136,12 +138,11 @@ class Backtesting {
   /// @param close_time_column Close Time 컬럼 인덱스
   static void AddBarData(const vector<string>& symbol_names,
                          const string& timeframe,
-                         const string& klines_directory, const BarType bar_type,
-                         const int open_time_column = 0,
-                         const int open_column = 1, const int high_column = 2,
-                         const int low_column = 3, const int close_column = 4,
-                         const int volume_column = 5,
-                         const int close_time_column = 6);
+                         const string& klines_directory, BarType bar_type,
+                         int open_time_column = 0, int open_column = 1,
+                         int high_column = 2, int low_column = 3,
+                         int close_column = 4, int volume_column = 5,
+                         int close_time_column = 6);
 
   /// 거래소 정보를 엔진에 추가하는 함수
   static void AddExchangeInfo(const string& exchange_info_path);
@@ -178,9 +179,12 @@ class Backtesting {
   /// 설정값들이 올바르게 설정되었는지 검증하는 함수
   static void ValidateSettings();
 
+  static shared_ptr<BarHandler>& bar_;
+  static shared_ptr<Logger>& logger_;
+
   static string market_data_directory_;
   static string api_key_env_var_;
   static string api_secret_env_var_;
 };
 
-}  // namespace backtesting
+}  // namespace backtesting::main

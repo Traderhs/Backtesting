@@ -51,7 +51,13 @@
 // 내부 헤더
 #include "Strategies/DiceSystem.hpp"
 
-namespace backtesting {
+// 네임스페이스
+using namespace backtesting::main;
+
+namespace backtesting::main {
+
+shared_ptr<BarHandler>& Backtesting::bar_ = BarHandler::GetBarHandler();
+shared_ptr<Logger>& Backtesting::logger_ = Logger::GetLogger();
 
 string Backtesting::market_data_directory_;
 string Backtesting::api_key_env_var_;
@@ -60,64 +66,207 @@ string Backtesting::api_secret_env_var_;
 // 서버 모드 플래그
 static bool server_mode = false;
 
-void Backtesting::Run() {
+void Backtesting::RunBacktesting() {
   try {
     Engine::GetEngine()->Backtesting();
   } catch (...) {
-    Logger::LogAndThrowError("백테스팅 진행 중 오류가 발생했습니다.", __FILE__,
+    Logger::LogAndThrowError("백테스팅 실행 중 오류가 발생했습니다.", __FILE__,
                              __LINE__);
   }
 }
 
-void Backtesting::RunSingleBacktesting(const string& json_str) {
-  if (!server_mode) {
-    Logger::LogAndThrowError(
-        "RunSingleBacktesting 함수는 서버 모드에서만 실행 가능합니다.",
-        __FILE__, __LINE__);
+void Backtesting::RunLocal() {
+  // TODO 이 함수는 서버에서 실행해달라는 메시지만 로그. 그 외 fetch 코드만 주석
+
+  // 거래소 정책은 계속 변화하므로 매번 저장
+  SetApiEnvVars("BINANCE_API_KEY", "BINANCE_API_SECRET");
+  SetMarketDataDirectory("D:/Programming/Backtesting/Data");
+  FetchExchangeInfo();
+  FetchLeverageBracket();
+
+  // 엔진 설정
+  SetConfig()
+      .SetProjectDirectory("D:/Programming/Backtesting")
+      .SetBacktestPeriod()
+      .SetUseBarMagnifier(true)
+      .SetInitialBalance(10000)
+      .SetTakerFeePercentage(0.045)
+      .SetMakerFeePercentage(0.018)
+      .SetSlippage(MarketImpactSlippage(2))
+      .SetCheckLimitMaxQty(false)
+      .SetCheckLimitMinQty(false)
+      .SetCheckMarketMaxQty(false)
+      .SetCheckMarketMinQty(false)
+      .SetCheckMinNotionalValue(true);
+
+  // 심볼 설정
+  const vector<string>& symbol_names = {
+      "BTCUSDT",  "APTUSDT", "ETHUSDT",  "BNBUSDT", "SOLUSDT",
+      "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT", "XRPUSDT"};
+
+  // 바 데이터 설정
+  AddBarData(symbol_names, "1h",
+             "D:/Programming/Backtesting/Data/Continuous Klines", TRADING);
+
+  AddBarData(symbol_names, "1m",
+             "D:/Programming/Backtesting/Data/Continuous Klines", MAGNIFIER);
+
+  AddBarData(symbol_names, "1d",
+             "D:/Programming/Backtesting/Data/Continuous Klines", REFERENCE);
+
+  AddBarData(symbol_names, "1m",
+             "D:/Programming/Backtesting/Data/Mark Price Klines", MARK_PRICE);
+
+  AddExchangeInfo("D:/Programming/Backtesting/Data/exchange_info.json");
+  AddLeverageBracket("D:/Programming/Backtesting/Data/leverage_bracket.json");
+
+  AddFundingRates(symbol_names,
+                  "D:/Programming/Backtesting/Data/Funding Rates");
+
+  // 전략 설정
+  AddStrategy<DiceSystem>("Dice System");
+
+  RunBacktesting();
+}
+
+void Backtesting::RunServer() {
+  // 서버 모드로 진입했음을 알리는 로그를 출력하여 Js가 준비 상태를 감지
+  cout << "백테스팅 엔진이 준비되었습니다." << endl;
+  string line;
+
+  // stdin 명령 루프
+  while (getline(cin, line)) {
+    if (line.empty()) {
+      continue;
+    }
+
+    istringstream iss(line);
+    string cmd;
+    iss >> cmd;
+
+    try {
+      if (cmd == "runSingleBacktesting") {
+        // 나머지 라인을 JSON으로 파싱
+        string json_str;
+        getline(iss, json_str);
+
+        RunSingleBacktesting(json_str);
+      } else if (cmd == "shutdown") {
+        break;
+      } else {
+        cout << "알 수 없는 명령어: " << cmd << endl;
+      }
+    } catch (...) {
+      // 무시하고 다음 루프 진행
+    }
+
+    Engine::LogSeparator(true);
   }
+}
 
-  static bool bar_data_loaded = false;  // 바 데이터 로드 여부 캐시
+void Backtesting::RunSingleBacktesting(const string& json_str) {
+  try {
+    if (!server_mode) {
+      throw runtime_error(
+          "RunSingleBacktesting 함수는 서버 모드에서만 실행 가능합니다.");
+    }
 
-  if (!json_str.empty()) {
-    if (json config = json::parse(json_str);
-        !config.value("skipBarDataLoading", false) || !bar_data_loaded) {
-      if (config.contains("barDataConfigs") &&
-          config["barDataConfigs"].is_array()) {
-        for (const auto& bar_config : config["barDataConfigs"]) {
-          vector<string> symbols;
-          if (bar_config.contains("symbols") &&
-              bar_config["symbols"].is_array()) {
-            for (const auto& symbol : bar_config["symbols"]) {
-              symbols.push_back(symbol.get<string>());
-            }
-          }
+    if (json_str.empty()) {
+      throw runtime_error("서버 오류: 빈 Json이 C++ 서버로 전달되었습니다.");
+    }
 
-          string timeframe = bar_config.value("timeframe", "1h");
-          string directory_path = bar_config.value("directoryPath", "");
-          string type_str = bar_config.value("type", "TRADING");
+    const json& json_config = json::parse(json_str);
 
-          const BarType bar_type = type_str == "TRADING"      ? TRADING
-                                   : type_str == "MAGNIFIER"  ? MAGNIFIER
-                                   : type_str == "REFERENCE"  ? REFERENCE
-                                   : type_str == "MARK_PRICE" ? MARK_PRICE
-                                                              : TRADING;
+    // =======================================================================
+    // Config 설정
+    // =======================================================================
+    SetConfig()
+        .SetProjectDirectory(json_config.at("projectDirectory").get<string>())
+        .SetUseBarMagnifier(json_config.at("useBarMagnifier").get<bool>());
 
-          if (!symbols.empty() && !directory_path.empty()) {
-            AddBarData(symbols, timeframe, directory_path, bar_type);
-          }
+    // TODO 각종 설정 추가
+
+    // =========================================================================
+    // 바 데이터 추가
+    // =========================================================================
+    // 서버에서 바 데이터 초기화 및 추가를 요청할 때 사용
+    // (초기 추가, 심볼/바 데이터 설정 변경 감지 시 수행)
+    static bool is_first_adding = true;
+
+    if (json_config.at("clearAndAddBarData").get<bool>()) {
+      if (!is_first_adding) {
+        logger_->Log(INFO_L,
+                     "심볼 또는 바 데이터 설정 변경이 감지되어 바 데이터를 "
+                     "초기화한 후 다시 추가합니다.",
+                     __FILE__, __LINE__, true);
+
+        // 초기 추가가 아닐 때만 바 데이터 초기화
+        bar_->ClearBarData();
+      } else {
+        is_first_adding = false;
+      }
+
+      // 심볼 이름들 파싱
+      vector<string> symbol_names;
+
+      const auto& symbol_configs = json_config.at("symbolConfigs");
+      if (!symbol_configs.is_array()) {
+        throw runtime_error(
+            "서버 오류: C++ 서버로 전달된 심볼 설정이 배열이 아닙니다.");
+      }
+
+      for (const auto& symbol_name : symbol_configs) {
+        symbol_names.push_back(symbol_name.get<string>());
+      }
+
+      // 바 데이터 파싱
+      const auto& bar_data_configs = json_config.at("barDataConfigs");
+      if (!bar_data_configs.is_array()) {
+        throw runtime_error(
+            "서버 오류: C++ 서버로 전달된 바 데이터 설정이 배열이 아닙니다.");
+      }
+
+      // 각 바 데이터 유형별로 추가
+      for (const auto& bar_data_config : bar_data_configs) {
+        // 타임프레임, 바 데이터 폴더, 바 데이터 유형 파싱
+        const auto& timeframe = bar_data_config.at("timeframe").get<string>();
+        const auto& klines_directory =
+            bar_data_config.at("klinesDirectory").get<string>();
+        const auto& bar_data_type_str =
+            bar_data_config.at("barDataType").get<string>();
+
+        BarType bar_data_type{};
+        if (bar_data_type_str == "트레이딩") {
+          bar_data_type = TRADING;
+        } else if (bar_data_type_str == "돋보기") {
+          bar_data_type = MAGNIFIER;
+        } else if (bar_data_type_str == "참조") {
+          bar_data_type = REFERENCE;
+        } else if (bar_data_type_str == "마크 가격") {
+          bar_data_type = MARK_PRICE;
+        } else {
+          throw runtime_error("서버 오류: 잘못된 바 데이터 유형 지정");
         }
 
-        bar_data_loaded = true;
+        // 바 데이터로 추가
+        if (!symbol_names.empty() && !timeframe.empty() &&
+            !klines_directory.empty()) {
+          AddBarData(symbol_names, timeframe, klines_directory, bar_data_type);
+        }
       }
-
-      if (config.contains("useMagnifier")) {
-        const bool use_magnifier = config["useMagnifier"].get<bool>();
-        SetConfig().SetUseBarMagnifier(use_magnifier);
-      }
+    } else {
+      logger_->Log(INFO_L, "바 데이터가 이미 캐시되어 있어 추가하지 않습니다.",
+                   __FILE__, __LINE__, true);
     }
-  }
 
-  Run();
+    return;  // TODO 테스트용 임시 리턴
+
+    RunBacktesting();
+  } catch (const exception& e) {
+    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
+    Logger::LogAndThrowError("단일 백테스팅 실행 중 오류가 발생했습니다.",
+                             __FILE__, __LINE__);
+  }
 }
 
 Config& Backtesting::SetConfig() { return Config::SetConfig(); }
@@ -207,6 +356,7 @@ void Backtesting::AddBarData(const vector<string>& symbol_names,
 
   for (const string& symbol_name : symbol_names) {
     string file_path;
+
     if (bar_type == MARK_PRICE) {
       file_path =
           format("{}/{}/{}.parquet", klines_directory, symbol_name, timeframe);
@@ -214,6 +364,7 @@ void Backtesting::AddBarData(const vector<string>& symbol_names,
       file_path = format("{}/{}/{}/{}.parquet", klines_directory, symbol_name,
                          timeframe, timeframe);
     }
+
     file_paths.emplace_back(move(file_path));
   }
 
@@ -251,96 +402,22 @@ void Backtesting::ValidateSettings() {
   }
 }
 
-}  // namespace backtesting
+}  // namespace backtesting::main
 
 int main(const int argc, char** argv) {
   // 서버 모드 플래그 확인
-  for (int i = 1; i < argc; ++i) {
+  for (int i = 1; i < argc; i++) {
     if (string(argv[i]) == "--server") {
       server_mode = true;
+
       break;
     }
   }
 
-  // 서버 모드가 아니면 즉시 실행
-  if (!server_mode) {
-    // 거래소 정책은 계속 변화하므로 매번 저장
-    Backtesting::SetApiEnvVars("BINANCE_API_KEY", "BINANCE_API_SECRET");
-    Backtesting::SetMarketDataDirectory("D:/Programming/Backtesting/Data");
-    Backtesting::FetchExchangeInfo();
-    Backtesting::FetchLeverageBracket();
-
-    const vector<string>& symbol_list = {
-        "BTCUSDT",  "APTUSDT", "ETHUSDT",  "BNBUSDT", "SOLUSDT",
-        "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT", "XRPUSDT"};
-
-    Backtesting::AddBarData(symbol_list, "1h",
-                            "D:/Programming/Backtesting/Data/Continuous Klines",
-                            TRADING);
-
-    Backtesting::AddBarData(symbol_list, "1m",
-                            "D:/Programming/Backtesting/Data/Continuous Klines",
-                            MAGNIFIER);
-
-    Backtesting::AddBarData(symbol_list, "1d",
-                            "D:/Programming/Backtesting/Data/Continuous Klines",
-                            REFERENCE);
-
-    Backtesting::AddBarData(symbol_list, "1m",
-                            "D:/Programming/Backtesting/Data/Mark Price Klines",
-                            MARK_PRICE);
-
-    Backtesting::AddExchangeInfo(
-        "D:/Programming/Backtesting/Data/exchange_info.json");
-    Backtesting::AddLeverageBracket(
-        "D:/Programming/Backtesting/Data/leverage_bracket.json");
-
-    Backtesting::AddFundingRates(
-        symbol_list, "D:/Programming/Backtesting/Data/Funding Rates");
-
-    Backtesting::SetConfig()
-        .SetProjectDirectory("D:/Programming/Backtesting")
-        .SetBacktestPeriod()
-        .SetUseBarMagnifier(true)
-        .SetInitialBalance(10000)
-        .SetTakerFeePercentage(0.045)
-        .SetMakerFeePercentage(0.018)
-        .SetSlippage(MarketImpactSlippage(2))
-        .SetCheckLimitMaxQty(false)
-        .SetCheckLimitMinQty(false)
-        .SetCheckMarketMaxQty(false)
-        .SetCheckMarketMinQty(false)
-        .SetCheckMinNotionalValue(true);
-
-    Backtesting::AddStrategy<DiceSystem>("Dice System");
-
-    Backtesting::Run();
-    return 0;
-  }
-
-  // 서버 모드: stdin 명령 루프
-  string line;
-
-  while (getline(cin, line)) {
-    if (line.empty()) continue;
-
-    istringstream iss(line);
-    string cmd;
-    iss >> cmd;
-
-    try {
-      if (cmd == "RunSingleBacktesting") {
-        // 나머지 라인을 JSON으로 파싱
-        string json_str;
-        getline(iss, json_str);
-        Backtesting::RunSingleBacktesting(json_str);
-      } else if (cmd == "shutdown") {
-        break;
-      } else {
-        cout << "Unknown command: " << cmd << "\n" << flush;
-      }
-    } catch (const exception& e) {
-      cout << "ERROR: " << e.what() << "\n" << flush;
-    }
+  // 서버 모드에 따라 실행
+  if (server_mode) {
+    Backtesting::RunServer();
+  } else {
+    Backtesting::RunLocal();
   }
 }
