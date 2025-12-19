@@ -13,6 +13,7 @@ export enum BarDataType {
  * 타임프레임 단위
  */
 export enum TimeframeUnit {
+    NULL = '',
     MILLISECOND = '밀리초',
     SECOND = '초',
     MINUTE = '분',
@@ -26,7 +27,7 @@ export enum TimeframeUnit {
  * 타임프레임 설정
  */
 export interface TimeframeConfig {
-    value: number;
+    value: number | null;
     unit: TimeframeUnit;
 }
 
@@ -44,6 +45,7 @@ export interface BarDataConfig {
  */
 export function timeframeToString(config: TimeframeConfig): string {
     const unitMap: Record<TimeframeUnit, string> = {
+        [TimeframeUnit.NULL]: '',
         [TimeframeUnit.MILLISECOND]: 'ms',
         [TimeframeUnit.SECOND]: 's',
         [TimeframeUnit.MINUTE]: 'm',
@@ -52,5 +54,38 @@ export function timeframeToString(config: TimeframeConfig): string {
         [TimeframeUnit.WEEK]: 'w',
         [TimeframeUnit.MONTH]: 'M'
     };
+
+    // 값이 null 또는 단위가 NULL(미선택)인 경우 빈 문자열로 표현
+    if (config == null) return '';
+    if (config.value === null || config.unit === TimeframeUnit.NULL) {
+        return '';
+    }
+
     return `${config.value}${unitMap[config.unit]}`;
+}
+
+// 타임프레임 문자열 파싱
+export function parseTimeframeString(tfString: string | null | undefined): { value: number | null; unit: TimeframeUnit } {
+    if (tfString === '' || tfString === null || tfString === undefined) {
+        return {value: null, unit: TimeframeUnit.NULL}
+    }
+
+    // ms는 두 문자이므로 먼저 캡처하도록 정규식을 구성
+    const match = tfString.match(/^(\d+)(ms|[smhdwM])$/);
+    if (!match) {
+        return {value: null, unit: TimeframeUnit.NULL};
+    }
+
+    const value = parseInt(match[1]);
+    const unitMap: Record<string, TimeframeUnit> = {
+        'ms': TimeframeUnit.MILLISECOND,
+        's': TimeframeUnit.SECOND,
+        'm': TimeframeUnit.MINUTE,
+        'h': TimeframeUnit.HOUR,
+        'd': TimeframeUnit.DAY,
+        'w': TimeframeUnit.WEEK,
+        'M': TimeframeUnit.MONTH
+    };
+
+    return {value, unit: unitMap[match[2]] || TimeframeUnit.HOUR};
 }

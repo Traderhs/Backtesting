@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useRef} from 'react';
 import {Button} from '../ui/button';
 import {useWebSocket} from '../Server/WebSocketContext';
-import {BarDataConfig, BarDataType, TimeframeUnit, timeframeToString} from '@/types/barData.ts';
+import {BarDataConfig, BarDataType, TimeframeUnit, timeframeToString, parseTimeframeString} from '@/types/barData.ts';
 import {
     Select,
     SelectContent,
@@ -29,22 +29,22 @@ export default function StrategyEditor() {
     // 기본 4개 바 데이터 설정 (트레이딩, 돋보기, 참조, 마크 가격)
     const [barDataConfigs, setBarDataConfigs] = useState<BarDataConfig[]>([
         {
-            timeframe: {value: 1, unit: TimeframeUnit.HOUR},
+            timeframe: {value: null, unit: TimeframeUnit.NULL},
             klinesDirectory: '',
             barDataType: BarDataType.TRADING
         },
         {
-            timeframe: {value: 1, unit: TimeframeUnit.MINUTE},
+            timeframe: {value: null, unit: TimeframeUnit.NULL},
             klinesDirectory: '',
             barDataType: BarDataType.MAGNIFIER
         },
         {
-            timeframe: {value: 1, unit: TimeframeUnit.DAY},
+            timeframe: {value: null, unit: TimeframeUnit.NULL},
             klinesDirectory: '',
             barDataType: BarDataType.REFERENCE
         },
         {
-            timeframe: {value: 1, unit: TimeframeUnit.MINUTE},
+            timeframe: {value: null, unit: TimeframeUnit.NULL},
             klinesDirectory: '',
             barDataType: BarDataType.MARK_PRICE
         }
@@ -124,26 +124,6 @@ export default function StrategyEditor() {
         })();
 
         setLogs(prev => [...prev, {level, message, timestamp: finalTimestamp, fileInfo}]);
-    };
-
-    // 타임프레임 문자열 파싱
-    const parseTimeframeString = (tfString: string): { value: number; unit: TimeframeUnit } => {
-        // ms는 두 문자이므로 먼저 캡처하도록 정규식을 구성
-        const match = tfString.match(/^(\d+)(ms|[smhdwM])$/);
-        if (!match) return {value: 1, unit: TimeframeUnit.HOUR};
-
-        const value = parseInt(match[1]);
-        const unitMap: Record<string, TimeframeUnit> = {
-            'ms': TimeframeUnit.MILLISECOND,
-            's': TimeframeUnit.SECOND,
-            'm': TimeframeUnit.MINUTE,
-            'h': TimeframeUnit.HOUR,
-            'd': TimeframeUnit.DAY,
-            'w': TimeframeUnit.WEEK,
-            'M': TimeframeUnit.MONTH
-        };
-
-        return {value, unit: unitMap[match[2]] || TimeframeUnit.HOUR};
     };
 
     // 컴포넌트 마운트 시 editor.json 로드
@@ -395,6 +375,27 @@ export default function StrategyEditor() {
             }
         }
 
+        // 타임프레임 유효성 검사: value 또는 unit이 비어있으면 로그 후 중단
+        for (const config of configsToValidate) {
+            const tf = config.timeframe;
+
+            if (!tf || tf.value === null) {
+                const msg = `${config.barDataType} 바 데이터의 타임프레임 값이 비어있습니다.`;
+                addLog('ERROR', msg);
+
+
+                return;
+            }
+
+            if (!tf || tf.unit === TimeframeUnit.NULL) {
+                const msg = `${config.barDataType} 바 데이터의 타임프레임 단위가 비어있습니다.`;
+                addLog('ERROR', msg);
+
+
+                return;
+            }
+        }
+
         const configsToSend = barDataConfigs.filter(config =>
             config.barDataType !== BarDataType.MAGNIFIER || useBarMagnifier
         );
@@ -633,15 +634,33 @@ export default function StrategyEditor() {
                                             <label className="block text-xs text-gray-400 mb-1">타임프레임</label>
                                             <div className="grid grid-cols-2 gap-2">
                                                 <Input
-                                                    type="number"
-                                                    min="1"
-                                                    value={config.timeframe.value}
-                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateBarDataConfig(index, {
-                                                        timeframe: {
-                                                            ...config.timeframe,
-                                                            value: parseInt(e.target.value) || 1
+                                                    type="text"
+                                                    inputMode="numeric"
+                                                    pattern="[0-9]*"
+                                                    value={config.timeframe.value ?? ''}
+                                                    onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                                        // 허용되는 키: 숫자, Backspace, Delete, Arrow, Tab
+                                                        const allowed = /^(?:[0-9]|Backspace|Delete|ArrowLeft|ArrowRight|Tab)$/;
+                                                        if (!allowed.test(e.key)) {
+                                                            e.preventDefault();
                                                         }
-                                                    })}
+                                                    }}
+                                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                        // 숫자 외 문자 제거
+                                                        const raw = e.target.value || '';
+                                                        const digits = raw.replace(/\D/g, '');
+                                                        // 선행 0 제거
+                                                        const noLeading = digits.replace(/^0+/, '');
+
+                                                        const finalValue = noLeading === '' ? null : parseInt(noLeading, 10);
+
+                                                        updateBarDataConfig(index, {
+                                                            timeframe: {
+                                                                ...config.timeframe,
+                                                                value: finalValue
+                                                            }
+                                                        });
+                                                    }}
                                                     disabled={isDisabled}
                                                     className="bg-[#1a1a1a] border-gray-600 text-sm"
                                                 />
