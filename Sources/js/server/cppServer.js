@@ -492,22 +492,22 @@ function createDefaultConfig(projectDirectory) {
 
         barDataConfigs: [
             {
-                timeframe: '1h',
+                    timeframe: null,
                 klinesDirectory: path.join(projectDirectory, 'Data', 'Continuous Klines'),
                 barDataType: '트레이딩'
             },
             {
-                timeframe: '1m',
+                    timeframe: null,
                 klinesDirectory: path.join(projectDirectory, 'Data', 'Continuous Klines'),
                 barDataType: '돋보기'
             },
             {
-                timeframe: '1d',
+                    timeframe: null,
                 klinesDirectory: path.join(projectDirectory, 'Data', 'Continuous Klines'),
                 barDataType: '참조'
             },
             {
-                timeframe: '1m',
+                    timeframe: null,
                 klinesDirectory: path.join(projectDirectory, 'Data', 'Mark Price Klines'),
                 barDataType: '마크 가격'
             }]
