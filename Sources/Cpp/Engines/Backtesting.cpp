@@ -193,16 +193,34 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     // (초기 추가, 심볼/바 데이터 설정 변경 감지 시 수행)
     static bool is_first_adding = true;
 
-    if (json_config.at("clearAndAddBarData").get<bool>()) {
-      if (!is_first_adding) {
-        logger_->Log(INFO_L,
-                     "심볼 또는 바 데이터 설정 변경이 감지되어 바 데이터를 "
-                     "초기화한 후 다시 추가합니다.",
-                     __FILE__, __LINE__, true);
+    // 바 데이터를 추가할 때 오류 발생 시 바 데이터를 초기화하기 위한 플래그
+    static bool bar_data_adding_error_occurred = false;
 
-        // 초기 추가가 아닐 때만 바 데이터 초기화
+    // 서버에서 바 데이터 초기화 및 추가를 요청하거나,
+    // 바 데이터를 추가할 때 오류 발생 시
+    // 바 데이터를 초기화하고 다시 추가
+    if (json_config.at("clearAndAddBarData").get<bool>() ||
+        bar_data_adding_error_occurred) {
+      // 초기 추가가 아닐 때만 바 데이터 초기화
+      if (!is_first_adding) {
+        if (!bar_data_adding_error_occurred) {
+          logger_->Log(INFO_L,
+                       "심볼 또는 바 데이터 설정 변경이 감지되어 "
+                       "바 데이터를 초기화한 후 다시 추가합니다.",
+                       __FILE__, __LINE__, true);
+        } else {
+          logger_->Log(INFO_L,
+                       "이전 바 데이터 추가 과정에서 오류가 발생하여 "
+                       "바 데이터를 초기화한 후 다시 추가합니다",
+                       __FILE__, __LINE__, true);
+
+          bar_data_adding_error_occurred = false;
+        }
+
         bar_->ClearBarData();
       } else {
+        // 초기 추가일 때는 바 데이터 미초기화
+        // 어차피 추가 오류는 발생하지 않았으므로 따로 처리하지 않음
         is_first_adding = false;
       }
 
@@ -227,32 +245,41 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
       }
 
       // 각 바 데이터 유형별로 추가
-      for (const auto& bar_data_config : bar_data_configs) {
-        // 타임프레임, 바 데이터 폴더, 바 데이터 유형 파싱
-        const auto& timeframe = bar_data_config.at("timeframe").get<string>();
-        const auto& klines_directory =
-            bar_data_config.at("klinesDirectory").get<string>();
-        const auto& bar_data_type_str =
-            bar_data_config.at("barDataType").get<string>();
+      try {
+        for (const auto& bar_data_config : bar_data_configs) {
+          // 타임프레임, 바 데이터 폴더, 바 데이터 유형 파싱
+          const auto& timeframe = bar_data_config.at("timeframe").get<string>();
+          const auto& klines_directory =
+              bar_data_config.at("klinesDirectory").get<string>();
+          const auto& bar_data_type_str =
+              bar_data_config.at("barDataType").get<string>();
 
-        BarDataType bar_data_type{};
-        if (bar_data_type_str == "트레이딩") {
-          bar_data_type = TRADING;
-        } else if (bar_data_type_str == "돋보기") {
-          bar_data_type = MAGNIFIER;
-        } else if (bar_data_type_str == "참조") {
-          bar_data_type = REFERENCE;
-        } else if (bar_data_type_str == "마크 가격") {
-          bar_data_type = MARK_PRICE;
-        } else {
-          throw runtime_error("서버 오류: 잘못된 바 데이터 유형 지정");
-        }
+          BarDataType bar_data_type{};
+          if (bar_data_type_str == "트레이딩") {
+            bar_data_type = TRADING;
+          } else if (bar_data_type_str == "돋보기") {
+            bar_data_type = MAGNIFIER;
+          } else if (bar_data_type_str == "참조") {
+            bar_data_type = REFERENCE;
+          } else if (bar_data_type_str == "마크 가격") {
+            bar_data_type = MARK_PRICE;
+          } else {
+            throw runtime_error("서버 오류: 잘못된 바 데이터 유형 지정");
+          }
 
-        // 바 데이터로 추가
-        if (!symbol_names.empty() && !timeframe.empty() &&
-            !klines_directory.empty()) {
-          AddBarData(symbol_names, timeframe, klines_directory, bar_data_type);
+          // 바 데이터로 추가
+          if (!symbol_names.empty() && !timeframe.empty() &&
+              !klines_directory.empty()) {
+            AddBarData(symbol_names, timeframe, klines_directory,
+                       bar_data_type);
+          }
         }
+      } catch ([[maybe_unused]] const exception& e) {
+        // 바 데이터 추가 중 발생한 오류는 다음 실행 때
+        // 바 데이터를 강제로 초기화하도록 설정
+        bar_data_adding_error_occurred = true;
+
+        throw;
       }
     } else {
       logger_->Log(INFO_L, "바 데이터가 이미 캐시되어 있어 추가하지 않습니다.",
