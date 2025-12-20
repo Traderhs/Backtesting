@@ -197,8 +197,7 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     static bool bar_data_adding_error_occurred = false;
 
     // 서버에서 바 데이터 초기화 및 추가를 요청하거나,
-    // 바 데이터를 추가할 때 오류 발생 시
-    // 바 데이터를 초기화하고 다시 추가
+    // 이전 바 데이터 추가 중 오류 발생 시 바 데이터를 초기화하고 다시 추가
     if (json_config.at("clearAndAddBarData").get<bool>() ||
         bar_data_adding_error_occurred) {
       // 초기 추가가 아닐 때만 바 데이터 초기화
@@ -220,7 +219,8 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
         bar_->ClearBarData();
       } else {
         // 초기 추가일 때는 바 데이터 미초기화
-        // 어차피 추가 오류는 발생하지 않았으므로 따로 처리하지 않음
+        // 첫 추가는 이전 추가가 없으므로, 추가 중 오류는 발생하지 않았기 때문에
+        // 따로 처리하지 않음
         is_first_adding = false;
       }
 
