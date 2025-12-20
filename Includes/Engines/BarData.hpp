@@ -43,8 +43,10 @@ struct Bar {
 /// 바 데이터를 심볼별 시계열 순서대로 벡터화하여 저장하는 클래스
 class BarData final {
  public:
-  BarData();
+  explicit BarData(const string& bar_data_type);
   ~BarData();
+
+  BarData() = delete;
 
   /// 한 심볼 테이블에 저장된 값을 Vector에 저장하는 함수
   /// @param symbol_name 심볼 이름
@@ -109,6 +111,7 @@ class BarData final {
   int num_symbols_;              // 심볼의 개수
   vector<size_t> num_bars_;      // 심볼 인덱스에 해당하는 심볼의 바 개수
   string timeframe_;             // 바 데이터의 타임프레임
+  string bar_data_type_;         // 바 데이터 타입 문자열
 
   // 심볼 설정의 유효성 검사
   void IsValidSettings(const string& symbol_name, const string& timeframe,

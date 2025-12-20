@@ -11,9 +11,9 @@
 namespace backtesting::bar {
 
 BaseBarHandler::BaseBarHandler()
-    : trading_bar_data_(make_shared<BarData>()),
-      magnifier_bar_data_(make_shared<BarData>()),
-      mark_price_bar_data_(make_shared<BarData>()) {}
+    : trading_bar_data_(make_shared<BarData>("트레이딩")),
+      magnifier_bar_data_(make_shared<BarData>("돋보기")),
+      mark_price_bar_data_(make_shared<BarData>("마크 가격")) {}
 BaseBarHandler::~BaseBarHandler() = default;
 
 shared_ptr<Logger>& BaseBarHandler::logger_ = Logger::GetLogger();
