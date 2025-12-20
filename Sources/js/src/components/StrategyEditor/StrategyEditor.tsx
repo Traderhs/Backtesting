@@ -294,9 +294,10 @@ export default function StrategyEditor() {
         return () => clearTimeout(timer);
     }, [useBarMagnifier]);
 
-    // 바 데이터 설정 해시 계산 (심볼 리스트 + 바 데이터 설정)
+    // 바 데이터 설정 해시 계산 (바 돋보기 상태 + 심볼 리스트 + 바 데이터 설정)
     const calculateConfigHash = () => {
         const config = {
+            useBarMagnifier: useBarMagnifier,
             symbols: [...symbolConfigs],  // 심볼 추가 순서가 의미 있으므로 순서를 보존하여 비교
             barData: barDataConfigs.map(c => ({
                 timeframe: timeframeToString(c.timeframe),
