@@ -146,10 +146,8 @@ void BarHandler::AddBarData(const vector<string>& symbol_names,
   // 순차적으로 데이터 추가
   for (size_t symbol_idx = 0; symbol_idx < num_symbols; symbol_idx++) {
     if (!bar_data_infos[symbol_idx].success) {
-      throw runtime_error(
-          format("심볼 [{}]의 {} 바 데이터 추가 중 오류 발생: {}",
-                 symbol_names[symbol_idx], bar_data_type_str,
-                 bar_data_infos[symbol_idx].error_message));
+      throw runtime_error(format("[{}] {}", symbol_names[symbol_idx],
+                                 bar_data_infos[symbol_idx].error_message));
     }
 
     const auto& symbol_name = symbol_names[symbol_idx];
@@ -167,7 +165,8 @@ void BarHandler::AddBarData(const vector<string>& symbol_names,
         if (const auto& timeframe_it =
                 reference_bar_data_.find(bar_data_timeframe);
             timeframe_it == reference_bar_data_.end()) {
-          reference_bar_data_[bar_data_timeframe] = make_shared<BarData>();
+          reference_bar_data_[bar_data_timeframe] =
+              make_shared<BarData>("참조");
         }
 
         reference_bar_data_[bar_data_timeframe]->SetBarData(
@@ -192,7 +191,8 @@ void BarHandler::AddBarData(const vector<string>& symbol_names,
         if (const auto& timeframe_it =
                 reference_bar_data_.find(bar_data_timeframe);
             timeframe_it == reference_bar_data_.end()) {
-          reference_bar_data_[bar_data_timeframe] = make_shared<BarData>();
+          reference_bar_data_[bar_data_timeframe] =
+              make_shared<BarData>("참조");
         }
 
         reference_bar_data_[bar_data_timeframe]->SetBarData(
@@ -520,7 +520,7 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 
     case MARK_PRICE: {
       // 바 데이터 추가 시점에는 돋보기 기능 사용 여부를 알 수 없으므로
-      // 트레이딩 혹은 돋보기 타임프레임 중 하나만 같아도 일단 통과
+      // 트레이딩 또는 돋보기 타임프레임 중 하나만 같아도 일단 통과
       const auto& trading_tf = trading_bar_data_->GetTimeframe();
       if (const auto& magnifier_tf = magnifier_bar_data_->GetTimeframe();
           !trading_tf.empty() && !magnifier_tf.empty()) {
@@ -528,7 +528,7 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
             ParseTimeframe(magnifier_tf) != parsed_bar_data_tf) {
           throw InvalidValue(
               format("주어진 마크 가격 바 데이터 타임프레임 [{}]은(는) "
-                     "트레이딩 바 데이터 타임프레임 [{}] 혹은 "
+                     "트레이딩 바 데이터 타임프레임 [{}] 또는 "
                      "돋보기 바 타임프레임 [{}]와(과) 같아야 합니다.",
                      timeframe, trading_tf, magnifier_tf));
         }
@@ -550,12 +550,12 @@ void BarHandler::IsValidReferenceBarTimeframe(const string& timeframe) {
 void BarHandler::ClearBarData() {
   // 트레이딩 바 데이터 초기화 및 재생성
   trading_bar_data_.reset();
-  trading_bar_data_ = make_shared<BarData>();
+  trading_bar_data_ = make_shared<BarData>("트레이딩");
   trading_index_.clear();
 
   // 돋보기 바 데이터 초기화 및 재생성
   magnifier_bar_data_.reset();
-  magnifier_bar_data_ = make_shared<BarData>();
+  magnifier_bar_data_ = make_shared<BarData>("돋보기");
   magnifier_index_.clear();
 
   // 참조 바 데이터 초기화
@@ -564,7 +564,7 @@ void BarHandler::ClearBarData() {
 
   // 마크 가격 바 데이터 초기화 및 재생성
   mark_price_bar_data_.reset();
-  mark_price_bar_data_ = make_shared<BarData>();
+  mark_price_bar_data_ = make_shared<BarData>("마크 가격");
   mark_price_index_.clear();
 
   // 현재 상태 초기화
