@@ -323,6 +323,47 @@ function AppContent() {
         }
     }, [chartConfig]);
 
+    // 문서 타이틀 동적 업데이트: 끝에 항상 "| Backboard"를 추가
+    useEffect(() => {
+        const tabLabelMap: Record<string, string> = {
+            StrategyEditor: '전략 에디터',
+            Overview: '전체 요약',
+            Performance: '성과 지표',
+            Plot: '분석 그래프',
+            Chart: '거래 차트',
+            TradeList: '거래 내역',
+            Config: '백테스팅 설정',
+            Log: '백테스팅 로그'
+        };
+
+        const plotTypeMap: Record<string, string> = {
+            'equity-drawdown': '자금 & 드로우다운',
+            'profit-loss-comparison': '시간별 순손익 비교',
+            'holding-time-pnl-distribution': '보유 시간 순손익 분포',
+            'symbol-performance': '심볼별 성과 추이'
+        };
+
+        let title: string;
+
+        if (tab === 'Chart' && chartConfig && chartConfig.symbol) {
+            // '심볼 - 거래 차트' 형식
+            title = `${chartConfig.symbol} - 거래 차트`;
+        }
+        else if (tab === 'Plot' && activePlotType) {
+            const plotName = plotTypeMap[activePlotType] || activePlotType;
+
+            // '세부 - 분석 그래프' 형식
+            title = `${plotName} - ${tabLabelMap[tab]}`;
+        }
+        else {
+            // 기본: 탭 레이블만
+            title = tabLabelMap[tab] || tab;
+        }
+
+        // 항상 Backboard 접미사 추가
+        document.title = `${title} | Backboard`;
+    }, [tab, chartConfig, activePlotType]);
+
     // config를 백그라운드에서 로딩하여 초기 렌더링 차단 방지
     useEffect(() => {
         // 즉시 config 로딩 시작 (백그라운드에서)
