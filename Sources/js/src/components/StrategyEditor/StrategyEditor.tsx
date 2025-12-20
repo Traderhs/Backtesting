@@ -26,7 +26,7 @@ export default function StrategyEditor() {
     // 공통 심볼 리스트 (모든 바 데이터에 공통 적용)
     const [symbolConfigs, setSymbolConfigs] = useState<string[]>([]);
 
-    // 기본 4개 바 데이터 설정 (트레이딩, 돋보기, 참조, 마크 가격)
+    // 기본 바 데이터 설정 (트레이딩, 돋보기, 참조 1개, 마크 가격)
     const [barDataConfigs, setBarDataConfigs] = useState<BarDataConfig[]>([
         {
             timeframe: {value: null, unit: TimeframeUnit.NULL},
@@ -338,6 +338,44 @@ export default function StrategyEditor() {
         return () => clearTimeout(timer);
     }, [symbolConfigs]);
 
+    // 참조 바 데이터 추가
+    const handleAddReferenceBar = () => {
+        // 프로젝트 디렉터리가 설정되어 있으면 기본 klines 폴더로 추론
+        const defaultKlinesDir = projectDirectory ? `${projectDirectory}/Data/Continuous Klines` : '';
+
+        const newConfig: BarDataConfig = {
+            timeframe: {value: null, unit: TimeframeUnit.NULL},
+            klinesDirectory: defaultKlinesDir,
+            barDataType: BarDataType.REFERENCE
+        };
+        
+        // MARK_PRICE 바로 앞에 삽입 (없으면 끝에 추가)
+        const markPriceIndex = barDataConfigs.findIndex(c => c.barDataType === BarDataType.MARK_PRICE);
+        const newConfigs = [...barDataConfigs];
+        const insertIndex = markPriceIndex === -1 ? newConfigs.length : markPriceIndex;
+        newConfigs.splice(insertIndex, 0, newConfig);
+        setBarDataConfigs(newConfigs);
+        
+        // 설정 저장
+        setTimeout(() => {
+            saveConfig();
+        }, 300);
+    };
+    
+    // 참조 바 데이터 삭제 (모든 참조 바 삭제 가능)
+    const handleRemoveReferenceBar = (index: number) => {
+        // 삭제 대상이 참조 바인지 확인
+        if (barDataConfigs[index] && barDataConfigs[index].barDataType === BarDataType.REFERENCE) {
+            const newConfigs = barDataConfigs.filter((_, i) => i !== index);
+            setBarDataConfigs(newConfigs);
+
+            // 설정 저장
+            setTimeout(() => {
+                saveConfig();
+            }, 300);
+        }
+    };
+
     // 바 데이터 설정 업데이트
     const updateBarDataConfig = (index: number, updates: Partial<BarDataConfig>) => {
         const newConfigs = [...barDataConfigs];
@@ -395,7 +433,7 @@ export default function StrategyEditor() {
 
         for (const config of configsToValidate) {
             if (!config.klinesDirectory.trim()) {
-                addLog('ERROR', `${config.barDataType} 바 데이터 폴더 경로를 입력해주세요.`);
+                addLog('ERROR', `${config.barDataType} 바 데이터 폴더를 입력해주세요.`);
                 return;
             }
         }
@@ -615,11 +653,22 @@ export default function StrategyEditor() {
 
                 {/* 바 데이터 설정 */}
                 <div className="bg-[#1a1a1a] rounded-lg border border-gray-700 p-4 mb-4">
-                    <h2 className="text-lg font-semibold text-white mb-4">바 데이터 설정</h2>
+                    <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-lg font-semibold text-white">바 데이터 설정</h2>
+                        <Button
+                            onClick={handleAddReferenceBar}
+                            className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 text-sm rounded-lg flex items-center gap-1"
+                        >
+                            <span className="text-lg leading-none">+</span>
+                            <span>참조 바 추가</span>
+                        </Button>
+                    </div>
 
                     <div className="grid grid-cols-2 gap-4">
                         {barDataConfigs.map((config, index) => {
                             const isDisabled = config.barDataType === BarDataType.MAGNIFIER && !useBarMagnifier;
+                            const canDelete = config.barDataType === BarDataType.REFERENCE;
+                            
                             const barDataTypeLabel = {
                                 [BarDataType.TRADING]: '트레이딩 바 데이터',
                                 [BarDataType.MAGNIFIER]: '돋보기 바 데이터',
@@ -630,25 +679,36 @@ export default function StrategyEditor() {
                             return (
                                 <div
                                     key={index}
-                                    className={`bg-[#252525] rounded-lg p-4 border border-gray-600 ${
+                                    className={`bg-[#252525] rounded-lg p-4 border border-gray-600 relative ${
                                         isDisabled ? 'opacity-50' : ''
                                     }`}
                                 >
                                     <div className="flex items-center justify-between mb-3">
                                         <h3 className="text-sm font-semibold text-white">{barDataTypeLabel}</h3>
-                                        {config.barDataType === BarDataType.MAGNIFIER && (
-                                            <label className="flex items-center gap-2 text-xs text-gray-300">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={useBarMagnifier}
-                                                    onChange={(e) => {
-                                                        setUseBarMagnifier(e.target.checked);
-                                                    }}
-                                                    className="w-3.5 h-3.5"
-                                                />
-                                                바 돋보기 기능
-                                            </label>
-                                        )}
+                                        <div className="flex items-center gap-2">
+                                            {config.barDataType === BarDataType.MAGNIFIER && (
+                                                <label className="flex items-center gap-2 text-xs text-gray-300">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={useBarMagnifier}
+                                                        onChange={(e) => {
+                                                            setUseBarMagnifier(e.target.checked);
+                                                        }}
+                                                        className="w-3.5 h-3.5"
+                                                    />
+                                                    바 돋보기 기능
+                                                </label>
+                                            )}
+                                            {canDelete && (
+                                                <button
+                                                    onClick={() => handleRemoveReferenceBar(index)}
+                                                    className="text-red-500 hover:text-red-400 text-xl leading-none px-1"
+                                                    title="참조 바 삭제"
+                                                >
+                                                    ×
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="space-y-3">
