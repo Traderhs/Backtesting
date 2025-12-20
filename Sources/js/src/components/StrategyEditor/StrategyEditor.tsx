@@ -79,11 +79,35 @@ export default function StrategyEditor() {
                     continue;
                 }
 
-                const m = line.match(/([^\s)]+?\.(tsx|js))(?:\?[^:\s]*)?(?::\d+:\d+)?$/i);
+                const m = line.match(/([^\s)]+?\.(tsx|ts|js|jsx|mjs))(?:\?[^:\s]*)?(?::\d+:\d+)?$/i);
                 if (m) {
                     let fp = m[1].split('?')[0];
-                    // 번들러 해시 제거 (예: name-BXO9bpex.js -> name.js)
-                    fp = fp.replace(/-([A-Za-z0-9]+)(?=\.js$)/, '');
+
+                    // 파일명과 확장 분리 (.tsx/.ts/.js 등)
+                    const lastDot = fp.lastIndexOf('.');
+                    if (lastDot !== -1) {
+                        let base = fp.slice(0, lastDot);
+                        const ext = fp.slice(lastDot); // includes '.'
+
+                        // 끝에 붙은 밑줄 제거 (예: name-BXO9bpex_)
+                        base = base.replace(/_+$/, '');
+
+                        // 뒤쪽에 붙은 번들 해시 토큰 검사
+                        const hashMatch = base.match(/-([A-Za-z0-9_]+)$/);
+                        if (hashMatch) {
+                            const token = hashMatch[1];
+
+                            // 제거 조건:
+                            // - 길이가 2 이상인 토큰 (일반 해시)
+                            // - 단일 대문자 (예: -D)
+                            // - 숫자나 밑줄이 포함된 토큰
+                            if (token.length > 1 || /^[A-Z]$/.test(token) || /[0-9_]/.test(token)) {
+                                base = base.replace(/-([A-Za-z0-9_]+)$/, '');
+                            }
+                        }
+
+                        fp = base + ext;
+                    }
 
                     // .js 파일은 원본 표시를 위해 .tsx로 변경
                     if (fp.endsWith('.js')) {
@@ -383,15 +407,13 @@ export default function StrategyEditor() {
                 const msg = `${config.barDataType} 바 데이터의 타임프레임 값이 비어있습니다.`;
                 addLog('ERROR', msg);
 
-
                 return;
             }
 
             if (!tf || tf.unit === TimeframeUnit.NULL) {
                 const msg = `${config.barDataType} 바 데이터의 타임프레임 단위가 비어있습니다.`;
                 addLog('ERROR', msg);
-
-
+                
                 return;
             }
         }
