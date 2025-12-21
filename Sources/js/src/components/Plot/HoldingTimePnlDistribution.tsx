@@ -35,7 +35,8 @@ const PlotComponent: React.FC<PlotlyComponentProps> = ({
         const loadPlotly = async () => {
             try {
                 // 앱에서 미리 로드된 Plotly 사용
-                const preloadedPlotly = (window as any).__plotlyPreload;
+                const preloadedPlotly = window.plotlyPreload;
+
                 if (preloadedPlotly) {
                     const PlotComponent = await preloadedPlotly;
                     if (PlotComponent) {
@@ -49,6 +50,7 @@ const PlotComponent: React.FC<PlotlyComponentProps> = ({
                 // Fallback: 직접 import (미리 로드 실패 시)
                 const plotlyModule = await import('react-plotly.js');
                 const PlotComponent = plotlyModule.default;
+
                 setPlotlyPlot(() => PlotComponent);
                 setLoadingPlotly(false);
             } catch (err) {
