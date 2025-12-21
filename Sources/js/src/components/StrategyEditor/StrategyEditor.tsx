@@ -80,49 +80,43 @@ export default function StrategyEditor() {
                 }
 
                 const m = line.match(/([^\s)]+?\.(tsx|ts|js|jsx|mjs))(?:\?[^:\s]*)?(?::\d+:\d+)?$/i);
-                if (m) {
-                    let fp = m[1].split('?')[0];
-
-                    // 파일명과 확장 분리 (.tsx/.ts/.js 등)
-                    const lastDot = fp.lastIndexOf('.');
-                    if (lastDot !== -1) {
-                        let base = fp.slice(0, lastDot);
-                        const ext = fp.slice(lastDot); // includes '.'
-
-                        // 끝에 붙은 밑줄 제거 (예: name-BXO9bpex_)
-                        base = base.replace(/_+$/, '');
-
-                        // 뒤쪽에 붙은 번들 해시 토큰 검사
-                        const hashMatch = base.match(/-([A-Za-z0-9_]+)$/);
-                        if (hashMatch) {
-                            const token = hashMatch[1];
-
-                            // 제거 조건:
-                            // - 길이가 2 이상인 토큰 (일반 해시)
-                            // - 단일 대문자 (예: -D)
-                            // - 숫자나 밑줄이 포함된 토큰
-                            if (token.length > 1 || /^[A-Z]$/.test(token) || /[0-9_]/.test(token)) {
-                                base = base.replace(/-([A-Za-z0-9_]+)$/, '');
-                            }
-                        }
-
-                        fp = base + ext;
-                    }
-
-                    // .js 파일은 원본 표시를 위해 .tsx로 변경
-                    if (fp.endsWith('.js')) {
-                        fp = fp.replace(/\.js$/, '.tsx');
-                    }
-
-                    const parts = fp.split(/[\\/]/);
-                    return parts[parts.length - 1];
+                if (!m) {
+                    continue;
                 }
+
+                let fp = m[1].split('?')[0];
+
+                // 경로 분리
+                const parts = fp.split(/[\\/]/);
+                let filename = parts[parts.length - 1];
+
+                // 파일명 / 확장자 분리
+                const extMatch = filename.match(/\.(tsx|ts|js|jsx|mjs)$/i);
+                if (!extMatch) {
+                    continue;
+                }
+
+                const ext = extMatch[0];
+                let base = filename.slice(0, -ext.length);
+
+                // 끝에 붙은 Vite / 번들 해시 무조건 제거 (ex: -Z0b, -BXO9bpex)
+                base = base.replace(/-[A-Za-z0-9]+$/, '');
+
+                // .js → .tsx (원본 표시용)
+                let finalExt = ext;
+                if (finalExt === '.js') {
+                    finalExt = '.tsx';
+                }
+
+                return base + finalExt;
             }
-        } catch (e) {
+        } catch {
             // 무시
         }
+
         return null;
     };
+
 
     // 로그 추가 함수
     const addLog = (level: string, message: string, timestamp: string | null = null, fileInfo: string | null = null) => {
@@ -348,20 +342,20 @@ export default function StrategyEditor() {
             klinesDirectory: defaultKlinesDir,
             barDataType: BarDataType.REFERENCE
         };
-        
+
         // MARK_PRICE 바로 앞에 삽입 (없으면 끝에 추가)
         const markPriceIndex = barDataConfigs.findIndex(c => c.barDataType === BarDataType.MARK_PRICE);
         const newConfigs = [...barDataConfigs];
         const insertIndex = markPriceIndex === -1 ? newConfigs.length : markPriceIndex;
         newConfigs.splice(insertIndex, 0, newConfig);
         setBarDataConfigs(newConfigs);
-        
+
         // 설정 저장
         setTimeout(() => {
             saveConfig();
         }, 300);
     };
-    
+
     // 참조 바 데이터 삭제 (모든 참조 바 삭제 가능)
     const handleRemoveReferenceBar = (index: number) => {
         // 삭제 대상이 참조 바인지 확인
@@ -452,7 +446,7 @@ export default function StrategyEditor() {
             if (!tf || tf.unit === TimeframeUnit.NULL) {
                 const msg = `${config.barDataType} 바 데이터의 타임프레임 단위가 비어있습니다.`;
                 addLog('ERROR', msg);
-                
+
                 return;
             }
         }
@@ -668,7 +662,7 @@ export default function StrategyEditor() {
                         {barDataConfigs.map((config, index) => {
                             const isDisabled = config.barDataType === BarDataType.MAGNIFIER && !useBarMagnifier;
                             const canDelete = config.barDataType === BarDataType.REFERENCE;
-                            
+
                             const barDataTypeLabel = {
                                 [BarDataType.TRADING]: '트레이딩 바 데이터',
                                 [BarDataType.MAGNIFIER]: '돋보기 바 데이터',
@@ -722,8 +716,13 @@ export default function StrategyEditor() {
                                                     pattern="[0-9]*"
                                                     value={config.timeframe.value ?? ''}
                                                     onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                                        // Ctrl/Cmd 조합키는 브라우저 기본 동작(undo/redo/copy/paste 등)을 허용
+                                                        if (e.ctrlKey || e.metaKey) {
+                                                            return;
+                                                        }
+
                                                         // 허용되는 키: 숫자, Backspace, Delete, Arrow, Tab
-                                                        const allowed = /^(?:[0-9]|Backspace|Delete|ArrowLeft|ArrowRight|Tab)$/;
+                                                        const allowed = /^(?:[0-9]|Backspace|Delete|ArrowLeft|ArrowRight|Tab|Home|End)$/;
                                                         if (!allowed.test(e.key)) {
                                                             e.preventDefault();
                                                         }
