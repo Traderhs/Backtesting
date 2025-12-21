@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "bin": "launch.js",
   "pkg": {
-    "outputPath": "dist",
+    "outputPath": "Backboard Package",
     "targets": [
       "node18-win-x64"
     ],
@@ -13,11 +13,12 @@
     ]
   },
   "scripts": {
-    "dev": "vite --config config/vite.config.ts",
+    "dev": "concurrently \"cross-env BACKBOARD_PORT=7777 BACKBOARD_OPEN_BROWSER=none node ./server/launch.js\" \"cross-env BACKBOARD_PORT=7777 vite --config config/vite.config.ts --open\"",
     "build": "tsc -b config/tsconfig.json && vite build --config config/vite.config.ts",
     "lint": "eslint --config config/eslint.config.js .",
     "preview": "vite preview --config config/vite.config.ts",
-    "pkg:build": "pkg . --target node18-win-x64 --output dist/Backboard.exe"
+    "pkg:build": "pkg . --target node18-win-x64 --output Backboard Package/Backboard.exe",
+    "postinstall": "node ./scripts/patch-deprecations.js"
   },
   "type": "commonjs",
   "dependencies": {
@@ -33,7 +34,7 @@
     "@tsparticles/preset-links": "^3.2.0",
     "@tsparticles/react": "^3.0.0",
     "apache-arrow": "^19.0.1",
-    "axios": "^1.8.4",
+    "axios": "1.12.0",
     "bezier-easing": "^2.1.0",
     "chart.js": "^4.4.9",
     "chartjs-adapter-date-fns": "^3.0.0",
@@ -82,6 +83,8 @@
     "ws": "^8.18.1"
   },
   "devDependencies": {
+    "concurrently": "^8.0.1",
+    "cross-env": "^7.0.3",
     "@eslint/js": "^9.21.0",
     "@tailwindcss/postcss": "^4.0.17",
     "@types/lodash": "^4.17.16",
@@ -105,7 +108,7 @@
     "terser": "^5.41.0",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.24.1",
-    "vite": "6.3.4"
+    "vite": "7.1.11"
   }
 }
 
