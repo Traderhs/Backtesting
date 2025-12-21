@@ -43,7 +43,15 @@ export default defineConfig({
     server: {
         proxy: {
             "/Backboard": {
-                target: "http://localhost:7777", // express 서버 포트
+                target: `http://localhost:${process.env.BACKBOARD_PORT || 7777}`,
+                changeOrigin: true,
+            },
+            "/api": {
+                target: `http://localhost:${process.env.BACKBOARD_PORT || 7777}`,
+                changeOrigin: true,
+            },
+            "/force-shutdown": {
+                target: `http://localhost:${process.env.BACKBOARD_PORT || 7777}`,
                 changeOrigin: true,
             },
         },
