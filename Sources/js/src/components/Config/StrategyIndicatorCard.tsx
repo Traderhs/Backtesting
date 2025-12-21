@@ -521,7 +521,7 @@ const StrategyIndicatorCard = memo(({
     // 컴포넌트 마운트 시 및 지표 변경 시 config.json에서 지표 정보 가져오기
     const loadIndicatorConfigInfo = useCallback(async (indicatorName: string) => {
         try {
-            const response = await fetch('/config.json');
+            const response = await fetch('/api/config');
             const config = await response.json();
 
             // config.json에서 지표 정보 찾기

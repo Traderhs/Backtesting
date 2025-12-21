@@ -15,7 +15,7 @@ const plotlyPreloadPromise = import('react-plotly.js').then(module => {
 });
 
 // 전역에서 Plotly 접근 가능하도록 window 객체에 추가
-(window as any).__plotlyPreload = plotlyPreloadPromise;
+window.plotlyPreload = plotlyPreloadPromise;
 
 // 코드 스플리팅으로 탭 컴포넌트들을 lazy 로딩
 const StrategyEditor = lazy(() => import("@/components/StrategyEditor/StrategyEditor"));
@@ -63,6 +63,7 @@ function AppContent() {
 
     // 탭 순서 정의
     const tabOrder = ["StrategyEditor", "Overview", "Performance", "Plot", "Chart", "TradeList", "Config", "Log"];
+
     // 플롯 타입 순서 정의 (애니메이션 방향 결정용)
     const plotTypeOrder = ["equity-drawdown", "profit-loss-comparison", "holding-time-pnl-distribution", "symbol-performance"];
 
@@ -369,10 +370,12 @@ function AppContent() {
         const loadConfigWithRetries = async (maxAttempts = 3) => {
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
-                    const res = await fetch('/Backboard/config.json');
+                    const res = await fetch('/api/config');
                     const data = await res.json();
 
-                    if (cancelled) return;
+                    if (cancelled) {
+                        return;
+                    }
 
                     // 성공 시 상태 업데이트
                     setConfig(data);
@@ -524,7 +527,7 @@ function AppContent() {
             <Sidebar
                 onSelectTab={handleSelectTab}
                 activeTab={tab}
-                config={config || {}} // config가 없으면 빈 객체 제공
+                config={config || {}}
                 isChartLoading={isChartLoading}
                 activeSymbol={tab === "Chart" ? chartConfig?.symbol : undefined}
                 activePlotType={tab === "Plot" ? activePlotType : undefined}

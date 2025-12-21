@@ -133,7 +133,7 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
     }, [seriesComponents]);
 
     useEffect(() => {
-        fetch("/Backboard/config.json")
+        fetch("/api/config")
             .then(res => res.json())
             .then(data => {
                 setConfig(data);

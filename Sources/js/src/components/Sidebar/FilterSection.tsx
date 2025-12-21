@@ -1,6 +1,7 @@
 import {memo, useState, useRef, useEffect, useCallback} from "react"
-import {Button} from "../ui/button.tsx"
 import {motion, AnimatePresence} from 'framer-motion'
+import {Button} from "../ui/button.tsx"
+import {SidebarIcon} from "@/components/Sidebar/Sidebar.tsx"
 import {
     AdvancedEntryTimeFilter,
     AdvancedExitTimeFilter,
@@ -118,12 +119,6 @@ const applyShakeAnimationWhenUnchecked = () => {
 };
 
 interface FilterSectionProps {
-    iconStyle: {
-        width: string;
-        height: string;
-        marginRight: string;
-        verticalAlign: string;
-    };
     timeframe?: string;
 }
 
@@ -158,7 +153,7 @@ const throttle = <T extends (...args: any[]) => any>(func: T, limit: number): (.
  * 거래 필터 UI 컴포넌트 - 거래 필터 토글 버튼과 확장 시 표시되는 필터 옵션들을 포함
  * 독립적인 컴포넌트로 분리하여 상태 변경이 부모 컴포넌트에 영향을 주지 않게 함
  */
-const FilterSection = memo(({iconStyle, timeframe}: FilterSectionProps) => {
+const FilterSection = memo(({timeframe}: FilterSectionProps) => {
     // 각 탭 컨텐츠에 대한 refs
     const basicTabRef = useRef<HTMLDivElement>(null);
     const timeTabRef = useRef<HTMLDivElement>(null);
@@ -172,12 +167,16 @@ const FilterSection = memo(({iconStyle, timeframe}: FilterSectionProps) => {
 
     // 현재 활성화된 탭 상태 관리
     const [activeTab, setActiveTab] = useState<string>("basic");
+
     // 이전 활성화 탭 (애니메이션 용도)
     const [prevTab, setPrevTab] = useState<string>("basic");
+
     // 애니메이션 방향
     const [animationDirection, setAnimationDirection] = useState<string>("");
+
     // 애니메이션 상태
     const [isAnimating, setIsAnimating] = useState<boolean>(false);
+
     // 애니메이션 타이머 관리
     const animationTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -380,7 +379,7 @@ const FilterSection = memo(({iconStyle, timeframe}: FilterSectionProps) => {
                 >
                     <div className="flex items-center justify-between w-full">
                         <div className="flex items-center">
-                            <img src="Backboard/icon/filter.ico" alt="Filter" style={iconStyle}/>
+                            <SidebarIcon name={'filter.ico'} alt="Filter" className="sidebar-icon"/>
                             <span className="ml-2 filter-toggle-text">거래 필터</span>
                         </div>
                         <span className={`filter-toggle-arrow ${filterExpanded ? "expanded" : ""}`}>
@@ -514,19 +513,19 @@ const FilterSection = memo(({iconStyle, timeframe}: FilterSectionProps) => {
                                 >
                                     <div>
                                         {/* 진입 시간 필터 섹션 */}
-                                        <div className={getFilterSectionClass("filter-section") }>
+                                        <div className={getFilterSectionClass("filter-section")}>
                                             <EntryTimeFilter timeframe={timeframe}/>
                                             <AdvancedEntryTimeFilter/>
                                         </div>
 
                                         {/* 청산 시간 필터 섹션 */}
-                                        <div className={getFilterSectionClass("filter-section") }>
+                                        <div className={getFilterSectionClass("filter-section")}>
                                             <ExitTimeFilter timeframe={timeframe}/>
                                             <AdvancedExitTimeFilter/>
                                         </div>
 
                                         {/* 보유 시간 필터 */}
-                                        <div className={getFilterSectionClass("filter-section") }>
+                                        <div className={getFilterSectionClass("filter-section")}>
                                             <HoldingTimeFilter/>
                                         </div>
                                     </div>
@@ -551,7 +550,7 @@ const FilterSection = memo(({iconStyle, timeframe}: FilterSectionProps) => {
                                 </div>
                             </div>
                         </div>
-                </motion.div>
+                    </motion.div>
                 )}
             </AnimatePresence>
         </div>
