@@ -179,35 +179,40 @@ app.get('/api/config', (req, res) => {
 });
 
 // =====================================================================================================================
-// API: 거래 내역 가져오기 (/api/trade-list)
+// API: 거래 내역 가져오기
 // =====================================================================================================================
 app.get('/api/trade-list', async (req, res) => {
     try {
-        const filePath = path.join(baseDir, 'Backboard', 'trade_list.json');
-
-        try {
-            await fsPromises.access(filePath, fs.constants.F_OK);
-        } catch (e) {
-            broadcastLog('WARN', `trade_list.json을 찾을 수 없습니다: ${e.message}`);
-            return res.status(404).json({error: 'trade_list not found'});
+        const tradeListPath = path.join(baseDir, 'Backboard', 'trade_list.json');
+        
+        // 파일 존재 확인
+        await fsPromises.access(tradeListPath, fs.constants.F_OK);
+        
+        // 파일 읽기
+        let fileContent = await fsPromises.readFile(tradeListPath, {encoding: 'utf8'});
+        
+        // BOM (Byte Order Mark) 제거
+        if (fileContent.charCodeAt(0) === 0xFEFF) {
+            fileContent = fileContent.slice(1);
         }
-
-        const fileContent = await fsPromises.readFile(filePath, {encoding: 'utf8'});
-
-        // 파일 내용이 유효한 JSON 배열인지 확인
-        let parsed = null;
-        try {
-            parsed = JSON.parse(fileContent);
-        } catch (parseErr) {
-            return res.status(500).json({error: 'trade_list parse error'});
-        }
-
-        res.set({'Cache-Control': 'no-cache, no-store, must-revalidate'});
-
-        return res.json(parsed);
-    } catch (err) {
-        broadcastLog('ERROR', `trade_list API 처리 실패: ${err.message}`);
-        return res.status(500).json({error: 'internal server error'});
+        
+        const tradeData = JSON.parse(fileContent);
+        
+        res.set({
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
+            'Pragma': 'no-cache',
+            'Expires': '0'
+        });
+        
+        res.json(tradeData);
+    } catch (error) {
+        res.status(404).json({
+            error: 'trade_list.json 파일을 찾을 수 없습니다.', 
+            attemptedPath: path.join(baseDir, 'Backboard', 'trade_list.json'),
+            baseDir: baseDir,
+            cwd: process.cwd(),
+            details: error.message
+        });
     }
 });
 
