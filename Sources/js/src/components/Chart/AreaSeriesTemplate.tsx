@@ -51,7 +51,7 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
     const dataCacheRef = useRef<DataPoint[]>(initialData);
     const isInitializedRef = useRef<boolean>(false);
     const isUpdatingRef = useRef<boolean>(false);
-    const pendingUpdateRef = useRef<{data: DataPoint[], options?: { reset?: boolean }} | null>(null);
+    const pendingUpdateRef = useRef<{ data: DataPoint[], options?: { reset?: boolean } } | null>(null);
 
     // 시리즈 생성 및 초기 setData 처리
     useEffect(() => {
@@ -77,13 +77,12 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
         }, paneIndex);
 
         if (initialData.length > 0) {
-            const formattedData = initialData.map(pt => ({
-                time: pt.time,
-                value: pt.value === null ? NaN : pt.value,
-            }));
-            
+            const formattedData = initialData
+                .filter(pt => !(pt.value === null || pt.value === undefined || isNaN(pt.value as any) || !isFinite(pt.value as any)))
+                .map(pt => ({time: pt.time, value: pt.value as number}));
+
             seriesRef.current.setData(formattedData);
-            
+
             // window.indicatorData 업데이트 (중요: 병합된 전체 데이터를 설정)
             if (typeof window !== 'undefined') {
                 if (!window.indicatorData) {
@@ -91,7 +90,7 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
                 }
                 // 병합된 전체 데이터를 window.indicatorData에 설정
                 window.indicatorData[indicatorName] = [...initialData];
-                
+
                 // window.indicatorSeriesInfo 설정도 유지
                 if (!window.indicatorSeriesInfo) {
                     window.indicatorSeriesInfo = {};
@@ -106,7 +105,7 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
                 // 추가 속성은 별도로 설정
                 window.indicatorSeriesInfo[indicatorName].topLineColor = topColor;
                 window.indicatorSeriesInfo[indicatorName].bottomLineColor = bottomColor;
-                
+
                 // 한 번만 초기화
                 if (!isInitializedRef.current) {
                     isInitializedRef.current = true;
@@ -132,7 +131,7 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
     // 대기 중인 업데이트가 있으면 처리하는 함수
     const processPendingUpdate = () => {
         if (pendingUpdateRef.current && !isUpdatingRef.current) {
-            const { data, options } = pendingUpdateRef.current;
+            const {data, options} = pendingUpdateRef.current;
             pendingUpdateRef.current = null;
             updateDataInternal(data, options).then();
         }
@@ -142,12 +141,12 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
     const updateDataInternal = async (newIndicatorData: DataPoint[], options?: { reset?: boolean }) => {
         if (isUpdatingRef.current) {
             // 이미 업데이트 중이면 나중에 처리하도록 보관
-            pendingUpdateRef.current = { data: newIndicatorData, options };
+            pendingUpdateRef.current = {data: newIndicatorData, options};
             return;
         }
 
         isUpdatingRef.current = true;
-        
+
         try {
             // 빠른 병합 또는 초기화
             if (newIndicatorData.length > 0) {
@@ -161,7 +160,7 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
                     console.log(`[AreaSeries] ${indicatorName}: 데이터 병합`);
                 }
             }
-            
+
             // 레이아웃 계산 최적화를 위해 requestAnimationFrame 사용
             requestAnimationFrame(() => {
                 if (!seriesRef.current) {
@@ -169,15 +168,14 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
                     processPendingUpdate();
                     return;
                 }
-                
-                const formattedData = dataCacheRef.current.map(pt => ({
-                    time: pt.time,
-                    value: pt.value === null ? NaN : pt.value,
-                }));
-                
+
+                const formattedData = dataCacheRef.current
+                    .filter(pt => !(pt.value === null || pt.value === undefined || isNaN(pt.value as any) || !isFinite(pt.value as any)))
+                    .map(pt => ({time: pt.time, value: pt.value as number}));
+
                 // 차트 데이터 업데이트
                 seriesRef.current.setData(formattedData);
-                
+
                 // window.indicatorData 업데이트 (중요: 병합된 전체 데이터를 설정)
                 if (typeof window !== 'undefined') {
                     if (!window.indicatorData) {
@@ -185,7 +183,7 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
                     }
                     // 병합된 전체 데이터를 window.indicatorData에 설정
                     window.indicatorData[indicatorName] = [...dataCacheRef.current];
-                    
+
                     // window.indicatorSeriesInfo 설정도 유지
                     if (!window.indicatorSeriesInfo) {
                         window.indicatorSeriesInfo = {};
@@ -201,7 +199,7 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
                     window.indicatorSeriesInfo[indicatorName].topLineColor = topColor;
                     window.indicatorSeriesInfo[indicatorName].bottomLineColor = bottomColor;
                 }
-                
+
                 isUpdatingRef.current = false;
                 processPendingUpdate();
             });
@@ -217,7 +215,7 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
         updateData(newIndicatorData: DataPoint[], options?: { reset?: boolean }) {
             updateDataInternal(newIndicatorData, options).then();
         },
-        
+
         // getDataCache 메서드 추가 - TopInfo에서 최신 데이터를 얻을 수 있도록
         getDataCache() {
             return [...dataCacheRef.current];

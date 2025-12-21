@@ -70,10 +70,9 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
         }, paneIndex);
 
         if (initialData.length > 0) {
-            const formattedData = initialData.map(pt => ({
-                time: pt.time,
-                value: pt.value === null ? NaN : pt.value,
-            }));
+            const formattedData = initialData
+                .filter(pt => !(pt.value === null || pt.value === undefined || isNaN(pt.value as any) || !isFinite(pt.value as any)))
+                .map(pt => ({time: pt.time, value: pt.value as number}));
 
             seriesRef.current.setData(formattedData);
 
@@ -153,10 +152,9 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
                     return;
                 }
 
-                const formattedData = dataCacheRef.current.map(pt => ({
-                    time: pt.time,
-                    value: pt.value === null ? NaN : pt.value,
-                }));
+                const formattedData = dataCacheRef.current
+                    .filter(pt => !(pt.value === null || pt.value === undefined || isNaN(pt.value as any) || !isFinite(pt.value as any)))
+                    .map(pt => ({time: pt.time, value: pt.value as number}));
 
                 // 차트 데이터 업데이트
                 seriesRef.current.setData(formattedData);

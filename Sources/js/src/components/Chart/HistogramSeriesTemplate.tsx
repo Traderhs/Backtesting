@@ -50,12 +50,12 @@ const HistogramSeriesTemplate = forwardRef<HistogramSeriesHandle, HistogramSerie
     // 값에 따라 적절한 색상을 반환하는 함수
     const getColorForValue = (value: number | null): string | undefined => {
         if (value === null || isNaN(value)) return undefined;
-        
+
         if (bearishColor) {
             // baseValue보다 낮으면 bearishColor, 높으면 기본 color
             return value < baseValue ? bearishColor : color;
         }
-        
+
         return undefined; // 기본 시리즈 색상 사용
     };
 
@@ -75,25 +75,26 @@ const HistogramSeriesTemplate = forwardRef<HistogramSeriesHandle, HistogramSerie
         }, paneIndex);
 
         if (initialData.length > 0) {
-            const formattedData = initialData.map(pt => {
-                const value = pt.value === null ? NaN : pt.value;
-                const result: any = {
-                    time: pt.time,
-                    value: value,
-                };
-                
-                // 기존 색상이 있으면 사용, 없으면 값에 따라 색상 결정
-                if (pt.color) {
-                    result.color = pt.color;
-                } else {
-                    const autoColor = getColorForValue(pt.value);
-                    if (autoColor) {
-                        result.color = autoColor;
+            const formattedData = initialData
+                .filter(pt => !(pt.value === null || pt.value === undefined || isNaN(pt.value as any) || !isFinite(pt.value as any)))
+                .map(pt => {
+                    const result: any = {
+                        time: pt.time,
+                        value: pt.value as number,
+                    };
+
+                    // 기존 색상이 있으면 사용, 없으면 값에 따라 색상 결정
+                    if (pt.color) {
+                        result.color = pt.color;
+                    } else {
+                        const autoColor = getColorForValue(pt.value as number);
+                        if (autoColor) {
+                            result.color = autoColor;
+                        }
                     }
-                }
-                
-                return result;
-            });
+
+                    return result;
+                });
 
             seriesRef.current.setData(formattedData);
 
@@ -170,25 +171,26 @@ const HistogramSeriesTemplate = forwardRef<HistogramSeriesHandle, HistogramSerie
                     return;
                 }
 
-                const formattedData = dataCacheRef.current.map(pt => {
-                    const value = pt.value === null ? NaN : pt.value;
-                    const result: any = {
-                        time: pt.time,
-                        value: value,
-                    };
-                    
-                    // 기존 색상이 있으면 사용, 없으면 값에 따라 색상 결정
-                    if (pt.color) {
-                        result.color = pt.color;
-                    } else {
-                        const autoColor = getColorForValue(pt.value);
-                        if (autoColor) {
-                            result.color = autoColor;
+                const formattedData = dataCacheRef.current
+                    .filter(pt => !(pt.value === null || pt.value === undefined || isNaN(pt.value as any) || !isFinite(pt.value as any)))
+                    .map(pt => {
+                        const result: any = {
+                            time: pt.time,
+                            value: pt.value as number,
+                        };
+
+                        // 기존 색상이 있으면 사용, 없으면 값에 따라 색상 결정
+                        if (pt.color) {
+                            result.color = pt.color;
+                        } else {
+                            const autoColor = getColorForValue(pt.value as number);
+                            if (autoColor) {
+                                result.color = autoColor;
+                            }
                         }
-                    }
-                    
-                    return result;
-                });
+
+                        return result;
+                    });
 
                 // 차트 데이터 업데이트
                 seriesRef.current.setData(formattedData);

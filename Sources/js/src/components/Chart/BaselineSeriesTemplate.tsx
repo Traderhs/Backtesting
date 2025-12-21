@@ -59,13 +59,13 @@ const BaselineSeriesTemplate = forwardRef<BaselineSeriesHandle, BaselineSeriesPr
     const dataCacheRef = useRef<DataPoint[]>(initialData);
     const isInitializedRef = useRef<boolean>(false);
     const isUpdatingRef = useRef<boolean>(false);
-    const pendingUpdateRef = useRef<{data: DataPoint[]} | null>(null);
+    const pendingUpdateRef = useRef<{ data: DataPoint[] } | null>(null);
 
     useEffect(() => {
         if (!chart) return;
 
         seriesRef.current = chart.addSeries(BaselineSeries, {
-            baseValue: { type: 'price', price: baseValue },
+            baseValue: {type: 'price', price: baseValue},
             topFillColor1: topFillColor1,
             topFillColor2: topFillColor2,
             topLineColor: topLineColor,
@@ -88,13 +88,12 @@ const BaselineSeriesTemplate = forwardRef<BaselineSeriesHandle, BaselineSeriesPr
         }, paneIndex);
 
         if (initialData.length > 0) {
-            const formattedData = initialData.map(pt => ({
-                time: pt.time,
-                value: pt.value === null ? NaN : pt.value,
-            }));
-            
+            const formattedData = initialData
+                .filter(pt => !(pt.value === null || pt.value === undefined || isNaN(pt.value as any) || !isFinite(pt.value as any)))
+                .map(pt => ({time: pt.time, value: pt.value as number}));
+
             seriesRef.current.setData(formattedData);
-            
+
             // window.indicatorData 업데이트 (중요: 병합된 전체 데이터를 설정)
             if (typeof window !== 'undefined') {
                 if (!window.indicatorData) {
@@ -102,7 +101,7 @@ const BaselineSeriesTemplate = forwardRef<BaselineSeriesHandle, BaselineSeriesPr
                 }
                 // 병합된 전체 데이터를 window.indicatorData에 설정
                 window.indicatorData[indicatorName] = [...dataCacheRef.current];
-                
+
                 // window.indicatorSeriesInfo 설정도 유지
                 if (!window.indicatorSeriesInfo) {
                     window.indicatorSeriesInfo = {};
@@ -117,7 +116,7 @@ const BaselineSeriesTemplate = forwardRef<BaselineSeriesHandle, BaselineSeriesPr
                     topLineColor: topLineColor,
                     bottomLineColor: bottomLineColor
                 };
-                
+
                 // 한 번만 초기화
                 if (!isInitializedRef.current) {
                     isInitializedRef.current = true;
@@ -147,7 +146,7 @@ const BaselineSeriesTemplate = forwardRef<BaselineSeriesHandle, BaselineSeriesPr
     // 대기 중인 업데이트가 있으면 처리하는 함수
     const processPendingUpdate = () => {
         if (pendingUpdateRef.current && !isUpdatingRef.current) {
-            const { data } = pendingUpdateRef.current;
+            const {data} = pendingUpdateRef.current;
             pendingUpdateRef.current = null;
             updateDataInternal(data).then();
         }
@@ -157,12 +156,12 @@ const BaselineSeriesTemplate = forwardRef<BaselineSeriesHandle, BaselineSeriesPr
     const updateDataInternal = async (newIndicatorData: DataPoint[], reset = false) => {
         if (isUpdatingRef.current) {
             // 이미 업데이트 중이면 나중에 처리하도록 보관
-            pendingUpdateRef.current = { data: newIndicatorData };
+            pendingUpdateRef.current = {data: newIndicatorData};
             return;
         }
 
         isUpdatingRef.current = true;
-        
+
         try {
             // 빠른 병합: 파일이 시간 순으로 정렬되어 있으므로 단순히 concat 사용
             if (newIndicatorData.length > 0) {
@@ -172,7 +171,7 @@ const BaselineSeriesTemplate = forwardRef<BaselineSeriesHandle, BaselineSeriesPr
                     dataCacheRef.current = dataCacheRef.current.concat(newIndicatorData);
                 }
             }
-            
+
             // 레이아웃 계산 최적화를 위해 requestAnimationFrame 사용
             requestAnimationFrame(() => {
                 if (!seriesRef.current) {
@@ -180,15 +179,14 @@ const BaselineSeriesTemplate = forwardRef<BaselineSeriesHandle, BaselineSeriesPr
                     processPendingUpdate();
                     return;
                 }
-                
-                const formattedData = dataCacheRef.current.map(pt => ({
-                    time: pt.time,
-                    value: pt.value === null ? NaN : pt.value,
-                }));
-                
+
+                const formattedData = dataCacheRef.current
+                    .filter(pt => !(pt.value === null || pt.value === undefined || isNaN(pt.value as any) || !isFinite(pt.value as any)))
+                    .map(pt => ({time: pt.time, value: pt.value as number}));
+
                 // 차트 데이터 업데이트
                 seriesRef.current.setData(formattedData);
-                
+
                 // window.indicatorData 업데이트 (중요: 병합된 전체 데이터를 설정)
                 if (typeof window !== 'undefined') {
                     if (!window.indicatorData) {
@@ -196,7 +194,7 @@ const BaselineSeriesTemplate = forwardRef<BaselineSeriesHandle, BaselineSeriesPr
                     }
                     // 병합된 전체 데이터를 window.indicatorData에 설정
                     window.indicatorData[indicatorName] = [...dataCacheRef.current];
-                    
+
                     // window.indicatorSeriesInfo 설정도 유지
                     if (!window.indicatorSeriesInfo) {
                         window.indicatorSeriesInfo = {};
@@ -210,7 +208,7 @@ const BaselineSeriesTemplate = forwardRef<BaselineSeriesHandle, BaselineSeriesPr
                         bottomLineColor: bottomLineColor
                     };
                 }
-                
+
                 isUpdatingRef.current = false;
                 processPendingUpdate();
             });
@@ -226,7 +224,7 @@ const BaselineSeriesTemplate = forwardRef<BaselineSeriesHandle, BaselineSeriesPr
             const reset = options?.reset || false;
             updateDataInternal(newIndicatorData, reset).then();
         },
-        
+
         // getDataCache 메서드 추가 - TopInfo에서 최신 데이터를 얻을 수 있도록
         getDataCache() {
             return [...dataCacheRef.current];
