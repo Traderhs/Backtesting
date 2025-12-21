@@ -4,7 +4,6 @@ import ServerAlert from "@/components/Server/ServerAlert.tsx";
 import {TradeFilterProvider} from "@/components/TradeFilter/TradeFilterProvider.tsx";
 import {LogoProvider, useLogo} from "@/contexts/LogoContext";
 import Sidebar from "@/components/Sidebar/Sidebar";
-import NoDataMessage from '@/components/Common/NoDataMessage';
 import LoadingSpinner from '@/components/Common/LoadingSpinner';
 
 // Plotly 미리 로딩 (앱 시작 시)
@@ -87,7 +86,6 @@ function AppContent() {
     } | null>(null);
     const [isChartLoading, setIsChartLoading] = useState(false);
     const [config, setConfig] = useState<any>(null);
-    const [configError, setConfigError] = useState(false);
 
     // 분석 그래프(Plot) 탭의 활성 플롯 타입 상태 추가
     const [activePlotType, setActivePlotType] = useState<string>("equity-drawdown");
@@ -348,14 +346,12 @@ function AppContent() {
         if (tab === 'Chart' && chartConfig && chartConfig.symbol) {
             // '심볼 - 거래 차트' 형식
             title = `${chartConfig.symbol} - 거래 차트`;
-        }
-        else if (tab === 'Plot' && activePlotType) {
+        } else if (tab === 'Plot' && activePlotType) {
             const plotName = plotTypeMap[activePlotType] || activePlotType;
 
             // '세부 - 분석 그래프' 형식
             title = `${plotName} - ${tabLabelMap[tab]}`;
-        }
-        else {
+        } else {
             // 기본: 탭 레이블만
             title = tabLabelMap[tab] || tab;
         }
@@ -364,37 +360,62 @@ function AppContent() {
         document.title = `${title} | Backboard`;
     }, [tab, chartConfig, activePlotType]);
 
-    // config를 백그라운드에서 로딩하여 초기 렌더링 차단 방지
+    // config를 백그라운드에서 로딩 (3회 재시도). 실패해도 UI 오류는 표시하지 않음
     useEffect(() => {
-        // 즉시 config 로딩 시작 (백그라운드에서)
-        fetch("/Backboard/config.json")
-            .then((res) => {
-                if (!res.ok) {
-                    throw new Error("데이터를 불러올 수 없습니다.");
-                }
-                return res.json();
-            })
-            .then((data) => {
-                // config 로딩 완료 후 상태 업데이트
-                setConfig(data);
+        let cancelled = false;
 
-                // config 로딩 후 window.indicatorPaths 전역 공유
-                window.indicatorPaths = {};
-                data["지표"]?.forEach((indicator: any) => {
-                    const indicatorName = indicator["지표 이름"] || "unknown_indicator";
-                    const indicatorPath = indicator["데이터 경로"] || "";
-                    const plotType = indicator["플롯"]?.["플롯 종류"];
+        const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-                    // 플롯 종류가 비활성화인 지표는 제외 (IndicatorSeriesContainer와 동일한 로직 적용)
-                    if (plotType !== "비활성화" && indicatorPath) {
-                        window.indicatorPaths[indicatorName] = indicatorPath.replace(/\/[^\/]*$/, "");
+        const loadConfigWithRetries = async (maxAttempts = 3) => {
+            for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                try {
+                    const res = await fetch('/Backboard/config.json');
+                    const data = await res.json();
+
+                    if (cancelled) return;
+
+                    // 성공 시 상태 업데이트
+                    setConfig(data);
+
+                    // config 로딩 후 window.indicatorPaths 전역 공유
+                    (window as any).indicatorPaths = {};
+                    data['지표']?.forEach((indicator: any) => {
+                        const indicatorName = indicator['지표 이름'] || 'unknown_indicator';
+                        const indicatorPath = indicator['데이터 경로'] || '';
+                        const plotType = indicator['플롯']?.['플롯 종류'];
+
+                        if (plotType !== '비활성화' && indicatorPath) {
+                            (window as any).indicatorPaths[indicatorName] = indicatorPath.replace(/\/[^\/]*$/, '');
+                        }
+                    });
+
+                    return; // 성공하면 종료
+                } catch (err) {
+                    // 마지막 시도 전에는 경고만 남기고 잠시 대기 후 재시도
+                    if (attempt < maxAttempts) {
+                        // 간단한 지연(지수 백오프의 단순화)
+                        // 첫 재시도는 200ms, 다음은 500ms
+                        await sleep(attempt === 1 ? 200 : 500);
+
+                        continue;
                     }
-                });
-            })
-            .catch((err) => {
-                console.error("config 로딩 오류:", err);
-                setConfigError(true);
-            });
+
+                    // 모든 시도 실패: 오류 표시를 내리지 않고 조용히 처리
+                    if (cancelled) {
+                        return;
+                    }
+
+                    setConfig(null);
+                    return;
+                }
+            }
+        };
+
+        loadConfigWithRetries(3).then();
+
+        return () => {
+            cancelled = true;
+        };
     }, []);
 
     // 초기 설정 (줌 방지 등)
@@ -418,12 +439,6 @@ function AppContent() {
             window.removeEventListener('keydown', preventZoom);
         };
     }, []);
-
-
-    // 로딩 중이더라도 기본 UI는 표시 (config 없어도 동작)
-    if (configError) {
-        return <NoDataMessage message="데이터가 존재하지 않습니다."/>;
-    }
 
     // 탭의 CSS 클래스 결정 (탭 전환 애니메이션 용도)
     const getTabClass = (tabName: string) => {
