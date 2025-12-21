@@ -3,6 +3,9 @@ import React from "react";
 
 declare global {
     interface Window {
+        // Plotly 프리로딩
+        plotlyPreload: Promise<typeof Plot | null>;
+
         // 지표의 개수를 저장
         paneCount?: number;
 
