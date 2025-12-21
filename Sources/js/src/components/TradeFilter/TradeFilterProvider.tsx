@@ -131,7 +131,7 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
     useEffect(() => {
         async function loadConfig() {
             try {
-                const res = await fetch("/Backboard/config.json");
+                const res = await fetch("/api/config");
                 const config = await res.json();
                 const symbols = (config["심볼"] ?? []).map(
                     (s: Record<string, unknown>) => ({name: String(s["심볼 이름"])})
@@ -160,7 +160,7 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
     useEffect(() => {
         async function fetchTrades() {
             try {
-                const res = await fetch("/Backboard/trade_list.json");
+                const res = await fetch("/api/trade-list");
                 const data: TradeItem[] = await res.json();
 
                 // 0행 오류 확인
@@ -314,7 +314,7 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                 // 초기값 계산 완료로 설정
                 setTimeOptionsCalculated(true);
             } catch (error) {
-                console.error("trade_list.json 로딩 실패:", error);
+                console.error("trade_list API 로딩 실패:", error);
                 setAllTrades([]);
             } finally {
                 setLoading(false);

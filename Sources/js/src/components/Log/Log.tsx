@@ -5,7 +5,7 @@ import AutoSizer from 'react-virtualized-auto-sizer';
 import LogSpinner from './LogSpinner';
 import NoDataMessage from '@/components/Common/NoDataMessage';
 
-const LOG_FILE_PATH = '/Backboard/backtesting.log'; // 상대 경로로 파일 요청 (서버 static 또는 API에 맞게 조정)
+const LOG_FILE_PATH = '/api/log'; // 서버 API 엔드포인트로 변경: HEAD 및 Range 요청을 지원합니다
 
 interface SearchResult {
     lineIndex: number;
@@ -455,9 +455,6 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
         try {
             // 1단계: 파일 메타데이터 확인 (HEAD 요청)
             const headResponse = await fetch(LOG_FILE_PATH, {method: 'HEAD'});
-            if (!headResponse.ok) {
-                throw new Error('로그 파일을 찾을 수 없습니다.');
-            }
 
             // 2단계: 전체 파일 크기 확인
             const contentLength = headResponse.headers.get('content-length');
@@ -468,10 +465,6 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                 // 작은 파일은 전체 로딩
                 const response = await fetch(LOG_FILE_PATH);
                 const text = await response.text();
-
-                if (text.includes('<!doctype html>') || text.includes('<html')) {
-                    throw new Error('로그 파일을 찾을 수 없습니다.');
-                }
 
                 const lines = text.split(/\r?\n/);
                 setAllLogLines(lines);
@@ -516,10 +509,6 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                         'Range': `bytes=${offset}-${endByte}`
                     }
                 });
-
-                if (!response.ok) {
-                    throw new Error(`청크 로딩 실패: ${response.status}`);
-                }
 
                 const chunk = await response.text();
                 loadedData += chunk;
@@ -602,7 +591,7 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
             const localRegex = new RegExp(escapedSearchTerm, 'gi');
             while ((match = localRegex.exec(line)) !== null) {
                 // 유효한 검색 결과인지 확인
-                if (typeof match.index === 'number' && match[0]) {
+                if (match[0]) {
                     results.push({
                         lineIndex,
                         startIndex: match.index,
@@ -702,7 +691,7 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
             if (listRef.current && searchResults.length > 0 && currentSearchIndex >= 0 && currentSearchIndex < searchResults.length) {
                 const targetResult = searchResults[currentSearchIndex];
                 // targetResult와 lineIndex의 유효성 검사
-                if (!targetResult || typeof targetResult.lineIndex !== 'number') {
+                if (!targetResult) {
                     console.warn('Invalid search result:', targetResult);
                     return;
                 }

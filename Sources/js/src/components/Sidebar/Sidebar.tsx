@@ -1,8 +1,8 @@
-import React, { memo, useEffect, useRef, useState } from "react"
+import React, {memo, useEffect, useRef, useState} from "react"
 import 'react-datepicker/dist/react-datepicker.css'
-import { Button } from "../ui/button.tsx"
-import { AnimatePresence, motion } from 'framer-motion'
-import { useLogo } from "@/contexts/LogoContext"
+import {Button} from "../ui/button.tsx"
+import {AnimatePresence, motion} from 'framer-motion'
+import {useLogo} from "@/contexts/LogoContext"
 import FilterSection from "./FilterSection";
 import './Sidebar.css';
 
@@ -11,6 +11,31 @@ const tabOrder = ["StrategyEditor", "Overview", "Performance", "Plot", "Chart", 
 
 // Plot 탭 내부 순서 정의
 const plotTypeOrder = ["equity-drawdown", "profit-loss-comparison", "holding-time-pnl-distribution", "symbol-performance"];
+
+// 사이드바 아이콘은 서버 API를 통해 가져옴
+const getSidebarIconUrl = (name: string) => {
+    return `/api/icon?name=${encodeURIComponent(name)}`;
+};
+
+// Sidebar 전용 아이콘 컴포넌트: 이미지 로드 실패 시 회색 라운드 박스로 대체
+const SidebarIcon: React.FC<{ name: string; alt?: string; className?: string }> = ({name, alt, className}) => {
+    const [failed, setFailed] = useState(false);
+    const src = getSidebarIconUrl(name);
+
+    if (failed) {
+        return null;
+    }
+
+    return (
+        <img
+            src={src}
+            alt={alt}
+            className={className}
+            onError={() => setFailed(true)}
+            style={{width: '27px', height: '27px', verticalAlign: 'middle'}}
+        />
+    );
+};
 
 /**
  * 사이드바 컴포넌트 Props 인터페이스
@@ -42,15 +67,15 @@ interface SidebarProps {
 
 // 로고 이미지 컴포넌트 - 로고 로딩 및 폴백 처리
 const SymbolLogoImage = memo(({
-    symbolName,
-    isActive,
-    style
-}: {
+                                  symbolName,
+                                  isActive,
+                                  style
+                              }: {
     symbolName: string,
     isActive: boolean,
     style?: React.CSSProperties
 }) => {
-    const { getLogoUrl } = useLogo();
+    const {getLogoUrl} = useLogo();
     const logoUrl = getLogoUrl(symbolName);
 
     return (
@@ -83,15 +108,15 @@ const SymbolLogoImage = memo(({
  * @param activePlotType - 활성화된 Plot 타입 props 추가
  */
 export default function Sidebar({
-    onSelectTab,
-    activeTab,
-    config,
-    isChartLoading: externalChartLoading,
-    activeSymbol,
-    activePlotType, // 활성화된 Plot 타입 props 추가
-    isAnimating,
-    timeframe
-}: SidebarProps) {
+                                    onSelectTab,
+                                    activeTab,
+                                    config,
+                                    isChartLoading: externalChartLoading,
+                                    activeSymbol,
+                                    activePlotType, // 활성화된 Plot 타입 props 추가
+                                    isAnimating,
+                                    timeframe
+                                }: SidebarProps) {
     const [chartExpanded, setChartExpanded] = useState(false);
     const [plotExpanded, setPlotExpanded] = useState(false); // Plot 확장 상태 추가
     const [internalChartLoading, setInternalChartLoading] = useState(false);
@@ -99,7 +124,7 @@ export default function Sidebar({
     const chartLoadingTimerRef = useRef<NodeJS.Timeout | null>(null);
     const [logosPreloaded, setLogosPreloaded] = useState(false);
     const symbolListRef = useRef<HTMLDivElement>(null);
-    const { preloadLogos } = useLogo();
+    const {preloadLogos} = useLogo();
     const sidebarRef = useRef<HTMLDivElement>(null);
 
     // 이전 활성 탭 인덱스를 저장하기 위한 Ref
@@ -205,7 +230,7 @@ export default function Sidebar({
             onSelectTab(tab, chartConfig, direction);
         } else if (tab === "Plot" && plotType) {
             // Plot 타입을 전달 - 타입 오류 수정 (객체 형태로 전달하지 않고 undefined 전달)
-            onSelectTab(tab, { plotType: plotType }, direction);
+            onSelectTab(tab, {plotType: plotType}, direction);
             // 여기서는 별도의 객체 없이 plotType 정보만 활용
         } else {
             // 다른 탭 처리
@@ -317,7 +342,7 @@ export default function Sidebar({
      * tap: 클릭 시 효과
      */
     const itemVariants = {
-        hidden: { opacity: 0, x: -20 },
+        hidden: {opacity: 0, x: -20},
         visible: (custom: { index: number, isActive: boolean }) => ({
             opacity: 1,
             x: 0,
@@ -330,7 +355,7 @@ export default function Sidebar({
             borderColor: 'rgba(255, 215, 0, 0.7)',
             boxShadow: '0 0 9px rgba(255, 215, 0, 0.5)',
             scale: 1.03,
-            transition: { duration: 0.2 }
+            transition: {duration: 0.2}
         },
         tap: (custom: { index: number, isActive: boolean }) => ({
             backgroundColor: 'rgba(52, 46, 14, 1)', // 누르고 있을 때 배경색을 52, 46, 14로 설정
@@ -339,7 +364,7 @@ export default function Sidebar({
                 ? 'inset 0 0 0 1000px rgba(255, 215, 0, 0.2), 0 0 8px rgba(255, 215, 0, 0.3)'
                 : 'inset 0 0 0 1000px rgba(255, 215, 0, 0.15), 0 0 8px rgba(255, 215, 0, 0.3)',
             scale: 0.98,
-            transition: { duration: 0.1 }
+            transition: {duration: 0.1}
         })
     };
 
@@ -365,9 +390,9 @@ export default function Sidebar({
                 {/* 사이드바 상단 헤더 영역 - 로고 */}
                 <div className="sidebar-header">
                     <motion.h2
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.2 }}
+                        initial={{opacity: 0}}
+                        animate={{opacity: 1}}
+                        transition={{delay: 0.2}}
                         className="sidebar-logo gpu-accelerated"
                     >
                         <span className="icon-placeholder"></span>
@@ -379,7 +404,7 @@ export default function Sidebar({
                 <div className="space-y-5 mt-2 flex flex-col">
                     {/* 전략 에디터 버튼 - 백테스팅 전략 편집 및 실행 */}
                     <motion.div
-                        custom={{ index: 0, isActive: activeTab === "StrategyEditor" }}
+                        custom={{index: 0, isActive: activeTab === "StrategyEditor"}}
                         variants={itemVariants}
                         initial="hidden"
                         animate="visible"
@@ -392,14 +417,14 @@ export default function Sidebar({
                             className={`w-full justify-start sidebar-button ${activeTab === "StrategyEditor" ? "active" : ""}`}
                             onClick={() => handleTabChange("StrategyEditor")}
                         >
-                            <img src="Backboard/icon/overview.ico" alt="StrategyEditor" className="sidebar-icon" />
+                            <SidebarIcon name={'strategy_editor.ico'} alt="StrategyEditor" className="sidebar-icon"/>
                             <span className="ml-2 button-text">전략 에디터</span>
                         </Button>
                     </motion.div>
 
                     {/* 전체 요약 버튼 - 백테스팅 결과의 전체적인 요약 정보 제공 */}
                     <motion.div
-                        custom={{ index: 1, isActive: activeTab === "Overview" }}
+                        custom={{index: 1, isActive: activeTab === "Overview"}}
                         variants={itemVariants}
                         initial="hidden"
                         animate="visible"
@@ -412,14 +437,14 @@ export default function Sidebar({
                             className={`w-full justify-start sidebar-button ${activeTab === "Overview" ? "active" : ""}`}
                             onClick={() => handleTabChange("Overview")}
                         >
-                            <img src="Backboard/icon/overview.ico" alt="Overview" className="sidebar-icon" />
+                            <SidebarIcon name={'overview.ico'} alt="Overview" className="sidebar-icon"/>
                             <span className="ml-2 button-text">전체 요약</span>
                         </Button>
                     </motion.div>
 
                     {/* 성과 지표 버튼 - 백테스팅 성능 메트릭 및 통계 지표 제공 */}
                     <motion.div
-                        custom={{ index: 2, isActive: activeTab === "Performance" }}
+                        custom={{index: 2, isActive: activeTab === "Performance"}}
                         variants={itemVariants}
                         initial="hidden"
                         animate="visible"
@@ -432,14 +457,14 @@ export default function Sidebar({
                             className={`w-full justify-start sidebar-button ${activeTab === "Performance" ? "active" : ""}`}
                             onClick={() => handleTabChange("Performance")}
                         >
-                            <img src="Backboard/icon/performance.ico" alt="Performance" className="sidebar-icon" />
+                            <SidebarIcon name={'performance.ico'} alt="Performance" className="sidebar-icon"/>
                             <span className="ml-2 button-text">성과 지표</span>
                         </Button>
                     </motion.div>
 
                     {/* 분석 그래프 버튼 - 백테스팅 결과를 시각화한 그래프 모음 제공 */}
                     <motion.div
-                        custom={{ index: 3, isActive: activeTab === "Plot" }}
+                        custom={{index: 3, isActive: activeTab === "Plot"}}
                         variants={itemVariants}
                         initial="hidden"
                         animate="visible"
@@ -452,20 +477,22 @@ export default function Sidebar({
                             className={`w-full justify-start sidebar-button ${activeTab === "Plot" || plotExpanded ? "active" : ""}`}
                             onClick={handlePlotToggle}
                         >
-                            <img src="Backboard/icon/plot.ico" alt="Plot" className="sidebar-icon" />
+                            <SidebarIcon name={'plot.ico'} alt="Plot" className="sidebar-icon"/>
                             <span className="ml-2 button-text">분석 그래프</span>
-                            <span className={`expand-arrow ${plotExpanded ? "expand-arrow-expanded" : "expand-arrow-collapsed"}`}>
+                            <span
+                                className={`expand-arrow ${plotExpanded ? "expand-arrow-expanded" : "expand-arrow-collapsed"}`}>
                                 {plotExpanded ? "▼" : "▶"}
                             </span>
                         </Button>
                     </motion.div>
 
                     {/* 분석 그래프 유형 클릭 핸들러 */}
-                    <AnimatePresence initial={false} mode="wait" onExitComplete={() => { }}>
+                    <AnimatePresence initial={false} mode="wait" onExitComplete={() => {
+                    }}>
                         {plotExpanded && (
                             <motion.div
                                 key="plot-type-list"
-                                initial={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }}
+                                initial={{opacity: 0, height: 0, marginTop: 0, marginBottom: 0}}
                                 animate={{
                                     opacity: 1,
                                     height: 'auto',
@@ -479,25 +506,28 @@ export default function Sidebar({
                                     marginBottom: 0,
                                     y: -15,
                                     transition: {
-                                        opacity: { duration: 0.25 },
-                                        height: { duration: 0.4 },
-                                        marginTop: { duration: 0.35 },
-                                        marginBottom: { duration: 0.4 },
-                                        y: { duration: 0.4 }
+                                        opacity: {duration: 0.25},
+                                        height: {duration: 0.4},
+                                        marginTop: {duration: 0.35},
+                                        marginBottom: {duration: 0.4},
+                                        y: {duration: 0.4}
                                     }
                                 }}
                                 transition={{
                                     duration: 0.35,
                                     ease: [0.4, 0, 0.2, 1],
-                                    height: { duration: 0.35 },
-                                    marginBottom: { duration: 0.35 }
+                                    height: {duration: 0.35},
+                                    marginBottom: {duration: 0.35}
                                 }}
                                 className="sub-section-container gpu-accelerated"
                             >
                                 {/* 자금 & 드로우다운 탭 */}
                                 <div key="plot-equity-drawdown" className="sub-section-item">
                                     <motion.div
-                                        custom={{ index: 0, isActive: activeTab === "Plot" && activePlotType === "equity-drawdown" }}
+                                        custom={{
+                                            index: 0,
+                                            isActive: activeTab === "Plot" && activePlotType === "equity-drawdown"
+                                        }}
                                         variants={itemVariants}
                                         initial="hidden"
                                         animate="visible"
@@ -518,7 +548,10 @@ export default function Sidebar({
                                 {/* 손익 비교 탭 추가 */}
                                 <div key="plot-profit-loss" className="sub-section-item">
                                     <motion.div
-                                        custom={{ index: 1, isActive: activeTab === "Plot" && activePlotType === "profit-loss-comparison" }}
+                                        custom={{
+                                            index: 1,
+                                            isActive: activeTab === "Plot" && activePlotType === "profit-loss-comparison"
+                                        }}
                                         variants={itemVariants}
                                         initial="hidden"
                                         animate="visible"
@@ -539,7 +572,10 @@ export default function Sidebar({
                                 {/* 보유 시간별 순손익 분포 탭 */}
                                 <div key="plot-holding-time-pnl" className="sub-section-item">
                                     <motion.div
-                                        custom={{ index: 2, isActive: activeTab === "Plot" && activePlotType === "holding-time-pnl-distribution" }}
+                                        custom={{
+                                            index: 2,
+                                            isActive: activeTab === "Plot" && activePlotType === "holding-time-pnl-distribution"
+                                        }}
                                         variants={itemVariants}
                                         initial="hidden"
                                         animate="visible"
@@ -560,7 +596,10 @@ export default function Sidebar({
                                 {/* 심볼별 성과 추이 탭 */}
                                 <div key="plot-symbol-performance" className="sub-section-item">
                                     <motion.div
-                                        custom={{ index: 3, isActive: activeTab === "Plot" && activePlotType === "symbol-performance" }}
+                                        custom={{
+                                            index: 3,
+                                            isActive: activeTab === "Plot" && activePlotType === "symbol-performance"
+                                        }}
                                         variants={itemVariants}
                                         initial="hidden"
                                         animate="visible"
@@ -583,7 +622,7 @@ export default function Sidebar({
 
                     {/* 거래 차트 버튼 - 개별 심볼의 가격 차트와 거래 포인트 표시 */}
                     <motion.div
-                        custom={{ index: 4, isActive: activeTab === "Chart" }}
+                        custom={{index: 4, isActive: activeTab === "Chart"}}
                         variants={itemVariants}
                         initial="hidden"
                         animate="visible"
@@ -596,21 +635,23 @@ export default function Sidebar({
                             className={`w-full justify-start sidebar-button ${activeTab === "Chart" || chartExpanded ? "active" : ""}`}
                             onClick={handleChartToggle}
                         >
-                            <img src="Backboard/icon/chart.ico" alt="Chart" className="sidebar-icon" />
+                            <SidebarIcon name={'chart.ico'} alt="Chart" className="sidebar-icon"/>
                             <span className="ml-2 button-text">거래 차트</span>
-                            <span className={`expand-arrow ${chartExpanded ? "expand-arrow-expanded" : "expand-arrow-collapsed"}`}>
+                            <span
+                                className={`expand-arrow ${chartExpanded ? "expand-arrow-expanded" : "expand-arrow-collapsed"}`}>
                                 {chartExpanded ? "▼" : "▶"}
                             </span>
                         </Button>
                     </motion.div>
 
-                    {/* AnimatePresence와 심볼 리스트 (layout 속성 없음!) */}
-                    <AnimatePresence initial={false} mode="wait" onExitComplete={() => { }}>
+                    {/* AnimatePresence와 심볼 리스트 */}
+                    <AnimatePresence initial={false} mode="wait" onExitComplete={() => {
+                    }}>
                         {chartExpanded && config && config["심볼"] && (
                             <motion.div
                                 ref={symbolListRef}
                                 key="chart-symbol-list"
-                                initial={{ opacity: 0, height: 0, marginTop: 0, marginBottom: 0 }}
+                                initial={{opacity: 0, height: 0, marginTop: 0, marginBottom: 0}}
                                 animate={{
                                     opacity: 1,
                                     height: 'auto',
@@ -624,18 +665,18 @@ export default function Sidebar({
                                     marginBottom: 0,
                                     y: -15,
                                     transition: {
-                                        opacity: { duration: 0.25 },
-                                        height: { duration: 0.4 },
-                                        marginTop: { duration: 0.35 },
-                                        marginBottom: { duration: 0.4 },
-                                        y: { duration: 0.4 }
+                                        opacity: {duration: 0.25},
+                                        height: {duration: 0.4},
+                                        marginTop: {duration: 0.35},
+                                        marginBottom: {duration: 0.4},
+                                        y: {duration: 0.4}
                                     }
                                 }}
                                 transition={{
                                     duration: 0.35,
                                     ease: [0.4, 0, 0.2, 1],
-                                    height: { duration: 0.35 },
-                                    marginBottom: { duration: 0.35 }
+                                    height: {duration: 0.35},
+                                    marginBottom: {duration: 0.35}
                                 }}
                                 className="sub-section-container gpu-accelerated"
                             >
@@ -648,10 +689,10 @@ export default function Sidebar({
                                         <div key={`symbol-wrapper-${index}`} className="sub-section-item">
                                             <motion.div
                                                 key={index}
-                                                custom={{ index: index, isActive: isCurrentSymbolActive }}
-                                                initial={{ opacity: 0, x: -15 }}
-                                                animate={{ 
-                                                    opacity: 1, 
+                                                custom={{index: index, isActive: isCurrentSymbolActive}}
+                                                initial={{opacity: 0, x: -15}}
+                                                animate={{
+                                                    opacity: 1,
                                                     x: 0,
                                                     transition: {
                                                         delay: getSymbolDelay(index, totalSymbols),
@@ -662,7 +703,7 @@ export default function Sidebar({
                                                     borderColor: 'rgba(255, 215, 0, 0.7)',
                                                     boxShadow: '0 0 9px rgba(255, 215, 0, 0.5)',
                                                     scale: 1.03,
-                                                    transition: { duration: 0.2 }
+                                                    transition: {duration: 0.2}
                                                 }}
                                                 whileTap={{
                                                     backgroundColor: 'rgba(52, 46, 14, 1)',
@@ -670,7 +711,7 @@ export default function Sidebar({
                                                         ? 'inset 0 0 0 1000px rgba(255, 215, 0, 0.2), 0 0 8px rgba(255, 215, 0, 0.3)'
                                                         : 'inset 0 0 0 1000px rgba(255, 215, 0, 0.15), 0 0 8px rgba(255, 215, 0, 0.3)',
                                                     scale: 0.98,
-                                                    transition: { duration: 0.1 }
+                                                    transition: {duration: 0.1}
                                                 }}
                                                 className={`gpu-accelerated symbol-button-container sub-button-container ${isCurrentSymbolActive ? "active-symbol-button" : ""}`}
                                             >
@@ -684,7 +725,8 @@ export default function Sidebar({
                                                         symbolName={symbolName}
                                                         isActive={isCurrentSymbolActive}
                                                     />
-                                                    <span className="sub-button-text symbol-text-limited">{symbolName}</span>
+                                                    <span
+                                                        className="sub-button-text symbol-text-limited">{symbolName}</span>
                                                 </Button>
                                             </motion.div>
                                         </div>
@@ -694,13 +736,13 @@ export default function Sidebar({
                         )}
                     </AnimatePresence>
 
-                    {/* --- 하단 탭 그룹 (layout 및 transition 제거) --- */}
+                    {/* --- 하단 탭 그룹 --- */}
                     <div
                         className="flex flex-col space-y-5"
                     >
                         {/* 거래 내역 버튼 */}
                         <motion.div
-                            custom={{ index: 5, isActive: activeTab === "TradeList" }}
+                            custom={{index: 5, isActive: activeTab === "TradeList"}}
                             variants={itemVariants}
                             initial="hidden"
                             animate="visible"
@@ -713,20 +755,19 @@ export default function Sidebar({
                                 className={`w-full justify-start sidebar-button ${activeTab === "TradeList" ? "active" : ""}`}
                                 onClick={() => handleTabChange("TradeList")}
                             >
-                                <img src="Backboard/icon/trade_list.ico" alt="Trade List" className="sidebar-icon" />
+                                <SidebarIcon name={'trade_list.ico'} alt="Trade List" className="sidebar-icon"/>
                                 <span className="ml-2 button-text">거래 내역</span>
                             </Button>
                         </motion.div>
 
-                        {/* 거래 필터 섹션 - 독립 컴포넌트로 분리 */}
+                        {/* 거래 필터 섹션 */}
                         <FilterSection
-                            iconStyle={{ width: '27px', height: '27px', marginRight: '8px', verticalAlign: 'middle' }}
                             timeframe={timeframe}
                         />
 
                         {/* 백테스팅 설정 버튼 */}
                         <motion.div
-                            custom={{ index: 6, isActive: activeTab === "Config" }}
+                            custom={{index: 6, isActive: activeTab === "Config"}}
                             variants={itemVariants}
                             initial="hidden"
                             animate="visible"
@@ -739,14 +780,14 @@ export default function Sidebar({
                                 className={`w-full justify-start sidebar-button ${activeTab === "Config" ? "active" : ""}`}
                                 onClick={() => handleTabChange("Config")}
                             >
-                                <img src="Backboard/icon/config.ico" alt="Config" className="sidebar-icon" />
+                                <SidebarIcon name={'config.ico'} alt="Config" className="sidebar-icon"/>
                                 <span className="ml-2 button-text">백테스팅 설정</span>
                             </Button>
                         </motion.div>
 
                         {/* 백테스팅 로그 버튼 */}
                         <motion.div
-                            custom={{ index: 7, isActive: activeTab === "Log" }}
+                            custom={{index: 7, isActive: activeTab === "Log"}}
                             variants={itemVariants}
                             initial="hidden"
                             animate="visible"
@@ -759,16 +800,19 @@ export default function Sidebar({
                                 className={`w-full justify-start sidebar-button ${activeTab === "Log" ? "active" : ""}`}
                                 onClick={() => handleTabChange("Log")}
                             >
-                                <img src="Backboard/icon/log.ico" alt="Log" className="sidebar-icon" />
+                                <SidebarIcon name={'log.ico'} alt="Log" className="sidebar-icon"/>
                                 <span className="ml-2 button-text">백테스팅 로그</span>
                             </Button>
                         </motion.div>
 
                         {/* 백테스팅 로그 버튼 밑 공간 */}
-                        <div style={{ height: '50px' }}></div>
-                    </div> {/* --- 하단 탭 그룹 끝 --- */}
+                        <div style={{height: '50px'}}></div>
+                    </div>
+                    {/* --- 하단 탭 그룹 끝 --- */}
                 </div>
             </div>
         </div>
     )
 }
+
+export {SidebarIcon}

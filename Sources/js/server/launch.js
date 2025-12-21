@@ -5,14 +5,22 @@ const {exec} = require("child_process");
 const express = require("express");
 const {Server: WebSocketServer} = require("ws");
 const net = require("net");
-const {handleLoadChartData, initializeFallbackImage, findLogoUrl, downloadAndSaveImage, USDT_FALLBACK_ICON_PATH} = require("./chartDataHandler");
+const {
+    handleLoadChartData,
+    initializeFallbackImage,
+    findLogoUrl,
+    downloadAndSaveImage,
+    USDT_FALLBACK_ICON_PATH
+} = require("./chartDataHandler");
 const {startCppProcess, runSingleBacktesting, stopCppProcess} = require("./cppServer");
 
 // =====================================================================================================================
 // 전역 변수
 // =====================================================================================================================
 const app = express();
-let port = 7777;
+const requestedPort = Number(process.env.BACKBOARD_PORT);
+const isFixedPort = Number.isFinite(requestedPort) && requestedPort > 0;
+let port = isFixedPort ? requestedPort : 7777;
 
 // 연결된 WebSocket 클라이언트
 const activeClients = new Set();
@@ -26,8 +34,10 @@ const baseDir = isDevelopment ? process.cwd() : (path.dirname(process.execPath) 
 // 디버그 로그 설정
 const DEBUG_LOGS = process.env.LAUNCH_DEBUG_LOGS === '0';
 if (!DEBUG_LOGS) {
-    console.log = () => {};
-    console.error = () => {};
+    console.log = () => {
+    };
+    console.error = () => {
+    };
 }
 
 // =====================================================================================================================
@@ -42,7 +52,8 @@ function requestProjectDirectoryFromClients() {
                 activeClients.forEach(c => {
                     try {
                         c.send(JSON.stringify({action: 'requestProjectDirectory'}));
-                    } catch (e) {}
+                    } catch (e) {
+                    }
                 });
 
                 pendingProjectDirectoryResolvers.push((val) => resolve(val));
@@ -59,7 +70,7 @@ function getCallerFileInfo() {
         const err = new Error();
         const stack = err.stack || '';
         const lines = stack.split('\n').map(l => l.trim());
-        
+
         for (let i = 1; i < lines.length; i++) {
             const line = lines[i];
             if (!line || line.includes('getCallerFileInfo') || line.includes('broadcastLog') || line.includes('Object.<anonymous>')) {
@@ -78,7 +89,8 @@ function getCallerFileInfo() {
                 return `${parts[parts.length - 1]}:${ln}`;
             }
         }
-    } catch (e) {}
+    } catch (e) {
+    }
     return null;
 }
 
@@ -115,7 +127,8 @@ function broadcastLog(level, message, timestamp = null, fileInfo = null) {
                 }));
             }
         });
-    } catch (e) {}
+    } catch (e) {
+    }
 }
 
 function isPortAvailable(port) {
@@ -150,8 +163,75 @@ app.use("/Backboard", express.static(path.join(baseDir, "Backboard")));
 const distPath = path.join(baseDir, "Backboard");
 app.use(express.static(distPath));
 
-broadcastLog("INFO", `${isDevelopment ? '개발자' : '배포'} 모드에서 실행`, null, null);
-broadcastLog("INFO", `베이스 폴더: ${baseDir}`, null, null);
+// =====================================================================================================================
+// API: config 가져오기
+// =====================================================================================================================
+// 서버에서 미리 로드한 Backboard/config.json을 클라이언트가 요청할 수 있도록 전역 변수와 API 제공
+let config = null;
+
+app.get('/api/config', (req, res) => {
+    if (!config) {
+        // 설정이 아직 로드되지 않았거나 문제 발생 시 빈 객체 반환
+        return res.json({});
+    }
+
+    res.json(config);
+});
+
+// =====================================================================================================================
+// API: 거래 내역 가져오기 (/api/trade-list)
+// =====================================================================================================================
+app.get('/api/trade-list', async (req, res) => {
+    try {
+        const filePath = path.join(baseDir, 'Backboard', 'trade_list.json');
+
+        try {
+            await fsPromises.access(filePath, fs.constants.F_OK);
+        } catch (e) {
+            broadcastLog('WARN', `trade_list.json을 찾을 수 없습니다: ${e.message}`);
+            return res.status(404).json({error: 'trade_list not found'});
+        }
+
+        const fileContent = await fsPromises.readFile(filePath, {encoding: 'utf8'});
+
+        // 파일 내용이 유효한 JSON 배열인지 확인
+        let parsed = null;
+        try {
+            parsed = JSON.parse(fileContent);
+        } catch (parseErr) {
+            return res.status(500).json({error: 'trade_list parse error'});
+        }
+
+        res.set({'Cache-Control': 'no-cache, no-store, must-revalidate'});
+
+        return res.json(parsed);
+    } catch (err) {
+        broadcastLog('ERROR', `trade_list API 처리 실패: ${err.message}`);
+        return res.status(500).json({error: 'internal server error'});
+    }
+});
+
+// =====================================================================================================================
+// API: 정적 아이콘 제공
+// =====================================================================================================================
+app.get('/api/icon', async (req, res) => {
+    const {name} = req.query;
+    if (!name || typeof name !== 'string') {
+        return res.status(400).send('name query parameter is required');
+    }
+
+    // 경로 조작 방지: basename만 사용
+    const safeName = path.basename(name);
+    const filePath = path.join(iconDir, safeName);
+
+    try {
+        await fsPromises.access(filePath, require('fs').constants.F_OK);
+        return res.sendFile(filePath);
+    } catch (err) {
+        // 파일이 없으면 404로 응답 (클라이언트가 CSS 기반 폴백을 처리하도록 함)
+        return res.status(404).send('icon not found');
+    }
+});
 
 // =====================================================================================================================
 // API: 로고 가져오기
@@ -168,8 +248,11 @@ app.get("/api/get-logo", async (req, res) => {
 
     try {
         await fsPromises.access(localFilePath, fs.constants.F_OK);
+
         return res.json({logoUrl: localFileUrl});
-    } catch (error) {}
+    } catch (error) {
+        // 무시
+    }
 
     try {
         const imageUrl = await findLogoUrl(symbol);
@@ -248,6 +331,107 @@ app.get("/api/get-source-code", async (req, res) => {
 });
 
 // =====================================================================================================================
+// API: 백테스팅 로그
+// =====================================================================================================================
+app.head('/api/log', async (req, res) => {
+    try {
+        const p = path.join(baseDir, 'Backboard', 'backtesting.log');
+
+        let filePath = null;
+        try {
+            await fsPromises.access(p, fs.constants.F_OK);
+
+            filePath = p;
+        } catch (e) {
+            // continue
+        }
+
+        if (!filePath) {
+            return res.status(404).end();
+        }
+
+        const stat = await fsPromises.stat(filePath);
+
+        res.set({
+            'Content-Length': stat.size,
+            'Accept-Ranges': 'bytes',
+            'Cache-Control': 'no-cache'
+        });
+
+        return res.status(200).end();
+    } catch (err) {
+        broadcastLog('ERROR', `로그 메타데이터 응답 실패: ${err.message}`);
+        return res.status(500).end();
+    }
+});
+
+app.get('/api/log', async (req, res) => {
+    try {
+        const p = path.join(baseDir, 'Backboard', 'backtesting.log');
+
+        let filePath = null;
+        try {
+            await fsPromises.access(p, fs.constants.F_OK);
+
+            filePath = p;
+        } catch (e) {
+            // continue
+        }
+
+        if (!filePath) {
+            broadcastLog('WARN', '백테스팅 로그 파일을 찾을 수 없습니다.');
+            return res.status(404).send('log not found');
+        }
+
+        const stat = await fsPromises.stat(filePath);
+        const range = req.headers.range;
+
+        // Range가 없는 경우 전체 파일 반환
+        if (!range) {
+            res.set({
+                'Content-Type': 'text/plain; charset=utf-8',
+                'Content-Length': stat.size,
+                'Accept-Ranges': 'bytes',
+                'Cache-Control': 'no-cache'
+            });
+            return fs.createReadStream(filePath).pipe(res);
+        }
+
+        // Range 요청 처리
+        const bytesPrefix = 'bytes=';
+        if (!range.startsWith(bytesPrefix)) {
+            return res.status(416).send('Invalid Range');
+        }
+
+        const rangeParts = range.substring(bytesPrefix.length).split('-');
+        const start = parseInt(rangeParts[0], 10) || 0;
+        const end = rangeParts[1] && rangeParts[1] !== '' ? parseInt(rangeParts[1], 10) : (stat.size - 1);
+
+        if (isNaN(start) || isNaN(end) || start > end || start >= stat.size) {
+            res.set('Content-Range', `bytes */${stat.size}`);
+            return res.status(416).end();
+        }
+
+        const chunkSize = (end - start) + 1;
+        const stream = fs.createReadStream(filePath, {start, end});
+
+        res.status(206).set({
+            'Content-Range': `bytes ${start}-${end}/${stat.size}`,
+            'Accept-Ranges': 'bytes',
+            'Content-Length': chunkSize,
+            'Content-Type': 'text/plain; charset=utf-8',
+            'Cache-Control': 'no-cache'
+        });
+
+        stream.pipe(res);
+
+    } catch (err) {
+        broadcastLog('ERROR', `로그 파일 전송 실패: ${err.message}`);
+        return res.status(500).send('internal error');
+    }
+});
+
+// =====================================================================================================================
 // 강제 종료 API
 // =====================================================================================================================
 app.get("/force-shutdown", (req, res) => {
@@ -267,17 +451,27 @@ app.get("*", (req, res) => {
 // 서버 시작
 // =====================================================================================================================
 async function startServer() {
-    port = await findAvailablePort(port);
+    if (isFixedPort) {
+        const available = await isPortAvailable(port);
+        if (!available) {
+            throw new Error(`BACKBOARD_PORT=${port} 가 이미 사용 중입니다.`);
+        }
+    } else {
+        port = await findAvailablePort(port);
+    }
     broadcastLog("INFO", `포트 ${port}에서 서버를 실행합니다.`, null, null);
 
     return app.listen(port, () => {
         broadcastLog("INFO", `http://localhost:${port}에서 서버가 실행 중입니다.`, null, null);
 
-        exec(`start http://localhost:${port}`, (err) => {
-            if (err) {
-                broadcastLog("ERROR", `브라우저를 여는 데 실패했습니다.: ${err.message}`, null, null);
-            }
-        });
+        // 백엔드가 직접 브라우저를 여는 동작은 DEV 실행 시 Vite가 대신 열도록 제어
+        if (process.env.BACKBOARD_OPEN_BROWSER !== 'none') {
+            exec(`start http://localhost:${port}`, (err) => {
+                if (err) {
+                    broadcastLog("ERROR", `브라우저를 여는 데 실패했습니다.: ${err.message}`, null, null);
+                }
+            });
+        }
     });
 }
 
@@ -336,7 +530,9 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
                         resolver(msg.projectDirectory || null);
                     }
                 }
-            } catch (e) {}
+            } catch (e) {
+                // 무시
+            }
         });
 
         // 클라이언트 연결 시 editor.json 로드
@@ -447,12 +643,15 @@ async function main() {
 
         // config.json에서 데이터 경로 파싱
         const configPath = path.join(baseDir, "Backboard", "config.json");
-        let config;
 
         try {
+            // 전역 `config` 변수에 파일 내용을 로드
             config = JSON.parse(fs.readFileSync(configPath, "utf8"));
         } catch (e) {
             broadcastLog("WARN", `config.json 로드 실패: ${e.message}`, null, null);
+
+            // 실패 시 전역 config를 null로 유지
+            config = config || null;
         }
 
         // 캔들스틱 데이터 경로 구성

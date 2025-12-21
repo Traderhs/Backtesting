@@ -102,7 +102,7 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
         }
 
         // 값 포맷팅
-        let formattedValue = "";
+        let formattedValue: string;
 
         if (format === "없음") {
             formattedValue = value.toLocaleString(undefined, {
@@ -148,66 +148,74 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
     };
 
     // 수량 최소 단위를 기반으로 거래량의 precision을 계산하는 함수
-    const getVolumePrecision = (symbolName: string): number => {
+    const getVolumePrecision = async (symbolName: string): Promise<number> => {
+        // 심볼 관련 설정을 가져오기 위해 fetch 요청
         try {
-            // 심볼 관련 설정을 가져오기 위해 fetch 요청
-            const configRequest = new XMLHttpRequest();
-            configRequest.open('GET', '/config.json', false); // 동기식 요청
-            configRequest.send(null);
+            const res = await fetch('/api/config');
+            const config = await res.json();
 
-            if (configRequest.status === 200) {
-                const config = JSON.parse(configRequest.responseText);
+            // 해당 심볼의 설정 찾기
+            const symbolConfig = config['심볼'].find((s: any) => s['심볼 이름'] === symbolName);
 
-                // 해당 심볼의 설정 찾기
-                const symbolConfig = config['심볼'].find((s: any) => s['심볼 이름'] === symbolName);
+            // 수량 최소 단위 확인
+            if (symbolConfig) {
+                let minQtyStep = null;
 
-                // 수량 최소 단위 확인
-                if (symbolConfig) {
-                    let minQtyStep = null;
+                if (symbolConfig['거래소 정보'] && symbolConfig['거래소 정보']['수량 최소 단위'] !== undefined) {
+                    minQtyStep = symbolConfig['거래소 정보']['수량 최소 단위'];
+                }
 
-                    if (symbolConfig['거래소 정보'] && symbolConfig['거래소 정보']['수량 최소 단위'] !== undefined) {
-                        minQtyStep = symbolConfig['거래소 정보']['수량 최소 단위'];
+                // 최소 단위가 있으면 소수점 자릿수 계산
+                if (minQtyStep !== null) {
+                    if (minQtyStep < 1) {
+                        const minQtyStepStr = minQtyStep.toString();
+                        const decimalStr = minQtyStepStr.split('.')[1];
+                        const precision: number = decimalStr.length;
+
+                        return decimalStr ? precision : 0;
                     }
 
-                    // 최소 단위가 있으면 소수점 자릿수 계산
-                    if (minQtyStep !== null) {
-                        if (minQtyStep < 1) {
-                            const minQtyStepStr = minQtyStep.toString();
-                            const decimalStr = minQtyStepStr.split('.')[1];
-                            return decimalStr ? decimalStr.length : 0;
-                        }
-                        return 0;
-                    }
+                    return 0;  // 오류 발생 시 기본값 0 반환
                 }
             }
 
-            // 설정을 찾을 수 없으면 기본값 0 반환
-            return 0;
+            return 0;  // 오류 발생 시 기본값 0 반환
         } catch (error) {
             console.error("거래량 precision 계산 중 오류:", error);
-            return 0; // 오류 발생 시 기본값 0 반환
+
+            return 0;  // 오류 발생 시 기본값 0 반환
         }
-    };
+    }
 
     // 심볼이 변경되면 설정 정보 로드 및 거래량 precision 업데이트
     useEffect(() => {
-        loadConfigData();
-        volumePrecisionRef.current = getVolumePrecision(symbol);
+        const loadVolumePrecision = async () => {
+            loadConfigData();
+
+            volumePrecisionRef.current = await getVolumePrecision(symbol);
+        };
+
+        loadVolumePrecision().then();
     }, [symbol]);
 
     // 특정 페인의 top 위치(픽셀)를 계산하는 헬퍼 함수
     // (pane 0부터 paneIdx-1까지의 높이를 누적)
     const getPaneTopOffset = (paneIdx: number): number => {
-        if (!chart) return 0;
+        if (!chart) {
+            return 0;
+        }
+
         const panes = chart.panes();
         let offset = 0;
+
         for (let i = 0; i < paneIdx; i++) {
             offset += panes[i].getHeight();
         }
+
         return offset;
     };
 
-    // 각 페인의 실제 높이 총합을 구하여 
+    // 각 페인의 실제 높이 총합을 구하여
     // paneIndicatorDivs[p] 위치를 재배치하는 함수
     const repositionPaneLabels = () => {
         if (!chart) return;
@@ -231,7 +239,9 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
 
     // 페인 높이 변화 감지 및 재배치 이벤트 설정
     useEffect(() => {
-        if (!chart) return;
+        if (!chart) {
+            return;
+        }
 
         // 창 크기 변경 시 페인 라벨 위치 업데이트
         const handleResize = () => {
