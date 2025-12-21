@@ -151,7 +151,7 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
 
   // 저장
   SaveKlines(transformed_klines, save_directory,
-             timeframe_filename + ".parquet", true);
+             timeframe_filename + ".parquet", true, true);
 
   logger_->Log(
       INFO_L,
@@ -245,7 +245,7 @@ void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
 
     // 저장
     TableToParquet(concatenated_tables_result.ValueOrDie(), directory_path,
-                   filename_timeframe + ".parquet", true);
+                   filename_timeframe + ".parquet", true, true);
 
     logger_->Log(
         INFO_L,
@@ -320,7 +320,7 @@ void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
 
   // 저장
   SaveKlines(transformed_klines, save_directory,
-             timeframe_filename + ".parquet", false);
+             timeframe_filename + ".parquet", false, false);
 
   logger_->Log(
       INFO_L,
@@ -412,7 +412,7 @@ void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
 
     // 저장
     TableToParquet(concatenated_tables_result.ValueOrDie(), directory_path,
-                   filename_timeframe + ".parquet", false);
+                   filename_timeframe + ".parquet", false, false);
 
     logger_->Log(
         INFO_L,
@@ -867,7 +867,8 @@ vector<json> BinanceFetcher::ConcatKlines(const vector<json>& spot_klines,
 void BinanceFetcher::SaveKlines(const vector<json>& klines,
                                 const string& directory_path,
                                 const string& file_name,
-                                const bool save_split_files) {
+                                const bool save_split_files,
+                                const bool reset_directory) {
   logger_->Log(INFO_L, "데이터 저장을 시작합니다.", __FILE__, __LINE__, true);
 
   // column 추가
@@ -893,7 +894,8 @@ void BinanceFetcher::SaveKlines(const vector<json>& klines,
   const auto& table = arrow::Table::Make(schema, arrays);
 
   // 저장
-  TableToParquet(table, directory_path, file_name, save_split_files);
+  TableToParquet(table, directory_path, file_name, save_split_files,
+                 reset_directory);
 }
 
 vector<shared_ptr<arrow::Array>> BinanceFetcher::GetArraysAddedKlines(

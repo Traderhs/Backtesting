@@ -124,10 +124,11 @@ void ClearParquetMetadataCache();
  * @param directory_path 데이터를 저장할 폴더의 경로
  * @param file_name 파일 이름
  * @param save_split_files 분할 저장을 할지 결정하는 플래그
+ * @param reset_directory 저장 폴더를 초기화하고 저장하는지 결정하는 플래그
  */
 void TableToParquet(const shared_ptr<arrow::Table>& table,
                     const string& directory_path, const string& file_name,
-                    bool save_split_files);
+                    bool save_split_files, bool reset_directory);
 
 /// Json을 지정된 경로에 파일로 저장하는 함수
 void JsonToFile(future<json> data, const string& file_path);

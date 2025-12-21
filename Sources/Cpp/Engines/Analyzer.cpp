@@ -383,7 +383,7 @@ void Analyzer::SaveIndicatorData() {
       TableToParquet(
           table,
           format("{}/Backboard/Indicators/{}", main_directory_, indicator_name),
-          indicator_name + ".parquet", true);
+          indicator_name + ".parquet", true, false);
     }
 
     logger_->Log(INFO_L, "지표 데이터가 저장되었습니다.", __FILE__, __LINE__,

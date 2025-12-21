@@ -297,10 +297,17 @@ double GetDoubleFromJson(const json& data, const string& key) {
 
 void TableToParquet(const shared_ptr<arrow::Table>& table,
                     const string& directory_path, const string& file_name,
-                    const bool save_split_files) {
+                    const bool save_split_files, const bool reset_directory) {
   // 폴더가 존재하지 않으면 생성
   if (!filesystem::exists(directory_path)) {
     filesystem::create_directories(directory_path);
+  } else if (reset_directory) {
+    // 폴더가 존재했고, 초기화 요청을 받았으면 초기화
+    for (const auto& entry : filesystem::directory_iterator(directory_path)) {
+      if (filesystem::is_regular_file(entry.path())) {
+        filesystem::remove(entry.path());
+      }
+    }
   }
 
   // ※ 전체 저장

@@ -192,10 +192,11 @@ class BinanceFetcher final : public BaseFetcher {
    * @param directory_path 데이터를 저장할 폴더의 경로
    * @param file_name 파일 이름
    * @param save_split_files 분할 저장을 할지 결정하는 플래그
+   * @param reset_directory 저장 폴더를 초기화하고 저장하는지 결정하는 플래그
    */
   static void SaveKlines(const vector<json>& klines,
                          const string& directory_path, const string& file_name,
-                         bool save_split_files);
+                         bool save_split_files, bool reset_directory);
 
   /// 백슬래시를 모두 슬래시로 변환하여 반환하는 함수
   static string ConvertBackslashToSlash(const string& path_string);
