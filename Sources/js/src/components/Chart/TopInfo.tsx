@@ -26,6 +26,7 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
     const [indicatorInfo, setIndicatorInfo] = useState<string>("");
     const prevPaneHeightsRef = useRef<number[]>([]);
     const volumePrecisionRef = useRef<number>(0);
+
     // 심볼별 설정 정보를 저장할 ref
     const symbolConfigRef = useRef<any>(null);
     // 지표 설정 정보를 저장할 ref
@@ -37,33 +38,28 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
     const currentLogoUrl = getLogoUrl(symbol);
 
     // config.json에서 설정 정보를 가져오는 함수
-    const loadConfigData = () => {
+    const loadConfigData = async () => {
         try {
-            const configRequest = new XMLHttpRequest();
-            configRequest.open('GET', '/config.json', false); // 동기식 요청
-            configRequest.send(null);
+            const res = await fetch('/api/config');
+            const config = await res.json();
 
-            if (configRequest.status === 200) {
-                const config = JSON.parse(configRequest.responseText);
+            // 현재 심볼 설정 찾기
+            const currentSymbolConfig = config['심볼'].find((s: any) => s['심볼 이름'] === symbol);
+            symbolConfigRef.current = currentSymbolConfig;
 
-                // 현재 심볼 설정 찾기
-                const currentSymbolConfig = config['심볼'].find((s: any) => s['심볼 이름'] === symbol);
-                symbolConfigRef.current = currentSymbolConfig;
+            // 지표 설정 정보 저장
+            indicatorConfigsRef.current = config['지표'] || [];
 
-                // 지표 설정 정보 저장
-                indicatorConfigsRef.current = config['지표'] || [];
-
-                // 볼륨 정밀도 설정
-                if (currentSymbolConfig && currentSymbolConfig['거래소 정보'] &&
-                    currentSymbolConfig['거래소 정보']['수량 최소 단위'] !== undefined) {
-                    const minQtyStep = currentSymbolConfig['거래소 정보']['수량 최소 단위'];
-                    if (minQtyStep < 1) {
-                        const minQtyStepStr = minQtyStep.toString();
-                        const decimalStr = minQtyStepStr.split('.')[1];
-                        volumePrecisionRef.current = decimalStr ? decimalStr.length : 0;
-                    } else {
-                        volumePrecisionRef.current = 0;
-                    }
+            // 볼륨 정밀도 설정
+            if (currentSymbolConfig && currentSymbolConfig['거래소 정보'] &&
+                currentSymbolConfig['거래소 정보']['수량 최소 단위'] !== undefined) {
+                const minQtyStep = currentSymbolConfig['거래소 정보']['수량 최소 단위'];
+                if (minQtyStep < 1) {
+                    const minQtyStepStr = minQtyStep.toString();
+                    const decimalStr = minQtyStepStr.split('.')[1];
+                    volumePrecisionRef.current = decimalStr ? decimalStr.length : 0;
+                } else {
+                    volumePrecisionRef.current = 0;
                 }
             }
         } catch (error) {
@@ -73,7 +69,9 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
 
     // 지표 포맷 및 정밀도에 따라 값을 포맷팅하는 함수
     const formatIndicatorValue = (value: number, indicatorName: string): string => {
-        if (isNaN(value)) return "∅";
+        if (isNaN(value)) {
+            return "∅";
+        }
 
         // 지표 설정 찾기
         const indicatorConfig = indicatorConfigsRef.current.find((i: any) => i['지표 이름'] === indicatorName);
@@ -190,7 +188,7 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
     // 심볼이 변경되면 설정 정보 로드 및 거래량 precision 업데이트
     useEffect(() => {
         const loadVolumePrecision = async () => {
-            loadConfigData();
+            await loadConfigData();
 
             volumePrecisionRef.current = await getVolumePrecision(symbol);
         };

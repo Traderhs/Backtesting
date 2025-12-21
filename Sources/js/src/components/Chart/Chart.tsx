@@ -140,18 +140,23 @@ const Chart: React.FC<{
 
     // TimeSlider 잠금 상태를 관리하는 state 추가
     const [isTimeSliderLocked, setIsTimeSliderLocked] = useState(true);
+
     // TimeSlider로 이동할 목표 시간을 관리하는 state 추가
     const [targetTime, setTargetTime] = useState<number | undefined>(undefined);
+
     // 달력 이동 완료 여부를 추적하는 ref 추가
     const calendarMoveCompletedRef = useRef<boolean>(false);
 
     // 달력 표시 상태 관리
     const [showCalendar, setShowCalendar] = useState(false);
-    // 달력 선택 정보를 저장하는 상태 추가 (지역 변수)
+
+    // 달력 선택 정보를 저장하는 상태
     const [calendarLastSelectedDate, setCalendarLastSelectedDate] = useState<Date | null>(null);
     const [calendarLastSelectedTime, setCalendarLastSelectedTime] = useState<string>('00:00');
+
     // 달력이 처음 열리는 것인지 추적 (true면 첫 데이터 포인트 시간 사용)
     const [isCalendarFirstOpen, setIsCalendarFirstOpen] = useState(true);
+
     // 캘린더 이동 중 로딩 상태 관리
     const [isCalendarLoading, setIsCalendarLoading] = useState(false);
 
@@ -371,12 +376,13 @@ const Chart: React.FC<{
                 }
             },
         });
+
         chart.priceScale("right").applyOptions({mode: 1});
         chart.priceScale("right").applyOptions({
             ticksVisible: true,
             borderColor: "#ffffff"
         });
-        chart.priceScale("volume").applyOptions({mode: 1});
+
         chartRef.current = chart;
 
         // 초기 크기 설정
