@@ -19,7 +19,9 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
 
     // 특정 시간으로 슬라이더 이동 (타임스탬프 기준)
     const moveToTime = (timestamp: number) => {
-        if (!chart || candleStickData.length === 0) return;
+        if (!chart || candleStickData.length === 0) {
+            return;
+        }
         
         // 해당 timestamp에 가장 가까운 캔들 찾기
         let targetIndex = 0;
@@ -66,13 +68,23 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
 
     // 슬라이더 레이아웃 업데이트: left/right price 스케일 너비 반영
     const updateSliderLayout = () => {
-        if (!sliderRef.current || !chart) return;
+        if (!sliderRef.current || !chart) {
+            return;
+        }
+
         const timeScale = chart.timeScale();
-        if (!timeScale) return;
+        if (!timeScale) {
+            return;
+        }
+
         const totalCount = candleStickData.length;
+
         const leftScale = chart.priceScale("left");
         const rightScale = chart.priceScale("right");
-        if (!leftScale || !rightScale) return;
+        if (!leftScale || !rightScale) {
+            return;
+        }
+
         const leftWidth = leftScale.width();
         const rightWidth = rightScale.width();
         const timeWidth = timeScale.width();
@@ -93,16 +105,22 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
 
     // 날짜 라벨(tooltip) 업데이트
     const updateSliderDate = () => {
-        if (!sliderDateRef.current || candleStickData.length === 0) return;
+        if (!sliderDateRef.current || candleStickData.length === 0) {
+            return;
+        }
         
         // 더 강력한 경계 검사
         const safeIndex = Math.max(0, Math.min(Math.floor(sliderValue), candleStickData.length - 1));
         
         // 인덱스가 유효한지 확인
-        if (safeIndex < 0 || !candleStickData[safeIndex]) return;
+        if (safeIndex < 0 || !candleStickData[safeIndex]) {
+            return;
+        }
         
         const bar = candleStickData[safeIndex];
-        if (!bar || bar.time === undefined) return;
+        if (!bar || bar.time === undefined) {
+            return;
+        }
         
         const date = new Date(typeof bar.time === "string" ? bar.time : bar.time * 1000);
         const days = ["일", "월", "화", "수", "목", "금", "토"];
@@ -124,6 +142,7 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
             // 실제 너비를 측정하기 위해 일시적으로 표시
             const originalDisplay = sliderDateRef.current.style.display;
             sliderDateRef.current.style.display = 'block';
+
             const tooltipRect = sliderDateRef.current.getBoundingClientRect();
             sliderDateRef.current.style.display = originalDisplay;
             
@@ -205,6 +224,7 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
                 };
             } else {
                 chart.timeScale().subscribeVisibleLogicalRangeChange(updateFromVisibleRange);
+
                 return () => {
                     chart.timeScale().unsubscribeVisibleLogicalRangeChange(updateFromVisibleRange);
                 };
@@ -221,12 +241,19 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
         const value = Math.max(0, Math.min(rawValue, candleStickData.length - 1));
         
         setSliderValue(value);
-        if (!chart) return;
+        if (!chart) {
+            return;
+        }
+
         const lr = chart.timeScale().getVisibleLogicalRange();
-        if (!lr) return;
+        if (!lr) {
+            return;
+        }
+
         const visibleCount = lr.to - lr.from;
         const newFrom = value - visibleCount / 2;
         const newTo = value + visibleCount / 2;
+
         chart.timeScale().setVisibleLogicalRange({ from: newFrom, to: newTo });
     };
 
@@ -254,6 +281,7 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
     useEffect(() => {
         window.addEventListener("resize", updateSliderLayout);
         window.addEventListener("resize", updateSliderDate);
+
         return () => {
             window.removeEventListener("resize", updateSliderLayout);
             window.removeEventListener("resize", updateSliderDate);
