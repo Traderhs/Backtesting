@@ -56,5 +56,5 @@
     z-index: 1101;
     white-space: nowrap;
     border: 1px solid rgba(255, 215, 0, 0.4);
-    font-family: "'Inter', 'Pretendard', sans-serif", serif;
+    font-family: inherit;
 }
