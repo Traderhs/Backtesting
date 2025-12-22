@@ -144,6 +144,10 @@ int64_t Engine::GetCurrentCloseTime() const { return current_close_time_; }
 
 bool Engine::IsAllTradingEnded() const { return all_trading_ended_; }
 
+bool Engine::IsTradingEnded(int symbol_idx) const {
+  return trading_ended_[symbol_idx];
+}
+
 void Engine::Initialize() {
   // 유효성 검증
   IsValidConfig();
@@ -1570,9 +1574,13 @@ void Engine::ExecuteTradingEnd(const int symbol_idx,
 
   trading_ended_[symbol_idx] = true;
 
-  // 진입 및 청산 대기 주문을 취소하고 체결된 진입 주문 잔량을 종가에 청산
+  // 진입 및 청산 대기 주문을 취소하고,
+  // 체결된 진입 주문 잔량을 트레이딩 바 전 종가에 청산
+  //
   // 메인 루프 전 트레이딩 바 인덱스를 하나 증가시켰으므로 하나 감소시켜야
   // 마지막 바를 가리킴
+  //
+  // 단순화를 위해 이 함수의 실행 타이밍, 바 데이터 타입과 관계없이 전 종가 청산
   bar_->SetCurrentBarDataType(TRADING, "");
   bar_->SetCurrentBarIndex(bar_->GetCurrentBarIndex() - 1);
 
