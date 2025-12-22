@@ -30,6 +30,21 @@ export default function StrategyEditor() {
     // 심볼별 로고 상태: { url: string | null, loading: boolean }
     const [symbolLogos, setSymbolLogos] = useState<Record<string, { url: string | null; loading: boolean }>>({});
 
+    // 심볼 입력 및 추천 관련 상태
+    const [symbolInput, setSymbolInput] = useState<string>('');
+    const [knownSymbols, setKnownSymbols] = useState<string[]>([]);
+    const [suggestionsVisible, setSuggestionsVisible] = useState<boolean>(false);
+    const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(-1);
+
+    // 자동완성 직후 플래그: 자동완성 직후에는 드롭다운을 닫고 입력 변경 시에만 다시 열리게 함
+    const [justAutocompleted, setJustAutocompleted] = useState<boolean>(false);
+
+    // 캐럿 위치 (커서 위치) 추적: 자동완성 후 중간 편집 시 추천을 커서 기준으로 계산하기 위함
+    const [caretPos, setCaretPos] = useState<number | null>(null);
+
+    // 추천 목록 스크롤 컨테이너 레퍼런스
+    const suggestionsContainerRef = useRef<HTMLDivElement | null>(null);
+
     // 기본 바 데이터 설정 (트레이딩, 돋보기, 참조 1개, 마크 가격)
     const [barDataConfigs, setBarDataConfigs] = useState<BarDataConfig[]>([
         {
@@ -170,6 +185,24 @@ export default function StrategyEditor() {
     useEffect(() => {
         if (!ws) return;
 
+        // 백엔드로부터 사용 가능한 심볼 목록을 가져옴 (/api/symbols 사용)
+        (async () => {
+            try {
+                const res = await fetch('/api/symbols?include=popular,web');
+                if (!res.ok) {
+                    return;
+                }
+
+                const data = await res.json();
+
+                if (Array.isArray(data.symbols)) {
+                    setKnownSymbols(data.symbols.map((s: string) => String(s).toUpperCase()));
+                }
+            } catch (e) {
+                // 무시
+            }
+        })();
+
         const trySendLoad = () => {
             if (ws.readyState === WebSocket.OPEN && !configLoaded) {
                 try {
@@ -295,6 +328,34 @@ export default function StrategyEditor() {
         }
     }, [projectDirectoryRequested, showProjectDialog]);
 
+    // 선택된 추천 항목이 바뀔 때 스크롤하여 뷰에 들어오도록 함
+    useEffect(() => {
+        if (selectedSuggestionIndex < 0) {
+            return;
+        }
+
+        const container = suggestionsContainerRef.current;
+        if (!container) {
+            return;
+        }
+
+        const el = container.querySelector(`[data-index='${selectedSuggestionIndex}']`) as HTMLElement | null;
+        if (!el) {
+            return;
+        }
+
+        const elTop = el.offsetTop;
+        const elBottom = elTop + el.offsetHeight;
+        const viewTop = container.scrollTop;
+        const viewBottom = viewTop + container.clientHeight;
+
+        if (elTop < viewTop) {
+            container.scrollTop = elTop;
+        } else if (elBottom > viewBottom) {
+            container.scrollTop = elBottom - container.clientHeight;
+        }
+    }, [selectedSuggestionIndex]);
+
     // 로그가 추가될 때마다 스크롤을 맨 아래로
     useEffect(() => {
         if (logContainerRef.current) {
@@ -356,12 +417,86 @@ export default function StrategyEditor() {
         return JSON.stringify(config);
     };
 
+    // 입력값이 완결된 USDT 심볼인지 확인리 (캐럿이 끝에 있어야 하는 조건)
+    const isCompletedUSDT = (input: string) => {
+        const s = (input || '').toUpperCase().trim();
+        if (!s.endsWith('USDT')) {
+            return false;
+        }
+
+        if (symbolConfigs.includes(s)) {
+            return false;
+        }
+
+        // caretPos가 null이면 사용자가 끝에 있다고 가정 (fallback)
+        if (typeof caretPos !== 'number') {
+            return true;
+        }
+
+        return caretPos === s.length;
+    };
+
+    const getSuggestions = (input: string) => {
+        const q = (input || '').toUpperCase();
+        if (!q) {
+            return [];
+        }
+
+        // 커서 위치 기준으로 prefix를 사용 (중간 편집 시 그 위치까지의 텍스트를 기준으로 추천)
+        const pos = typeof caretPos === 'number' && caretPos >= 0 ? Math.min(caretPos, q.length) : q.length;
+        const prefix = q.slice(0, pos).trim();
+        if (!prefix) {
+            return [];
+        }
+
+        // 알려진 심볼 중에서 prefix로 시작하는 것(중복 등록 방지)
+        let matches = knownSymbols.filter(s => s.startsWith(prefix) && !symbolConfigs.includes(s));
+
+        // 정렬: 접미사(길이)가 적은 것 우선, 동일 길이에서는 알파벳 순
+        matches.sort((a, b) => {
+            const sa = a.length - prefix.length;
+            const sb = b.length - prefix.length;
+            if (sa !== sb) return sa - sb;
+            return a.localeCompare(b);
+        });
+
+        // 항상 우선으로 보여줄 USDT 후보를 가장 위에 둔다(중복 제거)
+        const suggestions: string[] = [];
+        if (!prefix.endsWith('USDT')) {
+            const cand = (prefix + 'USDT').toUpperCase();
+
+            if (!symbolConfigs.includes(cand)) {
+                suggestions.push(cand);
+            }
+        } else {
+            const cand = prefix.toUpperCase();
+
+            if (!symbolConfigs.includes(cand)) {
+                suggestions.push(cand);
+            }
+        }
+
+        for (const m of matches) {
+            if (!suggestions.includes(m)) {
+                suggestions.push(m);
+            }
+
+            if (suggestions.length >= 50) {
+                break;
+            }
+        }
+
+        return suggestions;
+    };
+
     // 심볼 추가
     const handleAddSymbol = (symbol: string) => {
-        const s = symbol.trim();
-        if (!s) {
+        const sRaw = symbol.trim();
+        if (!sRaw) {
             return;
         }
+
+        const s = sRaw.toUpperCase();
 
         if (!symbolConfigs.includes(s)) {
             setSymbolConfigs(prev => [...prev, s]);
@@ -748,22 +883,243 @@ export default function StrategyEditor() {
                         })}
                     </div>
                     <div className="flex gap-2">
-                        <Input
-                            type="text"
-                            placeholder="심볼 이름 입력 후 Enter 키 또는 추가 버튼 클릭"
-                            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                                if (e.key === 'Enter') {
-                                    handleAddSymbol(e.currentTarget.value);
-                                    e.currentTarget.value = '';
-                                }
-                            }}
-                            className="flex-1 bg-[#252525] border-gray-600"
-                        />
+                        <div className="relative flex-1">
+                            <Input
+                                id="strategy-symbol-input"
+                                type="text"
+                                placeholder="심볼 이름 입력 후 Enter 키 또는 추천 클릭"
+                                value={symbolInput}
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                    // 입력 필드의 현재 캐럿 위치를 저장
+                                    const el = document.getElementById('strategy-symbol-input') as HTMLInputElement | null;
+                                    const selStart = el ? el.selectionStart : null;
+
+                                    const v = e.currentTarget.value.toUpperCase();
+                                    setSymbolInput(v);
+
+                                    // caretPos 업데이트(비동기적으로 최신 값 반영)
+                                    if (selStart !== null) {
+                                        setCaretPos(Math.min(selStart, v.length));
+                                    } else {
+                                        setCaretPos(v.length);
+                                    }
+
+                                    // 사용자가 입력을 변경하면 자동완성 플래그 해제 및 추천 다시 노출
+                                    setJustAutocompleted(false);
+                                    setSuggestionsVisible(true);
+                                    setSelectedSuggestionIndex(-1);
+
+                                    // 캐럿 위치 복원 (비동기)
+                                    if (el && selStart !== null) {
+                                        requestAnimationFrame(() => {
+                                            try {
+                                                const clampedStart = Math.min(selStart, el.value.length);
+                                                el.setSelectionRange(clampedStart, clampedStart);
+                                            } catch (err) {
+                                                // 무시
+                                            }
+                                        });
+                                    }
+                                }}
+                                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                    if (e.key === 'Enter') {
+                                        e.preventDefault();
+
+                                        // 입력값이 이미 완결된 USDT 심볼(그리고 caret이 끝에 있을 때)이면 드롭다운 없이 즉시 추가
+                                        const normalized = (symbolInput || '').toUpperCase().trim();
+                                        const caretAtEnd = typeof caretPos !== 'number' ? true : caretPos === normalized.length;
+
+                                        if (normalized.endsWith('USDT') && caretAtEnd && !symbolConfigs.includes(normalized)) {
+                                            handleAddSymbol(normalized);
+
+                                            setSymbolInput('');
+                                            setSuggestionsVisible(false);
+                                            setSelectedSuggestionIndex(-1);
+                                            setJustAutocompleted(false);
+                                            return;
+                                        }
+
+                                        const suggs = getSuggestions(symbolInput);
+
+                                        if (selectedSuggestionIndex >= 0) {
+                                            const chosen = suggs[selectedSuggestionIndex];
+
+                                            if (chosen) {
+                                                if (symbolInput === chosen) {
+                                                    // 입력값이 이미 추천과 동일한 경우
+                                                    // 첫 Enter는 자동완성 플래그를 설정하고 드롭다운만 닫음
+                                                    if (justAutocompleted) {
+                                                        // 이미 자동완성된 상태에서 Enter를 다시 누르면 실제 추가
+                                                        handleAddSymbol(chosen);
+                                                        setSymbolInput('');
+                                                        setSuggestionsVisible(false);
+                                                        setSelectedSuggestionIndex(-1);
+                                                        setJustAutocompleted(false);
+                                                    } else {
+                                                        setJustAutocompleted(true);
+                                                        setSuggestionsVisible(false);
+                                                        setSelectedSuggestionIndex(suggs.indexOf(chosen));
+                                                    }
+                                                } else {
+                                                    // 자동완성만 수행: 드롭다운 닫고 플래그 설정
+                                                    setSymbolInput(chosen);
+                                                    setCaretPos(chosen.length);
+                                                    setJustAutocompleted(true);
+                                                    setSuggestionsVisible(false);
+
+                                                    const newIndex = suggs.indexOf(chosen);
+                                                    setSelectedSuggestionIndex(newIndex >= 0 ? newIndex : 0);
+
+                                                    // 입력으로 포커스 이동하여 커서를 끝으로 이동
+                                                    requestAnimationFrame(() => {
+                                                        const inputEl = document.getElementById('strategy-symbol-input') as HTMLInputElement | null;
+                                                        if (inputEl) {
+                                                            try {
+                                                                inputEl.focus();
+                                                                inputEl.setSelectionRange(chosen.length, chosen.length);
+                                                            } catch (e) {
+                                                            }
+                                                        }
+                                                    });
+                                                }
+                                            }
+                                        } else {
+                                            // 선택된 추천 인덱스가 없는 경우에도 입력값이 추천 목록에 정확히 일치하면
+                                            // 첫 Enter는 자동완성 플래그를 설정하여 드롭다운을 닫고, 두 번째 Enter에서 실제 추가하도록 함.
+                                            const allSuggs = getSuggestions(symbolInput);
+                                            const exactMatchIndex = allSuggs.indexOf(symbolInput);
+
+                                            if (exactMatchIndex >= 0) {
+                                                // 이미 자동완성 플래그가 설정되어 있으면 실제 추가
+                                                if (justAutocompleted) {
+                                                    handleAddSymbol(symbolInput);
+                                                    setSymbolInput('');
+                                                    setSuggestionsVisible(false);
+                                                    setSelectedSuggestionIndex(-1);
+                                                    setJustAutocompleted(false);
+                                                } else {
+                                                    // 첫 Enter: 자동완성 플래그만 설정하고 드롭다운 닫기
+                                                    setJustAutocompleted(true);
+                                                    setSuggestionsVisible(false);
+                                                    setSelectedSuggestionIndex(exactMatchIndex);
+                                                }
+                                            } else {
+                                                // 추천에 없으면 즉시 추가
+                                                handleAddSymbol(symbolInput);
+                                                setSymbolInput('');
+                                                setSuggestionsVisible(false);
+                                            }
+                                        }
+                                    } else if (e.key === 'ArrowDown') {
+                                        e.preventDefault();
+                                        const suggs = getSuggestions(symbolInput);
+
+                                        if (suggs.length === 0) {
+                                            return;
+                                        }
+
+                                        setSelectedSuggestionIndex(i => Math.min(i + 1, suggs.length - 1));
+                                    } else if (e.key === 'ArrowUp') {
+                                        e.preventDefault();
+                                        const suggs = getSuggestions(symbolInput);
+
+                                        if (suggs.length === 0) {
+                                            return;
+                                        }
+                                        setSelectedSuggestionIndex(i => Math.max(i - 1, 0));
+                                    } else if (e.key === 'Escape') {
+                                        setSuggestionsVisible(false);
+                                    }
+                                }}
+                                onBlur={() => {
+                                    // blur 시 약간의 딜레이를 두어 클릭 이벤트가 처리될 수 있게 함
+                                    setTimeout(() => setSuggestionsVisible(false), 150);
+                                }}
+                                onSelect={(e: React.SyntheticEvent<HTMLInputElement>) => {
+                                    const el = e.target as HTMLInputElement;
+                                    setCaretPos(el.selectionStart ?? null);
+                                }}
+                                onKeyUp={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                    const el = e.currentTarget as HTMLInputElement;
+                                    setCaretPos(el.selectionStart ?? null);
+                                }}
+                                onClick={(e: React.MouseEvent<HTMLInputElement>) => {
+                                    // 클릭으로 캐럿 이동 시 추천이 존재하면 드롭다운 열기
+                                    const el = e.currentTarget as HTMLInputElement;
+                                    const pos = el.selectionStart ?? el.value.length;
+                                    setCaretPos(pos);
+
+                                    // 직접 prefix 기반으로 추천 존재 여부 판단하여 드롭다운 표시
+                                    const prefix = (el.value || '').slice(0, pos).toUpperCase().trim();
+                                    const hasSuggestion = prefix.length > 0 && (knownSymbols.some(s => s.startsWith(prefix) && !symbolConfigs.includes(s)) || (!prefix.endsWith('USDT') && !symbolConfigs.includes((prefix + 'USDT').toUpperCase())));
+
+                                    if (hasSuggestion) {
+                                        setSuggestionsVisible(true);
+                                    }
+                                }}
+                                className="w-full bg-[#252525] border-gray-600"
+                            />
+
+                            {/* 추천 드롭다운 */}
+                            {suggestionsVisible && symbolInput && !isCompletedUSDT(symbolInput) && getSuggestions(symbolInput).length > 0 && (
+                                <div className="absolute left-0 right-0 mt-1 border border-gray-700 rounded shadow z-30"
+                                     style={{backgroundColor: 'rgba(11,18,32,1)', backdropFilter: 'none'}}>
+                                    <div className="max-h-44 overflow-y-auto"
+                                         style={{scrollbarWidth: 'thin' as any, backgroundColor: 'rgba(11,18,32,1)'}}
+                                         ref={suggestionsContainerRef}>
+                                        {getSuggestions(symbolInput).map((sugg, idx) => (
+                                            <div
+                                                key={sugg}
+                                                data-index={idx}
+                                                onMouseDown={(ev) => {
+                                                    // mouseDown에서 preventDefault로 blur에서 닫히는 걸 방지
+                                                    ev.preventDefault();
+
+                                                    // 클릭 시 자동완성만 수행(즉시 추가하지 않음)
+                                                    setSymbolInput(sugg);
+                                                    setCaretPos(sugg.length);
+                                                    setJustAutocompleted(true);
+                                                    setSuggestionsVisible(false);
+                                                    setSelectedSuggestionIndex(idx);
+
+                                                    // 입력으로 포커스 이동 및 캐럿을 끝으로 이동
+                                                    requestAnimationFrame(() => {
+                                                        const inputEl = document.getElementById('strategy-symbol-input') as HTMLInputElement | null;
+                                                        if (inputEl) {
+                                                            try {
+                                                                inputEl.focus();
+                                                                inputEl.setSelectionRange(sugg.length, sugg.length);
+                                                            } catch (e) {
+                                                                // 무시
+                                                            }
+                                                        }
+                                                    });
+                                                }}
+                                                className={`px-3 py-2 text-sm cursor-pointer hover:bg-gray-800 ${selectedSuggestionIndex === idx ? 'bg-gray-800' : ''}`}
+                                            >
+                                                {sugg}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                         <Button
-                            onClick={(e) => {
-                                const input = e.currentTarget.previousElementSibling as HTMLInputElement;
-                                handleAddSymbol(input.value);
-                                input.value = '';
+                            onClick={() => {
+                                if (selectedSuggestionIndex >= 0) {
+                                    const chosen = getSuggestions(symbolInput)[selectedSuggestionIndex];
+                                    if (chosen) {
+                                        handleAddSymbol(chosen);
+                                    }
+                                } else {
+                                    const val = (symbolInput || '').toUpperCase().trim();
+                                    if (val) {
+                                        handleAddSymbol(val);
+                                    }
+                                }
+
+                                setSymbolInput('');
+                                setSuggestionsVisible(false);
                             }}
                             className="bg-blue-600 hover:bg-blue-700 text-white px-4"
                         >

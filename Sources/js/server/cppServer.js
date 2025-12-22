@@ -833,8 +833,6 @@ async function handleProvideProjectDirectory(ws, projectDir, activeClients, broa
                     action: "editorConfigLoaded",
                     config: configToWs(editorConfig)
                 }));
-
-                broadcastLog("INFO", `editor.json 생성 완료: ${editorConfigPath}`, null, null);
             } catch (err) {
                 ws.send(JSON.stringify({
                     action: "projectDirectoryInvalid",

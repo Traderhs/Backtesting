@@ -184,30 +184,30 @@ app.get('/api/config', (req, res) => {
 app.get('/api/trade-list', async (req, res) => {
     try {
         const tradeListPath = path.join(baseDir, 'Backboard', 'trade_list.json');
-        
+
         // 파일 존재 확인
         await fsPromises.access(tradeListPath, fs.constants.F_OK);
-        
+
         // 파일 읽기
         let fileContent = await fsPromises.readFile(tradeListPath, {encoding: 'utf8'});
-        
+
         // BOM (Byte Order Mark) 제거
         if (fileContent.charCodeAt(0) === 0xFEFF) {
             fileContent = fileContent.slice(1);
         }
-        
+
         const tradeData = JSON.parse(fileContent);
-        
+
         res.set({
             'Cache-Control': 'no-cache, no-store, must-revalidate',
             'Pragma': 'no-cache',
             'Expires': '0'
         });
-        
+
         res.json(tradeData);
     } catch (error) {
         res.status(404).json({
-            error: 'trade_list.json 파일을 찾을 수 없습니다.', 
+            error: 'trade_list.json 파일을 찾을 수 없습니다.',
             attemptedPath: path.join(baseDir, 'Backboard', 'trade_list.json'),
             baseDir: baseDir,
             cwd: process.cwd(),
@@ -296,6 +296,87 @@ app.get("/api/get-logo", async (req, res) => {
         broadcastLog("ERROR", `전체 로고 처리 실패 (${symbol}): ${fetchError.message}`, null, null);
 
         return res.json({logoUrl: USDT_FALLBACK_ICON_PATH});
+    }
+});
+
+// =====================================================================================================================
+// API: 사용 가능한 심볼 목록
+// =====================================================================================================================
+app.get('/api/symbols', async (req, res) => {
+    try {
+        // 디렉터리에 있는 데이터로 심볼 목록 추출
+        const continuousPath = path.join(baseDir, 'Data', 'Continuous Klines');
+        let symbols = [];
+
+        try {
+            const dirents = await fsPromises.readdir(continuousPath, {withFileTypes: true});
+            const dirs = dirents.filter(d => d.isDirectory()).map(d => d.name.toUpperCase());
+            symbols = symbols.concat(dirs);
+        } catch (e) {
+            // 디렉터리가 없거나 접근 불가 시 무시
+        }
+
+        // config에 명시된 심볼도 합침
+        if (config && Array.isArray(config['심볼'])) {
+            const cfg = config['심볼'].map((s) => (s['심볼 이름'] || s['심볼'] || s['symbol'] || '')).filter(Boolean).map(String).map(s => s.toUpperCase());
+            symbols = Array.from(new Set([...symbols, ...cfg]));
+        }
+
+        // 기본으로 포함할 인기 심볼 (빠른 검색용)
+        const popularSymbols = [
+            'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT',
+            'DOTUSDT', 'LTCUSDT', 'LINKUSDT', 'TRXUSDT', 'NEARUSDT', 'AVAXUSDT', 'ATOMUSDT'
+        ];
+
+        // 쿼리 파라미터로 추가 소스 지정 가능: include=popular,web
+        const includes = (req.query.include || '').toString().split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+        if (includes.includes('popular')) {
+            symbols = Array.from(new Set([...symbols, ...popularSymbols]));
+        }
+
+        // 웹(거래소)에서 가져오기 (옵션): Binance 공용 API 사용, 실패 시 무시
+        if (includes.includes('web') || includes.includes('exchange')) {
+            // 간단 캐시(10분)
+            const now = Date.now();
+            if (!global.__symbol_cache) {
+                global.__symbol_cache = {ts: 0, symbols: []};
+            }
+
+            if (now - global.__symbol_cache.ts > 10 * 60 * 1000) {
+                try {
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 3000);
+
+                    const resp = await fetch('https://api.binance.com/api/v3/ticker/price', {signal: controller.signal});
+                    clearTimeout(timeout);
+
+                    if (resp.ok) {
+                        const data = await resp.json();
+                        const exchangeSymbols = data
+                            .map((p) => (p.symbol || '').toUpperCase())
+                            .filter(s => s.endsWith('USDT'));
+
+                        global.__symbol_cache = {ts: Date.now(), symbols: exchangeSymbols};
+                    }
+                } catch (e) {
+                    // 네트워크 문제, 무시
+                    broadcastLog('WARN', `외부 심볼 조회 실패: ${e.message}`);
+                }
+            }
+
+            if (global.__symbol_cache && Array.isArray(global.__symbol_cache.symbols)) {
+                symbols = Array.from(new Set([...symbols, ...global.__symbol_cache.symbols]));
+            }
+        }
+
+        // 정렬 및 반환
+        symbols = Array.from(new Set(symbols)).sort();
+
+        res.json({symbols});
+    } catch (err) {
+        broadcastLog('ERROR', `심볼 목록을 불러오는 동안 오류가 발생했습니다: ${err.message}`);
+        res.status(500).json({symbols: []});
     }
 });
 
