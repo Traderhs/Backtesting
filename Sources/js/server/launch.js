@@ -31,6 +31,14 @@ const processWithPkg = process;
 const isDevelopment = !processWithPkg.pkg;
 const baseDir = isDevelopment ? process.cwd() : (path.dirname(process.execPath) || process.cwd());
 
+function toPosix(p) {
+    if (!p || typeof p !== 'string') {
+        return p;
+    }
+
+    return p.replace(/\\/g, '/');
+}
+
 // 디버그 로그 설정
 const DEBUG_LOGS = process.env.LAUNCH_DEBUG_LOGS === '0';
 if (!DEBUG_LOGS) {
@@ -208,9 +216,9 @@ app.get('/api/trade-list', async (req, res) => {
     } catch (error) {
         res.status(404).json({
             error: 'trade_list.json 파일을 찾을 수 없습니다.',
-            attemptedPath: path.join(baseDir, 'Backboard', 'trade_list.json'),
-            baseDir: baseDir,
-            cwd: process.cwd(),
+            attemptedPath: toPosix(path.join(baseDir, 'Backboard', 'trade_list.json')),
+            baseDir: toPosix(baseDir),
+            cwd: toPosix(process.cwd()),
             details: error.message
         });
     }
@@ -281,7 +289,7 @@ app.get("/api/get-logo", async (req, res) => {
         try {
             const stats = await fsPromises.stat(localFilePath);
             if (stats.size === 0) {
-                broadcastLog("ERROR", `다운로드된 파일 크기가 0입니다: ${localFilePath}`, null, null);
+                broadcastLog("ERROR", `다운로드된 파일 크기가 0입니다: ${toPosix(localFilePath)}`, null, null);
 
                 return res.json({logoUrl: USDT_FALLBACK_ICON_PATH});
             }
@@ -404,7 +412,7 @@ app.get("/api/get-source-code", async (req, res) => {
             res.json({content: fileContent});
         } catch (error) {
             res.status(404).json({
-                error: `파일을 찾을 수 없거나 읽을 수 없습니다: ${filePath}`,
+                error: `파일을 찾을 수 없거나 읽을 수 없습니다: ${toPosix(filePath)}`,
                 details: error.message
             });
         }
@@ -747,7 +755,9 @@ async function main() {
                 if (symbol["트레이딩 바 데이터"] && symbol["트레이딩 바 데이터"]["데이터 경로"]) {
                     const symbolName = symbol["심볼 이름"] || "default";
 
-                    dataPaths[symbolName] = symbol["트레이딩 바 데이터"]["데이터 경로"].replace(/\/[^\/]*$/, "");
+                    const rawPath = String(symbol["트레이딩 바 데이터"]["데이터 경로"] || '');
+                    const posixPath = rawPath.replace(/\\/g, '/');
+                    dataPaths[symbolName] = posixPath.replace(/\/[^\/]*$/, "");
                 }
             });
         }
@@ -758,8 +768,9 @@ async function main() {
             config["지표"].forEach((indicatorObj) => {
                 const indicatorName = indicatorObj["지표 이름"] || "unknown_indicator";
                 const indicatorPath = indicatorObj["데이터 경로"] || "";
+                const posIndicatorPath = String(indicatorPath || '').replace(/\\/g, '/');
 
-                indicatorPaths[indicatorName] = indicatorPath.replace(/\/[^\/]*$/, "");
+                indicatorPaths[indicatorName] = posIndicatorPath.replace(/\/[^\/]*$/, "");
             });
         }
 
