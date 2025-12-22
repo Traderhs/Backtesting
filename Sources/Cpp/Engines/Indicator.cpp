@@ -167,6 +167,9 @@ Numeric<double> Indicator::operator[](const size_t index) {
 
   // 호출 시점의 데이터 환경 정보 저장
   const auto original_bar_data_type = bar_->GetCurrentBarDataType();
+  const auto& original_reference_timeframe =
+      bar_->GetCurrentReferenceTimeframe();
+
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
   const auto trading_bar_idx = bar_->GetCurrentBarIndex();
 
@@ -234,7 +237,8 @@ Numeric<double> Indicator::operator[](const size_t index) {
     cached_ref_bar_idx_ = SIZE_MAX;  // NaN 표시
 
     // 원래 데이터 환경 복구
-    bar_->SetCurrentBarDataType(original_bar_data_type, "");
+    bar_->SetCurrentBarDataType(original_bar_data_type,
+                                original_reference_timeframe);
 
     return NAN;
   }
@@ -270,7 +274,8 @@ Numeric<double> Indicator::operator[](const size_t index) {
   cached_ref_bar_idx_ = ref_bar_idx;
 
   // 원래 데이터 환경 복구
-  bar_->SetCurrentBarDataType(original_bar_data_type, "");
+  bar_->SetCurrentBarDataType(original_bar_data_type,
+                              original_reference_timeframe);
 
   return output_[symbol_idx][ref_bar_idx];
 }
@@ -287,7 +292,7 @@ void Indicator::CalculateIndicator() {
 
     // 바 데이터 설정
     if (trading_bar_data_ == nullptr) {
-      trading_bar_data_ = bar_->GetBarData(TRADING);
+      trading_bar_data_ = bar_->GetBarData(TRADING, "");
     }
 
     if (reference_bar_data_ == nullptr) {

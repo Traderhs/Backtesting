@@ -92,6 +92,9 @@ class Engine final : public BaseEngine {
   /// 모든 심볼의 트레이딩이 끝났는지 여부를 반환하는 함수
   [[nodiscard]] bool IsAllTradingEnded() const;
 
+  /// 특정 심볼의 트레이딩이 끝났는지 여부를 반환하는 함수
+  [[nodiscard]] bool IsTradingEnded(int symbol_idx) const;
+
  private:
   // 싱글톤 인스턴스 관리
   explicit Engine();

@@ -168,7 +168,7 @@ void Analyzer::SaveIndicatorData() {
     const auto& indicators = strategy->GetIndicators();
 
     // 미리 계산된 값들
-    const auto& trading_bar_data = bar_->GetBarData(TRADING);
+    const auto& trading_bar_data = bar_->GetBarData(TRADING, "");
     const int num_symbols = trading_bar_data->GetNumSymbols();
     const int64_t trading_time_diff = engine_->trading_bar_time_diff_;
 
@@ -512,10 +512,10 @@ void Analyzer::SaveConfig() {
   ordered_json config;
 
   // 미리 계산된 데이터
-  const auto& trading_bar_data = bar_->GetBarData(TRADING);
-  const auto& magnifier_bar_data = bar_->GetBarData(MAGNIFIER);
+  const auto& trading_bar_data = bar_->GetBarData(TRADING, "");
+  const auto& magnifier_bar_data = bar_->GetBarData(MAGNIFIER, "");
   const auto& reference_bar_data = bar_->GetAllReferenceBarData();
-  const auto& mark_price_bar_data = bar_->GetBarData(MARK_PRICE);
+  const auto& mark_price_bar_data = bar_->GetBarData(MARK_PRICE, "");
   const auto& strategy = engine_->strategy_;
   const auto& strategy_class_name = strategy->GetClassName();
   const auto& strategy_name = strategy->GetName();
