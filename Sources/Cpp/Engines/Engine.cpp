@@ -329,7 +329,7 @@ void Engine::IsValidConfig() {
 
 void Engine::IsValidBarData() {
   try {
-    const auto& trading_bar_data = bar_->GetBarData(TRADING);
+    const auto& trading_bar_data = bar_->GetBarData(TRADING, "");
     const auto trading_num_symbols = trading_bar_data->GetNumSymbols();
 
     // 1.1. 트레이딩 바 데이터가 비었는지 검증
@@ -366,7 +366,7 @@ void Engine::IsValidBarData() {
 
     // =========================================================================
     const auto use_bar_magnifier = *config_->GetUseBarMagnifier();
-    const auto& magnifier_bar_data = bar_->GetBarData(MAGNIFIER);
+    const auto& magnifier_bar_data = bar_->GetBarData(MAGNIFIER, "");
     const auto magnifier_num_symbols = magnifier_bar_data->GetNumSymbols();
 
     if (use_bar_magnifier) {
@@ -489,7 +489,7 @@ void Engine::IsValidBarData() {
     }
 
     // =========================================================================
-    const auto& mark_price_bar_data = bar_->GetBarData(MARK_PRICE);
+    const auto& mark_price_bar_data = bar_->GetBarData(MARK_PRICE, "");
     const auto mark_price_num_symbols = mark_price_bar_data->GetNumSymbols();
 
     // 돋보기 기능 사용 시 마크 가격 바 데이터는 돋보기 바 데이터와 비교
@@ -634,7 +634,7 @@ void Engine::IsValidBarData() {
 
 void Engine::IsValidDateRange() {
   try {
-    const auto& trading_bar_data = bar_->GetBarData(TRADING);
+    const auto& trading_bar_data = bar_->GetBarData(TRADING, "");
     for (int symbol_idx = 0; symbol_idx < trading_bar_data->GetNumSymbols();
          symbol_idx++) {
       // 바 데이터 중 가장 처음의 Open Time 값 구하기
@@ -706,7 +706,7 @@ void Engine::IsValidDateRange() {
 }
 
 void Engine::IsValidSymbolInfo() {
-  const auto& trading_bar_data = bar_->GetBarData(TRADING);
+  const auto& trading_bar_data = bar_->GetBarData(TRADING, "");
   const auto trading_num_symbols = trading_bar_data->GetNumSymbols();
 
   try {
@@ -863,12 +863,12 @@ void Engine::InitializeEngine() {
   use_bar_magnifier_ = *config_->GetUseBarMagnifier();
 
   // 바 데이터 초기화
-  trading_bar_data_ = bar_->GetBarData(TRADING);
+  trading_bar_data_ = bar_->GetBarData(TRADING, "");
   if (use_bar_magnifier_) {
-    magnifier_bar_data_ = bar_->GetBarData(MAGNIFIER);
+    magnifier_bar_data_ = bar_->GetBarData(MAGNIFIER, "");
   }
   reference_bar_data_ = bar_->GetAllReferenceBarData();
-  mark_price_bar_data_ = bar_->GetBarData(MARK_PRICE);
+  mark_price_bar_data_ = bar_->GetBarData(MARK_PRICE, "");
 
   // 바 데이터 정보 초기화
   trading_bar_num_symbols_ = trading_bar_data_->GetNumSymbols();
@@ -884,9 +884,9 @@ void Engine::InitializeEngine() {
   }
 
   // 바 인덱스 참조
-  trading_indices_ = &bar_->GetBarIndices(TRADING);
-  magnifier_indices_ = &bar_->GetBarIndices(MAGNIFIER);
-  mark_price_indices_ = &bar_->GetBarIndices(MARK_PRICE);
+  trading_indices_ = &bar_->GetBarIndices(TRADING, "");
+  magnifier_indices_ = &bar_->GetBarIndices(MAGNIFIER, "");
+  mark_price_indices_ = &bar_->GetBarIndices(MARK_PRICE, "");
 
   // 가격 및 가격 타입 캐시 초기화
   price_cache_.resize(trading_bar_num_symbols_);
@@ -1251,6 +1251,7 @@ void Engine::BacktestingMain() {
       current_close_time_ = original_open_time - 1;
 
       vector<int> activated_magnifier_symbol_indices;
+      vector<int> symbols_to_remove;
       do {
         // 현재 Open Time과 Close Time을 돋보기 바 하나만큼 증가
         // Open Time은 돋보기 바로 진행 시 정확한 주문, 체결 시간을 얻기 위함
@@ -1279,8 +1280,12 @@ void Engine::BacktestingMain() {
                   magnifier_bar_data_->GetBar(symbol_idx, moved_bar_idx + 1)
                       .open_time);
             } else {
-              // 현재 바가 마지막 바인 경우는 종료 명시
-              magnifier_next_open_time = "데이터 종료";
+              // 현재 바가 마지막 바인 경우는 종료
+              ExecuteTradingEnd(symbol_idx, "돋보기");
+
+              symbols_to_remove.push_back(symbol_idx);
+
+              continue;
             }
 
             logger_->Log(
@@ -1308,6 +1313,17 @@ void Engine::BacktestingMain() {
 
         // 다음 시간 진행을 위해 활성화 된 심볼 초기화
         activated_magnifier_symbol_indices.clear();
+
+        // 돋보기 바 데이터 종료로 삭제해야 하는 심볼 제거
+        if (!symbols_to_remove.empty()) {
+          erase_if(activated_symbol_indices_, [&](const int symbol_idx) {
+            return ranges::find(symbols_to_remove, symbol_idx) !=
+                   symbols_to_remove.end();
+          });
+
+          // 삭제해야하는 심볼 벡터 초기화
+          symbols_to_remove.clear();
+        }
 
         // 돋보기 바의 Close Time이 트레이딩 바의 Close Time과 같아지면
         // 돋보기 바 시간 진행 종료
@@ -1443,6 +1459,9 @@ void Engine::UpdateTradingStatus() {
         // 참조 바의 타임프레임이 트레이딩 바의 타임프레임과 같을 때
         bar_->ProcessBarIndex(REFERENCE, timeframe, symbol_idx,
                               current_close_time_);
+
+        // 타임프레임이 같으면 같은 데이터이므로,
+        // Close Time이 같아졌는지 유효성 검증은 미진행
       } else {
         // 참조 바의 타임프레임이 트레이딩 바의 타임프레임보다 클 때
         bar_->ProcessBarIndex(REFERENCE, timeframe, symbol_idx,
@@ -1508,7 +1527,9 @@ void Engine::UpdateTradingStatus() {
           magnifier_bar_data_->GetBar(symbol_idx, moved_bar_idx).close_time;
 
       // ※ 1. 돋보기 바의 데이터가 아직 시작되지 않았으면 트레이딩 불가
-      // 전 바의 Close Time으로 일치시키므로 >= 조건 사용 (데이터 누락)
+      // 한 트레이딩 바 중간부터 돋보기 바가 시작해도 진행 로직에는
+      // 문제가 없으므로, 다음 트레이딩 바의 돋보기 시작 시간인
+      // current_close_time_부터 문제 발생 (메인 로직 참고)
       if (moved_close_time >= current_close_time_) {
         /* 돋보기 바 데이터가 사용 불가능하면 트레이딩은 불가능하지만,
            트레이딩 바 인덱스는 맞추어 흘러가야 Open Time, Close Time이 동기화
@@ -1542,6 +1563,11 @@ void Engine::UpdateTradingStatus() {
 
 void Engine::ExecuteTradingEnd(const int symbol_idx,
                                const string& bar_data_type_str) {
+  // 상태 저장
+  const auto original_bar_data_type = bar_->GetCurrentBarDataType();
+  const auto& original_reference_timeframe =
+      bar_->GetCurrentReferenceTimeframe();
+
   trading_ended_[symbol_idx] = true;
 
   // 진입 및 청산 대기 주문을 취소하고 체결된 진입 주문 잔량을 종가에 청산
@@ -1561,6 +1587,10 @@ void Engine::ExecuteTradingEnd(const int symbol_idx,
                       "백테스팅을 종료합니다.",
                       symbol_names_[symbol_idx], bar_data_type_str),
                __FILE__, __LINE__, true);
+
+  // 상태 복원
+  bar_->SetCurrentBarDataType(original_bar_data_type,
+                              original_reference_timeframe);
 }
 
 void Engine::ExecuteAllTradingEnd() {
@@ -1643,7 +1673,8 @@ void Engine::CheckFundingTime() {
         //    마크 가격의 Open 가격을 사용
         funding_price = current_mark_price_bar.open;
       } else if (const auto& current_market_bar =
-                     bar_->GetBarData(bar_->GetCurrentBarDataType())
+                     bar_->GetBarData(bar_->GetCurrentBarDataType(),
+                                      bar_->GetCurrentReferenceTimeframe())
                          ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
                  current_close_time_ == current_market_bar.close_time) {
         // 3. 시장 가격의 Close Time이 현재 진행 시간의 Close Time과 같다면
@@ -1834,7 +1865,8 @@ Direction Engine::CalculatePriceDirection(
         // 강제 청산의 경우에도, 실제 체결은 시장 가격이므로 시장 가격을
         // 기준으로 방향을 결정하면 됨
         const auto previous_close =
-            bar_->GetBarData(bar_data_type)
+            bar_->GetBarData(bar_data_type,
+                             bar_->GetCurrentReferenceTimeframe())
                 ->GetBar(symbol_idx, current_bar_idx - 1)
                 .close;
 
@@ -1979,12 +2011,15 @@ void Engine::SortOrders(vector<FillInfo>& should_fill_orders,
 
 void Engine::ExecuteStrategy(const StrategyType strategy_type,
                              const int symbol_idx) {
-  // = 원본 바 데이터 유형을 저장 =
   // 종가 전략 실행인 경우 원본 바 데이터 유형은 트레이딩 바
   //
   // ProcessOhlc에서 전략 실행인 경우 원본 바 데이터 유형은
   // 트레이딩 바 혹은 돋보기 바
+
+  // 상태 저장
   const auto original_bar_data_type = bar_->GetCurrentBarDataType();
+  const auto& original_reference_timeframe =
+      bar_->GetCurrentReferenceTimeframe();
 
   // 트레이딩 바의 지정된 심볼에서 전략 실행
   // 돋보기 바에서 AFTER EXIT, AFTER ENTRY 전략이 실행되더라도
@@ -2019,8 +2054,9 @@ void Engine::ExecuteStrategy(const StrategyType strategy_type,
     }
   }
 
-  // 원본 설정을 복원
-  bar_->SetCurrentBarDataType(original_bar_data_type, "");
+  // 상태 복원
+  bar_->SetCurrentBarDataType(original_bar_data_type,
+                              original_reference_timeframe);
 }
 
 void Engine::ExecuteChainedAfterStrategies(const int symbol_idx) {
