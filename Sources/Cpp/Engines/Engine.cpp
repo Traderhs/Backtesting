@@ -1249,13 +1249,14 @@ void Engine::BacktestingMain() {
       const auto original_close_time = current_close_time_;
       bar_->SetCurrentBarDataType(MAGNIFIER, "");
 
-      // do-while 루프 시작하자마자 시간을 증가시키므로 전 돋보기 바로 시간을
-      // 설정
+      // do-while 루프 시작하자마자 시간을 증가시키므로
+      // 전 돋보기 바로 시간을 설정
       current_open_time_ = original_open_time - magnifier_bar_time_diff_;
       current_close_time_ = original_open_time - 1;
 
       vector<int> activated_magnifier_symbol_indices;
       vector<int> symbols_to_remove;
+
       do {
         // 현재 Open Time과 Close Time을 돋보기 바 하나만큼 증가
         // Open Time은 돋보기 바로 진행 시 정확한 주문, 체결 시간을 얻기 위함
@@ -1270,20 +1271,20 @@ void Engine::BacktestingMain() {
           const auto moved_close_time =
               magnifier_bar_data_->GetBar(symbol_idx, moved_bar_idx).close_time;
 
-          if (moved_close_time == current_close_time_) {
+          if (moved_close_time == current_close_time_) [[likely]] {
             // 정상적으로 Close Time이 일치된 바만 체결 확인
             activated_magnifier_symbol_indices.push_back(symbol_idx);
-          } else {
+          } else [[unlikely]] {
             string magnifier_next_open_time;
 
             // 다음 바의 Open Time 찾기
-            if (moved_bar_idx <
-                magnifier_bar_data_->GetNumBars(symbol_idx) - 1) {
+            if (moved_bar_idx < magnifier_bar_data_->GetNumBars(symbol_idx) - 1)
+                [[likely]] {
               // 현재 바가 마지막 바가 아닌 경우 직접 Open Time 가져오기
               magnifier_next_open_time = UtcTimestampToUtcDatetime(
                   magnifier_bar_data_->GetBar(symbol_idx, moved_bar_idx + 1)
                       .open_time);
-            } else {
+            } else [[unlikely]] {
               // 현재 바가 마지막 바인 경우는 종료
               ExecuteTradingEnd(symbol_idx, "돋보기");
 
@@ -1309,17 +1310,8 @@ void Engine::BacktestingMain() {
                                 current_close_time_);
         }
 
-        // 돋보기 기능 사용 시 돋보기 바 하나마다 펀딩비 확인 후 정산
-        CheckFundingTime();
-
-        // 해당 돋보기 바를 진행
-        ProcessOhlc(MAGNIFIER, activated_magnifier_symbol_indices);
-
-        // 다음 시간 진행을 위해 활성화 된 심볼 초기화
-        activated_magnifier_symbol_indices.clear();
-
         // 돋보기 바 데이터 종료로 삭제해야 하는 심볼 제거
-        if (!symbols_to_remove.empty()) {
+        if (!symbols_to_remove.empty()) [[unlikely]] {
           erase_if(activated_symbol_indices_, [&](const int symbol_idx) {
             return ranges::find(symbols_to_remove, symbol_idx) !=
                    symbols_to_remove.end();
@@ -1328,6 +1320,15 @@ void Engine::BacktestingMain() {
           // 삭제해야하는 심볼 벡터 초기화
           symbols_to_remove.clear();
         }
+
+        // 돋보기 기능 사용 시 돋보기 바 하나마다 펀딩비 확인 후 정산
+        CheckFundingTime();
+
+        // 해당 돋보기 바를 진행
+        ProcessOhlc(MAGNIFIER, activated_magnifier_symbol_indices);
+
+        // 다음 시간 진행을 위해 활성화 된 심볼 초기화
+        activated_magnifier_symbol_indices.clear();
 
         // 돋보기 바의 Close Time이 트레이딩 바의 Close Time과 같아지면
         // 돋보기 바 시간 진행 종료
