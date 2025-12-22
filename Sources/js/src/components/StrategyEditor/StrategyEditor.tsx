@@ -141,7 +141,25 @@ export default function StrategyEditor() {
             return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
         })();
 
-        setLogs(prev => [...prev, {level, message, timestamp: finalTimestamp, fileInfo}]);
+        // 'SEPARATOR'는 그대로 추가
+        if (level === 'SEPARATOR') {
+            setLogs(prev => [...prev, {level, message, timestamp: finalTimestamp, fileInfo}]);
+            return;
+        }
+
+        // cpp(.cpp)에서 발생한 로그는 이미 서버 쪽에서 구분선을 넣을 수 있으므로 추가 구분선을 붙이지 않음
+        const isCppLog = !!(fileInfo && /\.cpp\b/i.test(fileInfo));
+
+        if (isCppLog) {
+            setLogs(prev => [...prev, {level, message, timestamp: finalTimestamp, fileInfo}]);
+        } else {
+            // 일반 로그 뒤에는 항상 구분선 추가
+            setLogs(prev => [
+                ...prev,
+                {level, message, timestamp: finalTimestamp, fileInfo},
+                {level: 'SEPARATOR', message: '', timestamp: null, fileInfo: null}
+            ]);
+        }
     };
 
     // 컴포넌트 마운트 시 editor.json 로드 (ws가 CONNECTING 상태일 때 open 이벤트도 처리)
