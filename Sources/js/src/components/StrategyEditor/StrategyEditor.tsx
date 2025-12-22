@@ -919,6 +919,7 @@ export default function StrategyEditor() {
                             <Input
                                 id="strategy-symbol-input"
                                 type="text"
+                                autoComplete="off"
                                 placeholder="심볼 이름 입력 후 Enter 키 또는 추천 클릭"
                                 value={symbolInput}
                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
