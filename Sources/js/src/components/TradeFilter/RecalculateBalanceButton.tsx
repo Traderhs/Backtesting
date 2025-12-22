@@ -41,7 +41,7 @@ const RecalculateBalanceButton: React.FC = () => {
     }
 
     const {setFilter, filter} = context;
-    
+
     // 상태 변경 시 스타일 확실히 적용하기
     useEffect(() => {
         if (buttonRef.current && previousStateRef.current !== filter.recalculateBalance) {
@@ -57,7 +57,7 @@ const RecalculateBalanceButton: React.FC = () => {
                     }
                 }, 50); // 짧은 timeout으로 렌더링 주기 이후에 적용
             }
-            
+
             previousStateRef.current = filter.recalculateBalance;
         }
     }, [filter.recalculateBalance]);
@@ -91,7 +91,7 @@ const RecalculateBalanceButton: React.FC = () => {
                 whileHover="hover"
                 whileTap="tap"
                 custom={{isActive: filter.recalculateBalance}}
-                className={`gpu-accelerated sidebar-button-container ${filter.recalculateBalance ? "active-sidebar-button" : ""}`}
+                className={`sidebar-button-container ${filter.recalculateBalance ? "active-sidebar-button" : ""}`}
                 style={{
                     width: '100%',
                     height: '44px',

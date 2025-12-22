@@ -1,12 +1,12 @@
 import React, {useState, useCallback, useMemo} from "react";
 import AdvancedExitTimeFilterModal, {AdvancedExitTimeFilterValues} from "./AdvancedExitTimeFilterModal";
 import {useTradeFilter} from "../TradeFilter";
-import { Button } from "../ui/button.tsx";
-import { motion } from "framer-motion";
+import {Button} from "../ui/button.tsx";
+import {motion} from "framer-motion";
 
 // Sidebar와 동일한 애니메이션 변형 정의
 const itemVariants = {
-    hidden: { opacity: 1, x: 0 },
+    hidden: {opacity: 1, x: 0},
     visible: {
         opacity: 1,
         x: 0
@@ -15,7 +15,7 @@ const itemVariants = {
         scale: 1.03,
         borderColor: 'rgba(255, 215, 0, 0.7)',
         boxShadow: '0 0 5px rgba(255, 215, 0, 0.5)',
-        transition: { duration: 0.2 }
+        transition: {duration: 0.2}
     },
     tap: (custom: { isActive: boolean }) => ({
         scale: 0.98,
@@ -23,7 +23,7 @@ const itemVariants = {
         boxShadow: custom.isActive
             ? 'inset 0 0 0 1000px rgba(255, 215, 0, 0.2), 0 0 5px rgba(255, 215, 0, 0.3)'
             : 'inset 0 0 0 1000px rgba(255, 215, 0, 0.15), 0 0 5px rgba(255, 215, 0, 0.3)',
-        transition: { duration: 0.1 }
+        transition: {duration: 0.1}
     })
 };
 
@@ -77,8 +77,8 @@ const AdvancedExitTimeFilter: React.FC = () => {
                 animate="visible"
                 whileHover="hover"
                 whileTap="tap"
-                custom={{ isActive: isModalOpen }}
-                className={`gpu-accelerated sidebar-button-container ${isModalOpen ? "active-sidebar-button" : ""}`}
+                custom={{isActive: isModalOpen}}
+                className={`sidebar-button-container ${isModalOpen ? "active-sidebar-button" : ""}`}
                 style={{
                     width: '100%',
                     height: '44px',

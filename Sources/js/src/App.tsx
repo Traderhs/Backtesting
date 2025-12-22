@@ -445,7 +445,7 @@ function AppContent() {
 
     // 탭의 CSS 클래스 결정 (탭 전환 애니메이션 용도)
     const getTabClass = (tabName: string) => {
-        const baseClass = "gpu-accelerated tab-content";
+        const baseClass = "tab-content";
         let resultClass;
 
         if (!isAnimating) {
@@ -536,7 +536,7 @@ function AppContent() {
             />
 
             <main
-                className="h-full overflow-hidden flex flex-col w-full gpu-accelerated-heavy main-content"
+                className="h-full overflow-hidden flex flex-col w-full main-content"
                 style={{...getMainContentStyle(), zIndex: 1}}
             >
                 {/* 애니메이션 컨테이너 - 항상 overflow hidden으로 설정하여 중첩 스크롤바 방지 */}

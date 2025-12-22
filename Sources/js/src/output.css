@@ -31622,36 +31622,6 @@ body {
   }
 }
 
-/* GPU 가속 최적화 유틸리티 클래스 - 최대 성능 */
-
-.gpu-accelerated {
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  perspective: 1000px;
-  will-change: transform, opacity, filter;
-  isolation: isolate;
-  contain: content;
-  -webkit-transform: translate3d(0, 0, 0);
-  -webkit-backface-visibility: hidden;
-  -webkit-perspective: 1000px;
-  -webkit-font-smoothing: subpixel-antialiased;
-  filter: blur(0);
-}
-
-.gpu-accelerated-heavy {
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  perspective: 1000px;
-  will-change: transform, opacity, visibility, position;
-  isolation: isolate;
-  contain: layout style;
-  -webkit-transform: translate3d(0, 0, 0);
-  -webkit-backface-visibility: hidden;
-  -webkit-perspective: 1000px;
-  -webkit-font-smoothing: subpixel-antialiased;
-  z-index: 1;
-}
-
 .main-content {
   transform: translate3d(0, 0, 0);
   backface-visibility: hidden;

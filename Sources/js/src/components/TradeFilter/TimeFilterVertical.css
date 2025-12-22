@@ -93,13 +93,6 @@
     width: 100%;
 }
 
-/* GPU 가속 클래스 추가 */
-.gpu-accelerated {
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    perspective: 1000px;
-}
-
 /* 사이드바 버튼 컨테이너 클래스 */
 .sidebar-button-container {
     position: relative;

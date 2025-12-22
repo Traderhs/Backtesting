@@ -3,19 +3,6 @@
    ================================================================= */
 
 /* =================================================================
-   Performance Optimization
-   ================================================================= */
-.gpu-accelerated,
-.gpu-accelerated-heavy {
-    will-change: transform, opacity;
-    transform: translateZ(0);
-    backface-visibility: hidden;
-    perspective: 1000px;
-    contain: layout style;
-    overflow: visible;
-}
-
-/* =================================================================
    CSS Variables
    ================================================================= */
 :root {
@@ -933,52 +920,76 @@ button, input, select, textarea {
 }
 
 @keyframes checkmarkSlide {
-    0% { 
+    0% {
         transform: translate(-50%, -50%) scale(0) rotate(-180deg) translateZ(0);
         opacity: 0;
     }
-    100% { 
+    100% {
         transform: translate(-50%, -50%) scale(1) rotate(0deg) translateZ(0);
         opacity: 1;
     }
 }
 
 @keyframes uncheckmarkSlide {
-    0% { 
+    0% {
         transform: translate(-50%, -50%) scale(1) rotate(0deg) translateZ(0);
         opacity: 1;
     }
-    100% { 
+    100% {
         transform: translate(-50%, -50%) scale(0) rotate(180deg) translateZ(0);
         opacity: 0;
     }
 }
 
 @keyframes shakeCheckbox {
-    0% { transform: rotate(0deg); }
-    20% { transform: rotate(-45deg); }
-    40% { transform: rotate(45deg); }
-    60% { transform: rotate(-20deg); }
-    80% { transform: rotate(10deg); }
-    100% { transform: rotate(0deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    20% {
+        transform: rotate(-45deg);
+    }
+    40% {
+        transform: rotate(45deg);
+    }
+    60% {
+        transform: rotate(-20deg);
+    }
+    80% {
+        transform: rotate(10deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
 }
 
 @keyframes indeterminateSlide {
-    0% { 
+    0% {
         transform: translate(-50%, -50%) scale(0) rotateY(-90deg) translateZ(0);
         opacity: 0;
     }
-    100% { 
+    100% {
         transform: translate(-50%, -50%) scale(1) rotateY(0deg) translateZ(0);
         opacity: 1;
     }
 }
 
 @keyframes indeterminateToUnchecked {
-    0% { transform: rotate(0deg); }
-    20% { transform: rotate(-60deg); }
-    40% { transform: rotate(60deg); }
-    60% { transform: rotate(-30deg); }
-    80% { transform: rotate(15deg); }
-    100% { transform: rotate(0deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    20% {
+        transform: rotate(-60deg);
+    }
+    40% {
+        transform: rotate(60deg);
+    }
+    60% {
+        transform: rotate(-30deg);
+    }
+    80% {
+        transform: rotate(15deg);
+    }
+    100% {
+        transform: rotate(0deg);
+    }
 }

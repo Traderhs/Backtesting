@@ -1,13 +1,13 @@
 import React, {useContext, useState, useEffect, useMemo} from "react";
 import {TradeFilterContext} from "./TradeFilterContext";
 import './ResetAllFiltersButton.css';
-import { resetAllFilters } from "./FilterResetEvent";
-import { Button } from "../ui/button.tsx";
-import { motion } from "framer-motion";
+import {resetAllFilters} from "./FilterResetEvent";
+import {Button} from "../ui/button.tsx";
+import {motion} from "framer-motion";
 
 // Sidebar와 동일한 애니메이션 변형 정의
 const itemVariants = {
-    hidden: { opacity: 0, x: 0 },
+    hidden: {opacity: 0, x: 0},
     visible: {
         opacity: 1,
         x: 0,
@@ -19,7 +19,7 @@ const itemVariants = {
         scale: 1.03,
         borderColor: 'rgba(255, 215, 0, 0.7)',
         boxShadow: '0 0 5px rgba(255, 215, 0, 0.5)',
-        transition: { duration: 0.2 }
+        transition: {duration: 0.2}
     },
     tap: (custom: { isActive: boolean }) => ({
         scale: 0.98,
@@ -27,7 +27,7 @@ const itemVariants = {
         boxShadow: custom.isActive
             ? 'inset 0 0 0 1000px rgba(255, 215, 0, 0.2), 0 0 5px rgba(255, 215, 0, 0.3)' // 활성 탭 클릭 시 노란색 오버레이 + 기존 그림자
             : 'inset 0 0 0 1000px rgba(255, 215, 0, 0.15), 0 0 5px rgba(255, 215, 0, 0.3)', // 비활성 탭 클릭 시 살짝 연한 오버레이 + 기존 그림자
-        transition: { duration: 0.1 }
+        transition: {duration: 0.1}
     })
 };
 
@@ -40,7 +40,7 @@ const ResetAllFiltersButton: React.FC = () => {
     }
 
     // custom 값을 메모이제이션하여 불필요한 리렌더링 방지
-    const customValue = useMemo(() => ({ isActive }), [isActive]);
+    const customValue = useMemo(() => ({isActive}), [isActive]);
 
     // 활성화 타이머 관리
     useEffect(() => {
@@ -59,7 +59,7 @@ const ResetAllFiltersButton: React.FC = () => {
     const handleResetFilter = () => {
         // 버튼 활성화 상태 설정
         setIsActive(true);
-        
+
         // 모든 개별 필터들의 reset 이벤트 발생
         // 각 필터 컴포넌트가 자신의 초기화 로직을 실행
         resetAllFilters();
@@ -74,7 +74,7 @@ const ResetAllFiltersButton: React.FC = () => {
                 whileHover="hover"
                 whileTap="tap"
                 custom={customValue}
-                className={`gpu-accelerated sidebar-button-container${isActive ? " reset-all-filters-button-active-container" : ""}`}
+                className={`sidebar-button-container${isActive ? " reset-all-filters-button-active-container" : ""}`}
                 style={{
                     width: '100%',
                     borderRadius: '8px',

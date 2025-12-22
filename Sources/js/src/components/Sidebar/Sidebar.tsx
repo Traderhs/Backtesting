@@ -381,7 +381,7 @@ export default function Sidebar({
     return (
         <div
             ref={sidebarRef}
-            className="gpu-accelerated-heavy sidebar-container custom-scrollbar"
+            className="sidebar-container custom-scrollbar"
         >
             {/* 사이드바 콘텐츠 영역 */}
             <div
@@ -393,7 +393,7 @@ export default function Sidebar({
                         initial={{opacity: 0}}
                         animate={{opacity: 1}}
                         transition={{delay: 0.2}}
-                        className="sidebar-logo gpu-accelerated"
+                        className="sidebar-logo"
                     >
                         <span className="icon-placeholder"></span>
                         Backboard
@@ -410,7 +410,7 @@ export default function Sidebar({
                         animate="visible"
                         whileHover="hover"
                         whileTap="tap"
-                        className={`gpu-accelerated sidebar-button-container main-button-container ${activeTab === "StrategyEditor" ? "active-sidebar-button" : ""}`}
+                        className={`sidebar-button-container main-button-container ${activeTab === "StrategyEditor" ? "active-sidebar-button" : ""}`}
                     >
                         <Button
                             variant={activeTab === "StrategyEditor" ? "default" : "ghost"}
@@ -430,7 +430,7 @@ export default function Sidebar({
                         animate="visible"
                         whileHover="hover"
                         whileTap="tap"
-                        className={`gpu-accelerated sidebar-button-container main-button-container ${activeTab === "Overview" ? "active-sidebar-button" : ""}`}
+                        className={`sidebar-button-container main-button-container ${activeTab === "Overview" ? "active-sidebar-button" : ""}`}
                     >
                         <Button
                             variant={activeTab === "Overview" ? "default" : "ghost"}
@@ -450,7 +450,7 @@ export default function Sidebar({
                         animate="visible"
                         whileHover="hover"
                         whileTap="tap"
-                        className={`gpu-accelerated sidebar-button-container main-button-container ${activeTab === "Performance" ? "active-sidebar-button" : ""}`}
+                        className={`sidebar-button-container main-button-container ${activeTab === "Performance" ? "active-sidebar-button" : ""}`}
                     >
                         <Button
                             variant={activeTab === "Performance" ? "default" : "ghost"}
@@ -470,7 +470,7 @@ export default function Sidebar({
                         animate="visible"
                         whileHover="hover"
                         whileTap="tap"
-                        className={`gpu-accelerated sidebar-button-container main-button-container ${activeTab === "Plot" || plotExpanded ? "active-sidebar-button" : ""} ${plotExpanded ? "plot-expanded-button" : ""}`}
+                        className={`sidebar-button-container main-button-container ${activeTab === "Plot" || plotExpanded ? "active-sidebar-button" : ""} ${plotExpanded ? "plot-expanded-button" : ""}`}
                     >
                         <Button
                             variant={activeTab === "Plot" ? "default" : "ghost"}
@@ -519,7 +519,7 @@ export default function Sidebar({
                                     height: {duration: 0.35},
                                     marginBottom: {duration: 0.35}
                                 }}
-                                className="sub-section-container gpu-accelerated"
+                                className="sub-section-container"
                             >
                                 {/* 자금 & 드로우다운 탭 */}
                                 <div key="plot-equity-drawdown" className="sub-section-item">
@@ -533,7 +533,7 @@ export default function Sidebar({
                                         animate="visible"
                                         whileHover="hover"
                                         whileTap="tap"
-                                        className={`gpu-accelerated symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "equity-drawdown" ? "active-symbol-button" : ""}`}
+                                        className={`symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "equity-drawdown" ? "active-symbol-button" : ""}`}
                                     >
                                         <Button
                                             variant="ghost"
@@ -557,7 +557,7 @@ export default function Sidebar({
                                         animate="visible"
                                         whileHover="hover"
                                         whileTap="tap"
-                                        className={`gpu-accelerated symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "profit-loss-comparison" ? "active-symbol-button" : ""}`}
+                                        className={`symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "profit-loss-comparison" ? "active-symbol-button" : ""}`}
                                     >
                                         <Button
                                             variant="ghost"
@@ -581,7 +581,7 @@ export default function Sidebar({
                                         animate="visible"
                                         whileHover="hover"
                                         whileTap="tap"
-                                        className={`gpu-accelerated symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "holding-time-pnl-distribution" ? "active-symbol-button" : ""}`}
+                                        className={`symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "holding-time-pnl-distribution" ? "active-symbol-button" : ""}`}
                                     >
                                         <Button
                                             variant="ghost"
@@ -605,7 +605,7 @@ export default function Sidebar({
                                         animate="visible"
                                         whileHover="hover"
                                         whileTap="tap"
-                                        className={`gpu-accelerated symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "symbol-performance" ? "active-symbol-button" : ""}`}
+                                        className={`symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "symbol-performance" ? "active-symbol-button" : ""}`}
                                     >
                                         <Button
                                             variant="ghost"
@@ -628,7 +628,7 @@ export default function Sidebar({
                         animate="visible"
                         whileHover="hover"
                         whileTap="tap"
-                        className={`gpu-accelerated sidebar-button-container main-button-container ${activeTab === "Chart" || chartExpanded ? "active-sidebar-button" : ""} ${chartExpanded ? "plot-expanded-button" : ""}`}
+                        className={`sidebar-button-container main-button-container ${activeTab === "Chart" || chartExpanded ? "active-sidebar-button" : ""} ${chartExpanded ? "plot-expanded-button" : ""}`}
                     >
                         <Button
                             variant={activeTab === "Chart" ? "default" : "ghost"}
@@ -678,7 +678,7 @@ export default function Sidebar({
                                     height: {duration: 0.35},
                                     marginBottom: {duration: 0.35}
                                 }}
-                                className="sub-section-container gpu-accelerated"
+                                className="sub-section-container"
                             >
                                 {config["심볼"].map((sym: any, index: number) => {
                                     const symbolName = sym["심볼 이름"];
@@ -713,7 +713,7 @@ export default function Sidebar({
                                                     scale: 0.98,
                                                     transition: {duration: 0.1}
                                                 }}
-                                                className={`gpu-accelerated symbol-button-container sub-button-container ${isCurrentSymbolActive ? "active-symbol-button" : ""}`}
+                                                className={`symbol-button-container sub-button-container ${isCurrentSymbolActive ? "active-symbol-button" : ""}`}
                                             >
                                                 <Button
                                                     variant="ghost"
@@ -748,7 +748,7 @@ export default function Sidebar({
                             animate="visible"
                             whileHover="hover"
                             whileTap="tap"
-                            className={`gpu-accelerated sidebar-button-container main-button-container ${activeTab === "TradeList" ? "active-sidebar-button" : ""}`}
+                            className={`sidebar-button-container main-button-container ${activeTab === "TradeList" ? "active-sidebar-button" : ""}`}
                         >
                             <Button
                                 variant={activeTab === "TradeList" ? "default" : "ghost"}
@@ -773,7 +773,7 @@ export default function Sidebar({
                             animate="visible"
                             whileHover="hover"
                             whileTap="tap"
-                            className={`gpu-accelerated sidebar-button-container main-button-container ${activeTab === "Config" ? "active-sidebar-button" : ""}`}
+                            className={`sidebar-button-container main-button-container ${activeTab === "Config" ? "active-sidebar-button" : ""}`}
                         >
                             <Button
                                 variant={activeTab === "Config" ? "default" : "ghost"}
@@ -793,7 +793,7 @@ export default function Sidebar({
                             animate="visible"
                             whileHover="hover"
                             whileTap="tap"
-                            className={`gpu-accelerated sidebar-button-container main-button-container last-button ${activeTab === "Log" ? "active-sidebar-button" : ""}`}
+                            className={`sidebar-button-container main-button-container last-button ${activeTab === "Log" ? "active-sidebar-button" : ""}`}
                         >
                             <Button
                                 variant={activeTab === "Log" ? "default" : "ghost"}
