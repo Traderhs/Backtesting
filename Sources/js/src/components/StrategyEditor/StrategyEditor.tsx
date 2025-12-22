@@ -42,6 +42,36 @@ export default function StrategyEditor() {
     // 캐럿 위치 (커서 위치) 추적: 자동완성 후 중간 편집 시 추천을 커서 기준으로 계산하기 위함
     const [caretPos, setCaretPos] = useState<number | null>(null);
 
+    // 바 데이터 타임프레임 Select의 열린 인덱스 (하나만 열리도록 제한)
+    const [openTimeframeSelectIndex, setOpenTimeframeSelectIndex] = useState<number | null>(null);
+
+    // 바 데이터 Select가 열려 있을 때 페이지 휠 스크롤이 막히는 문제를 우회하기 위한 캡처 단계 핸들러
+    // (열려있을 때, Radix가 등록한 핸들러가 preventDefault를 호출하는 경우가 있어 이를 방지)
+    useEffect(() => {
+        if (openTimeframeSelectIndex === null) {
+            return;
+        }
+
+        const onWheelCapture = (e: WheelEvent) => {
+            // 다른 라이브러리의 핸들러가 preventDefault를 호출하는 것을 방지하기 위해
+            // 캡처 단계에서 즉시 중단. 기본 동작(페이지 스크롤)은 유지
+            try {
+                e.stopImmediatePropagation();
+            } catch (err) {
+                // 무시
+            }
+        };
+
+        document.addEventListener('wheel', onWheelCapture as EventListener, {capture: true, passive: true});
+
+        return () => {
+            document.removeEventListener('wheel', onWheelCapture as EventListener, {
+                capture: true,
+                passive: true
+            } as any);
+        };
+    }, [openTimeframeSelectIndex]);
+
     // 추천 목록 스크롤 컨테이너 레퍼런스
     const suggestionsContainerRef = useRef<HTMLDivElement | null>(null);
 
@@ -1237,12 +1267,36 @@ export default function StrategyEditor() {
                                                         timeframe: {...config.timeframe, unit: value as TimeframeUnit}
                                                     })}
                                                     disabled={isDisabled}
+                                                    open={openTimeframeSelectIndex === index}
+                                                    onOpenChange={(isOpen: boolean) => {
+                                                        if (isOpen) {
+                                                            setOpenTimeframeSelectIndex(index);
+                                                        } else {
+                                                            setOpenTimeframeSelectIndex(prev => prev === index ? null : prev);
+                                                        }
+                                                    }}
                                                 >
                                                     <SelectTrigger
                                                         className="w-full bg-[#1a1a1a] border-gray-600 text-sm">
                                                         <SelectValue/>
                                                     </SelectTrigger>
-                                                    <SelectContent>
+                                                    <SelectContent
+                                                        position="popper"
+                                                        side="bottom"
+                                                        sideOffset={0}
+                                                        align="start"
+                                                        avoidCollisions={false}  // 초기 위치를 트리거 바로 아래에 고정
+                                                        sticky="always"  // 스크롤 시 트리거를 따라 붙도록 함
+                                                        hideWhenDetached={false}  // 분리 시 숨기지 않음
+                                                        // Select가 닫힐 때 자동으로 트리거로 포커스를 되돌리는 동작을 막아
+                                                        // 사용자가 다른 입력 필드를 클릭하면 그 필드가 포커스를 가지도록 허용
+                                                        onCloseAutoFocus={(e: Event) => {
+                                                            try {
+                                                                e.preventDefault();
+                                                            } catch (err) {
+                                                            }
+                                                        }}
+                                                    >
                                                         <SelectItem value={TimeframeUnit.MILLISECOND}>밀리초</SelectItem>
                                                         <SelectItem value={TimeframeUnit.SECOND}>초</SelectItem>
                                                         <SelectItem value={TimeframeUnit.MINUTE}>분</SelectItem>
