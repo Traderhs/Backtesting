@@ -7,11 +7,15 @@ interface WebSocketProviderProps {
 interface WebSocketContextValue {
     ws: WebSocket | null;
     serverError: boolean;
+    projectDirectoryRequested: boolean;  // 서버가 프로젝트 폴더 입력을 요청한 상태인지 여부
+    clearProjectDirectoryRequest: () => void;  // 요청 플래그를 수동으로 해제
 }
 
 const WebSocketContext = createContext<WebSocketContextValue>({
     ws: null,
     serverError: false,
+    projectDirectoryRequested: false,
+    clearProjectDirectoryRequest: () => {}
 });
 
 export const useWebSocket = () => useContext(WebSocketContext);
@@ -19,6 +23,7 @@ export const useWebSocket = () => useContext(WebSocketContext);
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({children}) => {
     const [ws, setWs] = useState<WebSocket | null>(null);
     const [serverError, setServerError] = useState<boolean>(false);
+    const [projectDirectoryRequested, setProjectDirectoryRequested] = useState<boolean>(false);
 
     useEffect(() => {
         const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
@@ -46,7 +51,23 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({children}) 
                 setServerError(true);
             };
 
+            // 전역 메시지 수신 (전략 에디터가 아직 마운트 되기 전에 도착할 수 있는 요청을 보관)
+            const handleMessage = (event: MessageEvent) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data && data.action === 'requestProjectDirectory') {
+                        // 서버가 프로젝트 폴더를 요청했음을 플래그로 표시
+                        setProjectDirectoryRequested(true);
+                    }
+                } catch (e) {
+                    // 무시
+                }
+            };
+
+            socket.addEventListener('message', handleMessage);
+
             return () => {
+                try { socket.removeEventListener('message', handleMessage); } catch (e) {}
                 socket.close();
             };
         } catch (e) {
@@ -55,8 +76,10 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({children}) 
         }
     }, []);
 
+    const clearProjectDirectoryRequest = () => setProjectDirectoryRequested(false);
+
     return (
-        <WebSocketContext.Provider value={{ws, serverError}}>
+        <WebSocketContext.Provider value={{ws, serverError, projectDirectoryRequested, clearProjectDirectoryRequest}}>
             {children}
         </WebSocketContext.Provider>
     );

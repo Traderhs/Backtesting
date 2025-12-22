@@ -53,7 +53,7 @@ export default function StrategyEditor() {
     const [useBarMagnifier, setUseBarMagnifier] = useState(true);
     const [configLoaded, setConfigLoaded] = useState(false);
     const logContainerRef = useRef<HTMLDivElement>(null);
-    const {ws} = useWebSocket();
+    const {ws, projectDirectoryRequested, clearProjectDirectoryRequest} = useWebSocket();
     const [showProjectDialog, setShowProjectDialog] = useState(false);
     const [projectDirectoryInput, setProjectDirectoryInput] = useState('');
     const [projectDirectory, setProjectDirectory] = useState('');
@@ -144,13 +144,37 @@ export default function StrategyEditor() {
         setLogs(prev => [...prev, {level, message, timestamp: finalTimestamp, fileInfo}]);
     };
 
-    // 컴포넌트 마운트 시 editor.json 로드
+    // 컴포넌트 마운트 시 editor.json 로드 (ws가 CONNECTING 상태일 때 open 이벤트도 처리)
     useEffect(() => {
-        if (!ws || ws.readyState !== WebSocket.OPEN || configLoaded) {
-            return;
-        }
+        if (!ws) return;
 
-        ws.send(JSON.stringify({action: 'loadEditorConfig'}));
+        const trySendLoad = () => {
+            if (ws.readyState === WebSocket.OPEN && !configLoaded) {
+                try {
+                    ws.send(JSON.stringify({action: 'loadEditorConfig'}));
+                } catch (e) {
+                    console.error('loadEditorConfig 전송 실패:', e);
+                }
+            }
+        };
+
+        // 즉시 시도
+        trySendLoad();
+
+        // 아직 OPEN이 아니면 open 이벤트에서 재시도
+        const onOpen = () => {
+            trySendLoad();
+        };
+
+        ws.addEventListener('open', onOpen);
+
+        return () => {
+            try {
+                ws.removeEventListener('open', onOpen);
+            } catch (e) {
+                // 무시
+            }
+        };
     }, [ws, configLoaded]);
 
     // 로그 패널 상태 변경 시 자동 저장 (디바운스)
@@ -241,6 +265,13 @@ export default function StrategyEditor() {
 
         return () => ws.removeEventListener('message', handleMessage);
     }, [ws]);
+
+    // 서버가 프로젝트 폴더 입력을 요청한 경우(서버가 먼저 보낼 수 있으므로 플래그로 처리)
+    useEffect(() => {
+        if (projectDirectoryRequested && !showProjectDialog) {
+            setShowProjectDialog(true);
+        }
+    }, [projectDirectoryRequested, showProjectDialog]);
 
     // 로그가 추가될 때마다 스크롤을 맨 아래로
     useEffect(() => {
@@ -492,6 +523,13 @@ export default function StrategyEditor() {
 
         setProjectDirectory(projectDirectoryInput);
         setShowProjectDialog(false);
+
+        // 서버 요청 플래그 해제
+        try {
+            clearProjectDirectoryRequest();
+        } catch (e) {
+            // 무시
+        }
     };
 
     // 로그 색상
