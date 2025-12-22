@@ -169,7 +169,10 @@ double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
     return 0.0;
   }
 
+  // 상태 저장
   const auto original_bar_data_type = bar_->GetCurrentBarDataType();
+  const auto& original_reference_timeframe =
+      bar_->GetCurrentReferenceTimeframe();
 
   // 현재 마크 가격 바의 Close Time이 현재 진행 중인 Close Time과 같다면
   // 유효하므로 마크 가격 기준으로 Loss 계산. 그렇지 않다면 전략을 실행한 바
@@ -177,14 +180,16 @@ double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
   Bar base_bar{};
   bar_->SetCurrentBarDataType(MARK_PRICE, "");
   if (const auto& current_mark_bar =
-          bar_->GetBarData(MARK_PRICE)
+          bar_->GetBarData(MARK_PRICE, "")
               ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
       current_mark_bar.close_time == engine_->GetCurrentCloseTime()) {
     base_bar = current_mark_bar;
   } else {
-    bar_->SetCurrentBarDataType(original_bar_data_type, "");
-    base_bar = bar_->GetBarData(original_bar_data_type)
-                   ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
+    bar_->SetCurrentBarDataType(original_bar_data_type,
+                                original_reference_timeframe);
+    base_bar =
+        bar_->GetBarData(original_bar_data_type, original_reference_timeframe)
+            ->GetBar(symbol_idx, bar_->GetCurrentBarIndex());
   }
 
   double base_price = 0;
@@ -225,7 +230,9 @@ double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
     }
   }
 
-  bar_->SetCurrentBarDataType(original_bar_data_type, "");
+  // 상태 복원
+  bar_->SetCurrentBarDataType(original_bar_data_type,
+                              original_reference_timeframe);
   return sum_loss;
 }
 
@@ -557,27 +564,33 @@ optional<string> BaseOrderHandler::IsValidPositionSize(
 }
 
 void BaseOrderHandler::UpdateLastEntryBarIndex(const int symbol_idx) {
+  // 상태 저장
   const auto original_bar_data_type = bar_->GetCurrentBarDataType();
+  const auto& original_reference_timeframe =
+      bar_->GetCurrentReferenceTimeframe();
 
   bar_->SetCurrentBarDataType(TRADING, "");
 
   last_entry_bar_indices_[symbol_idx] = bar_->GetCurrentBarIndex();
 
-  // 진입 시에는 트레이딩, 돋보기 바만 사용하며, 진입 바 인덱스는 진입 시에만
-  // 업데이트 되므로 타임프레임은 필요하지 않음
-  bar_->SetCurrentBarDataType(original_bar_data_type, "");
+  // 상태 복원
+  bar_->SetCurrentBarDataType(original_bar_data_type,
+                              original_reference_timeframe);
 }
 
 void BaseOrderHandler::UpdateLastExitBarIndex(const int symbol_idx) {
+  // 상태 저장
   const auto original_bar_data_type = bar_->GetCurrentBarDataType();
+  const auto& original_reference_timeframe =
+      bar_->GetCurrentReferenceTimeframe();
 
   bar_->SetCurrentBarDataType(TRADING, "");
 
   last_exit_bar_indices_[symbol_idx] = bar_->GetCurrentBarIndex();
 
-  // 진입 시에는 트레이딩, 돋보기 바만 사용하며, 진입 바 인덱스는 진입 시에만
-  // 업데이트 되므로 타임프레임은 필요하지 않음
-  bar_->SetCurrentBarDataType(original_bar_data_type, "");
+  // 상태 복원
+  bar_->SetCurrentBarDataType(original_bar_data_type,
+                              original_reference_timeframe);
 }
 
 void BaseOrderHandler::Initialize(const int num_symbols,

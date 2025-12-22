@@ -40,11 +40,11 @@ class BaseBarHandler {
  public:
   /// 지정된 바 데이터 유형의 바 데이터를 반환하는 함수
   [[nodiscard]] shared_ptr<BarData>& GetBarData(BarDataType bar_data_type,
-                                                const string& timeframe = "");
+                                                const string& timeframe);
 
   /// 지정된 바 데이터 유형의 모든 심볼이 포함된 인덱스 벡터를 반환하는 함수
   [[nodiscard]] vector<size_t>& GetBarIndices(BarDataType bar_data_type,
-                                              const string& timeframe = "");
+                                              const string& timeframe);
 
   /// 참조 바 데이터 전체를 반환하는 함수
   [[nodiscard]] unordered_map<string, shared_ptr<BarData>>
