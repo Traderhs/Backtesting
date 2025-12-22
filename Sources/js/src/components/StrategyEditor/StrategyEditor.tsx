@@ -10,6 +10,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import {Input} from '@/components/ui/input';
+import '../Common/LoadingSpinner.css';
 
 /**
  * 전략 에디터 컴포넌트
@@ -25,6 +26,9 @@ export default function StrategyEditor() {
 
     // 공통 심볼 리스트 (모든 바 데이터에 공통 적용)
     const [symbolConfigs, setSymbolConfigs] = useState<string[]>([]);
+
+    // 심볼별 로고 상태: { url: string | null, loading: boolean }
+    const [symbolLogos, setSymbolLogos] = useState<Record<string, { url: string | null; loading: boolean }>>({});
 
     // 기본 바 데이터 설정 (트레이딩, 돋보기, 참조 1개, 마크 가격)
     const [barDataConfigs, setBarDataConfigs] = useState<BarDataConfig[]>([
@@ -354,18 +358,33 @@ export default function StrategyEditor() {
 
     // 심볼 추가
     const handleAddSymbol = (symbol: string) => {
-        if (!symbol.trim()) {
+        const s = symbol.trim();
+        if (!s) {
             return;
         }
 
-        if (!symbolConfigs.includes(symbol.trim())) {
-            setSymbolConfigs([...symbolConfigs, symbol.trim()]);
+        if (!symbolConfigs.includes(s)) {
+            setSymbolConfigs(prev => [...prev, s]);
+
+            // 로고 로딩 상태 등록 및 즉시 페치 시작
+            setSymbolLogos(prev => ({...prev, [s]: {url: null, loading: true}}));
+            fetchLogoForSymbol(s).then();
         }
     };
 
     // 심볼 삭제
     const handleRemoveSymbol = (symbolIndex: number) => {
-        setSymbolConfigs(symbolConfigs.filter((_, i) => i !== symbolIndex));
+        const removedSymbol = symbolConfigs[symbolIndex];
+        setSymbolConfigs(prev => prev.filter((_, i) => i !== symbolIndex));
+
+        // 로고 캐시 정리
+        setSymbolLogos(prev => {
+            const copy = {...prev};
+            if (removedSymbol && copy[removedSymbol]) {
+                delete copy[removedSymbol];
+            }
+            return copy;
+        });
     };
 
     // symbolConfigs 변경 시 자동 저장 (초기 로드 제외)
@@ -381,6 +400,35 @@ export default function StrategyEditor() {
         return () => clearTimeout(timer);
     }, [symbolConfigs]);
 
+    // 특정 심볼의 로고를 백엔드에서 가져오는 헬퍼
+    const fetchLogoForSymbol = async (symbol: string) => {
+        // 이미 로딩 중이면 중복 요청 방지
+        const info = symbolLogos[symbol];
+        if (info && info.loading) return;
+
+        setSymbolLogos(prev => ({...prev, [symbol]: {url: null, loading: true}}));
+
+        try {
+            const res = await fetch(`/api/get-logo?symbol=${encodeURIComponent(symbol)}`);
+            const data = await res.json();
+            const url = data && data.logoUrl ? data.logoUrl : null;
+
+            setSymbolLogos(prev => ({...prev, [symbol]: {url, loading: false}}));
+        } catch (e) {
+            // 실패 시에도 로딩 상태 종료. url null이면 fallback UI가 표시됨
+            setSymbolLogos(prev => ({...prev, [symbol]: {url: null, loading: false}}));
+        }
+    };
+
+    // 컴포넌트가 마운트되거나 symbolConfigs가 바뀔 때, 아직 로고가 없는 심볼에 대해 로고를 가져옴
+    useEffect(() => {
+        for (const s of symbolConfigs) {
+            const info = symbolLogos[s];
+            if (!info || (info.url === null && !info.loading)) {
+                fetchLogoForSymbol(s).then();
+            }
+        }
+    }, [symbolConfigs]);
     // 참조 바 데이터 추가
     const handleAddReferenceBar = () => {
         // 프로젝트 디렉터리가 설정되어 있으면 기본 klines 폴더로 추론
@@ -661,20 +709,43 @@ export default function StrategyEditor() {
                 <div className="bg-[#1a1a1a] rounded-lg border border-gray-700 p-4 mb-4">
                     <h2 className="text-lg font-semibold text-white mb-3">심볼 설정</h2>
                     <div className="flex flex-wrap gap-2 mb-3 min-h-[32px]">
-                        {symbolConfigs.map((symbol, symbolIndex) => (
-                            <div
-                                key={symbolIndex}
-                                className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2"
-                            >
-                                {symbol}
-                                <button
-                                    onClick={() => handleRemoveSymbol(symbolIndex)}
-                                    className="hover:text-red-300 text-base leading-none"
+                        {symbolConfigs.map((symbol, symbolIndex) => {
+                            const info = symbolLogos[symbol];
+                            return (
+                                <div
+                                    key={symbolIndex}
+                                    className="bg-blue-600 text-white px-3 py-1 rounded-full text-sm flex items-center gap-2"
                                 >
-                                    ×
-                                </button>
-                            </div>
-                        ))}
+                                    {/* 로고 또는 로딩 스피너 */}
+                                    {info && info.loading ? (
+                                        <div
+                                            className="chart-loading-indicator"
+                                            style={{
+                                                width: '18px',
+                                                height: '18px',
+                                                border: '2px solid rgba(20,20,20,0.15) !important',
+                                                borderTopColor: '#FFD700',
+                                                boxShadow: 'none'
+                                            }}
+                                        />
+                                    ) : info && info.url ? (
+                                        <img src={info.url} alt={`${symbol} logo`} className="w-5 h-5 rounded-full"/>
+                                    ) : (
+                                        <div className="w-5 h-5 bg-white/20 rounded-full"/>
+                                    )}
+
+                                    <span className="truncate max-w-[8rem]">{symbol}</span>
+
+                                    <button
+                                        onClick={() => handleRemoveSymbol(symbolIndex)}
+                                        className="hover:text-red-300 text-base leading-none"
+                                        title="심볼 삭제"
+                                    >
+                                        ×
+                                    </button>
+                                </div>
+                            );
+                        })}
                     </div>
                     <div className="flex gap-2">
                         <Input
