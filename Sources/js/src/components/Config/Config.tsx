@@ -331,22 +331,19 @@ const Config = memo(({config: rawConfig}: ConfigProps) => {
 
     return (
         <div
-            className="flex flex-col h-full overflow-y-auto gpu-accelerated-heavy"
+            className="flex flex-col h-full overflow-y-auto"
             style={{overflowY: 'auto'}} /* 명시적으로 스크롤 설정 */
         >
             <PageTitle/>
 
             <div
-                className="px-8 pb-8 space-y-6 gpu-accelerated-heavy"
+                className="px-8 pb-8 space-y-6"
             >
                 {/* 심볼 정보 */}
-                <section
-                    className="gpu-accelerated-heavy"
-                >
+                <section>
                     <div className="space-y-4">
                         <div
                             key="symbol-card"
-                            className="gpu-accelerated-heavy"
                         >
                             <SymbolCard
                                 symbols={parsedConfig.symbols.map(s => ({
@@ -369,9 +366,7 @@ const Config = memo(({config: rawConfig}: ConfigProps) => {
                 </section>
 
                 {/* 전략 및 지표 정보 - 전체 너비 사용 */}
-                <section
-                    className="gpu-accelerated-heavy"
-                >
+                <section>
                     <div className="space-y-4">
                         {!isLoading && parsedConfig?.strategies.map((s, idx) => (
                             <StrategyIndicatorCard
@@ -392,12 +387,9 @@ const Config = memo(({config: rawConfig}: ConfigProps) => {
                 </section>
 
                 {/* 엔진 설정 - 맨 아래로 이동 */}
-                <section
-                    className="gpu-accelerated-heavy"
-                >
+                <section>
                     <div
                         key="engine-card"
-                        className="gpu-accelerated-heavy"
                     >
                         <EngineCard settings={parsedConfig.settings}/>
                     </div>

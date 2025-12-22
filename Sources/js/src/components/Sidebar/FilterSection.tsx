@@ -370,7 +370,7 @@ const FilterSection = memo(({timeframe}: FilterSectionProps) => {
                 animate="visible"
                 whileHover="hover"
                 whileTap="tap"
-                className={`gpu-accelerated sidebar-button-container filter-toggle-container ${filterExpanded ? "active-sidebar-button" : ""}`}
+                className={`sidebar-button-container filter-toggle-container ${filterExpanded ? "active-sidebar-button" : ""}`}
             >
                 <Button
                     variant={filterExpanded ? "default" : "ghost"}
@@ -413,7 +413,7 @@ const FilterSection = memo(({timeframe}: FilterSectionProps) => {
                             marginBottom: {duration: 0.5},
                             marginTop: {duration: 0.5}
                         }}
-                        className="flex flex-col space-y-2 relative z-50 gpu-accelerated filter-panel filter-panel-container"
+                        className="flex flex-col space-y-2 relative z-50 filter-panel filter-panel-container"
                         style={{
                             pointerEvents: 'auto',
                             overflow: 'visible'
@@ -437,7 +437,7 @@ const FilterSection = memo(({timeframe}: FilterSectionProps) => {
                                     {['basic', 'time', 'numeric'].map((tab, index) => (
                                         <motion.div
                                             key={tab}
-                                            className={`gpu-accelerated sidebar-button-container tab-button-wrapper ${
+                                            className={`sidebar-button-container tab-button-wrapper ${
                                                 index === 0 ? 'first' : index === 2 ? 'last' : 'middle'
                                             } ${activeTab === tab ? 'active-sidebar-button' : ''}`}
                                             whileHover={{scale: 1.03}}

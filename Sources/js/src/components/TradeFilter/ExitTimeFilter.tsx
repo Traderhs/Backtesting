@@ -57,7 +57,7 @@ const ExitTimeFilter: React.FC<ExitTimeFilterProps> = ({timeframe = "1h"}) => {
 
         // 전체 데이터에서 실제 최소/최대 청산 시간 찾기 (GMT 기준으로 처리)
         const exitTimes = validTrades.map(trade => String(trade["청산 시간"])).filter(time => time && time !== "-");
-        
+
         if (exitTimes.length === 0) {
             return;
         }
@@ -301,7 +301,7 @@ const ExitTimeFilter: React.FC<ExitTimeFilterProps> = ({timeframe = "1h"}) => {
                         whileHover="hover"
                         whileTap="tap"
                         custom={{isActive: isExitTimeMinOpen}}
-                        className={`gpu-accelerated sidebar-button-container ${isExitTimeMinOpen ? "active-sidebar-button" : ""}`}
+                        className={`sidebar-button-container ${isExitTimeMinOpen ? "active-sidebar-button" : ""}`}
                         style={{
                             width: '100%',
                             height: '55px',
@@ -350,7 +350,7 @@ const ExitTimeFilter: React.FC<ExitTimeFilterProps> = ({timeframe = "1h"}) => {
                         whileHover="hover"
                         whileTap="tap"
                         custom={{isActive: isExitTimeMaxOpen}}
-                        className={`gpu-accelerated sidebar-button-container ${isExitTimeMaxOpen ? "active-sidebar-button" : ""}`}
+                        className={`sidebar-button-container ${isExitTimeMaxOpen ? "active-sidebar-button" : ""}`}
                         style={{
                             width: '100%',
                             height: '55px',

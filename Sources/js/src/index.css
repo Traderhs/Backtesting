@@ -254,36 +254,6 @@ button:focus-visible {
     }
 }
 
-/* GPU 가속 최적화 유틸리티 클래스 - 최대 성능 */
-.gpu-accelerated {
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
-    perspective: 1000px;
-    will-change: transform, opacity, filter;
-    isolation: isolate;
-    contain: content;
-    -webkit-transform: translate3d(0, 0, 0);
-    -webkit-backface-visibility: hidden;
-    -webkit-perspective: 1000px;
-    -webkit-font-smoothing: subpixel-antialiased;
-    -webkit-filter: blur(0);
-    filter: blur(0);
-}
-
-.gpu-accelerated-heavy {
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
-    perspective: 1000px;
-    will-change: transform, opacity, visibility, position;
-    isolation: isolate;
-    contain: layout style;
-    -webkit-transform: translate3d(0, 0, 0);
-    -webkit-backface-visibility: hidden;
-    -webkit-perspective: 1000px;
-    -webkit-font-smoothing: subpixel-antialiased;
-    z-index: 1;
-}
-
 .main-content {
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
@@ -411,8 +381,8 @@ button:focus-visible {
 /* WebKit 의사요소를 지원하는 브라우저는 픽셀 단위로 정확한 크기 지정 */
 @supports selector(::-webkit-scrollbar) {
     *::-webkit-scrollbar {
-        width: 10px;   /* 세로 스크롤 두께 */
-        height: 10px;  /* 가로 스크롤 두께 */
+        width: 10px; /* 세로 스크롤 두께 */
+        height: 10px; /* 가로 스크롤 두께 */
     }
 
     *::-webkit-scrollbar-track {
@@ -459,8 +429,8 @@ button:focus-visible {
 /* WebKit 의사요소를 지원하지 않는 브라우저는 표준 속성 사용 */
 @supports not selector(::-webkit-scrollbar) {
     * {
-        scrollbar-width: thin;                   /* thin이 6px와 가장 비슷함 */
-        scrollbar-color: rgba(255, 215, 0, 0.5) transparent; 
+        scrollbar-width: thin; /* thin이 6px와 가장 비슷함 */
+        scrollbar-color: rgba(255, 215, 0, 0.5) transparent;
     }
 }
 

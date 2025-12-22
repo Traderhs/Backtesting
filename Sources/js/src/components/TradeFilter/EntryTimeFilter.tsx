@@ -57,7 +57,7 @@ const EntryTimeFilter: React.FC<EntryTimeFilterProps> = ({timeframe = "1h"}) => 
 
         // 전체 데이터에서 실제 최소/최대 진입 시간 찾기 (GMT 기준으로 처리)
         const entryTimes = validTrades.map(trade => String(trade["진입 시간"])).filter(time => time && time !== "-");
-        
+
         if (entryTimes.length === 0) {
             return;
         }
@@ -301,7 +301,7 @@ const EntryTimeFilter: React.FC<EntryTimeFilterProps> = ({timeframe = "1h"}) => 
                         whileHover="hover"
                         whileTap="tap"
                         custom={{isActive: isEntryTimeMinOpen}}
-                        className={`gpu-accelerated sidebar-button-container ${isEntryTimeMinOpen ? "active-sidebar-button" : ""}`}
+                        className={`sidebar-button-container ${isEntryTimeMinOpen ? "active-sidebar-button" : ""}`}
                         style={{
                             width: '100%',
                             height: '55px',
@@ -350,7 +350,7 @@ const EntryTimeFilter: React.FC<EntryTimeFilterProps> = ({timeframe = "1h"}) => 
                         whileHover="hover"
                         whileTap="tap"
                         custom={{isActive: isEntryTimeMaxOpen}}
-                        className={`gpu-accelerated sidebar-button-container ${isEntryTimeMaxOpen ? "active-sidebar-button" : ""}`}
+                        className={`sidebar-button-container ${isEntryTimeMaxOpen ? "active-sidebar-button" : ""}`}
                         style={{
                             width: '100%',
                             height: '55px',
