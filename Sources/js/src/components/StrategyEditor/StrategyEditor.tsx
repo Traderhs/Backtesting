@@ -940,7 +940,7 @@ export default function StrategyEditor() {
                                     // 사용자가 입력을 변경하면 자동완성 플래그 해제 및 추천 다시 노출
                                     setJustAutocompleted(false);
                                     setSuggestionsVisible(true);
-                                    setSelectedSuggestionIndex(-1);
+                                    setSelectedSuggestionIndex(0);
 
                                     // 캐럿 위치 복원 (비동기)
                                     if (el && selStart !== null) {
@@ -1088,6 +1088,7 @@ export default function StrategyEditor() {
 
                                     if (hasSuggestion) {
                                         setSuggestionsVisible(true);
+                                        setSelectedSuggestionIndex(0);
                                     }
                                 }}
                                 className="w-full bg-[#252525] border-gray-600"
