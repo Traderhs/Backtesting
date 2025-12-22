@@ -4,6 +4,14 @@ const path = require("path");
 const {spawn} = require("child_process");
 const crypto = require("crypto");
 
+function toPosix(p) {
+    if (!p || typeof p !== 'string') {
+        return p;
+    }
+
+    return p.replace(/\\/g, '/');
+}
+
 // =====================================================================================================================
 // C++ 프로세스 관리
 // =====================================================================================================================
@@ -38,7 +46,7 @@ function startCppProcess(activeClients, broadcastLog, baseDir) {
     }
 
     broadcastLog("INFO", `C++ 백테스팅 프로세스를 시작합니다...`, null, null);
-    broadcastLog("INFO", `실행 파일: ${exePath}`, null, null);
+    broadcastLog("INFO", `실행 파일: ${toPosix(exePath)}`, null, null);
 
     // 성능을 위한 NO_PARSE 모드
     const NO_PARSE = process.env.LAUNCH_NO_PARSE === '1' || process.env.BACKBOARD_NO_PARSE === '1';
@@ -492,23 +500,23 @@ function createDefaultConfig(projectDirectory) {
 
         barDataConfigs: [
             {
-                    timeframe: null,
-                klinesDirectory: path.join(projectDirectory, 'Data', 'Continuous Klines'),
+                timeframe: null,
+                klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Continuous Klines')),
                 barDataType: '트레이딩'
             },
             {
-                    timeframe: null,
-                klinesDirectory: path.join(projectDirectory, 'Data', 'Continuous Klines'),
+                timeframe: null,
+                klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Continuous Klines')),
                 barDataType: '돋보기'
             },
             {
-                    timeframe: null,
-                klinesDirectory: path.join(projectDirectory, 'Data', 'Continuous Klines'),
+                timeframe: null,
+                klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Continuous Klines')),
                 barDataType: '참조'
             },
             {
-                    timeframe: null,
-                klinesDirectory: path.join(projectDirectory, 'Data', 'Mark Price Klines'),
+                timeframe: null,
+                klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Mark Price Klines')),
                 barDataType: '마크 가격'
             }]
     };
@@ -521,11 +529,14 @@ function configToWs(config) {
             "로그 패널 높이": (config && typeof config.logPanelHeight === 'number') ? config.logPanelHeight : 400,
         },
         "엔진 설정": {
-            "프로젝트 폴더": (config && config.projectDirectory) ? config.projectDirectory : "",
+            "프로젝트 폴더": (config && config.projectDirectory) ? toPosix(config.projectDirectory) : "",
             "바 돋보기 기능": !!(config && config.useBarMagnifier),
         },
         "심볼 설정": (config && Array.isArray(config.symbolConfigs)) ? config.symbolConfigs : [],
-        "바 데이터 설정": (config && Array.isArray(config.barDataConfigs)) ? config.barDataConfigs : [],
+        "바 데이터 설정": (config && Array.isArray(config.barDataConfigs)) ? config.barDataConfigs.map((b) => ({
+            ...b,
+            klinesDirectory: b.klinesDirectory ? toPosix(b.klinesDirectory) : b.klinesDirectory
+        })) : [],
     };
 }
 
@@ -632,7 +643,7 @@ async function validateProjectDirectoryConfig(cfg, broadcastLog) {
     projectDirectory = path.resolve(projectDirectory);
 
     if (!(await validateBackboardExe(projectDirectory))) {
-        broadcastLog("ERROR", `필수 파일이 없습니다: ${path.join(projectDirectory, 'Backboard.exe')}`, null, null);
+        broadcastLog("ERROR", `필수 파일이 없습니다: ${toPosix(path.join(projectDirectory, 'Backboard.exe'))}`, null, null);
 
         return false;
     }
@@ -649,7 +660,7 @@ async function validateProjectDirectoryConfig(cfg, broadcastLog) {
 
             const abs = path.resolve(config.klinesDirectory);
             if (!abs.startsWith(projectDirectory)) {
-                broadcastLog("ERROR", `바 데이터 폴더가 프로젝트 폴더 내부에 있지 않습니다: ${abs}`, null, null);
+                broadcastLog("ERROR", `바 데이터 폴더가 프로젝트 폴더 내부에 있지 않습니다: ${toPosix(abs)}`, null, null);
 
                 return false;
             }
@@ -671,14 +682,14 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
                 const config = objToConfig(loaded.obj);
 
                 if (await validateProjectDirectoryConfig(config, broadcastLog)) {
-                    broadcastLog("INFO", `기본 위치의 editor.json을 찾았습니다: ${defaultEditorPath}`, null, null);
+                    broadcastLog("INFO", `기본 위치의 editor.json을 찾았습니다: ${toPosix(defaultEditorPath)}`, null, null);
 
                     return config;
                 } else {
-                    broadcastLog("WARN", `기본 위치의 editor.json의 검증에 실패했습니다: ${defaultEditorPath}`, null, null);
+                    broadcastLog("WARN", `기본 위치의 editor.json의 검증에 실패했습니다: ${toPosix(defaultEditorPath)}`, null, null);
                 }
             } else {
-                broadcastLog("WARN", `editor.json 서명 검증 실패: ${defaultEditorPath}`, null, null);
+                broadcastLog("WARN", `editor.json 서명 검증 실패: ${toPosix(defaultEditorPath)}`, null, null);
                 deleteConfigAndBak(defaultEditorPath);
             }
         } catch (e) {
@@ -709,7 +720,7 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
                 const backboardExe = await validateBackboardExe(resolvedRoot);
 
                 if (!backboardExe) {
-                    broadcastLog("WARN", `Backboard.exe 파일을 찾을 수 없습니다: ${resolvedRoot}`, null, null);
+                    broadcastLog("WARN", `Backboard.exe 파일을 찾을 수 없습니다: ${toPosix(resolvedRoot)}`, null, null);
 
                     try {
                         activeClients.forEach(c => c.send(JSON.stringify({
@@ -734,7 +745,7 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
                             return;
                         }
 
-                        broadcastLog("INFO", `editor.json 파일을 생성했습니다: ${editorConfigPath}`, null, null);
+                        broadcastLog("INFO", `editor.json 파일을 생성했습니다: ${toPosix(editorConfigPath)}`, null, null);
 
                         return defaultConfig;
                     } catch (err) {

@@ -377,13 +377,13 @@ export default function StrategyEditor() {
                     '로그 패널 높이': logPanelHeight,
                 },
                 '엔진 설정': {
-                    '프로젝트 폴더': projectDirectory,
+                    '프로젝트 폴더': projectDirectory ? projectDirectory.replace(/\\/g, '/') : projectDirectory,
                     '바 돋보기 기능': useBarMagnifier,
                 },
                 '심볼 설정': symbolConfigs,
                 '바 데이터 설정': barDataConfigs.map(config => ({
                     timeframe: timeframeToString(config.timeframe),
-                    klinesDirectory: config.klinesDirectory,
+                    klinesDirectory: (config.klinesDirectory || '').replace(/\\/g, '/'),
                     barDataType: config.barDataType
                 })),
             }
@@ -567,7 +567,8 @@ export default function StrategyEditor() {
     // 참조 바 데이터 추가
     const handleAddReferenceBar = () => {
         // 프로젝트 디렉터리가 설정되어 있으면 기본 klines 폴더로 추론
-        const defaultKlinesDir = projectDirectory ? `${projectDirectory}/Data/Continuous Klines` : '';
+        const safeProjectDir = projectDirectory ? projectDirectory.replace(/\\/g, '/') : '';
+        const defaultKlinesDir = safeProjectDir ? `${safeProjectDir}/Data/Continuous Klines` : '';
 
         const newConfig: BarDataConfig = {
             timeframe: {value: null, unit: TimeframeUnit.NULL},
@@ -620,13 +621,13 @@ export default function StrategyEditor() {
                                 '로그 패널 높이': logPanelHeight,
                             },
                             '엔진 설정': {
-                                '프로젝트 폴더': projectDirectory,
+                                '프로젝트 폴더': projectDirectory ? projectDirectory.replace(/\\/g, '/') : projectDirectory,
                                 '바 돋보기 기능': useBarMagnifier ? "활성화" : "비활성화",
                             },
                             '심볼 설정': symbolConfigs,
                             '바 데이터 설정': newConfigs.map(config => ({
                                 timeframe: timeframeToString(config.timeframe),
-                                klinesDirectory: config.klinesDirectory,
+                                klinesDirectory: (config.klinesDirectory || '').replace(/\\/g, '/'),
                                 barDataType: config.barDataType
                             })),
                         }
@@ -701,7 +702,7 @@ export default function StrategyEditor() {
             symbolConfigs: symbolConfigs,
             barDataConfigs: configsToSend.map(config => ({
                 timeframe: timeframeToString(config.timeframe),
-                klinesDirectory: config.klinesDirectory,
+                klinesDirectory: (config.klinesDirectory || '').replace(/\\/g, '/'),
                 barDataType: config.barDataType
             }))
         }));
@@ -720,9 +721,10 @@ export default function StrategyEditor() {
             return;
         }
 
-        ws.send(JSON.stringify({action: 'provideProjectDirectory', projectDirectory: projectDirectoryInput}));
+        const normalizedProjectDir = projectDirectoryInput.replace(/\\/g, '/');
+        ws.send(JSON.stringify({action: 'provideProjectDirectory', projectDirectory: normalizedProjectDir}));
 
-        setProjectDirectory(projectDirectoryInput);
+        setProjectDirectory(normalizedProjectDir);
         setShowProjectDialog(false);
 
         // 서버 요청 플래그 해제

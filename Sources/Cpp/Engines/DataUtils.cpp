@@ -121,8 +121,11 @@ shared_ptr<arrow::Table> ReadParquet(const string& file_path,
       arrow::io::MemoryMappedFile::Open(file_path, arrow::io::FileMode::READ);
 
   if (!memory_mapped_result.ok()) {
+    string log_path = file_path;
+    ranges::replace(log_path, '\\', '/');
+
     throw runtime_error(
-        format("[{}] 경로의 Parquet 파일을 열 수 없습니다.", file_path));
+        format("[{}] 경로의 Parquet 파일을 열 수 없습니다.", log_path));
   }
 
   const auto& random_access_file = memory_mapped_result.ValueOrDie();
