@@ -848,15 +848,70 @@ void Analyzer::SaveSourcesAndHeaders() {
     const auto& strategy_class_name = strategy->GetClassName();
     set<string> saved_indicator_classes;  // 이미 저장한 지표 클래스명 집합
 
-    // 전략 소스 파일 저장
-    const auto& source_path = strategy->GetSourcePath();
-    filesystem::copy(source_path, format("{}/Backboard/Sources/{}.cpp",
-                                         main_directory_, strategy_class_name));
+    // 보조: 프로젝트 상위 폴더에서 파일을 검색하는 헬퍼
+    const auto find_file_in_parent = [&](const string& filename) -> string {
+      try {
+        const filesystem::path parent =
+            filesystem::path(Config::GetProjectDirectory()).parent_path();
 
-    // 전략 헤더 파일 저장
+        for (const auto& entry :
+             filesystem::recursive_directory_iterator(parent)) {
+          if (entry.is_regular_file() && entry.path().filename() == filename) {
+            return entry.path().string();
+          }
+        }
+      } catch (...) {
+        // 검색 중 오류 발생 시 무시하고 빈 문자열 반환
+      }
+
+      return {};
+    };
+
+    // 전략 소스 파일 저장 (존재하지 않으면 프로젝트 상위 폴더에서 검색)
+    const auto& source_path = strategy->GetSourcePath();
+    string source_path_to_copy;
+
+    if (!source_path.empty() && filesystem::exists(source_path)) {
+      source_path_to_copy = source_path;
+    } else {
+      source_path_to_copy = find_file_in_parent(strategy_class_name + ".cpp");
+
+      if (source_path_to_copy.empty()) {
+        logger_->Log(WARN_L,
+                     format("전략 소스 파일을 찾을 수 없습니다: {}",
+                            strategy_class_name + ".cpp"),
+                     __FILE__, __LINE__, true);
+      }
+    }
+
+    if (!source_path_to_copy.empty()) {
+      filesystem::copy(source_path_to_copy,
+                       format("{}/Backboard/Sources/{}.cpp", main_directory_,
+                              strategy_class_name));
+    }
+
+    // 전략 헤더 파일 저장 (존재하지 않으면 프로젝트 상위 폴더에서 검색)
     const auto& header_path = strategy->GetHeaderPath();
-    filesystem::copy(header_path, format("{}/Backboard/Sources/{}.hpp",
-                                         main_directory_, strategy_class_name));
+    string header_path_to_copy;
+
+    if (!header_path.empty() && filesystem::exists(header_path)) {
+      header_path_to_copy = header_path;
+    } else {
+      header_path_to_copy = find_file_in_parent(strategy_class_name + ".hpp");
+
+      if (header_path_to_copy.empty()) {
+        logger_->Log(WARN_L,
+                     format("전략 헤더 파일을 찾을 수 없습니다: {}",
+                            strategy_class_name + ".hpp"),
+                     __FILE__, __LINE__, true);
+      }
+    }
+
+    if (!header_path_to_copy.empty()) {
+      filesystem::copy(header_path_to_copy,
+                       format("{}/Backboard/Sources/{}.hpp", main_directory_,
+                              strategy_class_name));
+    }
 
     // 전략에서 사용하는 지표 소스 코드 저장
     for (const auto& indicator : strategy->GetIndicators()) {
@@ -879,20 +934,52 @@ void Analyzer::SaveSourcesAndHeaders() {
 
       saved_indicator_classes.insert(indicator_class_name);
 
-      // 소스 파일 저장
-      if (const auto& indicator_source_path = indicator->GetSourcePath();
-          !indicator_source_path.empty() &&
+      // 소스 파일 저장 (존재하지 않으면 프로젝트 상위 폴더에서 검색)
+      const auto& indicator_source_path = indicator->GetSourcePath();
+      string indicator_source_path_to_copy;
+
+      if (!indicator_source_path.empty() &&
           filesystem::exists(indicator_source_path)) {
-        filesystem::copy(indicator_source_path,
+        indicator_source_path_to_copy = indicator_source_path;
+      } else {
+        indicator_source_path_to_copy =
+            find_file_in_parent(indicator_class_name + ".cpp");
+
+        if (indicator_source_path_to_copy.empty()) {
+          logger_->Log(WARN_L,
+                       format("지표 소스 파일을 찾을 수 없습니다: {}",
+                              indicator_class_name + ".cpp"),
+                       __FILE__, __LINE__, true);
+        }
+      }
+
+      if (!indicator_source_path_to_copy.empty()) {
+        filesystem::copy(indicator_source_path_to_copy,
                          format("{}/Backboard/Sources/{}.cpp", main_directory_,
                                 indicator_class_name));
       }
 
-      // 헤더 파일 저장
-      if (const auto& indicator_header_path = indicator->GetHeaderPath();
-          !indicator_header_path.empty() &&
+      // 헤더 파일 저장 (존재하지 않으면 프로젝트 상위 폴더에서 검색)
+      const auto& indicator_header_path = indicator->GetHeaderPath();
+      string indicator_header_path_to_copy;
+
+      if (!indicator_header_path.empty() &&
           filesystem::exists(indicator_header_path)) {
-        filesystem::copy(indicator_header_path,
+        indicator_header_path_to_copy = indicator_header_path;
+      } else {
+        indicator_header_path_to_copy =
+            find_file_in_parent(indicator_class_name + ".hpp");
+
+        if (indicator_header_path_to_copy.empty()) {
+          logger_->Log(WARN_L,
+                       format("지표 헤더 파일을 찾을 수 없습니다: {}",
+                              indicator_class_name + ".hpp"),
+                       __FILE__, __LINE__, true);
+        }
+      }
+
+      if (!indicator_header_path_to_copy.empty()) {
+        filesystem::copy(indicator_header_path_to_copy,
                          format("{}/Backboard/Sources/{}.hpp", main_directory_,
                                 indicator_class_name));
       }
