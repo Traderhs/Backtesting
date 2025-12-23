@@ -1,5 +1,18 @@
 ﻿//
-//  © 2024 Traderhs. All rights reserved.
+// Copyright (c) 2024-2026 Traderhs
+//
+// software is provided for personal, educational, and non-commercial use only.
+//
+// Commercial use, including but not limited to selling, licensing, or using
+// this software as part of a paid product or service, is strictly prohibited
+// without prior written permission from the copyright holder.
+//
+// You may modify and distribute this software for non-commercial purposes,
+// provided that this copyright notice is included.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+//
+// For commercial licensing inquiries, please contact: dice000908@gmail.com
 //
 //  ● 다중 심볼에 대한 고속, 정밀 백테스팅을 지원하는 프로그램 ●
 //

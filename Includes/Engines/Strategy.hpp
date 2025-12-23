@@ -3,7 +3,6 @@
 // 표준 라이브러리
 #include <cfloat>
 #include <format>
-#include <regex>
 #include <typeinfo>
 
 // 내부 헤더
