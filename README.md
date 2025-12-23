@@ -1,7 +1,10 @@
+<img src="Docs/Images/backboard.ico" alt="Backboard Demo" width="80" align="left" />
+
 # Backtesting
 
 A Windows-oriented, high-performance multi-symbol portfolio backtesting system.
-It combines a C++20 engine built for speed and determinism with a React/TypeScript dashboard (Backboard) that visualizes outputs saved to disk.
+It combines a C++20 engine built for speed and determinism with a React/TypeScript dashboard (Backboard) that visualizes
+outputs saved to disk.
 
 ---
 
@@ -14,7 +17,101 @@ This repository is organized around a simple contract:
 3. **Results out** (a timestamped folder under `Results/`)
 4. **Visualization** (Backboard reads `Results/<run>/Backboard/*`)
 
-The engine is designed to backtest **multiple symbols in a single run**, while keeping execution rules explicit (bar assumptions, magnifier bars, isolated margin).
+The engine is designed to backtest **multiple symbols in a single run**, while keeping execution rules explicit (bar
+assumptions, magnifier bars, isolated margin).
+
+---
+
+## Performance
+
+One real-world benchmark (user-measured):
+
+- **Universe:** 10 symbols
+- **Period:** ~7 years
+- **Trading bars:** 1h
+- **Magnifier bars:** 1m
+- **Runtime:** ~10 seconds (typical)
+
+Approximate scale (order-of-magnitude; depends on date range and missing bars):
+
+- Trading bars per
+  symbol: $7\nobreakspace\text{years} \times 365\nobreakspace\text{days} \times 24\nobreakspace\text{hours} \approx 61\nobreakspace\text{k bars}$
+- Magnifier bars per symbol: $61\nobreakspace\text{k} \times 60 \approx 3.7\nobreakspace\text{M bars}$
+- Total magnifier bars (10 symbols): $\approx 37\nobreakspace\text{M bars}$
+
+---
+
+## Gallery
+
+[![Overview](Docs/Images/overview.png)](Docs/Images/overview.png)
+*Figure: Run overview — equity curve and key metrics.*
+<br><br>
+
+[![Performance](Docs/Images/performance.png)](Docs/Images/performance.png)
+*Figure: Performance summary.*
+<br><br>
+
+[![Symbol performance](Docs/Images/symbol_performance.png)](Docs/Images/symbol_performance.png)
+*Figure: Per-symbol performance.*
+<br><br>
+
+[![Chart](Docs/Images/chart.png)](Docs/Images/chart.png)
+*Figure: Symbol chart with indicators and executed trades.*
+<br><br>
+
+[![Trade list 1](Docs/Images/trade_list1.png)](Docs/Images/trade_list1.png) [![Trade list 2](Docs/Images/trade_list2.png)](Docs/Images/trade_list2.png)
+*Figure: Trade list (paged view).*
+<br><br>
+
+[![Config](Docs/Images/config.png)](Docs/Images/config.png) [![Log](Docs/Images/log.png)](Docs/Images/log.png)
+*Figure: Run manifest and runtime log snippet.*
+<br><br>
+
+---
+
+## Quick Example
+
+This is a minimal, end-to-end sketch of how a local backtest is typically configured using the public API.
+
+```cpp
+#include "Engines/Backtesting.hpp"
+
+#include <string>
+#include <vector>
+
+using namespace std;
+using namespace backtesting::main;
+
+int main() {
+  const vector<string> symbols = {"BTCUSDT", "ETHUSDT", "SOLUSDT"};
+
+  Backtesting::SetMarketDataDirectory("D:/Programming/Backtesting/Data");
+
+  // Core engine settings (project directory is used for outputs and source auto-detection)
+  Backtesting::SetConfig()
+      .SetProjectDirectory("D:/Programming/Backtesting")
+      .SetBacktestPeriod()  // empty = full available range
+      .SetUseBarMagnifier(true);
+
+  // Bar streams
+  Backtesting::AddBarData(symbols, "1h", "D:/Programming/Backtesting/Data/Continuous Klines", TRADING);
+  Backtesting::AddBarData(symbols, "1m", "D:/Programming/Backtesting/Data/Continuous Klines", MAGNIFIER);
+  Backtesting::AddBarData(symbols, "1m", "D:/Programming/Backtesting/Data/Mark Price Klines", MARK_PRICE);
+
+  // Exchange metadata (optional but recommended)
+  Backtesting::AddExchangeInfo("D:/Programming/Backtesting/Data/exchange_info.json");
+  Backtesting::AddLeverageBracket("D:/Programming/Backtesting/Data/leverage_bracket.json");
+  Backtesting::AddFundingRates(symbols, "D:/Programming/Backtesting/Data/Funding Rates");
+
+  // Strategy (one per run)
+  // Backtesting::AddStrategy<MyStrategy>("My Strategy");
+
+  Backtesting::RunBacktesting();
+  return 0;
+}
+```
+
+After a run completes, open the newest folder under `Results/` and point Backboard to `Results/<run>/Backboard/`.
 
 ---
 
@@ -23,13 +120,13 @@ The engine is designed to backtest **multiple symbols in a single run**, while k
 - **C++ Engine (headers):** `Includes/Engines/`, `Includes/Indicators/`, `Includes/Strategies/`
 - **C++ Engine (implementation):** `Sources/cpp/Engines/`, `Sources/cpp/Indicators/`, `Sources/cpp/Strategies/`
 - **Backboard (Node + React):** `Sources/js/`
-  - Entry shim: `Sources/js/launch.js`
-  - Server: `Sources/js/server/launch.js` (Express + WebSocket)
+    - Entry shim: `Sources/js/launch.js`
+    - Server: `Sources/js/server/launch.js` (Express + WebSocket)
 - **Market data:** `Data/`
-  - `Continuous Klines/` (OHLCV Parquet)
-  - `Mark Price Klines/` (mark price Parquet)
-  - `Funding Rates/` (JSON)
-  - `exchange_info.json`, `leverage_bracket.json`
+    - `Continuous Klines/` (OHLCV Parquet)
+    - `Mark Price Klines/` (mark price Parquet)
+    - `Funding Rates/` (JSON)
+    - `exchange_info.json`, `leverage_bracket.json`
 - **Backtest outputs:** `Results/<YYYYMMDD_HHMMSS>/`
 
 ---
@@ -37,16 +134,19 @@ The engine is designed to backtest **multiple symbols in a single run**, while k
 ## Engine Model (What is Simulated)
 
 - **Bar-driven execution**
-  - Core processing is based on OHLC traversal; the exact intrabar ordering is controlled by the engine’s internal price-queue assumptions.
+    - Core processing is based on OHLC traversal; the exact intrabar ordering is controlled by the engine’s internal
+      price-queue assumptions.
 - **Magnifier bars (optional)**
-  - When enabled, the engine refines execution inside a trading bar using a smaller timeframe bar stream.
+    - When enabled, the engine refines execution inside a trading bar using a smaller timeframe bar stream.
 - **Mark price integration**
-  - Unrealized PnL and liquidation checks use mark price when available; when mark price data is missing, the engine falls back to market price.
+    - Unrealized PnL and liquidation checks use mark price when available; when mark price data is missing, the engine
+      falls back to market price.
 - **Isolated margin entries**
-  - Each entry manages its own margin; concurrent entries are restricted to a single direction per symbol (no hedge-style long+short concurrency).
+    - Each entry manages its own margin; concurrent entries are restricted to a single direction per symbol (no
+      hedge-style long+short concurrency).
 - **Single-strategy constraint per run**
-  - The engine runs **one** `Strategy` per backtest execution.
-  - Backboard can be used to compare/compose results across multiple independent runs.
+    - The engine runs **one** `Strategy` per backtest execution.
+    - Backboard can be used to compare/compose results across multiple independent runs.
 
 ---
 
@@ -93,34 +193,203 @@ Results/<YYYYMMDD_HHMMSS>/
 
 Notes:
 
-- `Backboard/config.json` is a comprehensive run manifest (symbols, bar coverage, exchange/leverage/funding metadata, engine settings, strategy/indicator descriptors).
+- `Backboard/config.json` is a comprehensive run manifest (symbols, bar coverage, exchange/leverage/funding metadata,
+  engine settings, strategy/indicator descriptors).
 - `Backboard/trade_list.json` is exported as UTF-8 with BOM for compatibility.
 - `Backboard/Indicators/*` stores indicator time series for plotted (non-OHLCV) indicators.
 - `Backboard/Sources/*` stores copies of the strategy/indicator source/header files when paths are available.
-- If a local Backboard package is present at `Sources/js/Backboard Package`, it is copied into the run directory; otherwise, the engine can fetch a packaged Backboard from a GitHub release as a fallback.
+- If a local Backboard package is present at `Sources/js/Backboard Package`, it is copied into the run directory;
+  otherwise, the engine can fetch a packaged Backboard from a GitHub release as a fallback.
 
 ---
 
 ## Extending the System
 
-### Strategies
+### SMA (Indicator)
 
-- Add a new strategy as a class inheriting `Strategy`.
-- Source path auto-detection expects matching filenames:
-  - `Includes/Strategies/<ClassName>.hpp`
-  - `Sources/cpp/Strategies/<ClassName>.cpp`
+The repository already includes a built-in Simple Moving Average indicator:
 
-Execution hooks:
+- Class: `SimpleMovingAverage`
+- Header: `Includes/Indicators/SimpleMovingAverage.hpp`
 
-- `Initialize()` (once at engine initialization)
-- `ExecuteOnClose()` (runs on each trading bar close across symbols)
-- `ExecuteAfterEntry()` (runs immediately after an entry fill for the affected symbol)
-- `ExecuteAfterExit()` (runs immediately after an exit fill for the affected symbol; highest priority)
+SMA is typically instantiated inside a strategy constructor via `AddIndicator<T>(...)` and stored as a reference:
 
-### Indicators
+```cpp
+// Example snippet inside a Strategy constructor
+SimpleMovingAverage& sma = AddIndicator<SimpleMovingAverage>(
+    "sma", trading_timeframe,
+    Line(Rgba::orange, 2, SOLID, SIMPLE, false, 0, true), close, 20);
+```
 
-- Implement a class inheriting `Indicator`.
-- Non-OHLCV indicators with an active plot configuration are eligible for persistence under `Backboard/Indicators/`.
+SMA indicator code (based on the repository implementation):
+
+```cpp
+// Includes/Indicators/SimpleMovingAverage.hpp
+#pragma once
+
+#include <vector>
+
+#include "Engines/Indicator.hpp"
+#include "Engines/Logger.hpp"
+
+/// Simple Moving Average (SMA)
+class SimpleMovingAverage final : public Indicator {
+ public:
+  explicit SimpleMovingAverage(const string& name, const string& timeframe,
+                               const Plot& plot, Indicator& source,
+                               double period);
+
+ private:
+  Indicator& source_;
+  double double_period_;
+  size_t sizet_period_;
+
+  int count_;
+  double sum_;
+  bool can_calculate_;
+
+  vector<double> buffer_;
+  size_t buffer_idx_;
+
+  void Initialize() override;
+  Numeric<double> Calculate() override;
+};
+```
+
+```cpp
+// Sources/cpp/Indicators/SimpleMovingAverage.cpp
+#include "Indicators/SimpleMovingAverage.hpp"
+#include <algorithm>
+
+SimpleMovingAverage::SimpleMovingAverage(const string& name,
+                                         const string& timeframe,
+                                         const Plot& plot, Indicator& source,
+                                         const double period)
+    : Indicator(name, timeframe, plot),
+      source_(source),
+      double_period_(period),
+      sizet_period_(static_cast<size_t>(period)),
+      count_(0),
+      sum_(0.0),
+      can_calculate_(false),
+      buffer_(static_cast<size_t>(period), 0.0),
+      buffer_idx_(0) {
+  if (period <= 0) {
+    Logger::LogAndThrowError(
+        format("SimpleMovingAverage period [{}] must be > 0", period),
+        __FILE__, __LINE__);
+  }
+}
+
+void SimpleMovingAverage::Initialize() {
+  count_ = 0;
+  sum_ = 0.0;
+  can_calculate_ = false;
+  ranges::fill(buffer_, 0.0);
+  buffer_idx_ = 0;
+}
+
+Numeric<double> SimpleMovingAverage::Calculate() {
+  const double value = source_[0];
+
+  const double old = buffer_[buffer_idx_];
+  buffer_[buffer_idx_] = value;
+  buffer_idx_ = (buffer_idx_ + 1) % sizet_period_;
+
+  sum_ += value;
+
+  if (!can_calculate_) {
+    if (count_++ < static_cast<int>(sizet_period_) - 1) {
+      return NAN;
+    }
+    can_calculate_ = true;
+  } else {
+    sum_ -= old;
+  }
+
+  return sum_ / double_period_;
+}
+```
+
+Notes:
+
+- OHLCV references (`open`, `high`, `low`, `close`, `volume`) are provided by default.
+- Only non-OHLCV indicators with an active plot configuration are eligible for persistence under
+  `Results/<run>/Backboard/Indicators/`.
+
+### Simple SMA Strategy Example
+
+This minimal example follows the same pattern used in the codebase (see `TestStrategy`):
+
+- Adds one `SimpleMovingAverage` indicator
+- Enters on price crossing SMA
+
+Source path auto-detection (used for saving sources into `Results/<run>/Backboard/Sources/`) expects:
+
+- `Includes/Strategies/<ClassName>.hpp`
+- `Sources/cpp/Strategies/<ClassName>.cpp`
+
+```cpp
+// Includes/Strategies/SmaStrategy.hpp
+#pragma once
+
+#include "Engines/Strategy.hpp"
+
+class SmaStrategy final : public Strategy {
+ public:
+  explicit SmaStrategy(const string& name);
+  ~SmaStrategy() override;
+
+  void Initialize() override;
+  void ExecuteOnClose() override;
+  void ExecuteAfterEntry() override;
+  void ExecuteAfterExit() override;
+
+ private:
+  SimpleMovingAverage& sma_;
+};
+```
+
+```cpp
+// Sources/cpp/Strategies/SmaStrategy.cpp
+#include "Strategies/SmaStrategy.hpp"
+
+SmaStrategy::SmaStrategy(const string& name)
+    : Strategy(name),
+      sma_(AddIndicator<SimpleMovingAverage>(
+          "sma", "1h", Line(Rgba::orange, 2, SOLID, SIMPLE, false, 0, true),
+          close, 20)) {}
+
+SmaStrategy::~SmaStrategy() = default;
+
+void SmaStrategy::Initialize() {}
+
+void SmaStrategy::ExecuteOnClose() {
+  const double position_size = order->GetCurrentPositionSize();
+  const double order_size = 0.01;
+
+  if (position_size == 0) {
+    if (close[0] > sma_[0] && close[1] < sma_[1]) {
+      order->MarketEntry("SMA Long", Direction::LONG, order_size, 10);
+      return;
+    }
+
+    if (close[0] < sma_[0] && close[1] > sma_[1]) {
+      order->MarketEntry("SMA Short", Direction::SHORT, order_size, 10);
+      return;
+    }
+  }
+}
+
+void SmaStrategy::ExecuteAfterEntry() {}
+void SmaStrategy::ExecuteAfterExit() {}
+```
+
+Important:
+
+- The engine allows **one** strategy per backtest run.
+- This follows the principle of isolating strategies into separate accounts; aggregation of multi-strategy (
+  multi-account) results will be supported in Backboard in a future release.
 
 ---
 
@@ -128,7 +397,8 @@ Execution hooks:
 
 This repository is governed by the terms in the root `LICENSE` file.
 
-In particular, it is provided for personal, educational, and non-commercial use only; commercial use requires prior written permission from the author. Refer to `LICENSE` for the complete terms.
+In particular, it is provided for personal, educational, and non-commercial use only; commercial use requires prior
+written permission from the author. Refer to `LICENSE` for the complete terms.
 
 ---
 
