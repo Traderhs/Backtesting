@@ -27,8 +27,6 @@ TestStrategy2::~TestStrategy2() = default;
 void TestStrategy2::Initialize() {}
 
 void TestStrategy2::ExecuteOnClose() {
-  // @TODO 여러 번 사용하는 [] 참조는 캐시할 것
-
   double order_size = 1;
   if (close[0] < 100) {
     order_size = static_cast<int>(100 / close[0]);

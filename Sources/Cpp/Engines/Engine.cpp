@@ -1275,42 +1275,41 @@ void Engine::BacktestingMain() {
             // 정상적으로 Close Time이 일치된 바만 체결 확인
             activated_magnifier_symbol_indices.push_back(symbol_idx);
           } else [[unlikely]] {
-            string magnifier_next_open_time;
-
-            // 다음 바의 Open Time 찾기
+            // 체결 확인이 가능한 다음 바의 Open Time 찾기
             if (moved_bar_idx < magnifier_bar_data_->GetNumBars(symbol_idx) - 1)
                 [[likely]] {
               // 현재 바가 마지막 바가 아닌 경우 직접 Open Time 가져오기
-              magnifier_next_open_time = UtcTimestampToUtcDatetime(
-                  magnifier_bar_data_->GetBar(symbol_idx, moved_bar_idx + 1)
-                      .open_time);
+              const string& magnifier_next_open_time =
+                  UtcTimestampToUtcDatetime(
+                      magnifier_bar_data_->GetBar(symbol_idx, moved_bar_idx + 1)
+                          .open_time);
+
+              logger_->Log(
+                  WARN_L,
+                  format("[{}] 심볼의 [{}] 돋보기 바가 누락되어 체결 확인을 "
+                         "건너뜁니다. (돋보기 바 다음 시간: [{}])",
+                         symbol_names_[symbol_idx],
+                         UtcTimestampToUtcDatetime(current_open_time_),
+                         magnifier_next_open_time),
+                  __FILE__, __LINE__, false);
+
+              // 마크 가격 바 인덱스를 현재 돋보기 바 Close Time으로 일치.
+              // 펀딩비 데이터에 마크 가격이 누락되었을 경우 시장 마크 가격을
+              // 가져와야 하기 때문에 모든 트레이딩 활성화 심볼에 대해 일치
+              bar_->ProcessBarIndex(MARK_PRICE, "", symbol_idx,
+                                    current_close_time_);
             } else [[unlikely]] {
               // 현재 바가 마지막 바인 경우는 종료
               ExecuteTradingEnd(symbol_idx, "돋보기");
 
               symbols_to_remove.push_back(symbol_idx);
-
-              continue;
             }
-
-            logger_->Log(
-                WARN_L,
-                format("[{}] 심볼의 [{}] 돋보기 바가 누락되어 체결 확인을 "
-                       "건너뜁니다. (돋보기 바 다음 시간: [{}])",
-                       symbol_names_[symbol_idx],
-                       UtcTimestampToUtcDatetime(current_open_time_),
-                       magnifier_next_open_time),
-                __FILE__, __LINE__, false);
           }
-
-          // 마크 가격 바 인덱스를 현재 돋보기 바 Close Time으로 일치.
-          // 펀딩비 데이터에 마크 가격이 누락되었을 경우 시장 마크 가격을
-          // 가져와야 하기 때문에 모든 트레이딩 활성화 심볼에 대해 일치
-          bar_->ProcessBarIndex(MARK_PRICE, "", symbol_idx,
-                                current_close_time_);
         }
 
         // 돋보기 바 데이터 종료로 삭제해야 하는 심볼 제거
+        // 진입 주문이 있으면 전 트레이딩 바 종가에서 청산되기 때문에,
+        // 시가에서 정산되는 펀딩비 방지를 위해 펀딩비 정산 앞에서 처리
         if (!symbols_to_remove.empty()) [[unlikely]] {
           erase_if(activated_symbol_indices_, [&](const int symbol_idx) {
             return ranges::find(symbols_to_remove, symbol_idx) !=

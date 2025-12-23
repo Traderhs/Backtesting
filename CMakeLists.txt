@@ -38,18 +38,28 @@ find_package(OpenSSL CONFIG REQUIRED)
 find_package(ZLIB REQUIRED)
 
 # ======================================================================================================================
+# 절대 경로 변수
+set(PRIVATE_STRATEGY_INCLUDES "D:/Programming/Backtesting-Strategies/Includes")
+set(PRIVATE_STRATEGY_SOURCES "D:/Programming/Backtesting-Strategies/Sources")
+
 # Backtesting 설정
 file(GLOB HEADERS   # 해당 경로에서 hpp 파일들을 GLOB (엔진, 전략, 지표 헤더 파일들)
-        "Includes/**/*.hpp")
+        "Includes/**/*.hpp"
+        "${PRIVATE_STRATEGY_INCLUDES}/Strategies/*.hpp")
 file(GLOB SOURCES  # 해당 경로에서 cpp 파일들을 GLOB (엔진, 전략, 지표 소스 파일들) 
-        "Sources/cpp/**/*.cpp")
+        "Sources/cpp/**/*.cpp"
+        "${PRIVATE_STRATEGY_SOURCES}/Strategies/*.cpp")
 
-add_executable(Backtesting ${SOURCES}) # 실행 파일 Backtesting을 ${SOURCES} 소스 파일로 생성
+add_executable(Backtesting ${SOURCES})
+
 target_include_directories(Backtesting PRIVATE # Backtesting 타겟에 포함 디렉터리 경로 추가
         ${CMAKE_SOURCE_DIR}/Includes
+        ${PRIVATE_STRATEGY_INCLUDES}
         D:/vcpkg/installed/x64-windows/include)
+
 target_link_directories(Backtesting PRIVATE
         D:/vcpkg/installed/x64-windows/lib)
+
 target_link_libraries(Backtesting PRIVATE # Backtesting 타겟에 외부 라이브러리 링크
         arrow_shared
         CURL::libcurl
