@@ -14,13 +14,13 @@ export enum BarDataType {
  */
 export enum TimeframeUnit {
     NULL = '',
-    MILLISECOND = '밀리초',
     SECOND = '초',
     MINUTE = '분',
     HOUR = '시간',
     DAY = '일',
     WEEK = '주',
-    MONTH = '개월'
+    MONTH = '개월',
+    YEAR = '년'
 }
 
 /**
@@ -46,13 +46,13 @@ export interface BarDataConfig {
 export function timeframeToString(config: TimeframeConfig): string {
     const unitMap: Record<TimeframeUnit, string> = {
         [TimeframeUnit.NULL]: '',
-        [TimeframeUnit.MILLISECOND]: 'ms',
         [TimeframeUnit.SECOND]: 's',
         [TimeframeUnit.MINUTE]: 'm',
         [TimeframeUnit.HOUR]: 'h',
         [TimeframeUnit.DAY]: 'd',
         [TimeframeUnit.WEEK]: 'w',
-        [TimeframeUnit.MONTH]: 'M'
+        [TimeframeUnit.MONTH]: 'M',
+        [TimeframeUnit.YEAR]: 'y'
     };
 
     // 값이 null 또는 단위가 NULL(미선택)인 경우 빈 문자열로 표현
@@ -62,7 +62,7 @@ export function timeframeToString(config: TimeframeConfig): string {
     }
 
     return `${config.value}${unitMap[config.unit]}`;
-}
+} 
 
 // 타임프레임 문자열 파싱
 export function parseTimeframeString(tfString: string | null | undefined): { value: number | null; unit: TimeframeUnit } {
@@ -70,21 +70,21 @@ export function parseTimeframeString(tfString: string | null | undefined): { val
         return {value: null, unit: TimeframeUnit.NULL}
     }
 
-    // ms는 두 문자이므로 먼저 캡처하도록 정규식을 구성
-    const match = tfString.match(/^(\d+)(ms|[smhdwM])$/);
+    // 단위 문자는 단일 문자로 처리 (예: s, m, h, d, w, M, y)
+    const match = tfString.match(/^(\d+)([smhdwMy])$/);
     if (!match) {
         return {value: null, unit: TimeframeUnit.NULL};
     }
 
     const value = parseInt(match[1]);
     const unitMap: Record<string, TimeframeUnit> = {
-        'ms': TimeframeUnit.MILLISECOND,
         's': TimeframeUnit.SECOND,
         'm': TimeframeUnit.MINUTE,
         'h': TimeframeUnit.HOUR,
         'd': TimeframeUnit.DAY,
         'w': TimeframeUnit.WEEK,
-        'M': TimeframeUnit.MONTH
+        'M': TimeframeUnit.MONTH,
+        'y': TimeframeUnit.YEAR
     };
 
     return {value, unit: unitMap[match[2]] || TimeframeUnit.HOUR};
