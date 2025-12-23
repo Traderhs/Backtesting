@@ -1299,13 +1299,13 @@ export default function StrategyEditor() {
                                                             }
                                                         }}
                                                     >
-                                                        <SelectItem value={TimeframeUnit.MILLISECOND}>밀리초</SelectItem>
                                                         <SelectItem value={TimeframeUnit.SECOND}>초</SelectItem>
                                                         <SelectItem value={TimeframeUnit.MINUTE}>분</SelectItem>
                                                         <SelectItem value={TimeframeUnit.HOUR}>시간</SelectItem>
                                                         <SelectItem value={TimeframeUnit.DAY}>일</SelectItem>
                                                         <SelectItem value={TimeframeUnit.WEEK}>주</SelectItem>
                                                         <SelectItem value={TimeframeUnit.MONTH}>개월</SelectItem>
+                                                        <SelectItem value={TimeframeUnit.YEAR}>년</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>

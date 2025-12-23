@@ -78,12 +78,12 @@ const HoldingTimeFilter: React.FC = () => {
     const minOptionsRef = useRef<HTMLDivElement>(null);
     const maxOptionsRef = useRef<HTMLDivElement>(null);
 
-    const units = ["년", "개월", "주", "일", "시간", "분", "초"];
+    const units = ["초", "분", "시간", "일", "주", "개월", "년"];
 
     // 단위를 기준으로 입력된 값을 초 단위로 변환하는 함수
     const convertToSeconds = (value: number | undefined, unit: string): number | undefined => {
         if (value === undefined) return undefined;
-        
+
         // C++ 백엔드와 동일한 시간 상수들 (밀리초 단위)
         const kSecond = 1000;
         const kMinute = 60 * kSecond;        // 60,000
@@ -92,22 +92,22 @@ const HoldingTimeFilter: React.FC = () => {
         const kWeek = 7 * kDay;              // 604,800,000
         const kMonth = 30 * kDay;            // 2,592,000,000 (30일로 가정)
         const kYear = 12 * kMonth;           // 31,104,000,000
-        
+
         switch (unit) {
-            case "년":
-                return Math.floor((value * kYear) / 1000); // 밀리초를 초로 변환
-            case "개월":
-                return Math.floor((value * kMonth) / 1000);
-            case "주":
-                return Math.floor((value * kWeek) / 1000);
-            case "일":
-                return Math.floor((value * kDay) / 1000);
-            case "시간":
-                return Math.floor((value * kHour) / 1000);
-            case "분":
-                return Math.floor((value * kMinute) / 1000);
             case "초":
                 return Math.floor((value * kSecond) / 1000);
+            case "분":
+                return Math.floor((value * kMinute) / 1000);
+            case "시간":
+                return Math.floor((value * kHour) / 1000);
+            case "일":
+                return Math.floor((value * kDay) / 1000);
+            case "주":
+                return Math.floor((value * kWeek) / 1000);
+            case "개월":
+                return Math.floor((value * kMonth) / 1000);
+            case "년":
+                return Math.floor((value * kYear) / 1000); // 밀리초를 초로 변환
             default:
                 return value;
         }
@@ -227,6 +227,7 @@ const HoldingTimeFilter: React.FC = () => {
         if (activeFocusRef.current === e.currentTarget.id) {
             activeFocusRef.current = null;
         }
+
         // 즉시 업데이트 (디바운싱 무시)
         updateFilter();
     };
@@ -245,8 +246,10 @@ const HoldingTimeFilter: React.FC = () => {
             requestAnimationFrame(() => {
                 if (minOptionsRef.current) {
                     const optionElements = minOptionsRef.current.getElementsByClassName('holding-time-option');
+
                     for (let i = 0; i < optionElements.length; i++) {
                         const element = optionElements[i] as HTMLElement;
+
                         if (element.textContent === localMinUnit) {
                             element.scrollIntoView({block: 'nearest'});
                             break;
@@ -263,8 +266,10 @@ const HoldingTimeFilter: React.FC = () => {
             requestAnimationFrame(() => {
                 if (maxOptionsRef.current) {
                     const optionElements = maxOptionsRef.current.getElementsByClassName('holding-time-option');
+
                     for (let i = 0; i < optionElements.length; i++) {
                         const element = optionElements[i] as HTMLElement;
+
                         if (element.textContent === localMaxUnit) {
                             element.scrollIntoView({block: 'nearest'});
                             break;
@@ -281,6 +286,7 @@ const HoldingTimeFilter: React.FC = () => {
             if (minDropdownRef.current && !minDropdownRef.current.contains(event.target as Node)) {
                 setIsMinDropdownOpen(false);
             }
+
             if (maxDropdownRef.current && !maxDropdownRef.current.contains(event.target as Node)) {
                 setIsMaxDropdownOpen(false);
             }
@@ -293,13 +299,14 @@ const HoldingTimeFilter: React.FC = () => {
     }, []);
 
     // 키 입력 이벤트를 처리하는 함수
-// 클릭 이벤트 처리 함수 - 클릭 시 즉시 포커스 설정
+    // 클릭 이벤트 처리 함수 - 클릭 시 즉시 포커스 설정
     const handleClick = (e: React.MouseEvent<HTMLInputElement>) => {
         // 다른 필드에 포커스가 있으면 해제
         const input = e.currentTarget;
 
         if (activeFocusRef.current && activeFocusRef.current !== input.id) {
             const prevInput = document.getElementById(activeFocusRef.current) as HTMLInputElement;
+
             if (prevInput) {
                 prevInput.blur();
             }
@@ -322,6 +329,7 @@ const HoldingTimeFilter: React.FC = () => {
     // 포커스 이벤트 핸들러
     const handleFocus = (e: React.FocusEvent<HTMLInputElement>) => {
         const input = e.currentTarget;
+
         if (input.id) {
             activeFocusRef.current = input.id;
         }
@@ -384,6 +392,7 @@ const HoldingTimeFilter: React.FC = () => {
 
                     if (savedPosition) {
                         const pos = parseInt(savedPosition, 10);
+
                         if (!isNaN(pos)) {
                             const setCursorPosition = () => {
                                 if (inputRef.current && inputRef.current === document.activeElement) {
@@ -401,6 +410,7 @@ const HoldingTimeFilter: React.FC = () => {
                                                     targetPos = i;
                                                     break;
                                                 }
+
                                                 digitCount++;
                                             }
                                             targetPos = i + 1;
@@ -464,6 +474,7 @@ const HoldingTimeFilter: React.FC = () => {
                 // 선택 영역이 있을 때: 쉼표만 선택된 경우 삭제 방지
                 if ((e.key === 'Backspace' || e.key === 'Delete') && selectionLength > 0 && value.includes(',')) {
                     const selectedText = value.substring(selectionStart, selectionEnd);
+
                     if (selectedText.replace(/,/g, '').length === 0) {
                         // 선택된 부분이 쉼표로만 구성
                         e.preventDefault();
@@ -475,11 +486,16 @@ const HoldingTimeFilter: React.FC = () => {
                 if ((e.key === 'Backspace' || e.key === 'Delete') && selectionLength === 0 && value.includes(',')) {
                     if (e.key === 'Backspace') {
                         const charBeforeCursor = selectionStart > 0 ? value[selectionStart - 1] : '';
+
                         if (charBeforeCursor === ',') {
                             e.preventDefault();
+
                             // 쉼표 왼쪽 숫자 찾기
                             let deletePos = selectionStart - 2;
-                            while (deletePos >= 0 && !/\d/.test(value[deletePos])) deletePos--;
+                            while (deletePos >= 0 && !/\d/.test(value[deletePos])) {
+                                deletePos--;
+                            }
+
                             if (deletePos >= 0) {
                                 const newVal = value.substring(0, deletePos) + value.substring(deletePos + 1);
                                 const pureVal = newVal.replace(/,/g, '');
@@ -499,11 +515,16 @@ const HoldingTimeFilter: React.FC = () => {
                         }
                     } else if (e.key === 'Delete') {
                         const charAtCursor = selectionStart < value.length ? value[selectionStart] : '';
+
                         if (charAtCursor === ',') {
                             e.preventDefault();
+
                             // 쉼표 오른쪽 숫자 찾기
                             let deletePos = selectionStart + 1;
-                            while (deletePos < value.length && !/\d/.test(value[deletePos])) deletePos++;
+                            while (deletePos < value.length && !/\d/.test(value[deletePos])) {
+                                deletePos++;
+                            }
+
                             if (deletePos < value.length) {
                                 const newVal = value.substring(0, deletePos) + value.substring(deletePos + 1);
                                 const pureVal = newVal.replace(/,/g, '');
