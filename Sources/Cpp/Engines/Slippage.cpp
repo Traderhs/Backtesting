@@ -75,11 +75,12 @@ optional<string> PercentageSlippage::ValidateMakerSlippage() const {
   return nullopt;
 }
 
-double PercentageSlippage::CalculateSlippagePrice(const OrderType order_type,
-                                                  const Direction direction,
-                                                  const double order_price,
-                                                  const double order_size,
-                                                  const int symbol_idx) const {
+double PercentageSlippage::CalculateSlippagePrice(
+    const OrderType order_type, const Direction direction,
+    const double order_price,
+    const double order_size, /* 퍼센트 슬리피지에서는 사용하지 않는 매개변수지만
+                                가상 함수 오버라이드를 위해 존재 */
+    const int symbol_idx) const {
   // 주문 타입에 따라 슬리피지율 선택
   const double slippage_ratio =
       order_type == MARKET || order_type == MIT || order_type == TRAILING
