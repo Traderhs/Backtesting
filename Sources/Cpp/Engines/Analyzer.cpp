@@ -151,10 +151,10 @@ void Analyzer::CreateDirectories() {
     main_directory_ = main_directory;
 
     // 지표 데이터 저장 폴더 생성
-    fs::create_directories(main_directory + "/Backboard/Indicators");
+    fs::create_directories(main_directory + "/BackBoard/Indicators");
 
     // 소스 코드 저장 폴더 생성
-    fs::create_directories(format("{}/Backboard/Sources", main_directory));
+    fs::create_directories(format("{}/BackBoard/Sources", main_directory));
   } catch (const exception& e) {
     logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
     Logger::LogAndThrowError("폴더 생성 중 에러가 발생했습니다.", __FILE__,
@@ -428,7 +428,7 @@ void Analyzer::SaveIndicatorData() {
       // 테이블을 parquet로 저장
       TableToParquet(
           table,
-          format("{}/Backboard/Indicators/{}", main_directory_, indicator_name),
+          format("{}/BackBoard/Indicators/{}", main_directory_, indicator_name),
           indicator_name + ".parquet", true, false);
     }
 
@@ -442,7 +442,7 @@ void Analyzer::SaveIndicatorData() {
 }
 
 void Analyzer::SaveTradeList() const {
-  const auto& file_path = main_directory_ + "/Backboard/trade_list.json";
+  const auto& file_path = main_directory_ + "/BackBoard/trade_list.json";
 
   ofstream trade_list_file(file_path);
   if (!trade_list_file.is_open()) {
@@ -523,7 +523,7 @@ void Analyzer::SaveConfig() {
   const int num_symbols = trading_bar_data->GetNumSymbols();
 
   // 공통 경로 캐싱
-  const string backboard_path = format("{}/Backboard", main_directory_);
+  const string backboard_path = format("{}/BackBoard", main_directory_);
   const string sources_path = format("{}/Sources", backboard_path);
   const string indicators_path = format("{}/Indicators", backboard_path);
 
@@ -864,7 +864,7 @@ void Analyzer::SaveSourcesAndHeaders() {
 
     if (!source_path_to_copy.empty()) {
       fs::copy(source_path_to_copy,
-               format("{}/Backboard/Sources/{}.cpp", main_directory_,
+               format("{}/BackBoard/Sources/{}.cpp", main_directory_,
                       strategy_class_name));
     }
 
@@ -884,7 +884,7 @@ void Analyzer::SaveSourcesAndHeaders() {
 
     if (!header_path_to_copy.empty()) {
       fs::copy(header_path_to_copy,
-               format("{}/Backboard/Sources/{}.hpp", main_directory_,
+               format("{}/BackBoard/Sources/{}.hpp", main_directory_,
                       strategy_class_name));
     }
 
@@ -925,7 +925,7 @@ void Analyzer::SaveSourcesAndHeaders() {
 
       if (!indicator_source_path_to_copy.empty()) {
         fs::copy(indicator_source_path_to_copy,
-                 format("{}/Backboard/Sources/{}.cpp", main_directory_,
+                 format("{}/BackBoard/Sources/{}.cpp", main_directory_,
                         indicator_class_name));
       }
 
@@ -945,7 +945,7 @@ void Analyzer::SaveSourcesAndHeaders() {
 
       if (!indicator_header_path_to_copy.empty()) {
         fs::copy(indicator_header_path_to_copy,
-                 format("{}/Backboard/Sources/{}.hpp", main_directory_,
+                 format("{}/BackBoard/Sources/{}.hpp", main_directory_,
                         indicator_class_name));
       }
     }
@@ -961,13 +961,13 @@ void Analyzer::SaveSourcesAndHeaders() {
   }
 }
 
-void Analyzer::SaveBackboard() const {
+void Analyzer::SaveBackBoard() const {
   try {
-    // Backboard Package 경로 설정
+    // BackBoard Package 경로 설정
     const string backboard_package_path =
-        Config::GetProjectDirectory() + "/Sources/js/Backboard Package";
+        Config::GetProjectDirectory() + "/Sources/js/BackBoard Package";
 
-    // Backboard Package가 존재하는지 확인
+    // BackBoard Package가 존재하는지 확인
     if (fs::exists(backboard_package_path) &&
         fs::is_directory(backboard_package_path)) {
       // 기존 패키지가 있으면 복사
@@ -981,7 +981,7 @@ void Analyzer::SaveBackboard() const {
           "로컬 저장소에서 백보드를 찾을 수 없어 GitHub에서 다운로드합니다.",
           __FILE__, __LINE__, true);
 
-      DownloadBackboardFromGitHub();
+      DownloadBackBoardFromGitHub();
     }
 
     logger_->Log(INFO_L, "백보드가 저장되었습니다.", __FILE__, __LINE__, true);
@@ -998,7 +998,7 @@ void Analyzer::SaveBacktestingLog() const {
     logger_->backtesting_log_.close();
 
     fs::rename(logger_->backtesting_log_temp_path_,
-               main_directory_ + "/Backboard/backtesting.log");
+               main_directory_ + "/BackBoard/backtesting.log");
   } catch (const exception& e) {
     Logger::LogAndThrowError(
         "백테스팅 로그 파일을 저장하는 데 오류가 발생했습니다.: " +
@@ -1210,22 +1210,22 @@ void Analyzer::ParsePlotInfo(ordered_json& indicator_json,
   }
 }
 
-void Analyzer::DownloadBackboardFromGitHub() const {
+void Analyzer::DownloadBackBoardFromGitHub() const {
   try {
     const string temp_dir = fs::temp_directory_path().string();
     const string backboard_exe_url =
         "https://github.com/Traderhs/Backtesting/releases/latest/download/"
-        "Backboard.exe";
+        "BackBoard.exe";
     const string backboard_zip_url =
         "https://github.com/Traderhs/Backtesting/releases/latest/download/"
-        "Backboard.zip";
+        "BackBoard.zip";
 
-    const string exe_temp_path = temp_dir + "/Backboard.exe";
-    const string zip_temp_path = temp_dir + "/Backboard.zip";
-    const string extract_temp_path = temp_dir + "/BackboardExtract";
+    const string exe_temp_path = temp_dir + "/BackBoard.exe";
+    const string zip_temp_path = temp_dir + "/BackBoard.zip";
+    const string extract_temp_path = temp_dir + "/BackBoardExtract";
 
-    // Backboard.exe 다운로드
-    logger_->Log(INFO_L, "Backboard.exe를 다운로드하는 중입니다.", __FILE__,
+    // BackBoard.exe 다운로드
+    logger_->Log(INFO_L, "BackBoard.exe를 다운로드하는 중입니다.", __FILE__,
                  __LINE__, true);
 
     const string download_exe_cmd = format(
@@ -1251,14 +1251,14 @@ void Analyzer::DownloadBackboardFromGitHub() const {
       if (int fallback_result = system(fallback_exe_cmd.c_str());
           fallback_result != 0) {
         Logger::LogAndThrowError(
-            "Backboard.exe를 다운로드하는 데 실패했습니다. "
+            "BackBoard.exe를 다운로드하는 데 실패했습니다. "
             "네트워크 연결을 확인하고 다시 시도해주세요.",
             __FILE__, __LINE__);
       }
     }
 
-    // Backboard.zip 다운로드
-    logger_->Log(INFO_L, "Backboard.zip을 다운로드하는 중입니다.", __FILE__,
+    // BackBoard.zip 다운로드
+    logger_->Log(INFO_L, "BackBoard.zip을 다운로드하는 중입니다.", __FILE__,
                  __LINE__, true);
 
     const string download_zip_cmd = format(
@@ -1284,7 +1284,7 @@ void Analyzer::DownloadBackboardFromGitHub() const {
       if (int zip_fallback_result = system(fallback_zip_cmd.c_str());
           zip_fallback_result != 0) {
         Logger::LogAndThrowError(
-            "Backboard.zip을 다운로드하는 데 실패했습니다. "
+            "BackBoard.zip을 다운로드하는 데 실패했습니다. "
             "네트워크 연결을 확인하고 다시 시도해주세요.",
             __FILE__, __LINE__);
       }
@@ -1293,13 +1293,13 @@ void Analyzer::DownloadBackboardFromGitHub() const {
     // 다운로드된 파일 크기 확인
     if (!fs::exists(exe_temp_path) || fs::file_size(exe_temp_path) == 0) {
       Logger::LogAndThrowError(
-          "Backboard.exe 파일이 올바르게 다운로드되지 않았습니다.", __FILE__,
+          "BackBoard.exe 파일이 올바르게 다운로드되지 않았습니다.", __FILE__,
           __LINE__);
     }
 
     if (!fs::exists(zip_temp_path) || fs::file_size(zip_temp_path) == 0) {
       Logger::LogAndThrowError(
-          "Backboard.zip 파일이 올바르게 다운로드되지 않았습니다.", __FILE__,
+          "BackBoard.zip 파일이 올바르게 다운로드되지 않았습니다.", __FILE__,
           __LINE__);
     }
 
@@ -1314,22 +1314,22 @@ void Analyzer::DownloadBackboardFromGitHub() const {
         zip_temp_path, extract_temp_path);
 
     if (system(extract_cmd.c_str()) != 0) {
-      Logger::LogAndThrowError("Backboard.zip 압축 해제에 실패했습니다.",
+      Logger::LogAndThrowError("BackBoard.zip 압축 해제에 실패했습니다.",
                                __FILE__, __LINE__);
     }
 
-    // Backboard.exe 복사
-    fs::copy_file(exe_temp_path, main_directory_ + "/Backboard.exe",
+    // BackBoard.exe 복사
+    fs::copy_file(exe_temp_path, main_directory_ + "/BackBoard.exe",
                   fs::copy_options::overwrite_existing);
 
-    // 압축 해제된 폴더에서 Backboard 폴더 찾기
-    const string backboard_dest_path = main_directory_ + "/Backboard";
+    // 압축 해제된 폴더에서 BackBoard 폴더 찾기
+    const string backboard_dest_path = main_directory_ + "/BackBoard";
     fs::create_directories(backboard_dest_path);
 
-    if (const string backboard_folder_path = extract_temp_path + "/Backboard";
+    if (const string backboard_folder_path = extract_temp_path + "/BackBoard";
         fs::exists(backboard_folder_path) &&
         fs::is_directory(backboard_folder_path)) {
-      // Backboard 폴더 안쪽 내용을 main_directory_/Backboard로 복사
+      // BackBoard 폴더 안쪽 내용을 main_directory_/BackBoard로 복사
       for (const auto& entry :
            fs::recursive_directory_iterator(backboard_folder_path)) {
         if (entry.is_regular_file()) {
@@ -1346,7 +1346,7 @@ void Analyzer::DownloadBackboardFromGitHub() const {
         }
       }
     } else {
-      // Backboard 폴더가 없으면 전체 내용을 main_directory_/Backboard로 복사
+      // BackBoard 폴더가 없으면 전체 내용을 main_directory_/BackBoard로 복사
       for (const auto& entry :
            fs::recursive_directory_iterator(extract_temp_path)) {
         if (entry.is_regular_file()) {

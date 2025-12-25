@@ -85,7 +85,7 @@ class Analyzer {
   [[nodiscard]] string GetMainDirectory() const;
 
   // ===========================================================================
-  // 함수 나열 순서는 Backboard 대시보드 순서
+  // 함수 나열 순서는 BackBoard 대시보드 순서
 
   /// 백테스팅 결과 저장에 필요한 폴더들을 생성하고 이번 백테스팅의
   /// 메인 폴더 경로를 반환하는 함수
@@ -106,7 +106,7 @@ class Analyzer {
 
   /// 백보드를 저장하는 함수
   /// 로컬 저장소에서 찾을 수 없을 때에는 원격 저장소로 fallback
-  void SaveBackboard() const;
+  void SaveBackBoard() const;
 
   /// 해당 회차의 백테스팅의 로그를 지정된 폴더에 저장하는 함수
   void SaveBacktestingLog() const;
@@ -153,7 +153,7 @@ class Analyzer {
                             const shared_ptr<Indicator>& indicator);
 
   /// GitHub 릴리즈에서 백보드를 다운로드하는 함수
-  void DownloadBackboardFromGitHub() const;
+  void DownloadBackBoardFromGitHub() const;
 };
 
 }  // namespace backtesting::analyzer

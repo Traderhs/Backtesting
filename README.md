@@ -1,9 +1,9 @@
-<img src="Docs/Images/backboard.ico" alt="Backboard Demo" width="80" align="left" />
+<img src="Docs/Images/backboard.ico" alt="BackBoard" width="80" align="left" />
 
 # Backtesting
 
 A Windows-oriented, high-performance multi-symbol portfolio backtesting system.
-It combines a C++20 engine built for speed and determinism with a React/TypeScript dashboard (Backboard) that visualizes
+It combines a C++20 engine built for speed and determinism with a React/TypeScript dashboard (BackBoard) that visualizes
 outputs saved to disk.
 
 ---
@@ -15,7 +15,7 @@ This repository is organized around a simple contract:
 1. **Market data in** (Parquet time series under `Data/`)
 2. **Simulation in** (C++ engine: vectorized bars, margin/fees/slippage)
 3. **Results out** (a timestamped folder under `Results/`)
-4. **Visualization** (Backboard reads `Results/<run>/Backboard/*`)
+4. **Visualization** (BackBoard reads `Results/<run>/BackBoard/*`)
 
 The engine is designed to backtest **multiple symbols in a single run**, while keeping execution rules explicit (bar
 assumptions, magnifier bars, isolated margin).
@@ -111,7 +111,7 @@ int main() {
 }
 ```
 
-After a run completes, open the newest folder under `Results/` and point Backboard to `Results/<run>/Backboard/`.
+After a run completes, open the newest folder under `Results/` and point BackBoard to `Results/<run>/BackBoard/`.
 
 ---
 
@@ -119,7 +119,7 @@ After a run completes, open the newest folder under `Results/` and point Backboa
 
 - **C++ Engine (headers):** `Includes/Engines/`, `Includes/Indicators/`, `Includes/Strategies/`
 - **C++ Engine (implementation):** `Sources/cpp/Engines/`, `Sources/cpp/Indicators/`, `Sources/cpp/Strategies/`
-- **Backboard (Node + React):** `Sources/js/`
+- **BackBoard (Node + React):** `Sources/js/`
     - Entry shim: `Sources/js/launch.js`
     - Server: `Sources/js/server/launch.js` (Express + WebSocket)
 - **Market data:** `Data/`
@@ -146,7 +146,7 @@ After a run completes, open the newest folder under `Results/` and point Backboa
       hedge-style long+short concurrency).
 - **Single-strategy constraint per run**
     - The engine runs **one** `Strategy` per backtest execution.
-    - Backboard can be used to compare/compose results across multiple independent runs.
+    - BackBoard can be used to compare/compose results across multiple independent runs.
 
 ---
 
@@ -170,13 +170,13 @@ Timeframes follow a compact string convention such as `1m`, `1h`, `1d`.
 
 ---
 
-## Output Contract (What Backboard Reads)
+## Output Contract (What BackBoard Reads)
 
 Each run creates a timestamped directory:
 
 ```
 Results/<YYYYMMDD_HHMMSS>/
-  Backboard/
+  BackBoard/
     config.json
     trade_list.json
     backtesting.log
@@ -188,18 +188,18 @@ Results/<YYYYMMDD_HHMMSS>/
       <StrategyClass>.hpp
       <IndicatorClass>.cpp
       <IndicatorClass>.hpp
-  ... (Backboard static assets may also be copied alongside)
+  ... (BackBoard static assets may also be copied alongside)
 ```
 
 Notes:
 
-- `Backboard/config.json` is a comprehensive run manifest (symbols, bar coverage, exchange/leverage/funding metadata,
+- `BackBoard/config.json` is a comprehensive run manifest (symbols, bar coverage, exchange/leverage/funding metadata,
   engine settings, strategy/indicator descriptors).
-- `Backboard/trade_list.json` is exported as UTF-8 with BOM for compatibility.
-- `Backboard/Indicators/*` stores indicator time series for plotted (non-OHLCV) indicators.
-- `Backboard/Sources/*` stores copies of the strategy/indicator source/header files when paths are available.
-- If a local Backboard package is present at `Sources/js/Backboard Package`, it is copied into the run directory;
-  otherwise, the engine can fetch a packaged Backboard from a GitHub release as a fallback.
+- `BackBoard/trade_list.json` is exported as UTF-8 with BOM for compatibility.
+- `BackBoard/Indicators/*` stores indicator time series for plotted (non-OHLCV) indicators.
+- `BackBoard/Sources/*` stores copies of the strategy/indicator source/header files when paths are available.
+- If a local BackBoard package is present at `Sources/js/BackBoard Package`, it is copied into the run directory;
+  otherwise, the engine can fetch a packaged BackBoard from a GitHub release as a fallback.
 
 ---
 
@@ -315,7 +315,7 @@ Notes:
 
 - OHLCV references (`open`, `high`, `low`, `close`, `volume`) are provided by default.
 - Only non-OHLCV indicators with an active plot configuration are eligible for persistence under
-  `Results/<run>/Backboard/Indicators/`.
+  `Results/<run>/BackBoard/Indicators/`.
 
 ### Simple SMA Strategy Example
 
@@ -324,7 +324,7 @@ This minimal example follows the same pattern used in the codebase (see `TestStr
 - Adds one `SimpleMovingAverage` indicator
 - Enters on price crossing SMA
 
-Source path auto-detection (used for saving sources into `Results/<run>/Backboard/Sources/`) expects:
+Source path auto-detection (used for saving sources into `Results/<run>/BackBoard/Sources/`) expects:
 
 - `Includes/Strategies/<ClassName>.hpp`
 - `Sources/cpp/Strategies/<ClassName>.cpp`
@@ -389,7 +389,7 @@ Important:
 
 - The engine allows **one** strategy per backtest run.
 - This follows the principle of isolating strategies into separate accounts; aggregation of multi-strategy (
-  multi-account) results will be supported in Backboard in a future release.
+  multi-account) results will be supported in BackBoard in a future release.
 
 ---
 
