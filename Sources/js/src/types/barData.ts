@@ -62,10 +62,13 @@ export function timeframeToString(config: TimeframeConfig): string {
     }
 
     return `${config.value}${unitMap[config.unit]}`;
-} 
+}
 
 // 타임프레임 문자열 파싱
-export function parseTimeframeString(tfString: string | null | undefined): { value: number | null; unit: TimeframeUnit } {
+export function parseTimeframeString(tfString: string | null | undefined): {
+    value: number | null;
+    unit: TimeframeUnit
+} {
     if (tfString === '' || tfString === null || tfString === undefined) {
         return {value: null, unit: TimeframeUnit.NULL}
     }

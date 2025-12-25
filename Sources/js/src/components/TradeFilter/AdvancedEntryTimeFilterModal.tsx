@@ -1,6 +1,6 @@
-import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
-import { Button } from "../ui/button.tsx";
-import { TradeItem } from "./TradeFilterContext";
+import React, {useEffect, useState, useRef, useCallback, useMemo} from "react";
+import {Button} from "../ui/button.tsx";
+import {TradeItem} from "./TradeFilterContext";
 import TimeFilterCheckboxes from "./TimeFilterCheckboxes";
 import './modal.css'
 import './AdvancedFilterModal.css'
@@ -12,8 +12,8 @@ import {
     getHourOptions,
     getMinuteSecondOptions,
 } from "./TimeFilterOptions";
-import { useTradeFilter } from "../TradeFilter";
-import { createPortal } from 'react-dom';
+import {useTradeFilter} from "../TradeFilter";
+import {createPortal} from 'react-dom';
 
 export interface AdvancedEntryTimeFilterValues {
     entryYears?: number[];
@@ -40,20 +40,20 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
                                                                                        setValues,
                                                                                        tradeData,
                                                                                    }) => {
-    const { filter, setFilter } = useTradeFilter();
+    const {filter, setFilter} = useTradeFilter();
     const [isDragging, setIsDragging] = useState(false);
-    const [startDragPos, setStartDragPos] = useState({ x: 0, y: 0, initialLeft: 0, initialTop: 0 });
+    const [startDragPos, setStartDragPos] = useState({x: 0, y: 0, initialLeft: 0, initialTop: 0});
     const [isInitialized, setIsInitialized] = useState(false);
-    
+
     const modalRef = useRef<HTMLDivElement>(null);
     const dragRef = useRef<HTMLDivElement>(null);
     const resizeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const initTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-    
+
     // 최신 값들을 참조하기 위한 ref
     const latestValues = useRef(values);
     const latestFilter = useRef(filter);
-    
+
     // 옵션들을 메모화하여 성능 최적화
     const timeOptions = useMemo(() => ({
         yearOptions: getYearOptions(tradeData, ["진입 시간", "청산 시간"]),
@@ -62,7 +62,7 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
         hourOptions: getHourOptions(),
         minuteSecondOptions: getMinuteSecondOptions(),
     }), [tradeData]);
-    
+
     // 최신 값들 업데이트
     useEffect(() => {
         latestValues.current = values;
@@ -88,17 +88,17 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
     // 섹션 높이 계산 최적화 - requestAnimationFrame 사용
     const calculateSectionHeights = useCallback(() => {
         if (!modalRef.current) return;
-        
+
         requestAnimationFrame(() => {
             const sections = modalRef.current?.querySelectorAll('.advanced-filter-section');
             if (!sections || sections.length === 0) return;
-            
+
             let maxHeight = 0;
             sections.forEach(section => {
                 const sectionHeight = section.scrollHeight;
                 maxHeight = Math.max(maxHeight, sectionHeight);
             });
-            
+
             sections.forEach(section => {
                 (section as HTMLElement).style.setProperty('--max-section-height', `${maxHeight}px`);
             });
@@ -113,7 +113,7 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
                 calculateSectionHeights();
                 setIsInitialized(true);
             }, 50);
-            
+
             return () => {
                 if (initTimeoutRef.current) {
                     clearTimeout(initTimeoutRef.current);
@@ -125,11 +125,11 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
     // 디바운스된 리사이즈 핸들러
     const debouncedResizeHandler = useCallback(() => {
         if (!isOpen) return;
-        
+
         if (resizeTimeoutRef.current) {
             clearTimeout(resizeTimeoutRef.current);
         }
-        
+
         resizeTimeoutRef.current = setTimeout(() => {
             calculateSectionHeights();
         }, 150);
@@ -138,7 +138,7 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
     // 윈도우 리사이즈 시 디바운스 적용
     useEffect(() => {
         if (!isOpen) return;
-        
+
         window.addEventListener('resize', debouncedResizeHandler);
         return () => {
             window.removeEventListener('resize', debouncedResizeHandler);
@@ -150,25 +150,25 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
 
     // 모달 중앙 정렬 최적화
     const centerModal = useCallback(() => {
-            if (!modalRef.current || !isOpen) return;
-        
+        if (!modalRef.current || !isOpen) return;
+
         requestAnimationFrame(() => {
             if (!modalRef.current) return;
-            
+
             const sidebarWidthRem = 18;
             const sidebarWidthPx = sidebarWidthRem * 16;
-            
+
             const windowWidth = window.innerWidth;
             const windowHeight = window.innerHeight;
-            
+
             const mainContentWidth = windowWidth - sidebarWidthPx;
-            
+
             const modalWidth = modalRef.current.offsetWidth;
             const modalHeight = modalRef.current.offsetHeight;
-            
+
             const centerLeft = Math.max(0, (mainContentWidth - modalWidth) / 2);
             const centerTop = Math.max(0, (windowHeight - modalHeight) / 2);
-            
+
             modalRef.current.style.position = 'absolute';
             modalRef.current.style.left = `${centerLeft}px`;
             modalRef.current.style.top = `${centerTop}px`;
@@ -178,10 +178,10 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
     // 윈도우 리사이즈 시 모달 위치 중앙으로 재조정
     useEffect(() => {
         if (!isOpen) return;
-        
+
         window.addEventListener('resize', centerModal);
         centerModal(); // 초기 중앙 정렬
-        
+
         return () => {
             window.removeEventListener('resize', centerModal);
         };
@@ -263,7 +263,7 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
             if (isDragging) {
                 const deltaX = e.clientX - startDragPos.x;
                 const deltaY = e.clientY - startDragPos.y;
-                
+
                 if (modalRef.current) {
                     const sidebarWidthPx = 18 * 16; // 18rem = 288px
                     const windowWidth = window.innerWidth;
@@ -271,13 +271,13 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
                     const mainContentWidth = windowWidth - sidebarWidthPx;
                     const modalWidth = modalRef.current.offsetWidth;
                     const modalHeight = modalRef.current.offsetHeight;
-                    
+
                     let newLeft = startDragPos.initialLeft + deltaX;
                     let newTop = startDragPos.initialTop + deltaY;
-                    
+
                     newLeft = Math.max(0, Math.min(newLeft, mainContentWidth - modalWidth));
                     newTop = Math.max(0, Math.min(newTop, windowHeight - modalHeight));
-                    
+
                     modalRef.current.style.position = 'absolute';
                     modalRef.current.style.left = `${newLeft}px`;
                     modalRef.current.style.top = `${newTop}px`;
@@ -326,7 +326,7 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
 
     // 요일 이름 배열 변경 - 월요일부터 시작하도록
     const dayOfWeekLabels = ['월요일', '화요일', '수요일', '목요일', '금요일', '토요일', '일요일'];
-    
+
     // 요일 옵션 (0->일요일, 1->월요일, ..., 6->토요일)
     const reorderedDayOfWeekOptions = () => {
         return [1, 2, 3, 4, 5, 6, 0]; // 월, 화, 수, 목, 금, 토, 일 순서로 변경
@@ -341,7 +341,7 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
         const newValues = checked
             ? [...currentValues, option]
             : currentValues.filter(v => v !== option);
-        setValues({ ...values, [key]: newValues });
+        setValues({...values, [key]: newValues});
     };
 
     // 드래그 시작 핸들러
@@ -370,8 +370,8 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
 
     // 섹션 렌더링 함수 - 헤더 제거, 버튼 왼쪽 배치
     const renderTimeSection = (
-        label: string, 
-        options: number[], 
+        label: string,
+        options: number[],
         valueKey: keyof AdvancedEntryTimeFilterValues
     ) => {
         const currentValues = values[valueKey] || [];
@@ -380,17 +380,17 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
 
         const handleCheckboxClick = (e: React.MouseEvent) => {
             e.stopPropagation(); // 이벤트 버블링 방지
-            
+
             if (isAllSelected) {
-                setValues({ ...values, [valueKey]: [] });
+                setValues({...values, [valueKey]: []});
             } else {
-                setValues({ ...values, [valueKey]: options });
+                setValues({...values, [valueKey]: options});
             }
         };
 
         return (
-        <div className="advanced-filter-section">
-                <div 
+            <div className="advanced-filter-section">
+                <div
                     className="filter-header-with-checkbox"
                     onClick={handleCheckboxClick}
                 >
@@ -405,23 +405,23 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
                         }}
                         onChange={(e) => {
                             if (e.target.checked) {
-                                setValues({ ...values, [valueKey]: options });
+                                setValues({...values, [valueKey]: options});
                             } else {
-                                setValues({ ...values, [valueKey]: [] });
+                                setValues({...values, [valueKey]: []});
                             }
                         }}
                         onClick={(e) => e.stopPropagation()} // 체크박스 자체 클릭 이벤트는 상위로 전파되지 않도록
                     />
                     <span className="filter-section-title">{label}</span>
-            </div>
-            <TimeFilterCheckboxes
-                label={label}
-                options={options}
+                </div>
+                <TimeFilterCheckboxes
+                    label={label}
+                    options={options}
                     selectedValues={currentValues}
-                onChange={(option, checked) => onCheckboxChange(valueKey, option, checked)}
-            />
-        </div>
-    );
+                    onChange={(option, checked) => onCheckboxChange(valueKey, option, checked)}
+                />
+            </div>
+        );
     };
 
     // 요일 섹션 수정
@@ -433,17 +433,17 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
 
         const handleDayOfWeekCheckboxClick = (e: React.MouseEvent) => {
             e.stopPropagation(); // 이벤트 버블링 방지
-            
+
             if (isAllSelected) {
-                setValues({ ...values, entryDayOfWeeks: [] });
+                setValues({...values, entryDayOfWeeks: []});
             } else {
-                setValues({ ...values, entryDayOfWeeks: options });
+                setValues({...values, entryDayOfWeeks: options});
             }
         };
 
         return (
             <div className="advanced-filter-section">
-                <div 
+                <div
                     className="filter-header-with-checkbox"
                     onClick={handleDayOfWeekCheckboxClick}
                 >
@@ -458,9 +458,9 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
                         }}
                         onChange={(e) => {
                             if (e.target.checked) {
-                                setValues({ ...values, entryDayOfWeeks: options });
+                                setValues({...values, entryDayOfWeeks: options});
                             } else {
-                                setValues({ ...values, entryDayOfWeeks: [] });
+                                setValues({...values, entryDayOfWeeks: []});
                             }
                         }}
                         onClick={(e) => e.stopPropagation()} // 체크박스 자체 클릭 이벤트는 상위로 전파되지 않도록
@@ -480,25 +480,26 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
 
     const modalElement = (
         <div className="filter-calendar-overlay">
-            <div 
+            <div
                 ref={modalRef}
                 className="advanced-filter-modal-container"
             >
-                <div 
+                <div
                     ref={dragRef}
                     className="advanced-filter-header"
-                    style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+                    style={{cursor: isDragging ? 'grabbing' : 'grab'}}
                     onMouseDown={handleMouseDown}
                 >
                     <div className="advanced-filter-title-row">
                         <h2 className="advanced-filter-title">[진입 시간] 고급 필터</h2>
-                        <button 
-                            className="advanced-close-button" 
+                        <button
+                            className="advanced-close-button"
                             onClick={handleCloseButtonClick}
-                        >×</button>
+                        >×
+                        </button>
                     </div>
                 </div>
-                
+
                 <div className="advanced-filter-content">
                     {/* 연도 */}
                     {renderTimeSection("연도", yearOptions, "entryYears")}
@@ -517,19 +518,19 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
 
                     {/* 분 */}
                     {renderTimeSection("분", minuteSecondOptions, "entryMinutes")}
-                    
+
                     {/* 초 */}
                     {renderTimeSection("초", minuteSecondOptions, "entrySeconds")}
                 </div>
 
                 <div className="advanced-filter-footer">
-                    <Button 
+                    <Button
                         onClick={handleApply}
                         className="advanced-filter-footer-button apply"
                     >
                         적용
                     </Button>
-                    <Button 
+                    <Button
                         onClick={handleCancel}
                         className="advanced-filter-footer-button cancel"
                     >

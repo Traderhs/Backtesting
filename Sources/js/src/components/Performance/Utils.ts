@@ -125,4 +125,4 @@ export const formatPercent = (value: string | number): string => {
 
     // 숫자를 3자리 쉼표가 있는 형식으로 변환하고 % 추가
     return `${percentValue.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2})}%`;
-}; 
+};

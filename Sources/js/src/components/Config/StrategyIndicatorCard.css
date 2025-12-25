@@ -764,8 +764,8 @@ code[class*="language-"] {
 
 /* 지표가 없을 때 전략이 전체 너비를 차지하도록 하는 클래스 */
 .card-left.card-full-width {
-    flex: 1;          /* 유연하게 가로폭 차지 */
-    width: auto;      /* 전체폭 고정 대신 자동 */
+    flex: 1; /* 유연하게 가로폭 차지 */
+    width: auto; /* 전체폭 고정 대신 자동 */
     margin-right: 4px; /* 원하는 우측 여백 */
 }
 
@@ -815,8 +815,8 @@ code[class*="language-"] {
     padding: 0;
     overflow-x: hidden;
     overflow-y: scroll;
-    scrollbar-width: none;  /* Firefox */
-    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
     top: 0;
     border-right: 2px solid rgba(255, 215, 0, 0.13);
     white-space: nowrap;
@@ -861,8 +861,12 @@ code[class*="language-"] {
 }
 
 @keyframes sweep {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
+    0% {
+        transform: translateX(-100%);
+    }
+    100% {
+        transform: translateX(100%);
+    }
 }
 
 /* info-bullet 스타일 */

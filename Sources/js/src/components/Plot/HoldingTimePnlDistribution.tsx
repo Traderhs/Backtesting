@@ -46,7 +46,7 @@ const PlotComponent: React.FC<PlotlyComponentProps> = ({
                         return;
                     }
                 }
-                
+
                 // Fallback: 직접 import (미리 로드 실패 시)
                 const plotlyModule = await import('react-plotly.js');
                 const PlotComponent = plotlyModule.default;
@@ -254,7 +254,7 @@ const HoldingTimePnlDistribution = () => {
         return () => {
             if (containerRef.current && tooltipRef.current) {
                 try {
-                containerRef.current.removeChild(tooltipRef.current);
+                    containerRef.current.removeChild(tooltipRef.current);
                 } catch (error) {
                     console.warn('툴팁 요소 제거 중 오류 (무시됨):', error);
                 }
@@ -392,7 +392,7 @@ const HoldingTimePnlDistribution = () => {
                 alignItems: 'center',
                 justifyContent: 'center'
             }}>
-                <NoDataMessage message="거래 내역이 존재하지 않습니다." />
+                <NoDataMessage message="거래 내역이 존재하지 않습니다."/>
             </div>
         );
     }
@@ -442,4 +442,4 @@ const HoldingTimePnlDistribution = () => {
     );
 };
 
-export default HoldingTimePnlDistribution; 
+export default HoldingTimePnlDistribution;

@@ -1,9 +1,9 @@
-import React, { useEffect } from "react";
-import { useTradeFilter, toggleOption } from "../TradeFilter";
-import { RESET_SYMBOL_NAME_FILTER } from "./FilterResetEvent";
+import React, {useEffect} from "react";
+import {useTradeFilter, toggleOption} from "../TradeFilter";
+import {RESET_SYMBOL_NAME_FILTER} from "./FilterResetEvent";
 
 const SymbolFilter: React.FC = () => {
-    const { filter, setFilter, options } = useTradeFilter();
+    const {filter, setFilter, options} = useTradeFilter();
 
     // 심볼 필터 초기화 함수
     const resetFilter = () => {
@@ -55,12 +55,12 @@ const SymbolFilter: React.FC = () => {
     const handleContainerClick = (optionName: string, currentChecked: boolean, e: React.MouseEvent) => {
         // 체크박스 또는 라벨을 직접 클릭한 경우는 무시 (이벤트 중복 방지)
         if (
-            (e.target as HTMLElement).tagName === 'INPUT' || 
+            (e.target as HTMLElement).tagName === 'INPUT' ||
             (e.target as HTMLElement).tagName === 'LABEL'
         ) {
             return;
         }
-        
+
         // 체크박스 상태 토글
         toggleOption("symbols", optionName, !currentChecked, setFilter);
     };
@@ -69,23 +69,23 @@ const SymbolFilter: React.FC = () => {
     const handleHeaderContainerClick = (e: React.MouseEvent) => {
         // 체크박스 또는 라벨을 직접 클릭한 경우는 무시 (이벤트 중복 방지)
         if (
-            (e.target as HTMLElement).tagName === 'INPUT' || 
+            (e.target as HTMLElement).tagName === 'INPUT' ||
             (e.target as HTMLElement).tagName === 'LABEL'
         ) {
             return;
         }
-        
+
         // 현재 체크 상태 토글
         handleSelectAll(!isAllChecked);
     };
 
     return (
         <div>
-            <div 
+            <div
                 className="filter-header-with-checkbox"
                 onClick={handleHeaderContainerClick}
             >
-                <input 
+                <input
                     id="SymbolFilter-selectAll"
                     name="SymbolFilter-selectAll"
                     type="checkbox"
@@ -101,12 +101,12 @@ const SymbolFilter: React.FC = () => {
                 </label>
             </div>
             {options.symbols.map(option => (
-                <div 
-                    key={option.name} 
+                <div
+                    key={option.name}
                     className="checkbox-container"
                     onClick={(e) => handleContainerClick(option.name, filter.symbols.includes(option.name), e)}
                 >
-                    <input 
+                    <input
                         id={`SymbolFilter-${option.name}`}
                         name={`SymbolFilter-${option.name}`}
                         type="checkbox"

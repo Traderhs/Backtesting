@@ -57,12 +57,12 @@ export const calculateMaxProfitLossRateMetrics = (
         // 최대 개별 순수익률 거래 업데이트 (0과 같거나 큰 거래만) (같은 값일 경우 더 최신 거래 선택)
         if (individualRate >= 0) {
             hasPositiveIndividualRate = true;
-            if (individualRate > maxIndividualProfitRate || 
-                (individualRate === maxIndividualProfitRate && 
-                 tradeDate && 
-                 maxIndividualProfitTrade && 
-                 parseDate(String(maxIndividualProfitTrade["청산 시간"])) !== null && 
-                 tradeDate > parseDate(String(maxIndividualProfitTrade["청산 시간"]))!)) {
+            if (individualRate > maxIndividualProfitRate ||
+                (individualRate === maxIndividualProfitRate &&
+                    tradeDate &&
+                    maxIndividualProfitTrade &&
+                    parseDate(String(maxIndividualProfitTrade["청산 시간"])) !== null &&
+                    tradeDate > parseDate(String(maxIndividualProfitTrade["청산 시간"]))!)) {
                 maxIndividualProfitRate = individualRate;
                 maxIndividualProfitTrade = trade;
             }
@@ -71,36 +71,36 @@ export const calculateMaxProfitLossRateMetrics = (
         // 최대 전체 순수익률 거래 업데이트 (0과 같거나 큰 거래만) (같은 값일 경우 더 최신 거래 선택)
         if (totalRate >= 0) {
             hasPositiveTotalRate = true;
-            if (totalRate > maxTotalProfitRate || 
-                (totalRate === maxTotalProfitRate && 
-                 tradeDate && 
-                 maxTotalProfitTrade && 
-                 parseDate(String(maxTotalProfitTrade["청산 시간"])) !== null && 
-                 tradeDate > parseDate(String(maxTotalProfitTrade["청산 시간"]))!)) {
+            if (totalRate > maxTotalProfitRate ||
+                (totalRate === maxTotalProfitRate &&
+                    tradeDate &&
+                    maxTotalProfitTrade &&
+                    parseDate(String(maxTotalProfitTrade["청산 시간"])) !== null &&
+                    tradeDate > parseDate(String(maxTotalProfitTrade["청산 시간"]))!)) {
                 maxTotalProfitRate = totalRate;
                 maxTotalProfitTrade = trade;
             }
         }
 
         // 최대 개별 순손실률 거래 업데이트 (손실은 음수여야 함) (같은 값일 경우 더 최신 거래 선택)
-        if (individualRate < 0 && (individualRate < maxIndividualLossRate || 
-            (individualRate === maxIndividualLossRate && 
-             tradeDate && 
-             maxIndividualLossTrade && 
-             parseDate(String(maxIndividualLossTrade["청산 시간"])) !== null && 
-             tradeDate > parseDate(String(maxIndividualLossTrade["청산 시간"]))!))) {
+        if (individualRate < 0 && (individualRate < maxIndividualLossRate ||
+            (individualRate === maxIndividualLossRate &&
+                tradeDate &&
+                maxIndividualLossTrade &&
+                parseDate(String(maxIndividualLossTrade["청산 시간"])) !== null &&
+                tradeDate > parseDate(String(maxIndividualLossTrade["청산 시간"]))!))) {
             maxIndividualLossRate = individualRate;
             maxIndividualLossTrade = trade;
             hasNegativeIndividualRate = true;
         }
 
         // 최대 전체 순손실률 거래 업데이트 (손실은 음수여야 함) (같은 값일 경우 더 최신 거래 선택)
-        if (totalRate < 0 && (totalRate < maxTotalLossRate || 
-            (totalRate === maxTotalLossRate && 
-             tradeDate && 
-             maxTotalLossTrade && 
-             parseDate(String(maxTotalLossTrade["청산 시간"])) !== null && 
-             tradeDate > parseDate(String(maxTotalLossTrade["청산 시간"]))!))) {
+        if (totalRate < 0 && (totalRate < maxTotalLossRate ||
+            (totalRate === maxTotalLossRate &&
+                tradeDate &&
+                maxTotalLossTrade &&
+                parseDate(String(maxTotalLossTrade["청산 시간"])) !== null &&
+                tradeDate > parseDate(String(maxTotalLossTrade["청산 시간"]))!))) {
             maxTotalLossRate = totalRate;
             maxTotalLossTrade = trade;
             hasNegativeTotalRate = true;
@@ -130,4 +130,4 @@ export const calculateMaxProfitLossRateMetrics = (
             ? formatResult(maxTotalLossTrade, "전체 순손익률")
             : {value: '-', pnl: '-', time: '-'},
     };
-}; 
+};

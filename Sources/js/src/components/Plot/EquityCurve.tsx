@@ -1611,4 +1611,3 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
 };
 
 export default EquityCurve;
-

@@ -6,7 +6,7 @@ import './Performance.css';
 import React from 'react';
 import LoadingSpinner from '@/components/Common/LoadingSpinner';
 import NoDataMessage from '@/components/Common/NoDataMessage';
-import { useTradeFilter } from '@/components/TradeFilter';
+import {useTradeFilter} from '@/components/TradeFilter';
 
 /**
  * 페이지 제목 컴포넌트
@@ -60,10 +60,10 @@ interface PerformanceProps {
  * 성과 지표 컴포넌트
  * Report와 Streaks 컴포넌트 로딩 완료 여부를 추적하여 메인 로딩 스피너를 제어합니다.
  */
-const Performance: React.FC<PerformanceProps> = ({ config }) => {
+const Performance: React.FC<PerformanceProps> = ({config}) => {
     const [isReportReady, setIsReportReady] = useState(false);
     const [isStreaksReady, setIsStreaksReady] = useState(false);
-    const { filteredTrades } = useTradeFilter();
+    const {filteredTrades} = useTradeFilter();
 
     const handleReportReady = () => {
         setIsReportReady(true);
@@ -78,7 +78,7 @@ const Performance: React.FC<PerformanceProps> = ({ config }) => {
 
     // 거래 데이터가 없는 경우
     if (!filteredTrades || filteredTrades.length === 1) {
-        return <NoDataMessage message="거래 내역이 존재하지 않습니다." />;
+        return <NoDataMessage message="거래 내역이 존재하지 않습니다."/>;
     }
 
     return (
@@ -99,19 +99,19 @@ const Performance: React.FC<PerformanceProps> = ({ config }) => {
         >
             {/* 로딩 중이면 스피너 오버레이 표시 */}
             {isLoading && (
-                <div style={{ 
-                    position: 'absolute', 
-                    top: 0, 
-                    left: 0, 
-                    right: 0, 
-                    bottom: 0, 
-                    display: 'flex', 
+                <div style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'center', 
-                    backgroundColor: 'rgba(0, 0, 0, 0.7)', 
-                    zIndex: 1000 
+                    justifyContent: 'center',
+                    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+                    zIndex: 1000
                 }}>
-                    <LoadingSpinner />
+                    <LoadingSpinner/>
                 </div>
             )}
 
@@ -140,7 +140,7 @@ const Performance: React.FC<PerformanceProps> = ({ config }) => {
                     transition={{delay: 0.4, duration: 0.5}}
                     style={{background: 'transparent'}}
                 >
-                    <Report key="report" onReady={handleReportReady} config={config} />
+                    <Report key="report" onReady={handleReportReady} config={config}/>
                 </motion.div>
 
                 {/* Streaks 컴포넌트를 오른쪽 절반에 배치 (오른쪽 여백 추가) */}
@@ -153,7 +153,7 @@ const Performance: React.FC<PerformanceProps> = ({ config }) => {
                         background: 'transparent'
                     }}
                 >
-                    <Streaks key="streaks" onReady={handleStreaksReady} />
+                    <Streaks key="streaks" onReady={handleStreaksReady}/>
                 </motion.div>
             </motion.div>
 

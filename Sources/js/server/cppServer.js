@@ -25,11 +25,7 @@ function startCppProcess(activeClients, broadcastLog, baseDir) {
         return;
     }
 
-    const possiblePaths = [
-        path.join(path.dirname(process.execPath), 'Backtesting.exe'),
-        path.join(path.dirname(process.execPath), 'Backboard', 'Backtesting.exe'),
-        path.join('d:', 'Programming', 'Backtesting', 'Builds', 'Release', 'Release', 'Backtesting.exe')
-    ];
+    const possiblePaths = [path.join(path.dirname(process.execPath), 'Backtesting.exe'), path.join(path.dirname(process.execPath), 'Backboard', 'Backtesting.exe'), path.join('d:', 'Programming', 'Backtesting', 'Builds', 'Release', 'Release', 'Backtesting.exe')];
 
     // 세 후보 경로 중에서 매칭 시도
     let exePath = null;
@@ -53,9 +49,7 @@ function startCppProcess(activeClients, broadcastLog, baseDir) {
 
     try {
         cppProcess = spawn(exePath, ["--server"], {
-            cwd: baseDir,
-            stdio: ['pipe', 'pipe', 'pipe'],
-            windowsHide: false
+            cwd: baseDir, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: false
         });
 
         broadcastLog("INFO", `C++ 프로세스 PID: ${cppProcess.pid}`, null, null);
@@ -356,10 +350,7 @@ function writeSignedFileAtomic(editorConfigPath, obj, baseDir, broadcastLog) {
         delete remaining['로그 패널 높이'];
 
         cleanObj['에디터 설정'] = {
-            '서명': sig,
-            '로그 패널 열림': logOpen,
-            '로그 패널 높이': logHeight,
-            ...remaining,
+            '서명': sig, '로그 패널 열림': logOpen, '로그 패널 높이': logHeight, ...remaining,
         };
 
         const tmpPath = editorConfigPath + '.tmp';
@@ -459,9 +450,7 @@ function configToObj(config) {
         },
         "심볼 설정": Array.isArray(config && config.symbolConfigs) ? config.symbolConfigs : ((config && config.symbolConfigs) || []),
         "바 데이터 설정": (config && Array.isArray(config.barDataConfigs)) ? config.barDataConfigs.map((bar_cfg) => ({
-            "타임프레임": bar_cfg.timeframe,
-            "바 데이터 폴더": bar_cfg.klinesDirectory,
-            "바 데이터 유형": bar_cfg.barDataType,
+            "타임프레임": bar_cfg.timeframe, "바 데이터 폴더": bar_cfg.klinesDirectory, "바 데이터 유형": bar_cfg.barDataType,
         })) : [],
     };
 }
@@ -490,35 +479,26 @@ function objToConfig(obj) {
 
 function createDefaultConfig(projectDirectory) {
     return {
-        logPanelOpen: false,
-        logPanelHeight: 400,
-
-        projectDirectory: projectDirectory,
-        useBarMagnifier: true,
-
+        logPanelOpen: false, logPanelHeight: 400,
+        projectDirectory: projectDirectory, useBarMagnifier: true,
         symbolConfigs: [],
-
-        barDataConfigs: [
-            {
-                timeframe: null,
-                klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Continuous Klines')),
-                barDataType: '트레이딩'
-            },
-            {
-                timeframe: null,
-                klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Continuous Klines')),
-                barDataType: '돋보기'
-            },
-            {
-                timeframe: null,
-                klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Continuous Klines')),
-                barDataType: '참조'
-            },
-            {
-                timeframe: null,
-                klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Mark Price Klines')),
-                barDataType: '마크 가격'
-            }]
+        barDataConfigs: [{
+            timeframe: null,
+            klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Continuous Klines')),
+            barDataType: '트레이딩'
+        }, {
+            timeframe: null,
+            klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Continuous Klines')),
+            barDataType: '돋보기'
+        }, {
+            timeframe: null,
+            klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Continuous Klines')),
+            barDataType: '참조'
+        }, {
+            timeframe: null,
+            klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Mark Price Klines')),
+            barDataType: '마크 가격'
+        }]
     };
 }
 
@@ -534,8 +514,7 @@ function configToWs(config) {
         },
         "심볼 설정": (config && Array.isArray(config.symbolConfigs)) ? config.symbolConfigs : [],
         "바 데이터 설정": (config && Array.isArray(config.barDataConfigs)) ? config.barDataConfigs.map((b) => ({
-            ...b,
-            klinesDirectory: b.klinesDirectory ? toPosix(b.klinesDirectory) : b.klinesDirectory
+            ...b, klinesDirectory: b.klinesDirectory ? toPosix(b.klinesDirectory) : b.klinesDirectory
         })) : [],
     };
 }
@@ -543,13 +522,11 @@ function configToWs(config) {
 function wsToConfig(wsConfig) {
     if (!wsConfig || typeof wsConfig !== 'object') {
         return {
-            logPanelOpen: false,
-            logPanelHeight: 400,
+            logPanelOpen: false, logPanelHeight: 400,
 
             useBarMagnifier: true,
 
-            symbolConfigs: [],
-            barDataConfigs: []
+            symbolConfigs: [], barDataConfigs: []
         };
     }
 
@@ -706,8 +683,7 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
 
                     try {
                         activeClients.forEach(c => c.send(JSON.stringify({
-                            action: 'projectDirectoryInvalid',
-                            reason: '프로젝트 폴더를 입력해주세요.'
+                            action: 'projectDirectoryInvalid', reason: '프로젝트 폴더를 입력해주세요.'
                         })));
                     } catch (e) {
                         // 무시
@@ -724,8 +700,7 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
 
                     try {
                         activeClients.forEach(c => c.send(JSON.stringify({
-                            action: 'projectDirectoryInvalid',
-                            reason: 'Backboard.exe 파일을 찾을 수 없습니다.'
+                            action: 'projectDirectoryInvalid', reason: 'Backboard.exe 파일을 찾을 수 없습니다.'
                         })));
                     } catch (e) {
                         // 무시
@@ -753,8 +728,7 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
 
                         try {
                             activeClients.forEach(c => c.send(JSON.stringify({
-                                action: 'projectDirectoryInvalid',
-                                reason: `설정 파일 생성 실패: ${err.message}`
+                                action: 'projectDirectoryInvalid', reason: `설정 파일 생성 실패: ${err.message}`
                             })));
                         } catch (e) {
                             // 무시
@@ -763,8 +737,7 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
                 } else {
                     try {
                         activeClients.forEach(c => c.send(JSON.stringify({
-                            action: 'projectDirectoryInvalid',
-                            reason: '프로젝트 폴더 구조 생성 실패'
+                            action: 'projectDirectoryInvalid', reason: '프로젝트 폴더 구조 생성 실패'
                         })));
                     } catch (e) {
                         // 무시
@@ -805,8 +778,7 @@ async function handleProvideProjectDirectory(ws, projectDir, activeClients, broa
 
         if (!backboardExe) {
             ws.send(JSON.stringify({
-                action: "projectDirectoryInvalid",
-                reason: `Backboard.exe 파일을 찾을 수 없습니다.`
+                action: "projectDirectoryInvalid", reason: `Backboard.exe 파일을 찾을 수 없습니다.`
             }));
         } else if (await createProjectStructure(resolvedRoot)) {
             try {
@@ -841,19 +813,16 @@ async function handleProvideProjectDirectory(ws, projectDir, activeClients, broa
                 }
 
                 ws.send(JSON.stringify({
-                    action: "editorConfigLoaded",
-                    config: configToWs(editorConfig)
+                    action: "editorConfigLoaded", config: configToWs(editorConfig)
                 }));
             } catch (err) {
                 ws.send(JSON.stringify({
-                    action: "projectDirectoryInvalid",
-                    reason: `설정 파일 생성 실패: ${err.message}`
+                    action: "projectDirectoryInvalid", reason: `설정 파일 생성 실패: ${err.message}`
                 }));
             }
         } else {
             ws.send(JSON.stringify({
-                action: "projectDirectoryInvalid",
-                reason: `프로젝트 폴더 구조 생성 실패`
+                action: "projectDirectoryInvalid", reason: `프로젝트 폴더 구조 생성 실패`
             }));
         }
     }

@@ -25,10 +25,13 @@ function updateFpsLimit(newLimit: number) {
 }
 
 function initializeStars() {
-    if (!canvasWidth || !canvasHeight) return;
+    if (!canvasWidth || !canvasHeight) {
+        return;
+    }
+
     // 별이 아직 생성되지 않았을 때만 생성
     if (stars.length === 0) {
-        stars = Array.from({ length: 400 }).map(() => ({
+        stars = Array.from({length: 400}).map(() => ({
             relX: Math.random(),
             relY: Math.random(),
             radius: Math.random() * 1.5 + 0.5,
@@ -51,11 +54,13 @@ function animateStars(timestamp: number) {
         // 페이지가 보이지 않을 때는 초당 5프레임으로 제한
         const reducedFPS = 5;
         const reducedFrameTime = 1000 / reducedFPS;
+
         const elapsed = timestamp - lastFrameTime;
         if (elapsed < reducedFrameTime) {
             animationFrameId = requestAnimationFrame(animateStars);
             return;
         }
+
         lastFrameTime = timestamp - (elapsed % reducedFrameTime);
     } else {
         // 프레임 제한 로직 (페이지가 보일 때)
@@ -64,6 +69,7 @@ function animateStars(timestamp: number) {
             animationFrameId = requestAnimationFrame(animateStars);
             return;
         }
+
         lastFrameTime = timestamp - (elapsed % FRAME_TIME);
     }
 
@@ -73,6 +79,7 @@ function animateStars(timestamp: number) {
     // ctx가 null이 아님을 다시 한번 확인 (TypeScript를 위해)
     if (!ctx) {
         console.error("Worker context became null unexpectedly");
+
         // 애니메이션 루프는 계속 시도
         animationFrameId = requestAnimationFrame(animateStars);
         return;
@@ -82,6 +89,7 @@ function animateStars(timestamp: number) {
     stars.forEach(star => {
         // 투명도 업데이트
         star.opacity += star.opacitySpeed * star.opacityDirection;
+
         if (star.opacity > 0.9 || star.opacity < 0.1) {
             star.opacityDirection *= -1;
             star.opacity = Math.max(0.1, Math.min(0.9, star.opacity));
@@ -95,16 +103,20 @@ function animateStars(timestamp: number) {
         ctx?.save(); // 상태 저장
         ctx?.beginPath();
         ctx?.arc(currentX, currentY, star.radius, 0, Math.PI * 2);
+
         if (ctx) { // fillStyle, shadowColor, shadowBlur는 null이면 설정 불가
             ctx.fillStyle = `rgba(255, 215, 0, ${star.opacity})`;
             ctx.shadowColor = `rgba(255, 215, 0, ${star.opacity * 0.7})`;
             ctx.shadowBlur = star.radius * 4;
         }
+
         ctx?.fill();
+
         if (ctx) { // 그림자 리셋
-           ctx.shadowBlur = 0;
-           ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowColor = 'transparent';
         }
+
         ctx?.restore(); // 상태 복원
     });
 
@@ -117,14 +129,16 @@ function animateStars(timestamp: number) {
 
     // 렌더링된 비트맵을 메인 스레드로 전송
     try {
-      const bitmap = canvas.transferToImageBitmap();
-      // postMessage 호출 시 옵션 객체 사용
-      self.postMessage({ type: 'render', bitmap }, { transfer: [bitmap] });
+        const bitmap = canvas.transferToImageBitmap();
+
+        // postMessage 호출 시 옵션 객체 사용
+        self.postMessage({type: 'render', bitmap}, {transfer: [bitmap]});
     } catch (error) {
-      console.error("Failed to transfer bitmap:", error);
-      // 전송 실패 시 루프가 멈추지 않도록 다음 프레임 요청
-      animationFrameId = requestAnimationFrame(animateStars);
-      return; // 아래의 다음 프레임 요청 중복 방지
+        console.error("Failed to transfer bitmap:", error);
+
+        // 전송 실패 시 루프가 멈추지 않도록 다음 프레임 요청
+        animationFrameId = requestAnimationFrame(animateStars);
+        return; // 아래의 다음 프레임 요청 중복 방지
     }
 
     // 다음 프레임 요청
@@ -132,26 +146,33 @@ function animateStars(timestamp: number) {
 }
 
 self.onmessage = (event) => {
-    const { type, width, height } = event.data;
+    const {type, width, height} = event.data;
 
     if (type === 'init') {
         if (!width || !height) {
             console.error("Worker init message missing width or height");
+
             return;
         }
+
         // 워커 자체적으로 OffscreenCanvas 생성
         canvas = new OffscreenCanvas(width, height);
+
         const context = canvas.getContext('2d');
         if (!context) {
             console.error("Failed to get 2D context from OffscreenCanvas in worker");
-            self.postMessage({ type: 'error', message: 'Failed to get worker context' });
+            self.postMessage({type: 'error', message: 'Failed to get worker context'});
             canvas = null; // 생성 실패 시 null 처리
             return;
         }
+
         ctx = context as OffscreenCanvasRenderingContext2D;
+
         canvasWidth = width;
         canvasHeight = height;
+
         initializeStars();
+
         // 애니메이션 루프 시작
         if (!animationFrameId) {
             lastFrameTime = performance.now();
@@ -162,10 +183,12 @@ self.onmessage = (event) => {
             console.error("Worker resize message missing width or height");
             return;
         }
+
         // 내부 OffscreenCanvas 크기 조절
         if (canvas) {
             canvas.width = width;
             canvas.height = height;
+
             canvasWidth = width;
             canvasHeight = height;
             // 별 위치는 상대적이므로 다시 계산할 필요 없음
@@ -173,7 +196,7 @@ self.onmessage = (event) => {
     } else if (type === 'resumeAnimation') {
         // 페이지가 다시 표시될 때 애니메이션 재개
         isPageVisible = true;
-        
+
         // 애니메이션 프레임이 없으면 다시 시작
         if (!animationFrameId) {
             lastFrameTime = performance.now();
@@ -182,17 +205,17 @@ self.onmessage = (event) => {
     } else if (type === 'visibilityChange') {
         // 페이지 가시성 상태 업데이트
         isPageVisible = event.data.isVisible;
-        
+
         // 애니메이션 중인지 여부 추가 확인
         const isTabAnimating = event.data.isAnimating === true;
-        
+
         // 탭 애니메이션 중이면 별 애니메이션 프레임 레이트 낮추기
         if (isTabAnimating) {
             updateFpsLimit(15); // 탭 전환 애니메이션 중 FPS 제한
         } else {
             updateFpsLimit(30); // 일반 모드
         }
-        
+
         // 페이지가 다시 표시될 때 상태 최신화
         if (isPageVisible && !animationFrameId) {
             lastFrameTime = performance.now();
@@ -203,6 +226,7 @@ self.onmessage = (event) => {
     } else if (type === 'animatingStateChange') {
         // 애니메이션 상태 변경 시 FPS 조정
         const isTabAnimating = event.data.isAnimating === true;
+
         if (isTabAnimating) {
             updateFpsLimit(15); // 탭 전환 중 FPS 제한
         } else {
@@ -216,4 +240,4 @@ self.onclose = () => {
     if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
     }
-}; 
+};

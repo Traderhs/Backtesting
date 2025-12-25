@@ -1,6 +1,6 @@
 'use client'
 import React from 'react';
-import { motion } from 'framer-motion';
+import {motion} from 'framer-motion';
 
 interface NoDataMessageProps {
     message?: string;
@@ -10,16 +10,16 @@ interface NoDataMessageProps {
     customStyle?: React.CSSProperties;
 }
 
-const NoDataMessage: React.FC<NoDataMessageProps> = ({ 
-    message = "데이터가 존재하지 않습니다.",
-    fontSize = '1.5rem',
-    justifyContent = 'center',
-    alignItems = 'center',
-    customStyle = {}
-}) => (
+const NoDataMessage: React.FC<NoDataMessageProps> = ({
+                                                         message = "데이터가 존재하지 않습니다.",
+                                                         fontSize = '1.5rem',
+                                                         justifyContent = 'center',
+                                                         alignItems = 'center',
+                                                         customStyle = {}
+                                                     }) => (
     <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
+        initial={{opacity: 0}}
+        animate={{opacity: 1}}
         style={{
             width: '100%',
             height: '100%',
@@ -33,8 +33,8 @@ const NoDataMessage: React.FC<NoDataMessageProps> = ({
         }}
     >
         <motion.div
-            initial={{ y: -20, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
+            initial={{y: -20, opacity: 0}}
+            animate={{y: 0, opacity: 1}}
             transition={{
                 type: "spring",
                 stiffness: 300,
@@ -59,4 +59,4 @@ const NoDataMessage: React.FC<NoDataMessageProps> = ({
     </motion.div>
 );
 
-export default NoDataMessage; 
+export default NoDataMessage;

@@ -29,25 +29,25 @@ export const calculateBalanceMetrics = (
     filteredTrades.forEach((trade: TradeItem) => {
         const currentBalance = safeNumber(trade["현재 자금"]);
         const tradeDate = parseDate(String(trade["청산 시간"]));
-        
+
         // 현재 자금이 최고 자금보다 크거나, 같지만 더 최신인 경우 업데이트
-        if (currentBalance > highestBalanceValue || 
-            (currentBalance === highestBalanceValue && 
-             tradeDate && 
-             highestBalanceTrade && 
-             parseDate(String(highestBalanceTrade["청산 시간"])) !== null && 
-             tradeDate > parseDate(String(highestBalanceTrade["청산 시간"]))!)) {
+        if (currentBalance > highestBalanceValue ||
+            (currentBalance === highestBalanceValue &&
+                tradeDate &&
+                highestBalanceTrade &&
+                parseDate(String(highestBalanceTrade["청산 시간"])) !== null &&
+                tradeDate > parseDate(String(highestBalanceTrade["청산 시간"]))!)) {
             highestBalanceValue = currentBalance;
             highestBalanceTrade = trade;
         }
-        
+
         // 현재 자금이 최저 자금보다 작거나, 같지만 더 최신인 경우 업데이트
-        if (currentBalance < lowestBalanceValue || 
-            (currentBalance === lowestBalanceValue && 
-             tradeDate && 
-             lowestBalanceTrade && 
-             parseDate(String(lowestBalanceTrade["청산 시간"])) !== null && 
-             tradeDate > parseDate(String(lowestBalanceTrade["청산 시간"]))!)) {
+        if (currentBalance < lowestBalanceValue ||
+            (currentBalance === lowestBalanceValue &&
+                tradeDate &&
+                lowestBalanceTrade &&
+                parseDate(String(lowestBalanceTrade["청산 시간"])) !== null &&
+                tradeDate > parseDate(String(lowestBalanceTrade["청산 시간"]))!)) {
             lowestBalanceValue = currentBalance;
             lowestBalanceTrade = trade;
         }
@@ -73,4 +73,4 @@ export const calculateBalanceMetrics = (
         lowestBalanceTime,
         lowestBalancePercentage
     };
-}; 
+};

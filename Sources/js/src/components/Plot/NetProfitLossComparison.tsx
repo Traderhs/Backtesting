@@ -67,8 +67,8 @@ const CustomTooltip = ({active, payload, label}: any) => {
                     }}>순손익 합계</span>
                     <strong style={{
                         color: valueColor, // 수익에 따른 색상
-                        fontWeight: 600, 
-                        fontSize: '14px' 
+                        fontWeight: 600,
+                        fontSize: '14px'
                     }}>{formattedValue}</strong>
                 </div>
             </div>
@@ -584,7 +584,7 @@ const NetProfitLossComparison = React.memo(() => {
                 alignItems: 'center',
                 justifyContent: 'center'
             }}>
-                <NoDataMessage message="거래 내역이 존재하지 않습니다." />
+                <NoDataMessage message="거래 내역이 존재하지 않습니다."/>
             </div>
         );
     }

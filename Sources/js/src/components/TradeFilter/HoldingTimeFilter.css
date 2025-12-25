@@ -1,188 +1,188 @@
 /* 보유 시간 필터 스타일 */
 .holding-time-container {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  margin-top: 16px; /* 보유 시간 텍스트와 첫 필드 사이 간격 16px */
-  will-change: transform, opacity;
-  transform: translateZ(0);
-  backface-visibility: hidden;
-  transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    margin-top: 16px; /* 보유 시간 텍스트와 첫 필드 사이 간격 16px */
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
+    transition: all 0.25s ease;
 }
 
 /* 가로 행 스타일 */
 .holding-time-row {
-  display: flex;
-  flex-direction: row;
-  gap: 8px;
-  align-items: flex-start;
-  width: 100%;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: flex-start;
+    width: 100%;
 }
 
 /* 필드 컨테이너 스타일 */
 .holding-time-field {
-  position: relative;
-  transition: all 0.2s ease;
-  display: flex;
-  flex-direction: column;
+    position: relative;
+    transition: all 0.2s ease;
+    display: flex;
+    flex-direction: column;
 }
 
 /* 첫 번째 필드는 입력 필드이므로 더 넓게 */
 .holding-time-row .holding-time-field:first-child {
-  flex: 0 0 80px;
-  width: 80px;
+    flex: 0 0 80px;
+    width: 80px;
 }
 
 /* 두 번째 필드는 셀렉트 박스이므로 적당한 너비로 */
 .holding-time-row .holding-time-field:last-child {
-  flex: 0 0 68px;
-  width: 68px;
+    flex: 0 0 68px;
+    width: 68px;
 }
 
 /* 입력 컨테이너 스타일 - 외부 테두리 삭제 */
 .time-filter-input-container {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background-color: transparent;
-  border-radius: 8px;
-  padding: 4px 0;
-  border: none;
-  transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background-color: transparent;
+    border-radius: 8px;
+    padding: 4px 0;
+    border: none;
+    transition: all 0.2s ease;
 }
 
 /* 호버 시 그림자 효과 제거 */
 .time-filter-input-container:hover {
-  border-color: transparent;
-  box-shadow: none;
+    border-color: transparent;
+    box-shadow: none;
 }
 
 .time-filter-input-container:focus-within {
-  border-color: transparent;
-  box-shadow: none;
+    border-color: transparent;
+    box-shadow: none;
 }
 
 /* 단위 선택 드롭다운 스타일 */
 .holding-time-select {
-  position: relative;
-  width: 100%;
-  background-color: rgba(17, 17, 17, 0.8) !important;
-  border: 1px solid rgba(255, 215, 0, 0.3) !important;
-  padding: 6px 32px 6px 8px !important;
-  border-radius: 8px !important;
-  font-size: 14px !important;
-  color: #ffffff !important;
-  font-weight: 500 !important;
-  cursor: pointer !important;
-  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-  appearance: none;
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  background-image: none;
-  white-space: nowrap;
-  overflow: visible;
-  z-index: 100;
-  text-overflow: ellipsis;
+    position: relative;
+    width: 100%;
+    background-color: rgba(17, 17, 17, 0.8) !important;
+    border: 1px solid rgba(255, 215, 0, 0.3) !important;
+    padding: 6px 32px 6px 8px !important;
+    border-radius: 8px !important;
+    font-size: 14px !important;
+    color: #ffffff !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: none;
+    white-space: nowrap;
+    overflow: visible;
+    z-index: 100;
+    text-overflow: ellipsis;
 }
 
 .holding-time-select::after {
-  content: '';
-  position: absolute;
-  right: 8px;
-  top: 50%;
-  width: 0;
-  height: 0;
-  border-left: 4px solid transparent;
-  border-right: 4px solid transparent;
-  border-top: 6px solid rgba(255, 215, 0, 0.7);
-  transform: translateY(-50%);
-  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    content: '';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-top: 6px solid rgba(255, 215, 0, 0.7);
+    transform: translateY(-50%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 드롭다운이 열려있을 때 화살표 회전 및 테두리 효과 */
 .holding-time-field:has(.holding-time-options) .holding-time-select {
-  border-color: rgba(255, 215, 0, 0.8) !important;
-  box-shadow: 0 0 8px rgba(255, 215, 0, 0.4) !important;
+    border-color: rgba(255, 215, 0, 0.8) !important;
+    box-shadow: 0 0 8px rgba(255, 215, 0, 0.4) !important;
 }
 
 .holding-time-field:has(.holding-time-options) .holding-time-select::after {
-  transform: translateY(-50%) rotate(180deg);
+    transform: translateY(-50%) rotate(180deg);
 }
 
 .holding-time-select:focus {
-  outline: none !important;
+    outline: none !important;
 }
 
 .holding-time-select:hover {
-  background-color: rgba(17, 17, 17, 0.9) !important;
-  border-color: rgba(255, 215, 0, 0.8) !important;
+    background-color: rgba(17, 17, 17, 0.9) !important;
+    border-color: rgba(255, 215, 0, 0.8) !important;
 }
 
 /* 드롭다운 옵션 스타일 */
 .holding-time-options {
-  position: absolute;
-  top: 100%;
-  left: 0;
-  width: 100%;
-  max-height: 160px;
-  overflow-y: auto;
-  background-color: rgba(17, 17, 17, 1) !important;
-  border: 1px solid rgba(255, 215, 0, 0.4) !important;
-  border-radius: 8px !important;
-  z-index: 500;
-  margin-top: 4px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
-  
-  /* 드롭다운 애니메이션 효과 추가 */
-  transform: translateY(-8px);
-  opacity: 0;
-  animation: dropdown-appear 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    width: 100%;
+    max-height: 160px;
+    overflow-y: auto;
+    background-color: rgba(17, 17, 17, 1) !important;
+    border: 1px solid rgba(255, 215, 0, 0.4) !important;
+    border-radius: 8px !important;
+    z-index: 500;
+    margin-top: 4px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.8) !important;
+
+    /* 드롭다운 애니메이션 효과 추가 */
+    transform: translateY(-8px);
+    opacity: 0;
+    animation: dropdown-appear 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
 @keyframes dropdown-appear {
-  0% {
-    transform: translateY(-8px);
-    opacity: 0;
-  }
-  100% {
-    transform: translateY(0);
-    opacity: 1;
-  }
+    0% {
+        transform: translateY(-8px);
+        opacity: 0;
+    }
+    100% {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 .holding-time-option {
-  padding: 6px 8px;
-  cursor: pointer;
-  font-size: 14px;
-  color: white;
-  font-family: 'Inter', 'Pretendard', sans-serif;
-  transition: background-color 0.2s, color 0.2s;
+    padding: 6px 8px;
+    cursor: pointer;
+    font-size: 14px;
+    color: white;
+    font-family: 'Inter', 'Pretendard', sans-serif;
+    transition: background-color 0.2s, color 0.2s;
 }
 
 .holding-time-option:hover {
-  background-color: rgba(255, 215, 0, 0.15);
+    background-color: rgba(255, 215, 0, 0.15);
 }
 
 .holding-time-option.selected {
-  background-color: rgba(255, 215, 0, 0.2);
-  color: rgba(255, 215, 0, 0.9);
+    background-color: rgba(255, 215, 0, 0.2);
+    color: rgba(255, 215, 0, 0.9);
 }
 
 .holding-time-option.selected:hover {
-  background-color: rgba(255, 215, 0, 0.25);
+    background-color: rgba(255, 215, 0, 0.25);
 }
 
 /* 라벨 스타일 */
 .holding-time-label {
-  font-size: 11px !important;
-  color: rgba(255, 255, 255, 0.7) !important;
-  margin-top: 4px;
-  display: block;
-  padding-left: 2px;
-  transition: color 0.2s ease;
+    font-size: 11px !important;
+    color: rgba(255, 255, 255, 0.7) !important;
+    margin-top: 4px;
+    display: block;
+    padding-left: 2px;
+    transition: color 0.2s ease;
 }
 
 .holding-time-field:hover .holding-time-label {
-  color: rgba(255, 215, 0, 0.7) !important;
-} 
+    color: rgba(255, 215, 0, 0.7) !important;
+}

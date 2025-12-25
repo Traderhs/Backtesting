@@ -46,15 +46,15 @@ const textMeasureCache = new Map<string, number>();
 
 function measureText(text: string, font: string): number {
     const cacheKey = `${text}|${font}`;
-    
+
     if (textMeasureCache.has(cacheKey)) {
         return textMeasureCache.get(cacheKey)!;
     }
-    
+
     const context = getCanvasContext();
     context.font = font;
     const width = Math.ceil(context.measureText(text).width);
-    
+
     textMeasureCache.set(cacheKey, width);
     return width;
 }
@@ -79,15 +79,15 @@ function getSymbolPrecision(config: any, symbol: string): { pricePrecision: numb
         return precisionCache.get(symbol)!;
     }
 
-    const defaultPrecision = { pricePrecision: 2, qtyPrecision: 3 };
-    
-    if (!config?.심볼) {
+    const defaultPrecision = {pricePrecision: 2, qtyPrecision: 3};
+
+    if (!config?.["심볼"]) {
         precisionCache.set(symbol, defaultPrecision);
         return defaultPrecision;
     }
 
-    const symbolInfo = config.심볼.find((s: any) => s["심볼 이름"] === symbol);
-    
+    const symbolInfo = config["심볼"].find((s: any) => s["심볼 이름"] === symbol);
+
     if (!symbolInfo?.["거래소 정보"]) {
         precisionCache.set(symbol, defaultPrecision);
         return defaultPrecision;
@@ -99,7 +99,7 @@ function getSymbolPrecision(config: any, symbol: string): { pricePrecision: numb
     const qtyPrecision = qtyStep.toString().includes('.') ?
         qtyStep.toString().split('.')[1].length : 0;
 
-    const result = { pricePrecision, qtyPrecision };
+    const result = {pricePrecision, qtyPrecision};
     precisionCache.set(symbol, result);
     return result;
 }
@@ -126,11 +126,11 @@ function formatCellValue(value: string | number | undefined, key: string, config
     if (key === "거래 번호") {
         return `#${value}`;
     }
-    
+
     if (key === "보유 심볼 수") {
         return String(value) === "-" ? "-" : `${value}개`;
     }
-    
+
     if (key === "펀딩 수령 횟수" || key === "펀딩 지불 횟수" || key === "펀딩 횟수") {
         return String(value) === "-" ? "-" : `${value}회`;
     }
@@ -157,29 +157,29 @@ function formatCellValue(value: string | number | undefined, key: string, config
     if (DOLLAR_FIELDS.has(key)) {
         return `$${formatWithCommas(num, 2)}`;
     }
-    
+
     if (PERCENT_FIELDS.has(key)) {
         return `${formatWithCommas(num, 2)}%`;
     }
-    
+
     return formatWithCommas(num, 2);
 }
 
 // 가시 범위 계산
 function calculateVisibleRange(request: VisibleRangeRequest) {
-    const { scrollTop, containerHeight, rowHeight, totalRows, buffer } = request;
-    
+    const {scrollTop, containerHeight, rowHeight, totalRows, buffer} = request;
+
     const startIndex = Math.max(0, Math.floor(scrollTop / rowHeight) - buffer);
-    const endIndex = Math.min(totalRows - 1, 
+    const endIndex = Math.min(totalRows - 1,
         Math.ceil((scrollTop + containerHeight) / rowHeight) + buffer);
-    
-    return { start: startIndex, end: endIndex };
+
+    return {start: startIndex, end: endIndex};
 }
 
 // 메시지 핸들러
-self.onmessage = function(e: MessageEvent<WorkerMessage>) {
-    const { type, payload, requestId } = e.data;
-    
+self.onmessage = function (e: MessageEvent<WorkerMessage>) {
+    const {type, payload, requestId} = e.data;
+
     try {
         switch (type) {
             case 'INIT': {
@@ -189,14 +189,14 @@ self.onmessage = function(e: MessageEvent<WorkerMessage>) {
                 });
                 break;
             }
-            
+
             case 'MEASURE_TEXT': {
-                const { texts } = payload as TextMeasureRequest;
-                const results = texts.map(({ text, font, key }) => ({
+                const {texts} = payload as TextMeasureRequest;
+                const results = texts.map(({text, font, key}) => ({
                     key,
                     width: measureText(text, font)
                 }));
-                
+
                 self.postMessage({
                     type: 'MEASURE_TEXT_RESULT',
                     payload: results,
@@ -204,23 +204,23 @@ self.onmessage = function(e: MessageEvent<WorkerMessage>) {
                 });
                 break;
             }
-            
+
             case 'FORMAT_CELLS': {
-                const { trades, headers, config, startIndex, endIndex } = payload as FormatCellsRequest;
+                const {trades, headers, config, startIndex, endIndex} = payload as FormatCellsRequest;
                 const formattedCells = [];
-                
+
                 for (let i = startIndex; i <= endIndex && i < trades.length; i++) {
                     const trade = trades[i];
                     const symbol = String(trade["심볼 이름"] || "");
-                    const rowData: any = { index: i };
-                    
+                    const rowData: any = {index: i};
+
                     for (const header of headers) {
                         rowData[header] = formatCellValue(trade[header], header, config, symbol);
                     }
-                    
+
                     formattedCells.push(rowData);
                 }
-                
+
                 self.postMessage({
                     type: 'FORMAT_CELLS_RESULT',
                     payload: formattedCells,
@@ -228,10 +228,10 @@ self.onmessage = function(e: MessageEvent<WorkerMessage>) {
                 });
                 break;
             }
-            
+
             case 'CALCULATE_VISIBLE_RANGE': {
                 const result = calculateVisibleRange(payload as VisibleRangeRequest);
-                
+
                 self.postMessage({
                     type: 'CALCULATE_VISIBLE_RANGE_RESULT',
                     payload: result,
@@ -243,7 +243,7 @@ self.onmessage = function(e: MessageEvent<WorkerMessage>) {
     } catch (error) {
         self.postMessage({
             type: 'ERROR',
-            payload: { error: error instanceof Error ? error.message : 'Unknown error' },
+            payload: {error: error instanceof Error ? error.message : 'Unknown error'},
             requestId
         });
     }

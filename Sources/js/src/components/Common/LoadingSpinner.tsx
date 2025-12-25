@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, {useEffect} from 'react';
+import {motion, AnimatePresence} from 'framer-motion';
 import './LoadingSpinner.css';
 
 // 로딩 스피너 컴포넌트
@@ -7,7 +7,7 @@ const LoadingSpinner: React.FC = () => {
     // 컴포넌트 마운트 시 스크롤 방지
     useEffect(() => {
         document.body.style.overflow = 'hidden';
-        
+
         return () => {
             document.body.style.overflow = '';
         };
@@ -17,10 +17,10 @@ const LoadingSpinner: React.FC = () => {
         <AnimatePresence>
             <motion.div
                 className="loading-screen"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ 
+                initial={{opacity: 0}}
+                animate={{opacity: 1}}
+                exit={{opacity: 0}}
+                transition={{
                     duration: 0.3,
                     ease: [0.4, 0.0, 0.2, 1]
                 }}
@@ -55,11 +55,11 @@ const LoadingSpinner: React.FC = () => {
                         WebkitBackdropFilter: 'blur(4px)'
                     }}
                 />
-                
+
                 {/* 로딩 스피너 */}
                 <motion.div
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
+                    initial={{scale: 0.8, opacity: 0}}
+                    animate={{scale: 1, opacity: 1}}
                     transition={{
                         type: "spring",
                         stiffness: 200,
@@ -77,4 +77,4 @@ const LoadingSpinner: React.FC = () => {
     );
 };
 
-export default LoadingSpinner; 
+export default LoadingSpinner;

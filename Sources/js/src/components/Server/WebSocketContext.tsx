@@ -15,7 +15,8 @@ const WebSocketContext = createContext<WebSocketContextValue>({
     ws: null,
     serverError: false,
     projectDirectoryRequested: false,
-    clearProjectDirectoryRequest: () => {}
+    clearProjectDirectoryRequest: () => {
+    }
 });
 
 export const useWebSocket = () => useContext(WebSocketContext);
@@ -67,7 +68,11 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({children}) 
             socket.addEventListener('message', handleMessage);
 
             return () => {
-                try { socket.removeEventListener('message', handleMessage); } catch (e) {}
+                try {
+                    socket.removeEventListener('message', handleMessage);
+                } catch (e) {
+                    // 무시
+                }
                 socket.close();
             };
         } catch (e) {

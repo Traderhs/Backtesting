@@ -39,4 +39,4 @@ const ResetFilterButton: React.FC<ResetFilterButtonProps> = ({onClick}) => {
     );
 };
 
-export default ResetFilterButton; 
+export default ResetFilterButton;

@@ -1,4 +1,4 @@
-import { formatDollar } from '../components/Performance/Utils';
+import {formatDollar} from '../components/Performance/Utils';
 
 export interface FundingFeeMetrics {
     totalFundingCount: string;
@@ -37,7 +37,7 @@ export const calculateFundingFeeMetrics = (trades: any[]): FundingFeeMetrics => 
 
     // 거래 번호별로 그룹화
     const tradeGroups = new Map<string, any[]>();
-    
+
     trades.forEach(trade => {
         const tradeNumber = String(trade["거래 번호"] || "");
         if (!tradeGroups.has(tradeNumber)) {
@@ -51,7 +51,7 @@ export const calculateFundingFeeMetrics = (trades: any[]): FundingFeeMetrics => 
         // 해당 거래 번호에서 펀딩 횟수가 최대인 거래 찾기
         let maxFundingCountTrade = null;
         let maxFundingCount = 0;
-        
+
         groupTrades.forEach(trade => {
             const fundingCount = parseInt(String(trade["펀딩 횟수"] || 0));
             if (!isNaN(fundingCount) && fundingCount > maxFundingCount) {
@@ -59,15 +59,15 @@ export const calculateFundingFeeMetrics = (trades: any[]): FundingFeeMetrics => 
                 maxFundingCountTrade = trade;
             }
         });
-        
+
         // 최대 펀딩 횟수를 가진 거래에서 펀딩비와 횟수 추출
         if (maxFundingCountTrade && maxFundingCount > 0) {
             const fundingFee = parseFloat(String(maxFundingCountTrade["펀딩비"] || 0));
-            
+
             if (!isNaN(fundingFee)) {
                 totalFunding += fundingFee;
                 totalCount += maxFundingCount;
-                
+
                 if (fundingFee > 0) {
                     receivedFunding += fundingFee;
                     receivedCount += maxFundingCount;

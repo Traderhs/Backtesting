@@ -479,7 +479,7 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
         cachedMarkerPositionsRef.current.tradeLines.clear();
     };
 
-    // 마커 그리기 함수를 최적화 
+    // 마커 그리기 함수를 최적화
     const drawMarkers = useCallback(() => {
         // 렌더링 상태 업데이트
         isRenderingScheduledRef.current = false;
@@ -533,7 +533,7 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
         // 라인 정보 초기화
         tradeLinesRef.current = [];
 
-        // === 클리핑 영역 설정 === 
+        // === 클리핑 영역 설정 ===
         ctx.save();
 
         // 클리핑 영역 계산
@@ -774,7 +774,7 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
             // 캐시된 라인 정보
             const cachedTradeLines = cachedMarkerPositionsRef.current.tradeLines;
 
-            // 배치 그리기 위한 라인 정렬 
+            // 배치 그리기 위한 라인 정렬
             const profitLines: { x1: number, y1: number, x2: number, y2: number }[] = [];
             const lossLines: { x1: number, y1: number, x2: number, y2: number }[] = [];
 
@@ -1009,7 +1009,7 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
 
             const {x: mouseX, y: mouseY} = hoveredTrade; // 캔버스 기준 마우스 좌표
 
-            const horizontalOffset = 50; // 좌우 간격 
+            const horizontalOffset = 50; // 좌우 간격
             const verticalOffset = 25; // 수직 간격
 
             let top = mouseY + verticalOffset;

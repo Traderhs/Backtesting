@@ -1,7 +1,11 @@
 /* ===== 키프레임 애니메이션 ===== */
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 @keyframes sparkle {
@@ -175,7 +179,7 @@
     top: 0;
     left: 0;
     z-index: 40;
-    background-image: radial-gradient(circle, rgba(255,215,0,0.15) 1px, transparent 1px), linear-gradient(180deg, #0b0b0b 0%, #121212 100%);
+    background-image: radial-gradient(circle, rgba(255, 215, 0, 0.15) 1px, transparent 1px), linear-gradient(180deg, #0b0b0b 0%, #121212 100%);
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.6);
     position: relative;
     min-width: 18rem;
@@ -303,7 +307,7 @@
 }
 
 /* 활성 상태 강화 */
-.active-sidebar-button button, 
+.active-sidebar-button button,
 .active-symbol-button button {
     border: 1px solid rgba(255, 215, 0, 0.8) !important;
     box-shadow: 0 0 12px rgba(255, 215, 0, 0.3) !important;
@@ -352,4 +356,4 @@
 
 .chart-loading-disabled:not(.active) {
     background-color: rgba(17, 17, 17, 1) !important;
-} 
+}

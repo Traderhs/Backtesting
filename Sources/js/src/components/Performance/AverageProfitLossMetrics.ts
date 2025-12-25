@@ -153,4 +153,4 @@ export const calculateAverageProfitLossMetrics = (
         avgProfitTotalRate,
         avgLossTotalRate
     };
-}; 
+};

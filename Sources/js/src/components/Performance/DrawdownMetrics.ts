@@ -33,7 +33,7 @@ export const calculateDrawdownMetrics = (
     // 각 거래 번호별로 마지막 항목 찾기
     actualTrades.forEach(trade => {
         const tradeNumber = Number(trade["거래 번호"]);
-        
+
         // 0번 거래(초기값)는 건너뜀
         if (tradeNumber === 0) return;
 
@@ -89,7 +89,7 @@ export const calculateDrawdownMetrics = (
         // 드로우다운이 0보다 큰 경우 (드로우다운 상태)
         if (dd > 0) {
             wasInDrawdown = true;
-            
+
             // 드로우다운이 시작되지 않았으면 시작
             if (ddDownsideStartTime === null) {
                 ddDownsideStartTime = new Date(String(trade["청산 시간"]));
@@ -100,7 +100,7 @@ export const calculateDrawdownMetrics = (
                 currentDepth = dd;
                 ddDownsideEndTime = new Date(String(trade["청산 시간"]));
             }
-        } 
+        }
         // 드로우다운이 0이고 이전에 드로우다운 상태였으면
         else if (dd === 0 && wasInDrawdown) {
             // 드로우다운 정보가 있는 경우에만 처리
@@ -129,12 +129,12 @@ export const calculateDrawdownMetrics = (
     // 마지막 거래가 드로우다운 상태인 경우 처리
     if (wasInDrawdown && ddDownsideStartTime !== null && ddDownsideEndTime !== null && currentDepth > 0) {
         depthList.push(currentDepth);
-        
+
         // 하락 기간 계산
-        const downsideDuration = 
+        const downsideDuration =
             (ddDownsideEndTime.getTime() - ddDownsideStartTime.getTime()) / 1000;
         downsideList.push(downsideDuration);
-        
+
         // 아직 회복 중이므로 recoveryList에 추가하지 않음
     }
 
@@ -192,4 +192,4 @@ export const calculateDrawdownMetrics = (
         maxRecoveryDuration: maxRecoveryDuration !== '-' ? formatDuration(new Date(0), new Date(maxRecoveryDuration * 1000)) : '-',
         recoveryDurationRatio: recoveryDurationRatio
     };
-}; 
+};

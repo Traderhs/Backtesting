@@ -28,7 +28,7 @@ export const calculateFundingMetrics = (trades: any[]) => {
         const selectedTrade = (tradeGroup as any[]).reduce((best: any, current: any) => {
             const currentFundingCount = Number(current['펀딩 횟수']) || 0;
             const bestFundingCount = Number(best['펀딩 횟수']) || 0;
-            
+
             if (currentFundingCount > bestFundingCount) {
                 return current;
             } else if (currentFundingCount === bestFundingCount) {

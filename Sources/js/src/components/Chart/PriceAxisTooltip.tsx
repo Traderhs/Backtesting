@@ -45,11 +45,11 @@ const PriceAxisTooltip: React.FC<PriceAxisTooltipProps> = ({chart, containerRef,
 
                 // 현재 페인의 시리즈 가져오기
                 const panes = chart.panes();
-                
+
                 if (!panes || !panes[currentPaneIndex]) {
-                    console.warn("[PriceAxisTooltip] 현재 페인을 찾을 수 없음:", { 
-                        hasPanes: !!panes, 
-                        currentPaneIndex 
+                    console.warn("[PriceAxisTooltip] 현재 페인을 찾을 수 없음:", {
+                        hasPanes: !!panes,
+                        currentPaneIndex
                     });
                     setVisible(false);
                     return;
@@ -85,14 +85,14 @@ const PriceAxisTooltip: React.FC<PriceAxisTooltipProps> = ({chart, containerRef,
                     // 시리즈 유형에 따라 우선순위 부여하여 가격 찾기
                     // 우선순위: Candlestick > Bar > Area > Line > 기타
                     const seriesTypes = ["Candlestick", "Bar", "Area", "Line", "Baseline", "Histogram"];
-                    
+
                     for (const typeToFind of seriesTypes) {
                         // 해당 유형의 시리즈 찾기
                         for (const series of seriesArray) {
                             if (series.seriesType() === typeToFind) {
                                 try {
                                     const tempPrice = series.coordinateToPrice(point.y);
-                                    
+
                                     if (tempPrice !== null && tempPrice !== undefined) {
                                         price = tempPrice;
                                         break;
@@ -102,19 +102,19 @@ const PriceAxisTooltip: React.FC<PriceAxisTooltipProps> = ({chart, containerRef,
                                 }
                             }
                         }
-                        
+
                         // 가격을 찾았으면 반복 중단
                         if (price !== null && price !== undefined) {
                             break;
                         }
                     }
-                    
+
                     // 특정 유형 시리즈에서 가격을 못 찾은 경우, 모든 시리즈 순회
                     if (price === null || price === undefined) {
                         for (let i = 0; i < seriesArray.length; i++) {
                             try {
                                 const tempPrice = seriesArray[i].coordinateToPrice(point.y);
-                                
+
                                 if (tempPrice !== null && tempPrice !== undefined) {
                                     price = tempPrice;
                                     break;
@@ -212,4 +212,4 @@ const PriceAxisTooltip: React.FC<PriceAxisTooltipProps> = ({chart, containerRef,
     );
 };
 
-export default PriceAxisTooltip; 
+export default PriceAxisTooltip;

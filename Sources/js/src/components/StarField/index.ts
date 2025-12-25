@@ -1,1 +1,1 @@
-export { StarField } from './StarField';
+export {StarField} from './StarField';
