@@ -322,7 +322,7 @@ function AppContent() {
         }
     }, [chartConfig]);
 
-    // 문서 타이틀 동적 업데이트: 끝에 항상 "| Backboard"를 추가
+    // 문서 타이틀 동적 업데이트: 끝에 항상 "| BackBoard"를 추가
     useEffect(() => {
         const tabLabelMap: Record<string, string> = {
             StrategyEditor: '전략 에디터',
@@ -357,8 +357,8 @@ function AppContent() {
             title = tabLabelMap[tab] || tab;
         }
 
-        // 항상 Backboard 접미사 추가
-        document.title = `${title} | Backboard`;
+        // 항상 BackBoard 접미사 추가
+        document.title = `${title} | BackBoard`;
     }, [tab, chartConfig, activePlotType]);
 
     // config를 백그라운드에서 로딩 (3회 재시도). 실패해도 UI 오류는 표시하지 않음

@@ -839,7 +839,7 @@ export default function StrategyEditor() {
                     <div className="absolute inset-0 bg-black/60"/>
                     <div className="relative bg-[#0f1724] rounded-lg p-6 w-[520px] border border-gray-600 z-10">
                         <h3 className="text-lg font-semibold text-white mb-3">프로젝트 폴더 입력</h3>
-                        <p className="text-sm text-gray-300 mb-3">프로젝트 폴더를 입력하세요. 해당 폴더에 Backboard.exe가 존재해야 합니다.</p>
+                        <p className="text-sm text-gray-300 mb-3">프로젝트 폴더를 입력하세요. 해당 폴더에 BackBoard.exe가 존재해야 합니다.</p>
                         <Input type="text" value={projectDirectoryInput}
                                onChange={(e) => setProjectDirectoryInput(e.currentTarget.value)}
                                placeholder="프로젝트 폴더 경로"

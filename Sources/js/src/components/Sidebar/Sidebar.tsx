@@ -89,7 +89,7 @@ const SymbolLogoImage = memo(({
                 alt={symbolName}
                 onError={(e) => {
                     // 이미지 로드 실패 시 fallback 이미지로 대체
-                    (e.target as HTMLImageElement).src = "/Backboard/icon/fallback.png";
+                    (e.target as HTMLImageElement).src = "/BackBoard/Icons/fallback.png";
                 }}
             />
         </div>
@@ -396,7 +396,7 @@ export default function Sidebar({
                         className="sidebar-logo"
                     >
                         <span className="icon-placeholder"></span>
-                        Backboard
+                        BackBoard
                     </motion.h2>
                 </div>
 

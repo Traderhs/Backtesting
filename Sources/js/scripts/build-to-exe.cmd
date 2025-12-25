@@ -6,7 +6,7 @@ pushd "%~dp0.."
 echo [Build] PKG 기반 단일 EXE 빌드를 시작합니다.
 
 echo [Clean] 기존 빌드 파일을 정리합니다.
-if exist Backboard rmdir /s /q Backboard
+if exist BackBoard rmdir /s /q BackBoard
 if exist dist rmdir /s /q dist
 
 echo [React] React 앱 빌드를 시작합니다.
@@ -24,8 +24,8 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo [Copy] Backboard 폴더를 복사합니다.
-xcopy /E /I /H /Y Backboard dist\Backboard\
+echo [Copy] BackBoard 폴더를 복사합니다.
+xcopy /E /I /H /Y BackBoard dist\BackBoard\
 
 echo [Complete] PKG 빌드가 완료되었습니다!
 
