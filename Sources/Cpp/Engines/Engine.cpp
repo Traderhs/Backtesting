@@ -793,7 +793,7 @@ void Engine::IsValidStrategy() {
 
 void Engine::IsValidIndicators() {
   try {
-    const auto& strategy_name = strategy_->GetName();
+    const auto& strategy_name = strategy_->GetStrategyName();
 
     // 지표들을 로딩
     set<string> names;
@@ -801,7 +801,8 @@ void Engine::IsValidIndicators() {
     for (const auto& indicator : strategy_->GetIndicators()) {
       // 각 전략 내에서 지표들은 같은 이름을 가질 수 없도록 검사
       // 로그 및 성과 분석 시 같은 이름은 분석이 힘들어지므로 원칙적 금지
-      if (string name = indicator->GetName(); !names.insert(name).second) {
+      if (string name = indicator->GetIndicatorName();
+          !names.insert(name).second) {
         duplicate_name = name;
         break;
       }
@@ -818,7 +819,7 @@ void Engine::IsValidIndicators() {
     }
 
     for (const auto& indicator : indicators_) {
-      const auto& indicator_name = indicator->GetName();
+      const auto& indicator_name = indicator->GetIndicatorName();
 
       // 지표 타임프레임 유효성 검사
       if (const string& timeframe = indicator->GetTimeframe();

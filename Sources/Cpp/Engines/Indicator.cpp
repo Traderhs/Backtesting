@@ -1,6 +1,5 @@
 // 표준 라이브러리
-#include <algorithm>   // 최적화 알고리즘용
-#include <filesystem>  // 파일 존재 여부 확인용 추가
+#include <algorithm>
 #include <format>
 #include <regex>
 
@@ -17,7 +16,6 @@
 
 // 네임 스페이스
 using namespace backtesting::utils;
-namespace fs = std::filesystem;
 
 namespace backtesting::indicator {
 
@@ -387,7 +385,7 @@ void Indicator::SetHigherTimeframeIndicator() {
 }
 
 void Indicator::SetSourcePath(const string& source_path) {
-  if (!filesystem::exists(source_path)) {
+  if (!fs::exists(source_path)) {
     Logger::LogAndThrowError(
         format("[{}] 지표의 소스 파일 경로 [{}]이(가) 존재하지 않습니다.",
                name_, source_path),
@@ -398,7 +396,7 @@ void Indicator::SetSourcePath(const string& source_path) {
 }
 
 void Indicator::SetHeaderPath(const string& header_path) {
-  if (!filesystem::exists(header_path)) {
+  if (!fs::exists(header_path)) {
     Logger::LogAndThrowError(
         format("[{}] 지표의 헤더 파일 경로 [{}]이(가) 존재하지 않습니다.",
                name_, header_path),
@@ -408,11 +406,26 @@ void Indicator::SetHeaderPath(const string& header_path) {
   header_file_path_ = header_path;
 }
 
-string Indicator::GetName() const { return name_; }
+string Indicator::GetIndicatorName() const { return name_; }
 
-string Indicator::GetClassName() const { return class_name_; }
+string Indicator::GetIndicatorClassName() const { return class_name_; }
 
 string Indicator::GetTimeframe() const { return timeframe_; }
+
+string Indicator::GetSourcePath() { return cpp_file_path_; }
+
+string Indicator::GetHeaderPath() { return header_file_path_; }
+
+bool Indicator::IsIndicatorClassSaved(const string& class_name) {
+  return ranges::find(saved_indicator_classes_, class_name) !=
+         saved_indicator_classes_.end();
+}
+
+void Indicator::AddSavedIndicatorClass(const string& class_name) {
+  if (!IsIndicatorClassSaved(class_name)) {
+    saved_indicator_classes_.push_back(class_name);
+  }
+}
 
 void Indicator::IncreaseCreationCounter() { creation_counter_++; }
 
@@ -423,6 +436,7 @@ bool Indicator::SetFilePath(const string& path, const bool is_cpp) {
     } else {
       header_file_path_ = path;
     }
+
     return true;
   }
 
@@ -454,19 +468,21 @@ bool Indicator::SetFilePath(const string& path, const bool is_cpp) {
   return false;
 }
 
-bool Indicator::IsIndicatorClassSaved(const string& class_name) {
-  return ranges::find(saved_indicator_classes_, class_name) !=
-         saved_indicator_classes_.end();
-}
+string Indicator::FindFileInParent(const string& filename) {
+  try {
+    const fs::path parent =
+        fs::path(Config::GetProjectDirectory()).parent_path();
 
-void Indicator::AddSavedIndicatorClass(const string& class_name) {
-  if (!IsIndicatorClassSaved(class_name)) {
-    saved_indicator_classes_.push_back(class_name);
+    for (const auto& entry : fs::recursive_directory_iterator(parent)) {
+      if (entry.is_regular_file() && entry.path().filename() == filename) {
+        return entry.path().string();
+      }
+    }
+  } catch (...) {
+    // 검색 중 오류 발생 시 빈 문자열 반환
   }
+
+  return {};
 }
-
-string Indicator::GetSourcePath() { return cpp_file_path_; }
-
-string Indicator::GetHeaderPath() { return header_file_path_; }
 
 }  // namespace backtesting::indicator
