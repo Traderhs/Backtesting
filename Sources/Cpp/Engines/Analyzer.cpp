@@ -38,6 +38,7 @@
 #include "Engines/Trade.hpp"
 
 // 네임 스페이스
+namespace fs = filesystem;
 namespace backtesting {
 using namespace analyzer;
 using namespace engine;
@@ -150,11 +151,10 @@ void Analyzer::CreateDirectories() {
     main_directory_ = main_directory;
 
     // 지표 데이터 저장 폴더 생성
-    filesystem::create_directories(main_directory + "/Backboard/Indicators");
+    fs::create_directories(main_directory + "/Backboard/Indicators");
 
     // 소스 코드 저장 폴더 생성
-    filesystem::create_directories(
-        format("{}/Backboard/Sources", main_directory));
+    fs::create_directories(format("{}/Backboard/Sources", main_directory));
   } catch (const exception& e) {
     logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
     Logger::LogAndThrowError("폴더 생성 중 에러가 발생했습니다.", __FILE__,
@@ -225,12 +225,12 @@ void Analyzer::SaveIndicatorData() {
     // 모든 전략의 각 지표를 순회하며 저장
     for (const auto& indicator : indicators) {
       // OHLCV와 플롯하지 않는 지표는 저장하지 않음
-      const auto& indicator_name = indicator->GetName();
-      if (indicator_name == strategy->open.GetName() ||
-          indicator_name == strategy->high.GetName() ||
-          indicator_name == strategy->low.GetName() ||
-          indicator_name == strategy->close.GetName() ||
-          indicator_name == strategy->volume.GetName() ||
+      const auto& indicator_name = indicator->GetIndicatorName();
+      if (indicator_name == strategy->open.GetIndicatorName() ||
+          indicator_name == strategy->high.GetIndicatorName() ||
+          indicator_name == strategy->low.GetIndicatorName() ||
+          indicator_name == strategy->close.GetIndicatorName() ||
+          indicator_name == strategy->volume.GetIndicatorName() ||
           indicator->plot_type_ == "Null") {
         continue;
       }
@@ -453,7 +453,7 @@ void Analyzer::SaveTradeList() const {
 
   ordered_json trade_list_json = json::array();  // JSON 배열로 시작
   const string& strategy_name =
-      engine_->strategy_->GetName();  // 전략 이름 캐싱
+      engine_->strategy_->GetStrategyName();  // 전략 이름 캐싱
 
   for (const auto& trade : trade_list_) {
     const auto trade_num = trade.GetTradeNumber();
@@ -517,8 +517,8 @@ void Analyzer::SaveConfig() {
   const auto& reference_bar_data = bar_->GetAllReferenceBarData();
   const auto& mark_price_bar_data = bar_->GetBarData(MARK_PRICE, "");
   const auto& strategy = engine_->strategy_;
-  const auto& strategy_class_name = strategy->GetClassName();
-  const auto& strategy_name = strategy->GetName();
+  const auto& strategy_class_name = strategy->GetStrategyClassName();
+  const auto& strategy_name = strategy->GetStrategyName();
   const auto use_bar_magnifier = *config_->GetUseBarMagnifier();
   const int num_symbols = trading_bar_data->GetNumSymbols();
 
@@ -745,15 +745,15 @@ void Analyzer::SaveConfig() {
   config["지표"] = ordered_json::array();
 
   // OHLCV 지표 이름 캐싱
-  const string open_name = strategy->open.GetName();
-  const string high_name = strategy->high.GetName();
-  const string low_name = strategy->low.GetName();
-  const string close_name = strategy->close.GetName();
-  const string volume_name = strategy->volume.GetName();
+  const string open_name = strategy->open.GetIndicatorName();
+  const string high_name = strategy->high.GetIndicatorName();
+  const string low_name = strategy->low.GetIndicatorName();
+  const string close_name = strategy->close.GetIndicatorName();
+  const string volume_name = strategy->volume.GetIndicatorName();
 
   // 필터링된 지표만 처리
   for (const auto& indicator : indicators) {
-    const auto& indicator_name = indicator->GetName();
+    const auto& indicator_name = indicator->GetIndicatorName();
 
     // OHLCV를 제외한 지표 정보 기록
     if (indicator_name == open_name || indicator_name == high_name ||
@@ -762,7 +762,7 @@ void Analyzer::SaveConfig() {
       continue;
     }
 
-    const auto& indicator_class_name = indicator->GetClassName();
+    const auto& indicator_class_name = indicator->GetIndicatorClassName();
 
     ordered_json indicator_json = {
         {"데이터 경로", format("{}/{}/{}.parquet", indicators_path,
@@ -845,85 +845,60 @@ void Analyzer::SaveConfig() {
 void Analyzer::SaveSourcesAndHeaders() {
   try {
     const auto& strategy = engine_->strategy_;
-    const auto& strategy_class_name = strategy->GetClassName();
+    const auto& strategy_class_name = strategy->GetStrategyClassName();
     set<string> saved_indicator_classes;  // 이미 저장한 지표 클래스명 집합
 
-    // 보조: 프로젝트 상위 폴더에서 파일을 검색하는 헬퍼
-    const auto find_file_in_parent = [&](const string& filename) -> string {
-      try {
-        const filesystem::path parent =
-            filesystem::path(Config::GetProjectDirectory()).parent_path();
-
-        for (const auto& entry :
-             filesystem::recursive_directory_iterator(parent)) {
-          if (entry.is_regular_file() && entry.path().filename() == filename) {
-            return entry.path().string();
-          }
-        }
-      } catch (...) {
-        // 검색 중 오류 발생 시 무시하고 빈 문자열 반환
-      }
-
-      return {};
-    };
-
-    // 전략 소스 파일 저장 (존재하지 않으면 프로젝트 상위 폴더에서 검색)
+    // 전략 소스 파일 저장
     const auto& source_path = strategy->GetSourcePath();
     string source_path_to_copy;
 
-    if (!source_path.empty() && filesystem::exists(source_path)) {
+    if (!source_path.empty() && fs::exists(source_path)) {
       source_path_to_copy = source_path;
     } else {
-      source_path_to_copy = find_file_in_parent(strategy_class_name + ".cpp");
-
-      if (source_path_to_copy.empty()) {
-        logger_->Log(WARN_L,
-                     format("전략 소스 파일을 찾을 수 없습니다: {}",
-                            strategy_class_name + ".cpp"),
-                     __FILE__, __LINE__, true);
-      }
+      // 프로젝트에서 받아온 경로가 없으면 단순히 경고만 로깅
+      logger_->Log(WARN_L,
+                   format("[{}] 전략의 소스 파일을 찾을 수 없습니다.",
+                          strategy_class_name),
+                   __FILE__, __LINE__, true);
     }
 
     if (!source_path_to_copy.empty()) {
-      filesystem::copy(source_path_to_copy,
-                       format("{}/Backboard/Sources/{}.cpp", main_directory_,
-                              strategy_class_name));
+      fs::copy(source_path_to_copy,
+               format("{}/Backboard/Sources/{}.cpp", main_directory_,
+                      strategy_class_name));
     }
 
-    // 전략 헤더 파일 저장 (존재하지 않으면 프로젝트 상위 폴더에서 검색)
+    // 전략 헤더 파일 저장
     const auto& header_path = strategy->GetHeaderPath();
     string header_path_to_copy;
 
-    if (!header_path.empty() && filesystem::exists(header_path)) {
+    if (!header_path.empty() && fs::exists(header_path)) {
       header_path_to_copy = header_path;
     } else {
-      header_path_to_copy = find_file_in_parent(strategy_class_name + ".hpp");
-
-      if (header_path_to_copy.empty()) {
-        logger_->Log(WARN_L,
-                     format("전략 헤더 파일을 찾을 수 없습니다: {}",
-                            strategy_class_name + ".hpp"),
-                     __FILE__, __LINE__, true);
-      }
+      // 프로젝트에서 받아온 경로가 없으면 단순히 경고만 로깅
+      logger_->Log(WARN_L,
+                   format("[{}] 전략의 헤더 파일을 찾을 수 없습니다.",
+                          strategy_class_name),
+                   __FILE__, __LINE__, true);
     }
 
     if (!header_path_to_copy.empty()) {
-      filesystem::copy(header_path_to_copy,
-                       format("{}/Backboard/Sources/{}.hpp", main_directory_,
-                              strategy_class_name));
+      fs::copy(header_path_to_copy,
+               format("{}/Backboard/Sources/{}.hpp", main_directory_,
+                      strategy_class_name));
     }
 
     // 전략에서 사용하는 지표 소스 코드 저장
     for (const auto& indicator : strategy->GetIndicators()) {
-      const auto& indicator_name = indicator->GetName();
-      const auto& indicator_class_name = indicator->GetClassName();
+      const auto& indicator_name = indicator->GetIndicatorName();
+      const auto& indicator_class_name = indicator->GetIndicatorClassName();
 
       // OHLCV는 저장하지 않음
-      if (indicator_name == strategy->open.GetName() ||
-          indicator_name == strategy->high.GetName() ||
-          indicator_name == strategy->low.GetName() ||
-          indicator_name == strategy->close.GetName() ||
-          indicator_name == strategy->volume.GetName()) {
+      if (indicator_name == strategy->open.GetIndicatorName() ||
+          indicator_name == strategy->high.GetIndicatorName() ||
+          indicator_name == strategy->low.GetIndicatorName() ||
+          indicator_name == strategy->close.GetIndicatorName() ||
+          indicator_name == strategy->volume.GetIndicatorName()) {
         continue;
       }
 
@@ -934,64 +909,53 @@ void Analyzer::SaveSourcesAndHeaders() {
 
       saved_indicator_classes.insert(indicator_class_name);
 
-      // 소스 파일 저장 (존재하지 않으면 프로젝트 상위 폴더에서 검색)
+      // 소스 파일 저장
       const auto& indicator_source_path = indicator->GetSourcePath();
       string indicator_source_path_to_copy;
 
-      if (!indicator_source_path.empty() &&
-          filesystem::exists(indicator_source_path)) {
+      if (!indicator_source_path.empty() && fs::exists(indicator_source_path)) {
         indicator_source_path_to_copy = indicator_source_path;
       } else {
-        indicator_source_path_to_copy =
-            find_file_in_parent(indicator_class_name + ".cpp");
-
-        if (indicator_source_path_to_copy.empty()) {
-          logger_->Log(WARN_L,
-                       format("지표 소스 파일을 찾을 수 없습니다: {}",
-                              indicator_class_name + ".cpp"),
-                       __FILE__, __LINE__, true);
-        }
+        // 프로젝트에서 받아온 경로가 없으면 단순히 경고만 로깅
+        logger_->Log(WARN_L,
+                     format("[{}] 지표의 소스 파일을 찾을 수 없습니다.",
+                            indicator_class_name),
+                     __FILE__, __LINE__, true);
       }
 
       if (!indicator_source_path_to_copy.empty()) {
-        filesystem::copy(indicator_source_path_to_copy,
-                         format("{}/Backboard/Sources/{}.cpp", main_directory_,
-                                indicator_class_name));
+        fs::copy(indicator_source_path_to_copy,
+                 format("{}/Backboard/Sources/{}.cpp", main_directory_,
+                        indicator_class_name));
       }
 
-      // 헤더 파일 저장 (존재하지 않으면 프로젝트 상위 폴더에서 검색)
+      // 헤더 파일 저장
       const auto& indicator_header_path = indicator->GetHeaderPath();
       string indicator_header_path_to_copy;
 
-      if (!indicator_header_path.empty() &&
-          filesystem::exists(indicator_header_path)) {
+      if (!indicator_header_path.empty() && fs::exists(indicator_header_path)) {
         indicator_header_path_to_copy = indicator_header_path;
       } else {
-        indicator_header_path_to_copy =
-            find_file_in_parent(indicator_class_name + ".hpp");
-
-        if (indicator_header_path_to_copy.empty()) {
-          logger_->Log(WARN_L,
-                       format("지표 헤더 파일을 찾을 수 없습니다: {}",
-                              indicator_class_name + ".hpp"),
-                       __FILE__, __LINE__, true);
-        }
+        // 프로젝트에서 받아온 경로가 비어있으면 단순히 경고만 로깅
+        logger_->Log(WARN_L,
+                     format("[{}] 지표의 헤더 파일을 찾을 수 없습니다.",
+                            indicator_class_name),
+                     __FILE__, __LINE__, true);
       }
 
       if (!indicator_header_path_to_copy.empty()) {
-        filesystem::copy(indicator_header_path_to_copy,
-                         format("{}/Backboard/Sources/{}.hpp", main_directory_,
-                                indicator_class_name));
+        fs::copy(indicator_header_path_to_copy,
+                 format("{}/Backboard/Sources/{}.hpp", main_directory_,
+                        indicator_class_name));
       }
     }
 
-    logger_->Log(INFO_L,
-                 "전략과 지표의 헤더 파일 및 소스 파일이 저장되었습니다.",
+    logger_->Log(INFO_L, "전략과 지표의 헤더 및 소스 파일이 저장되었습니다.",
                  __FILE__, __LINE__, true);
   } catch (const exception& e) {
     logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
     Logger::LogAndThrowError(
-        "전략과 지표의 헤더 파일 및 소스 파일을 저장하는 중 오류가 "
+        "전략과 지표의 헤더 및 소스 파일을 저장하는 중 오류가 "
         "발생했습니다.",
         __FILE__, __LINE__);
   }
@@ -1004,12 +968,12 @@ void Analyzer::SaveBackboard() const {
         Config::GetProjectDirectory() + "/Sources/js/Backboard Package";
 
     // Backboard Package가 존재하는지 확인
-    if (filesystem::exists(backboard_package_path) &&
-        filesystem::is_directory(backboard_package_path)) {
+    if (fs::exists(backboard_package_path) &&
+        fs::is_directory(backboard_package_path)) {
       // 기존 패키지가 있으면 복사
-      filesystem::copy(backboard_package_path, main_directory_,
-                       filesystem::copy_options::recursive |
-                           filesystem::copy_options::overwrite_existing);
+      fs::copy(
+          backboard_package_path, main_directory_,
+          fs::copy_options::recursive | fs::copy_options::overwrite_existing);
     } else {
       // 패키지가 없으면 GitHub 릴리즈에서 다운로드
       logger_->Log(
@@ -1033,8 +997,8 @@ void Analyzer::SaveBacktestingLog() const {
     logger_->FlushAllBuffers();
     logger_->backtesting_log_.close();
 
-    filesystem::rename(logger_->backtesting_log_temp_path_,
-                       main_directory_ + "/Backboard/backtesting.log");
+    fs::rename(logger_->backtesting_log_temp_path_,
+               main_directory_ + "/Backboard/backtesting.log");
   } catch (const exception& e) {
     Logger::LogAndThrowError(
         "백테스팅 로그 파일을 저장하는 데 오류가 발생했습니다.: " +
@@ -1248,7 +1212,7 @@ void Analyzer::ParsePlotInfo(ordered_json& indicator_json,
 
 void Analyzer::DownloadBackboardFromGitHub() const {
   try {
-    const string temp_dir = filesystem::temp_directory_path().string();
+    const string temp_dir = fs::temp_directory_path().string();
     const string backboard_exe_url =
         "https://github.com/Traderhs/Backtesting/releases/latest/download/"
         "Backboard.exe";
@@ -1327,22 +1291,20 @@ void Analyzer::DownloadBackboardFromGitHub() const {
     }
 
     // 다운로드된 파일 크기 확인
-    if (!filesystem::exists(exe_temp_path) ||
-        filesystem::file_size(exe_temp_path) == 0) {
+    if (!fs::exists(exe_temp_path) || fs::file_size(exe_temp_path) == 0) {
       Logger::LogAndThrowError(
           "Backboard.exe 파일이 올바르게 다운로드되지 않았습니다.", __FILE__,
           __LINE__);
     }
 
-    if (!filesystem::exists(zip_temp_path) ||
-        filesystem::file_size(zip_temp_path) == 0) {
+    if (!fs::exists(zip_temp_path) || fs::file_size(zip_temp_path) == 0) {
       Logger::LogAndThrowError(
           "Backboard.zip 파일이 올바르게 다운로드되지 않았습니다.", __FILE__,
           __LINE__);
     }
 
     // ZIP 파일 압축 해제
-    filesystem::create_directories(extract_temp_path);
+    fs::create_directories(extract_temp_path);
 
     const string extract_cmd = format(
         "powershell -Command \"try {{ Expand-Archive -Path '{}' "
@@ -1357,56 +1319,56 @@ void Analyzer::DownloadBackboardFromGitHub() const {
     }
 
     // Backboard.exe 복사
-    filesystem::copy_file(exe_temp_path, main_directory_ + "/Backboard.exe",
-                          filesystem::copy_options::overwrite_existing);
+    fs::copy_file(exe_temp_path, main_directory_ + "/Backboard.exe",
+                  fs::copy_options::overwrite_existing);
 
     // 압축 해제된 폴더에서 Backboard 폴더 찾기
     const string backboard_dest_path = main_directory_ + "/Backboard";
-    filesystem::create_directories(backboard_dest_path);
+    fs::create_directories(backboard_dest_path);
 
     if (const string backboard_folder_path = extract_temp_path + "/Backboard";
-        filesystem::exists(backboard_folder_path) &&
-        filesystem::is_directory(backboard_folder_path)) {
+        fs::exists(backboard_folder_path) &&
+        fs::is_directory(backboard_folder_path)) {
       // Backboard 폴더 안쪽 내용을 main_directory_/Backboard로 복사
       for (const auto& entry :
-           filesystem::recursive_directory_iterator(backboard_folder_path)) {
+           fs::recursive_directory_iterator(backboard_folder_path)) {
         if (entry.is_regular_file()) {
           const auto relative_path =
-              filesystem::relative(entry.path(), backboard_folder_path);
+              fs::relative(entry.path(), backboard_folder_path);
           const auto dest_path = backboard_dest_path / relative_path;
 
           // 목적지 디렉토리 생성
-          filesystem::create_directories(dest_path.parent_path());
+          fs::create_directories(dest_path.parent_path());
 
           // 파일 복사
-          filesystem::copy_file(entry.path(), dest_path,
-                                filesystem::copy_options::overwrite_existing);
+          fs::copy_file(entry.path(), dest_path,
+                        fs::copy_options::overwrite_existing);
         }
       }
     } else {
       // Backboard 폴더가 없으면 전체 내용을 main_directory_/Backboard로 복사
       for (const auto& entry :
-           filesystem::recursive_directory_iterator(extract_temp_path)) {
+           fs::recursive_directory_iterator(extract_temp_path)) {
         if (entry.is_regular_file()) {
           const auto relative_path =
-              filesystem::relative(entry.path(), extract_temp_path);
+              fs::relative(entry.path(), extract_temp_path);
           const auto dest_path = backboard_dest_path / relative_path;
 
           // 목적지 디렉토리 생성
-          filesystem::create_directories(dest_path.parent_path());
+          fs::create_directories(dest_path.parent_path());
 
           // 파일 복사
-          filesystem::copy_file(entry.path(), dest_path,
-                                filesystem::copy_options::overwrite_existing);
+          fs::copy_file(entry.path(), dest_path,
+                        fs::copy_options::overwrite_existing);
         }
       }
     }
 
     // 임시 파일 정리
     try {
-      filesystem::remove(exe_temp_path);
-      filesystem::remove(zip_temp_path);
-      filesystem::remove_all(extract_temp_path);
+      fs::remove(exe_temp_path);
+      fs::remove(zip_temp_path);
+      fs::remove_all(extract_temp_path);
     } catch (const exception& e) {
       logger_->Log(WARN_L, format("임시 파일 정리 중 오류 발생: {}", e.what()),
                    __FILE__, __LINE__, true);

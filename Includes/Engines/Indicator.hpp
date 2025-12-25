@@ -1,6 +1,7 @@
 #pragma once
 
 // 표준 라이브러리
+#include <filesystem>
 #include <format>
 #include <memory>
 #include <vector>
@@ -40,6 +41,7 @@ class Logger;
 
 // 네임 스페이스
 using namespace std;
+namespace fs = filesystem;
 using namespace backtesting;  // 커스텀 지표에서 필요
 namespace backtesting {
 using namespace bar;
@@ -115,10 +117,10 @@ class Indicator {
   void SetHeaderPath(const string& header_path);
 
   /// 해당 지표의 이름을 반환하는 함수
-  [[nodiscard]] string GetName() const;
+  [[nodiscard]] string GetIndicatorName() const;
 
   /// 해당 지표의 클래스 이름을 반환하는 함수
-  [[nodiscard]] string GetClassName() const;
+  [[nodiscard]] string GetIndicatorClassName() const;
 
   /// 해당 지표의 타임프레임을 반환하는 함수
   [[nodiscard]] string GetTimeframe() const;
@@ -158,27 +160,63 @@ class Indicator {
     class_name_ = class_name;
 
     // 헤더 파일 경로 후보들
-    const vector<string>& header_candidates = {
+    const vector<string>& header_paths = {
         format("{}/Includes/Indicators/{}.hpp", project_directory, class_name),
         format("{}/Includes/Indicators/{}.hpp", project_directory, name_)};
 
-    // 소스 파일 경로 후보들
-    const vector<string>& source_candidates = {
-        format("{}/Sources/cpp/Indicators/{}.cpp", project_directory,
-               class_name),
-        format("{}/Sources/cpp/Indicators/{}.cpp", project_directory, name_)};
+    // 후보 경로에서 헤더 파일 탐색
+    bool header_found = false;
+    for (const auto& path : header_paths) {
+      if (fs::exists(path)) {
+        SetFilePath(path, false);
+        header_found = true;
 
-    // 헤더 파일 찾기
-    for (const auto& path : header_candidates) {
-      if (SetFilePath(path, false)) {
         break;
       }
     }
 
-    // 소스 파일 찾기
-    for (const auto& path : source_candidates) {
-      if (SetFilePath(path, true)) {
+    // 후보 경로에서 찾지 못하면 부모 폴더에서 재귀 탐색
+    if (!header_found) {
+      const vector<string>& file_names = {format("{}.hpp", class_name),
+                                          format("{}.hpp", name_)};
+
+      for (const auto& file_name : file_names) {
+        if (const string& found = FindFileInParent(file_name); !found.empty()) {
+          SetFilePath(found, false);
+
+          break;
+        }
+      }
+    }
+
+    // 소스 파일 경로 후보들
+    const vector<string>& source_paths = {
+        format("{}/Sources/cpp/Indicators/{}.cpp", project_directory,
+               class_name),
+        format("{}/Sources/cpp/Indicators/{}.cpp", project_directory, name_)};
+
+    // 후보 경로에서 소스 파일 탐색
+    bool source_found = false;
+    for (const auto& path : source_paths) {
+      if (fs::exists(path)) {
+        SetFilePath(path, true);
+        source_found = true;
+
         break;
+      }
+    }
+
+    // 후보 경로에서 찾지 못하면 부모 폴더에서 재귀 탐색
+    if (!source_found) {
+      const vector<string>& file_names = {format("{}.cpp", class_name),
+                                          format("{}.cpp", name_)};
+
+      for (const auto& file_name : file_names) {
+        if (const string& found = FindFileInParent(file_name); !found.empty()) {
+          SetFilePath(found, true);
+
+          break;
+        }
       }
     }
   }
@@ -253,6 +291,11 @@ class Indicator {
 
   /// 파일이 존재하는지 확인하고 존재하면 경로로 설정하는 함수
   bool SetFilePath(const string& path, bool is_cpp);
+
+  /// 프로젝트 상위 폴더를 대상으로 파일을 재귀 탐색하여 경로를 반환하는 헬퍼
+  /// @param filename 찾고자 하는 파일명 (예: "MyIndicator.cpp")
+  /// @return 발견된 파일의 절대 경로 또는 빈 문자열
+  static string FindFileInParent(const string& filename);
 };
 
 }  // namespace backtesting::indicator

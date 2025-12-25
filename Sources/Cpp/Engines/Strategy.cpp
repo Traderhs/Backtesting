@@ -1,5 +1,4 @@
 // 표준 라이브러리
-#include <filesystem>
 #include <format>
 
 // 파일 헤더
@@ -70,7 +69,7 @@ void Strategy::SetTradingTimeframe(const string& trading_tf) {
 }
 
 void Strategy::SetSourcePath(const string& source_path) {
-  if (!filesystem::exists(source_path)) {
+  if (!fs::exists(source_path)) {
     Logger::LogAndThrowError(
         format("[{}] 전략의 소스 파일 경로 [{}]이(가) 존재하지 않습니다.",
                name_, source_path),
@@ -81,7 +80,7 @@ void Strategy::SetSourcePath(const string& source_path) {
 }
 
 void Strategy::SetHeaderPath(const string& header_path) {
-  if (!filesystem::exists(header_path)) {
+  if (!fs::exists(header_path)) {
     Logger::LogAndThrowError(
         format("[{}] 전략의 헤더 파일 경로 [{}]이(가) 존재하지 않습니다.",
                name_, header_path),
@@ -92,15 +91,21 @@ void Strategy::SetHeaderPath(const string& header_path) {
 }
 
 shared_ptr<Strategy>& Strategy::GetStrategy() { return strategy_; }
+
 vector<shared_ptr<Indicator>>& Strategy::GetIndicators() { return indicators_; }
-string Strategy::GetName() const { return name_; }
-string Strategy::GetClassName() const { return class_name_; }
+
+string Strategy::GetStrategyName() const { return name_; }
+
+string Strategy::GetStrategyClassName() const { return class_name_; }
+
 shared_ptr<OrderHandler> Strategy::GetOrderHandler() const { return order; }
+
 string Strategy::GetSourcePath() { return cpp_file_path_; }
+
 string Strategy::GetHeaderPath() { return header_file_path_; }
 
 bool Strategy::SetFilePath(const string& path, const bool is_cpp) {
-  if (filesystem::exists(path)) {
+  if (fs::exists(path)) {
     if (is_cpp) {
       cpp_file_path_ = path;
     } else {
@@ -136,6 +141,23 @@ bool Strategy::SetFilePath(const string& path, const bool is_cpp) {
   }
 
   return false;
+}
+
+string Strategy::FindFileInParent(const string& filename) {
+  try {
+    const fs::path parent =
+        fs::path(Config::GetProjectDirectory()).parent_path();
+
+    for (const auto& entry : fs::recursive_directory_iterator(parent)) {
+      if (entry.is_regular_file() && entry.path().filename() == filename) {
+        return entry.path().string();
+      }
+    }
+  } catch (...) {
+    // 검색 중 오류 발생 시 빈 문자열 반환
+  }
+
+  return {};
 }
 
 }  // namespace backtesting::strategy
