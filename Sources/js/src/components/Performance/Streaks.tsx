@@ -113,7 +113,7 @@ export default function Streaks({onReady}: StreaksProps) {
                 setStreaksData(null);
                 return;
             }
-      
+
             // 연속 거래 계산 (0번 거래는 제외)
             const actualTrades = filteredTrades.slice(1);
             const result = calculateStreaks(actualTrades);
@@ -168,8 +168,14 @@ export default function Streaks({onReady}: StreaksProps) {
         return (
             <tr key={`win-${streakLength}`}
                 className={`${index % 2 === 0 ? 'bg-[#4d4000]' : 'bg-[#665400]'} hover:bg-[#cca300]`}>
-                <td className="p-2 text-center">{`${(() => { const val = Number(streakLength); return isNaN(val) ? '0' : val.toLocaleString('en-US'); })()}연승`}</td>
-                <td className="p-2 text-center">{`${(() => { const val = Number(winData.count); return isNaN(val) ? '0' : val.toLocaleString('en-US'); })()}건`}</td>
+                <td className="p-2 text-center">{`${(() => {
+                    const val = Number(streakLength);
+                    return isNaN(val) ? '0' : val.toLocaleString('en-US');
+                })()}연승`}</td>
+                <td className="p-2 text-center">{`${(() => {
+                    const val = Number(winData.count);
+                    return isNaN(val) ? '0' : val.toLocaleString('en-US');
+                })()}건`}</td>
                 <td className="p-2 text-center positive">{formatDollar(winData.totalPnl)}</td>
                 <td className="p-2 text-center positive">{formatDollar(winAvgPerTrade)}</td>
             </tr>
@@ -185,8 +191,14 @@ export default function Streaks({onReady}: StreaksProps) {
         return (
             <tr key={`lose-${streakLength}`}
                 className={`${index % 2 === 0 ? 'bg-[#4d4000]' : 'bg-[#665400]'} hover:bg-[#cca300]`}>
-                <td className="p-2 text-center">{`${(() => { const val = Number(streakLength); return isNaN(val) ? '0' : val.toLocaleString('en-US'); })()}연패`}</td>
-                <td className="p-2 text-center">{`${(() => { const val = Number(loseData.count); return isNaN(val) ? '0' : val.toLocaleString('en-US'); })()}건`}</td>
+                <td className="p-2 text-center">{`${(() => {
+                    const val = Number(streakLength);
+                    return isNaN(val) ? '0' : val.toLocaleString('en-US');
+                })()}연패`}</td>
+                <td className="p-2 text-center">{`${(() => {
+                    const val = Number(loseData.count);
+                    return isNaN(val) ? '0' : val.toLocaleString('en-US');
+                })()}건`}</td>
                 <td className="p-2 text-center negative">{formatDollar(loseData.totalPnl)}</td>
                 <td className="p-2 text-center negative">{formatDollar(loseAvgPerTrade)}</td>
             </tr>
@@ -240,4 +252,4 @@ export default function Streaks({onReady}: StreaksProps) {
             </div>
         </div>
     );
-} 
+}

@@ -1,7 +1,7 @@
-import React, { createContext } from "react";
+import React, {createContext} from "react";
 
 // 필터 타입 정의
-export type FilterType = 
+export type FilterType =
     | 'tradeNumber'
     | 'strategy'
     | 'symbol'

@@ -14,7 +14,7 @@ declare global {
 
         // 지표 시리즈의 참조를 저장하는 객체 (key: 지표명, value: 시리즈 참조)
         indicatorSeriesRefs: { [key: string]: any };
-        
+
         // 지표 표시 함수 (모든 렌더링이 완료된 후 지표를 보이게 함)
         showIndicators?: () => void;
 
@@ -23,7 +23,7 @@ declare global {
 
         // 차트 참조를 저장하는 전역 변수
         chartRef: React.RefObject<IChartApi | null>;
-        
+
         // 캔들스틱 메인 시리즈 참조를 저장하는 전역 변수
         mainSeries?: ISeriesApi<SeriesType>;
         mainSeriesBySymbol: { [symbol: string]: any };
@@ -40,7 +40,7 @@ declare global {
                 bottomLineColor?: string;
             }
         };
-        
+
         // 지표 데이터 관련 전역 변수
         indicatorData?: {
             [key: string]: {
@@ -49,7 +49,7 @@ declare global {
                 color?: string;
             }[]
         };
-        
+
         // 페인 지표 DIV 관련 전역 변수
         paneIndicatorDivs?: {
             [key: number]: HTMLElement;

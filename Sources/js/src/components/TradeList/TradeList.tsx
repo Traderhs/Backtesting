@@ -268,7 +268,7 @@ const formatWithTooltip = (value: string | number | boolean | undefined, key: st
     }
 
     // 캐시 키 생성 - 모든 매개변수를 포함하여 고유성 보장
-    const cacheKey = `${key}:${value}:${symbol}:${config?.심볼?.length || 0}`;
+    const cacheKey = `${key}:${value}:${symbol}:${config?.["심볼"]?.length || 0}`;
 
     if (formatCache.has(cacheKey)) {
         return formatCache.get(cacheKey)!;

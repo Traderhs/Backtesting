@@ -38,10 +38,10 @@ export function calculateSymbolCountMetrics(actualTrades: Trade[]) {
     const avgCount = Math.round(totalSymbolCount / validSymbolCounts.length);
     const maxCount = Math.max(...validSymbolCounts);
     const minCount = Math.min(...validSymbolCounts);
-    
+
     return {
         avgSymbolCount: isNaN(avgCount) ? '-' : Math.round(avgCount).toString(),
         maxSymbolCount: isNaN(maxCount) ? '-' : Math.round(maxCount).toString(),
         minSymbolCount: isNaN(minCount) ? '-' : Math.round(minCount).toString()
     };
-} 
+}

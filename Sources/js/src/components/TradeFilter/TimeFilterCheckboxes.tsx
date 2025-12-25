@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useEffect, useRef, useState } from "react";
+import React, {useCallback, useMemo, useEffect, useRef, useState} from "react";
 import './TimeFilterVertical.css'; // 새로운 CSS 스타일 임포트
 
 interface TimeFilterCheckboxesProps {
@@ -16,10 +16,10 @@ const CheckboxItem: React.FC<{
     isSelected: boolean;
     onChange: (option: number, checked: boolean) => void;
     getLabel: (option: number) => string;
-}> = React.memo(({ option, label, isSelected, onChange, getLabel }) => {
+}> = React.memo(({option, label, isSelected, onChange, getLabel}) => {
     const [isVisible, setIsVisible] = useState(false);
     const itemRef = useRef<HTMLDivElement>(null);
-    
+
     useEffect(() => {
         const observer = new IntersectionObserver(
             (entries) => {
@@ -28,41 +28,41 @@ const CheckboxItem: React.FC<{
                     observer.disconnect();
                 }
             },
-            { rootMargin: '100px' } // 뷰포트 진입 100px 전에 렌더링
+            {rootMargin: '100px'} // 뷰포트 진입 100px 전에 렌더링
         );
-        
+
         if (itemRef.current) {
             observer.observe(itemRef.current);
         }
-        
+
         return () => observer.disconnect();
     }, []);
-    
+
     const handleContainerClick = useCallback((e: React.MouseEvent) => {
-        if ((e.target as HTMLElement).tagName === 'INPUT' || 
+        if ((e.target as HTMLElement).tagName === 'INPUT' ||
             (e.target as HTMLElement).tagName === 'LABEL') {
             return;
         }
         onChange(option, !isSelected);
     }, [option, isSelected, onChange]);
-    
+
     const handleCheckboxClick = useCallback((e: React.MouseEvent) => {
         e.stopPropagation();
     }, []);
-    
+
     const handleCheckboxChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         onChange(option, e.target.checked);
     }, [option, onChange]);
-    
+
     return (
-        <div 
+        <div
             ref={itemRef}
             className="checkbox-container m-1 py-2 px-3 advanced-filter-checkbox vertical-checkbox"
             onClick={handleContainerClick}
         >
             {isVisible ? (
                 <>
-                    <input 
+                    <input
                         id={`TimeFilterCheckboxes-${label}-${option}`}
                         name={`TimeFilterCheckboxes-${label}-${option}`}
                         type="checkbox"
@@ -71,8 +71,8 @@ const CheckboxItem: React.FC<{
                         className="custom-checkbox"
                         onClick={handleCheckboxClick}
                     />
-                    <label 
-                        htmlFor={`TimeFilterCheckboxes-${label}-${option}`} 
+                    <label
+                        htmlFor={`TimeFilterCheckboxes-${label}-${option}`}
                         className="checkbox-label ml-2"
                     >
                         {getLabel(option)}
@@ -86,12 +86,12 @@ const CheckboxItem: React.FC<{
 CheckboxItem.displayName = 'CheckboxItem';
 
 const TimeFilterCheckboxes: React.FC<TimeFilterCheckboxesProps> = React.memo(({
-    label,
-    options,
-    selectedValues = [],
-    onChange,
-    dayOfWeekLabels,
-}) => {
+                                                                                  label,
+                                                                                  options,
+                                                                                  selectedValues = [],
+                                                                                  onChange,
+                                                                                  dayOfWeekLabels,
+                                                                              }) => {
     // 라벨 생성 로직을 메모화
     const getLabel = useCallback((option: number): string => {
         if (dayOfWeekLabels && label.includes("요일")) {
@@ -100,7 +100,7 @@ const TimeFilterCheckboxes: React.FC<TimeFilterCheckboxesProps> = React.memo(({
             const mappedIndex = option === 0 ? 6 : option - 1;
             return dayOfWeekLabels[mappedIndex];
         }
-        
+
         // 각 숫자 뒤에 단위 붙이기
         if (label.includes("연도")) return `${option}년`;
         if (label.includes("월")) return `${option}월`;
@@ -108,7 +108,7 @@ const TimeFilterCheckboxes: React.FC<TimeFilterCheckboxesProps> = React.memo(({
         if (label.includes("시")) return `${option}시`;
         if (label.includes("분")) return `${option}분`;
         if (label.includes("초")) return `${option}초`;
-        
+
         return String(option);
     }, [label, dayOfWeekLabels]);
 
@@ -116,7 +116,7 @@ const TimeFilterCheckboxes: React.FC<TimeFilterCheckboxesProps> = React.memo(({
     const selectedValuesSet = useMemo(() => new Set(selectedValues), [selectedValues]);
 
     // 옵션 렌더링을 메모화
-    const renderedOptions = useMemo(() => 
+    const renderedOptions = useMemo(() =>
         options.map((option) => (
             <CheckboxItem
                 key={option}

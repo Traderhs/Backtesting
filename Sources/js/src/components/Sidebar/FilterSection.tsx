@@ -206,7 +206,7 @@ const FilterSection = memo(({timeframe}: FilterSectionProps) => {
     const updateVerticalLineHeights = useCallback(throttle((filterOptions: typeof options) => {
         // 실제 측정으로 확정된 정확한 수치
         const CHECKBOX_HEIGHT = 29;    // padding 포함된 실제 높이
-        const MARGIN_BOTTOM = 6;       // 체크박스 margin-bottom  
+        const MARGIN_BOTTOM = 6;       // 체크박스 margin-bottom
         const VERTICAL_MARGIN_TOP = 4; // 세로선 margin-top
         const HEADER_MARGIN_BOTTOM = 8; // 헤더 margin-bottom
         const ITEM_HEIGHT = CHECKBOX_HEIGHT + MARGIN_BOTTOM; // 35px
@@ -557,4 +557,4 @@ const FilterSection = memo(({timeframe}: FilterSectionProps) => {
     );
 });
 
-export default FilterSection; 
+export default FilterSection;

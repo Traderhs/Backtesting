@@ -69,11 +69,11 @@ const LogRow: React.FC<{
     if (isSeparator) {
         // 현재 청크의 최대 텍스트 너비를 기준으로 구분선 길이 계산
         const maxTextWidth = data.maxTextWidth || 1000; // 기본값 1000px
-        
+
         // 일반 텍스트와 동일한 패딩 사용 (0px 10px 0px 25px)
         const paddingLeft = 25;
         const paddingRight = 10;
-        
+
         // 실제 텍스트가 차지하는 공간 = 측정된 픽셀 너비
         // 구분선 문자 개수는 실제 텍스트 영역에만 맞춤
         const charWidth = 8.4;
@@ -435,7 +435,7 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
             }
         }
 
-        return maxWidth; 
+        return maxWidth;
     }, [logLines]);
 
     // 청크 관련 계산값들
@@ -934,485 +934,489 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
 
             {showContent && (
                 <>
-            {/* 제목 영역 */}
-            <div
-                style={{
-                    position: 'relative',
-                    marginBottom: '25px',
-                    zIndex: 100,
-                }}
-            >
-                <h2
-                    style={{
-                        color: 'white',
-                        fontSize: '2.5rem',
-                        fontWeight: 700,
-                        textAlign: 'left',
-                        marginLeft: '35px',
-                        marginTop: '10px',
-                        paddingBottom: '8px',
-                        display: 'inline-block',
-                        position: 'relative',
-                    }}
-                >
-                    백테스팅 로그
-                    {/* 밑줄 */}
-                    <span
-                        style={{
-                            position: 'absolute',
-                            bottom: 0,
-                            left: 0,
-                            right: 0,
-                            height: '2px',
-                            background: 'rgba(255, 215, 0, 0.4)',
-                            width: '100%',
-                        }}
-                    />
-                </h2>
-            </div>
-
-            {/* 검색 영역과 청크 네비게이션 */}
-            <div 
-                style={{
-                margin: '0 20px 15px 20px',
-                display: 'flex',
-                gap: '15px',
-                alignItems: 'center',
-            }}>
-                {/* 검색 영역 */}
-                <div
-                    style={{
-                        padding: '15px 20px',
-                        background: '#111111',
-                        borderRadius: '8px',
-                        border: '1px solid rgba(255, 215, 0, 0.4)',
-                        display: 'flex',
-                        gap: '15px',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        width: '800px',
-                        minWidth: '800px',
-                        maxWidth: '800px',
-                    }}
-                >
-                    {/* 검색 입력 및 네비게이션 */}
-                    <div style={{
-                        flex: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '10px'
-                    }}>
-                        <div style={{
-                            position: 'relative',
-                            width: '500px',
-                            minWidth: '500px'
-                        }}>
-                            <input
-                                type="text"
-                                placeholder="검색"
-                                value={searchTerm}
-                                onChange={(e) => handleSearchChange(e.target.value)}
-                                style={{
-                                    width: '500px',
-                                    padding: '8px 12px',
-                                    paddingRight: searchTerm ? '70px' : '12px',
-                                    background: '#1a1a1a',
-                                    border: '1px solid rgba(255, 215, 0, 0.4)',
-                                    borderRadius: '4px',
-                                    color: '#ffffff',
-                                    fontSize: '14px',
-                                    fontFamily: "'Inter', 'Pretendard', sans-serif",
-                                    outline: 'none',
-                                }}
-                            />
-
-                            {/* 검색 결과 표시 (검색창 내부) */}
-                            {searchTerm && (
-                                <div style={{
-                                    position: 'absolute',
-                                    right: '12px',
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
-                                    color: '#888888',
-                                    fontSize: '12px',
-                                    pointerEvents: 'none',
-                                    minWidth: '50px',
-                                    textAlign: 'right',
-                                }}>
-                                    {searchResults.length > 0 ? `${(currentSearchIndex + 1).toLocaleString()} / ${searchResults.length.toLocaleString()}` : '0 / 0'}
-                                </div>
-                            )}
-                        </div>
-
-                        {/* 검색 네비게이션 버튼 */}
-                        <div style={{
-                            display: 'flex',
-                            gap: '5px',
-                            minWidth: '95px',
-                            maxWidth: '95px',
-                            justifyContent: 'space-between'
-                        }}>
-                            <motion.button
-                                variants={controlButtonVariants}
-                                whileHover="hover"
-                                whileTap="tap"
-                                onClick={handlePrevSearch}
-                                disabled={searchResults.length === 0}
-                                style={{
-                                    padding: '4px 8px',
-                                    backgroundColor: searchResults.length > 0 ? '#2a2a2a' : '#1a1a1a',
-                                    border: '1px solid rgba(255, 215, 0, 0.4)',
-                                    borderRadius: '4px',
-                                    color: searchResults.length > 0 ? '#ffffff' : '#666666',
-                                    fontSize: '12px',
-                                    cursor: searchResults.length > 0 ? 'pointer' : 'not-allowed',
-                                }}
-                            >
-                                ↑
-                            </motion.button>
-                            <motion.button
-                                variants={controlButtonVariants}
-                                whileHover="hover"
-                                whileTap="tap"
-                                onClick={handleNextSearch}
-                                disabled={searchResults.length === 0}
-                                style={{
-                                    padding: '4px 8px',
-                                    backgroundColor: searchResults.length > 0 ? '#2a2a2a' : '#1a1a1a',
-                                    border: '1px solid rgba(255, 215, 0, 0.4)',
-                                    borderRadius: '4px',
-                                    color: searchResults.length > 0 ? '#ffffff' : '#666666',
-                                    fontSize: '12px',
-                                    cursor: searchResults.length > 0 ? 'pointer' : 'not-allowed',
-                                }}
-                            >
-                                ↓
-                            </motion.button>
-                            <motion.button
-                                variants={closeButtonVariants}
-                                whileHover="hover"
-                                whileTap="tap"
-                                onClick={() => setSearchTerm('')}
-                                style={{
-                                    padding: '4px 8px',
-                                    background: '#f23645',
-                                    border: 'none',
-                                    borderRadius: '4px',
-                                    color: '#ffffff',
-                                    fontSize: '12px',
-                                    cursor: 'pointer',
-                                }}
-                            >
-                                ✕
-                            </motion.button>
-                        </div>
-                    </div>
-
-                    {/* 라인 정보 표시 */}
-                    <div style={{
-                        color: '#888888',
-                        fontSize: '12px',
-                        minWidth: '110px',
-                        textAlign: 'right'
-                    }}>
-                        {allLogLines.length > CHUNK_SIZE
-                            ? `${(currentChunkStart + visibleStopIndex + 1).toLocaleString()} / ${allLogLines.length.toLocaleString()}`
-                            : `${(visibleStopIndex + 1).toLocaleString()} / ${logLines.length.toLocaleString()}`
-                        }
-                    </div>
-                </div>
-
-                {/* 청크 네비게이션 - 대용량 파일일 때만 표시 */}
-                {allLogLines.length > CHUNK_SIZE && (
+                    {/* 제목 영역 */}
                     <div
                         style={{
-                            width: '260px',
-                            height: '71px',
-                            padding: '15px 20px',
-                            background: '#111111',
-                            borderRadius: '8px',
-                            border: '1px solid rgba(255, 215, 0, 0.4)',
-                            display: 'flex',
-                            gap: '10px',
-                            alignItems: 'center',
+                            position: 'relative',
+                            marginBottom: '25px',
+                            zIndex: 100,
                         }}
                     >
-                        <div style={{
+                        <h2
+                            style={{
+                                color: 'white',
+                                fontSize: '2.5rem',
+                                fontWeight: 700,
+                                textAlign: 'left',
+                                marginLeft: '35px',
+                                marginTop: '10px',
+                                paddingBottom: '8px',
+                                display: 'inline-block',
+                                position: 'relative',
+                            }}
+                        >
+                            백테스팅 로그
+                            {/* 밑줄 */}
+                            <span
+                                style={{
+                                    position: 'absolute',
+                                    bottom: 0,
+                                    left: 0,
+                                    right: 0,
+                                    height: '2px',
+                                    background: 'rgba(255, 215, 0, 0.4)',
+                                    width: '100%',
+                                }}
+                            />
+                        </h2>
+                    </div>
+
+                    {/* 검색 영역과 청크 네비게이션 */}
+                    <div
+                        style={{
+                            margin: '0 20px 15px 20px',
                             display: 'flex',
-                            gap: '6px',
-                            alignItems: 'center'
+                            gap: '15px',
+                            alignItems: 'center',
                         }}>
-                            <motion.button
-                                variants={controlButtonVariants}
-                                whileHover="hover"
-                                whileTap="tap"
-                                onClick={goToFirstChunk}
-                                disabled={!canNavigateToStart}
-                                style={{
-                                    padding: '5px 9px',
-                                    backgroundColor: canNavigateToStart ? '#2a2a2a' : '#1a1a1a',
-                                    border: '1px solid rgba(255, 215, 0, 0.4)',
-                                    borderRadius: '4px',
-                                    color: canNavigateToStart ? '#ffffff' : '#666666',
-                                    fontSize: '12px',
-                                    cursor: canNavigateToStart ? 'pointer' : 'not-allowed',
-                                }}
-                            >
-                                ⏮
-                            </motion.button>
-
-                            <motion.button
-                                variants={controlButtonVariants}
-                                whileHover="hover"
-                                whileTap="tap"
-                                onClick={goToPrevChunk}
-                                disabled={!canNavigateToStart}
-                                style={{
-                                    padding: '5px 9px',
-                                    backgroundColor: canNavigateToStart ? '#2a2a2a' : '#1a1a1a',
-                                    border: '1px solid rgba(255, 215, 0, 0.4)',
-                                    borderRadius: '4px',
-                                    color: canNavigateToStart ? '#ffffff' : '#666666',
-                                    fontSize: '12px',
-                                    cursor: canNavigateToStart ? 'pointer' : 'not-allowed',
-                                }}
-                            >
-                                ◀
-                            </motion.button>
-
-                            <span style={{
-                                color: '#cccccc',
-                                fontSize: '12px',
-                                margin: '0 6px',
-                                minWidth: '65px',
-                                textAlign: 'center'
+                        {/* 검색 영역 */}
+                        <div
+                            style={{
+                                padding: '15px 20px',
+                                background: '#111111',
+                                borderRadius: '8px',
+                                border: '1px solid rgba(255, 215, 0, 0.4)',
+                                display: 'flex',
+                                gap: '15px',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                width: '800px',
+                                minWidth: '800px',
+                                maxWidth: '800px',
+                            }}
+                        >
+                            {/* 검색 입력 및 네비게이션 */}
+                            <div style={{
+                                flex: 1,
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '10px'
                             }}>
+                                <div style={{
+                                    position: 'relative',
+                                    width: '500px',
+                                    minWidth: '500px'
+                                }}>
+                                    <input
+                                        type="text"
+                                        placeholder="검색"
+                                        value={searchTerm}
+                                        onChange={(e) => handleSearchChange(e.target.value)}
+                                        style={{
+                                            width: '500px',
+                                            padding: '8px 12px',
+                                            paddingRight: searchTerm ? '70px' : '12px',
+                                            background: '#1a1a1a',
+                                            border: '1px solid rgba(255, 215, 0, 0.4)',
+                                            borderRadius: '4px',
+                                            color: '#ffffff',
+                                            fontSize: '14px',
+                                            fontFamily: "'Inter', 'Pretendard', sans-serif",
+                                            outline: 'none',
+                                        }}
+                                    />
+
+                                    {/* 검색 결과 표시 (검색창 내부) */}
+                                    {searchTerm && (
+                                        <div style={{
+                                            position: 'absolute',
+                                            right: '12px',
+                                            top: '50%',
+                                            transform: 'translateY(-50%)',
+                                            color: '#888888',
+                                            fontSize: '12px',
+                                            pointerEvents: 'none',
+                                            minWidth: '50px',
+                                            textAlign: 'right',
+                                        }}>
+                                            {searchResults.length > 0 ? `${(currentSearchIndex + 1).toLocaleString()} / ${searchResults.length.toLocaleString()}` : '0 / 0'}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* 검색 네비게이션 버튼 */}
+                                <div style={{
+                                    display: 'flex',
+                                    gap: '5px',
+                                    minWidth: '95px',
+                                    maxWidth: '95px',
+                                    justifyContent: 'space-between'
+                                }}>
+                                    <motion.button
+                                        variants={controlButtonVariants}
+                                        whileHover="hover"
+                                        whileTap="tap"
+                                        onClick={handlePrevSearch}
+                                        disabled={searchResults.length === 0}
+                                        style={{
+                                            padding: '4px 8px',
+                                            backgroundColor: searchResults.length > 0 ? '#2a2a2a' : '#1a1a1a',
+                                            border: '1px solid rgba(255, 215, 0, 0.4)',
+                                            borderRadius: '4px',
+                                            color: searchResults.length > 0 ? '#ffffff' : '#666666',
+                                            fontSize: '12px',
+                                            cursor: searchResults.length > 0 ? 'pointer' : 'not-allowed',
+                                        }}
+                                    >
+                                        ↑
+                                    </motion.button>
+                                    <motion.button
+                                        variants={controlButtonVariants}
+                                        whileHover="hover"
+                                        whileTap="tap"
+                                        onClick={handleNextSearch}
+                                        disabled={searchResults.length === 0}
+                                        style={{
+                                            padding: '4px 8px',
+                                            backgroundColor: searchResults.length > 0 ? '#2a2a2a' : '#1a1a1a',
+                                            border: '1px solid rgba(255, 215, 0, 0.4)',
+                                            borderRadius: '4px',
+                                            color: searchResults.length > 0 ? '#ffffff' : '#666666',
+                                            fontSize: '12px',
+                                            cursor: searchResults.length > 0 ? 'pointer' : 'not-allowed',
+                                        }}
+                                    >
+                                        ↓
+                                    </motion.button>
+                                    <motion.button
+                                        variants={closeButtonVariants}
+                                        whileHover="hover"
+                                        whileTap="tap"
+                                        onClick={() => setSearchTerm('')}
+                                        style={{
+                                            padding: '4px 8px',
+                                            background: '#f23645',
+                                            border: 'none',
+                                            borderRadius: '4px',
+                                            color: '#ffffff',
+                                            fontSize: '12px',
+                                            cursor: 'pointer',
+                                        }}
+                                    >
+                                        ✕
+                                    </motion.button>
+                                </div>
+                            </div>
+
+                            {/* 라인 정보 표시 */}
+                            <div style={{
+                                color: '#888888',
+                                fontSize: '12px',
+                                minWidth: '110px',
+                                textAlign: 'right'
+                            }}>
+                                {allLogLines.length > CHUNK_SIZE
+                                    ? `${(currentChunkStart + visibleStopIndex + 1).toLocaleString()} / ${allLogLines.length.toLocaleString()}`
+                                    : `${(visibleStopIndex + 1).toLocaleString()} / ${logLines.length.toLocaleString()}`
+                                }
+                            </div>
+                        </div>
+
+                        {/* 청크 네비게이션 - 대용량 파일일 때만 표시 */}
+                        {allLogLines.length > CHUNK_SIZE && (
+                            <div
+                                style={{
+                                    width: '260px',
+                                    height: '71px',
+                                    padding: '15px 20px',
+                                    background: '#111111',
+                                    borderRadius: '8px',
+                                    border: '1px solid rgba(255, 215, 0, 0.4)',
+                                    display: 'flex',
+                                    gap: '10px',
+                                    alignItems: 'center',
+                                }}
+                            >
+                                <div style={{
+                                    display: 'flex',
+                                    gap: '6px',
+                                    alignItems: 'center'
+                                }}>
+                                    <motion.button
+                                        variants={controlButtonVariants}
+                                        whileHover="hover"
+                                        whileTap="tap"
+                                        onClick={goToFirstChunk}
+                                        disabled={!canNavigateToStart}
+                                        style={{
+                                            padding: '5px 9px',
+                                            backgroundColor: canNavigateToStart ? '#2a2a2a' : '#1a1a1a',
+                                            border: '1px solid rgba(255, 215, 0, 0.4)',
+                                            borderRadius: '4px',
+                                            color: canNavigateToStart ? '#ffffff' : '#666666',
+                                            fontSize: '12px',
+                                            cursor: canNavigateToStart ? 'pointer' : 'not-allowed',
+                                        }}
+                                    >
+                                        ⏮
+                                    </motion.button>
+
+                                    <motion.button
+                                        variants={controlButtonVariants}
+                                        whileHover="hover"
+                                        whileTap="tap"
+                                        onClick={goToPrevChunk}
+                                        disabled={!canNavigateToStart}
+                                        style={{
+                                            padding: '5px 9px',
+                                            backgroundColor: canNavigateToStart ? '#2a2a2a' : '#1a1a1a',
+                                            border: '1px solid rgba(255, 215, 0, 0.4)',
+                                            borderRadius: '4px',
+                                            color: canNavigateToStart ? '#ffffff' : '#666666',
+                                            fontSize: '12px',
+                                            cursor: canNavigateToStart ? 'pointer' : 'not-allowed',
+                                        }}
+                                    >
+                                        ◀
+                                    </motion.button>
+
+                                    <span style={{
+                                        color: '#cccccc',
+                                        fontSize: '12px',
+                                        margin: '0 6px',
+                                        minWidth: '65px',
+                                        textAlign: 'center'
+                                    }}>
                             {currentChunk} / {totalChunks}
                         </span>
 
-                            <motion.button
-                                variants={controlButtonVariants}
-                                whileHover="hover"
-                                whileTap="tap"
-                                onClick={goToNextChunk}
-                                disabled={!canNavigateToEnd}
-                                style={{
-                                    padding: '5px 9px',
-                                    backgroundColor: canNavigateToEnd ? '#2a2a2a' : '#1a1a1a',
-                                    border: '1px solid rgba(255, 215, 0, 0.4)',
-                                    borderRadius: '4px',
-                                    color: canNavigateToEnd ? '#ffffff' : '#666666',
-                                    fontSize: '12px',
-                                    cursor: canNavigateToEnd ? 'pointer' : 'not-allowed',
-                                }}
-                            >
-                                ▶
-                            </motion.button>
+                                    <motion.button
+                                        variants={controlButtonVariants}
+                                        whileHover="hover"
+                                        whileTap="tap"
+                                        onClick={goToNextChunk}
+                                        disabled={!canNavigateToEnd}
+                                        style={{
+                                            padding: '5px 9px',
+                                            backgroundColor: canNavigateToEnd ? '#2a2a2a' : '#1a1a1a',
+                                            border: '1px solid rgba(255, 215, 0, 0.4)',
+                                            borderRadius: '4px',
+                                            color: canNavigateToEnd ? '#ffffff' : '#666666',
+                                            fontSize: '12px',
+                                            cursor: canNavigateToEnd ? 'pointer' : 'not-allowed',
+                                        }}
+                                    >
+                                        ▶
+                                    </motion.button>
 
-                            <motion.button
-                                variants={controlButtonVariants}
-                                whileHover="hover"
-                                whileTap="tap"
-                                onClick={goToLastChunk}
-                                disabled={!canNavigateToEnd}
-                                style={{
-                                    padding: '5px 9px',
-                                    backgroundColor: canNavigateToEnd ? '#2a2a2a' : '#1a1a1a',
-                                    border: '1px solid rgba(255, 215, 0, 0.4)',
-                                    borderRadius: '4px',
-                                    color: canNavigateToEnd ? '#ffffff' : '#666666',
-                                    fontSize: '12px',
-                                    cursor: canNavigateToEnd ? 'pointer' : 'not-allowed',
-                                }}
-                            >
-                                ⏭
-                            </motion.button>
-                        </div>
-                    </div>
-                )}
-            </div>
-
-            {/* 컨텐츠 영역 */}
-            <div
-                style={{
-                    flex: 1,
-                    borderRadius: '8px',
-                    overflow: 'hidden',
-                    background: '#111111',
-                    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)',
-                    border: '1.2px solid rgba(255, 215, 0, 0.4)',
-                    position: 'relative',
-                    minHeight: '500px',
-                    minWidth: '800px',
-                    margin: '8px 20px 15px 20px',
-                    display: 'flex',
-                    alignItems: 'stretch',
-                    justifyContent: 'flex-start',
-                    // 뿌옇게 되는 문제 방지 - 더 강력한 설정
-                    opacity: 1,
-                    filter: 'none',
-                    backfaceVisibility: 'hidden',
-                    WebkitBackfaceVisibility: 'hidden',
-                    transform: 'translate3d(0, 0, 0)',
-                    WebkitTransform: 'translate3d(0, 0, 0)',
-                    willChange: 'auto',
-                    WebkitFontSmoothing: 'antialiased',
-                    MozOsxFontSmoothing: 'grayscale',
-                    textRendering: 'optimizeLegibility',
-                    // 강화된 안티엘리어싱 설정
-                    fontSmooth: 'always',
-                    fontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
-                    WebkitFontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
-                    textSizeAdjust: '100%',
-                    WebkitTextSizeAdjust: '100%',
-                }}
-            >
-                {loading && (
-                    <div style={{
-                        width: '100%',
-                        height: '100%',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexDirection: 'column',
-                        gap: '20px'
-                    }}>
-                        <LogSpinner/>
-                        {isChunkLoading && totalLines > 0 && (
-                            <div style={{
-                                color: 'rgba(255, 255, 255, 0.8)',
-                                fontSize: '14px',
-                                fontFamily: "'Inter', 'Pretendard', sans-serif",
-                                textAlign: 'center'
-                            }}>
-                                <div>대용량 로그 파일 로딩 중...</div>
-                                <div style={{marginTop: '8px', fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)'}}>
-                                    {loadedLines.toLocaleString()} / {totalLines > 0 ? totalLines.toLocaleString() : '?'} 라인
-                                </div>
-                                <div style={{
-                                    width: '200px',
-                                    height: '4px',
-                                    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-                                    borderRadius: '2px',
-                                    marginTop: '8px',
-                                    overflow: 'hidden'
-                                }}>
-                                    <div style={{
-                                        width: totalLines > 0 ? `${Math.min((loadedLines / totalLines) * 100, 100)}%` : '0%',
-                                        height: '100%',
-                                        backgroundColor: 'rgba(255, 215, 0, 0.8)',
-                                        transition: 'width 0.3s ease',
-                                        borderRadius: '2px'
-                                    }}/>
+                                    <motion.button
+                                        variants={controlButtonVariants}
+                                        whileHover="hover"
+                                        whileTap="tap"
+                                        onClick={goToLastChunk}
+                                        disabled={!canNavigateToEnd}
+                                        style={{
+                                            padding: '5px 9px',
+                                            backgroundColor: canNavigateToEnd ? '#2a2a2a' : '#1a1a1a',
+                                            border: '1px solid rgba(255, 215, 0, 0.4)',
+                                            borderRadius: '4px',
+                                            color: canNavigateToEnd ? '#ffffff' : '#666666',
+                                            fontSize: '12px',
+                                            cursor: canNavigateToEnd ? 'pointer' : 'not-allowed',
+                                        }}
+                                    >
+                                        ⏭
+                                    </motion.button>
                                 </div>
                             </div>
                         )}
                     </div>
-                )}
 
-                {error && !loading && (
-                    <NoDataMessage message="로그 파일을 불러올 수 없습니다."/>
-                )}
-
-                {!loading && !error && logLines.length > 0 && (
-                    <>
-                        <AutoSizer>
-                            {({height, width}: { height: number; width: number }) => {
-                                listHeightRef.current = height;
-                                return (
-                                    <List
-                                        key={`log-list-${forceRenderKey}`}
-                                        ref={listRef}
-                                        height={height}
-                                        width={width}
-                                        itemCount={logLines.length}
-                                        itemSize={getRowHeight}
-                                        itemData={{
-                                            lines: logLines,
-                                            searchTerm,
-                                            currentSearchIndex,
-                                            searchResults,
-                                            currentChunkStart,
-                                            allLogLinesLength: allLogLines.length,
-                                            forceRenderKey, // 강제 리렌더링을 위한 키 추가
-                                            maxTextWidth // 최대 텍스트 너비 추가
-                                        }}
-                                        estimatedItemSize={28}
-                                        onItemsRendered={handleItemsRendered}
-                                        onScroll={handleScroll}
-                                        overscanCount={10}
-                                        useIsScrolling={false}
-                                        layout="vertical"
-                                        direction="ltr"
-                                        style={{
-                                            // 뿌옇게 되는 문제 방지를 위한 명시적 스타일
-                                            opacity: 1,
-                                            filter: 'none',
-                                            backfaceVisibility: 'hidden',
-                                            WebkitBackfaceVisibility: 'hidden',
-                                            transform: 'translate3d(0, 0, 0)',
-                                            willChange: 'scroll-position',
-                                            WebkitFontSmoothing: 'antialiased',
-                                            MozOsxFontSmoothing: 'grayscale',
-                                            textRendering: 'optimizeLegibility',
-                                            // 강화된 안티엘리어싱 설정
-                                            fontSmooth: 'always',
-                                            fontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
-                                            WebkitFontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
-                                            textSizeAdjust: '100%',
-                                            WebkitTextSizeAdjust: '100%',
-                                        }}
-                                    >
-                                        {LogRow}
-                                    </List>
-                                )
-                            }}
-                        </AutoSizer>
-
-                        {/* 텍스트 최적화 중 로딩 오버레이 */}
-                        {isTextOptimizing && (
+                    {/* 컨텐츠 영역 */}
+                    <div
+                        style={{
+                            flex: 1,
+                            borderRadius: '8px',
+                            overflow: 'hidden',
+                            background: '#111111',
+                            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)',
+                            border: '1.2px solid rgba(255, 215, 0, 0.4)',
+                            position: 'relative',
+                            minHeight: '500px',
+                            minWidth: '800px',
+                            margin: '8px 20px 15px 20px',
+                            display: 'flex',
+                            alignItems: 'stretch',
+                            justifyContent: 'flex-start',
+                            // 뿌옇게 되는 문제 방지 - 더 강력한 설정
+                            opacity: 1,
+                            filter: 'none',
+                            backfaceVisibility: 'hidden',
+                            WebkitBackfaceVisibility: 'hidden',
+                            transform: 'translate3d(0, 0, 0)',
+                            WebkitTransform: 'translate3d(0, 0, 0)',
+                            willChange: 'auto',
+                            WebkitFontSmoothing: 'antialiased',
+                            MozOsxFontSmoothing: 'grayscale',
+                            textRendering: 'optimizeLegibility',
+                            // 강화된 안티엘리어싱 설정
+                            fontSmooth: 'always',
+                            fontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
+                            WebkitFontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
+                            textSizeAdjust: '100%',
+                            WebkitTextSizeAdjust: '100%',
+                        }}
+                    >
+                        {loading && (
                             <div style={{
-                                position: 'absolute',
-                                top: 0, left: 0, right: 0, bottom: 0,
-                                backgroundColor: 'rgba(17, 17, 17, 0.8)',
+                                width: '100%',
+                                height: '100%',
                                 display: 'flex',
                                 alignItems: 'center',
                                 justifyContent: 'center',
-                                zIndex: 1000,
-                                backdropFilter: 'blur(2px)',
-                                WebkitBackdropFilter: 'blur(2px)',
-                                pointerEvents: 'all'
+                                flexDirection: 'column',
+                                gap: '20px'
                             }}>
-                                <div style={{
-                                    display: 'flex',
-                                    flexDirection: 'column',
-                                    alignItems: 'center',
-                                    gap: '10px'
-                                }}>
-                                    {/* 단순 CSS 애니메이션 스피너 */}
+                                <LogSpinner/>
+                                {isChunkLoading && totalLines > 0 && (
                                     <div style={{
-                                        width: '42px',
-                                        height: '42px',
-                                        borderRadius: '50%',
-                                        border: '3px solid rgba(20, 20, 20, 0.15)',
-                                        borderTopColor: '#FFD700',
-                                        animation: 'spin 1s cubic-bezier(0.4, 0.1, 0.3, 1) infinite',
-                                        margin: '0 auto',
-                                        boxShadow: '0 0 20px rgba(255, 215, 0, 0.15)',
-                                        transform: 'translateZ(0)',
-                                        willChange: 'transform'
-                                    }}/>
-                                </div>
+                                        color: 'rgba(255, 255, 255, 0.8)',
+                                        fontSize: '14px',
+                                        fontFamily: "'Inter', 'Pretendard', sans-serif",
+                                        textAlign: 'center'
+                                    }}>
+                                        <div>대용량 로그 파일 로딩 중...</div>
+                                        <div style={{
+                                            marginTop: '8px',
+                                            fontSize: '12px',
+                                            color: 'rgba(255, 255, 255, 0.6)'
+                                        }}>
+                                            {loadedLines.toLocaleString()} / {totalLines > 0 ? totalLines.toLocaleString() : '?'} 라인
+                                        </div>
+                                        <div style={{
+                                            width: '200px',
+                                            height: '4px',
+                                            backgroundColor: 'rgba(255, 255, 255, 0.2)',
+                                            borderRadius: '2px',
+                                            marginTop: '8px',
+                                            overflow: 'hidden'
+                                        }}>
+                                            <div style={{
+                                                width: totalLines > 0 ? `${Math.min((loadedLines / totalLines) * 100, 100)}%` : '0%',
+                                                height: '100%',
+                                                backgroundColor: 'rgba(255, 215, 0, 0.8)',
+                                                transition: 'width 0.3s ease',
+                                                borderRadius: '2px'
+                                            }}/>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
-                    </>
-                )}
 
-                {!loading && !error && logLines.length === 0 && (
-                    <NoDataMessage message="로그 데이터가 없습니다."/>
-                )}
-            </div>
-            </>
+                        {error && !loading && (
+                            <NoDataMessage message="로그 파일을 불러올 수 없습니다."/>
+                        )}
+
+                        {!loading && !error && logLines.length > 0 && (
+                            <>
+                                <AutoSizer>
+                                    {({height, width}: { height: number; width: number }) => {
+                                        listHeightRef.current = height;
+                                        return (
+                                            <List
+                                                key={`log-list-${forceRenderKey}`}
+                                                ref={listRef}
+                                                height={height}
+                                                width={width}
+                                                itemCount={logLines.length}
+                                                itemSize={getRowHeight}
+                                                itemData={{
+                                                    lines: logLines,
+                                                    searchTerm,
+                                                    currentSearchIndex,
+                                                    searchResults,
+                                                    currentChunkStart,
+                                                    allLogLinesLength: allLogLines.length,
+                                                    forceRenderKey, // 강제 리렌더링을 위한 키 추가
+                                                    maxTextWidth // 최대 텍스트 너비 추가
+                                                }}
+                                                estimatedItemSize={28}
+                                                onItemsRendered={handleItemsRendered}
+                                                onScroll={handleScroll}
+                                                overscanCount={10}
+                                                useIsScrolling={false}
+                                                layout="vertical"
+                                                direction="ltr"
+                                                style={{
+                                                    // 뿌옇게 되는 문제 방지를 위한 명시적 스타일
+                                                    opacity: 1,
+                                                    filter: 'none',
+                                                    backfaceVisibility: 'hidden',
+                                                    WebkitBackfaceVisibility: 'hidden',
+                                                    transform: 'translate3d(0, 0, 0)',
+                                                    willChange: 'scroll-position',
+                                                    WebkitFontSmoothing: 'antialiased',
+                                                    MozOsxFontSmoothing: 'grayscale',
+                                                    textRendering: 'optimizeLegibility',
+                                                    // 강화된 안티엘리어싱 설정
+                                                    fontSmooth: 'always',
+                                                    fontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
+                                                    WebkitFontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
+                                                    textSizeAdjust: '100%',
+                                                    WebkitTextSizeAdjust: '100%',
+                                                }}
+                                            >
+                                                {LogRow}
+                                            </List>
+                                        )
+                                    }}
+                                </AutoSizer>
+
+                                {/* 텍스트 최적화 중 로딩 오버레이 */}
+                                {isTextOptimizing && (
+                                    <div style={{
+                                        position: 'absolute',
+                                        top: 0, left: 0, right: 0, bottom: 0,
+                                        backgroundColor: 'rgba(17, 17, 17, 0.8)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        zIndex: 1000,
+                                        backdropFilter: 'blur(2px)',
+                                        WebkitBackdropFilter: 'blur(2px)',
+                                        pointerEvents: 'all'
+                                    }}>
+                                        <div style={{
+                                            display: 'flex',
+                                            flexDirection: 'column',
+                                            alignItems: 'center',
+                                            gap: '10px'
+                                        }}>
+                                            {/* 단순 CSS 애니메이션 스피너 */}
+                                            <div style={{
+                                                width: '42px',
+                                                height: '42px',
+                                                borderRadius: '50%',
+                                                border: '3px solid rgba(20, 20, 20, 0.15)',
+                                                borderTopColor: '#FFD700',
+                                                animation: 'spin 1s cubic-bezier(0.4, 0.1, 0.3, 1) infinite',
+                                                margin: '0 auto',
+                                                boxShadow: '0 0 20px rgba(255, 215, 0, 0.15)',
+                                                transform: 'translateZ(0)',
+                                                willChange: 'transform'
+                                            }}/>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        )}
+
+                        {!loading && !error && logLines.length === 0 && (
+                            <NoDataMessage message="로그 데이터가 없습니다."/>
+                        )}
+                    </div>
+                </>
             )}
 
             {error && !loading && (
@@ -1423,4 +1427,3 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
 };
 
 export default Log;
-

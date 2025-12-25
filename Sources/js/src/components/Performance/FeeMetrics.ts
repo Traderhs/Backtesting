@@ -1,5 +1,5 @@
-import { TradeItem } from "@/components/TradeFilter/TradeFilterContext";
-import { safeNumber } from './Utils.ts';
+import {TradeItem} from "@/components/TradeFilter/TradeFilterContext";
+import {safeNumber} from './Utils.ts';
 
 export interface FeeMetricsResult {
     totalEntryFee: number;
@@ -18,16 +18,16 @@ export const calculateFeeMetrics = (
 
     actualTrades.forEach((trade: TradeItem) => {
         const tradeNumber = safeNumber(trade["거래 번호"]);
-        
+
         // 0번 거래 번호 제외
         if (tradeNumber === 0) return;
-        
+
         // 진입 수수료는 동일한 거래 번호에 대해 한 번만 저장
         const entryFee = safeNumber(trade["진입 수수료"]);
         if (!tradeNumberToEntryFee.has(tradeNumber) && entryFee > 0) {
             tradeNumberToEntryFee.set(tradeNumber, entryFee);
         }
-        
+
         // 청산 수수료와 강제 청산 수수료는 모든 항목 합산
         totalExitFee += safeNumber(trade["청산 수수료"]);
         totalLiquidationFee += safeNumber(trade["강제 청산 수수료"]);
@@ -43,4 +43,4 @@ export const calculateFeeMetrics = (
         totalLiquidationFee,
         totalFee
     };
-}; 
+};

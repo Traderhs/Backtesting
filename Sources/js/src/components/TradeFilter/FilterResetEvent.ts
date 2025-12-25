@@ -11,14 +11,14 @@ export const RESET_NUMERIC_FILTER = 'resetNumericFilters';
 
 // 모든 필터 초기화 이벤트 발생 함수
 export const resetAllFilters = () => {
-  // 각 필터 초기화 이벤트 발생
-  document.dispatchEvent(new CustomEvent(RESET_STRATEGY_NAME_FILTER));
-  document.dispatchEvent(new CustomEvent(RESET_SYMBOL_NAME_FILTER));
-  document.dispatchEvent(new CustomEvent(RESET_ENTRY_NAME_FILTER));
-  document.dispatchEvent(new CustomEvent(RESET_EXIT_NAME_FILTER));
-  document.dispatchEvent(new CustomEvent(RESET_ENTRY_DIRECTION_FILTER));
-  document.dispatchEvent(new CustomEvent(RESET_ENTRY_TIME_FILTER));
-  document.dispatchEvent(new CustomEvent(RESET_EXIT_TIME_FILTER));
-  document.dispatchEvent(new CustomEvent(RESET_HOLDING_TIME_FILTER));
-  document.dispatchEvent(new CustomEvent(RESET_NUMERIC_FILTER));
-}; 
+    // 각 필터 초기화 이벤트 발생
+    document.dispatchEvent(new CustomEvent(RESET_STRATEGY_NAME_FILTER));
+    document.dispatchEvent(new CustomEvent(RESET_SYMBOL_NAME_FILTER));
+    document.dispatchEvent(new CustomEvent(RESET_ENTRY_NAME_FILTER));
+    document.dispatchEvent(new CustomEvent(RESET_EXIT_NAME_FILTER));
+    document.dispatchEvent(new CustomEvent(RESET_ENTRY_DIRECTION_FILTER));
+    document.dispatchEvent(new CustomEvent(RESET_ENTRY_TIME_FILTER));
+    document.dispatchEvent(new CustomEvent(RESET_EXIT_TIME_FILTER));
+    document.dispatchEvent(new CustomEvent(RESET_HOLDING_TIME_FILTER));
+    document.dispatchEvent(new CustomEvent(RESET_NUMERIC_FILTER));
+};

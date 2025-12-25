@@ -213,7 +213,8 @@ async function findLogoUrl(symbol) {
                     return pattern;
                 }
             }
-        } catch (error) {}
+        } catch (error) {
+        }
     }
 
     const coinId = await findCoinGeckoId(symbol);
@@ -229,7 +230,8 @@ async function findLogoUrl(symbol) {
         if (imageUrl) {
             return imageUrl;
         }
-    } catch (error) {}
+    } catch (error) {
+    }
 
     return null;
 }
@@ -265,7 +267,8 @@ async function initializeFallbackImage(iconDir) {
             await downloadAndSaveImage(url, fallbackPath);
 
             return;
-        } catch (downloadError) {}
+        } catch (downloadError) {
+        }
     }
 }
 
@@ -382,7 +385,8 @@ async function getCandleDataByFiles(directory, fileRequest) {
                     volume: record["Volume"]
                 });
             }
-        } catch (err) {}
+        } catch (err) {
+        }
     }
     return allResults;
 }
@@ -456,7 +460,8 @@ async function getIndicatorDataByTimeRange(directory, timeRange, symbol) {
                     allResults.push({time: timeVal, value: value});
                 }
             }
-        } catch (err) {}
+        } catch (err) {
+        }
     }
     allResults.sort((a, b) => a.time - b.time);
     return allResults;
@@ -465,7 +470,7 @@ async function getIndicatorDataByTimeRange(directory, timeRange, symbol) {
 async function handleLoadChartData(ws, msg, dataPaths, indicatorPaths) {
     const {symbol, indicators, fileRequest} = msg;
     const candleDirectory = dataPaths[symbol];
-    
+
     let candleDataPromise;
     if (!candleDirectory) {
         candleDataPromise = Promise.resolve({error: "캔들스틱 데이터 경로 없음", data: []});
@@ -507,7 +512,10 @@ async function handleLoadChartData(ws, msg, dataPaths, indicatorPaths) {
 
     try {
         const [candleResult, ...indicatorResults] = await Promise.all([candleDataPromise, ...indicatorPromises]);
-        const filteredIndicatorResults = indicatorResults.map(indResult => ({...indResult, data: indResult.data || []}));
+        const filteredIndicatorResults = indicatorResults.map(indResult => ({
+            ...indResult,
+            data: indResult.data || []
+        }));
 
         const response = {
             action: "loadChartDataResponse",

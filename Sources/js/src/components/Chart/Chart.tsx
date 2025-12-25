@@ -11,7 +11,6 @@ import CandleStickRenderer, {CandleData} from './CandleStickRenderer';
 import Calendar from './Calendar';
 import LoadingSpinner from '@/components/Common/LoadingSpinner';
 import NoDataMessage from '@/components/Common/NoDataMessage';
-import {terminateWorker} from './workerUtil';
 import '@/components/Common/LoadingSpinner.css';
 
 // 메인 차트 높이 설정 (페인 개수에 따라 변화하는 함수)
@@ -800,13 +799,6 @@ const Chart: React.FC<{
                 } catch (e) {
                 }
                 chartRef.current = null;
-            }
-
-            // Web Worker 정리
-            try {
-                terminateWorker();
-            } catch (e) {
-                console.error('Worker 정리 중 오류:', e);
             }
 
             // 상태 초기화

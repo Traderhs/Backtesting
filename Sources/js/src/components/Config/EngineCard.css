@@ -100,8 +100,8 @@
     padding: 0;
     overflow-x: hidden;
     overflow-y: scroll;
-    scrollbar-width: none;  /* Firefox */
-    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
     top: 0;
     border-right: 2px solid rgba(255, 215, 0, 0.13);
     white-space: nowrap;
@@ -325,4 +325,4 @@
     animation: sweep 1.5s ease infinite !important;
     pointer-events: none !important;
     z-index: 2 !important;
-} 
+}

@@ -86,4 +86,4 @@ const LogSpinner: React.FC = () => {
     );
 };
 
-export default LogSpinner; 
+export default LogSpinner;

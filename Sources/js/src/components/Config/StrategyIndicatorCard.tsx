@@ -50,7 +50,7 @@ interface StrategyIndicatorCardProps {
         name: string
         timeframe: string
         sourcePath?: string  // 소스 파일 경로
-        headerPath?: string  // 헤더 파일 경로 
+        headerPath?: string  // 헤더 파일 경로
         className?: string   // 클래스 이름
     }[]
 }
@@ -623,11 +623,11 @@ const StrategyIndicatorCard = memo(({
         // 스크롤 동기화 이벤트 리스너 등록
         const rightSection = infoRightRef.current;
         const indicatorRightSection = indicatorInfoRightRef.current;
-        
+
         if (rightSection) {
             rightSection.addEventListener('scroll', handleScroll);
         }
-        
+
         if (indicatorRightSection) {
             indicatorRightSection.addEventListener('scroll', handleIndicatorScroll);
         }

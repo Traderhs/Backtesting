@@ -96,4 +96,4 @@ const ResetAllFiltersButton: React.FC = () => {
     );
 };
 
-export default ResetAllFiltersButton; 
+export default ResetAllFiltersButton;

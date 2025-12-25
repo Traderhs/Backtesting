@@ -15,7 +15,7 @@ function mergeIndicatorData(cache, newData, direction = 'right') {
     if (cache.length === 0) {
         return newData;
     }
-    
+
     // 성능 최적화: Array.concat 사용 - 대용량 배열에서 스프레드 연산자보다 효율적
     return direction === 'left'
         ? newData.concat(cache) // 과거 데이터 요청: 새 데이터 + 기존 데이터
@@ -23,15 +23,15 @@ function mergeIndicatorData(cache, newData, direction = 'right') {
 }
 
 // 메시지 이벤트 리스너 등록
-self.addEventListener('message', function(e) {
-    const { operation, cache, newData, direction, indicatorName } = e.data;
-    
+self.addEventListener('message', function (e) {
+    const {operation, cache, newData, direction, indicatorName} = e.data;
+
     // 현재는 병합 작업만 지원
     if (operation === 'merge') {
         try {
             // 데이터 병합 처리
             const result = mergeIndicatorData(cache, newData, direction);
-            
+
             // 결과를 메인 스레드로 반환
             self.postMessage({
                 success: true,
@@ -49,4 +49,4 @@ self.addEventListener('message', function(e) {
             });
         }
     }
-}); 
+});

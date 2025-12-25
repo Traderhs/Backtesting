@@ -309,4 +309,4 @@
 /* 선택된 열 그룹 스타일 */
 .trade-list-container .td.selected-column-group:not(.selected-cell) {
     background-color: rgba(255, 215, 0, 0.1) !important;
-} 
+}

@@ -46,11 +46,11 @@ export function parseHoldingTime(holdingTime: string): number | null {
             if (!isNaN(value)) totalMs += value * kSecond;
         }
     }
-    
+
     // C++ 백엔드와 동일하게 1초 미만일 때는 소수점 초를 그대로 반환
     if (totalMs < kSecond) {
         return totalMs / 1000; // 소수점 초 그대로 반환
     }
-    
+
     return Math.floor(totalMs / 1000); // 1초 이상일 때는 정수 초로 반환
 }

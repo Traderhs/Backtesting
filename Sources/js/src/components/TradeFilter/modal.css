@@ -1,17 +1,27 @@
 @keyframes fadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
 }
 
 @keyframes zoomIn {
-  from { transform: scale(0.95); opacity: 0; }
-  to { transform: scale(1); opacity: 1; }
+    from {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .modal-container {
     width: 800px;
     max-height: 600px;
-    overflow-y: auto;  /* 내용이 넘치면 스크롤 */
+    overflow-y: auto; /* 내용이 넘치면 스크롤 */
 }
 
 .advanced-filter-modal-container {

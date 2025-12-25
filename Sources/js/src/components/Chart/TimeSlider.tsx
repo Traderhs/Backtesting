@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from "react";
-import { IChartApi } from "lightweight-charts";
+import React, {useEffect, useRef, useState} from "react";
+import {IChartApi} from "lightweight-charts";
 import "./TimeSlider.css";
 
 interface TimeSliderProps {
@@ -10,7 +10,7 @@ interface TimeSliderProps {
     targetTime?: number; // 목표 시간 (타임스탬프)
 }
 
-const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, containerRef, isLocked, targetTime }) => {
+const TimeSlider: React.FC<TimeSliderProps> = ({chart, candleStickData, containerRef, isLocked, targetTime}) => {
     // 슬라이더 값(state)은 candleStickData의 인덱스(0 ~ length-1)를 사용합니다.
     const [sliderValue, setSliderValue] = useState(0);
     const sliderRef = useRef<HTMLInputElement>(null);
@@ -22,38 +22,38 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
         if (!chart || candleStickData.length === 0) {
             return;
         }
-        
+
         // 해당 timestamp에 가장 가까운 캔들 찾기
         let targetIndex = 0;
         let closestDiff = Number.MAX_SAFE_INTEGER;
-        
+
         candleStickData.forEach((candle, index) => {
-            const candleTime = typeof candle.time === "string" 
+            const candleTime = typeof candle.time === "string"
                 ? new Date(candle.time).getTime() / 1000
                 : candle.time;
-            
+
             const diff = Math.abs(candleTime - timestamp);
             if (diff < closestDiff) {
                 closestDiff = diff;
                 targetIndex = index;
             }
         });
-        
+
         // 슬라이더 값 업데이트
         setSliderValue(targetIndex);
-        
+
         // 차트의 visibleRange도 함께 업데이트
         if (chart) {
             const timeScale = chart.timeScale();
             const logicalRange = timeScale.getVisibleLogicalRange();
-            
+
             if (logicalRange) {
                 const visibleCount = logicalRange.to - logicalRange.from;
                 const newFrom = targetIndex - visibleCount / 2;
                 const newTo = targetIndex + visibleCount / 2;
-                
+
                 // 차트 위치 업데이트
-                timeScale.setVisibleLogicalRange({ from: newFrom, to: newTo });
+                timeScale.setVisibleLogicalRange({from: newFrom, to: newTo});
             }
         }
     };
@@ -91,13 +91,13 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
 
         sliderRef.current.min = "0";
         sliderRef.current.max = (totalCount - 1).toString();
-        
+
         // 현재 슬라이더 값도 유효한 범위 내에 있는지 확인하고 필요시 조정
         if (sliderValue < 0 || sliderValue > totalCount - 1) {
             const safeValue = Math.max(0, Math.min(sliderValue, totalCount - 1));
             setSliderValue(safeValue);
         }
-        
+
         sliderRef.current.style.left = `${leftWidth}px`;
         sliderRef.current.style.right = `${rightWidth}px`;
         sliderRef.current.style.width = `${timeWidth}px`;
@@ -108,20 +108,20 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
         if (!sliderDateRef.current || candleStickData.length === 0) {
             return;
         }
-        
+
         // 더 강력한 경계 검사
         const safeIndex = Math.max(0, Math.min(Math.floor(sliderValue), candleStickData.length - 1));
-        
+
         // 인덱스가 유효한지 확인
         if (safeIndex < 0 || !candleStickData[safeIndex]) {
             return;
         }
-        
+
         const bar = candleStickData[safeIndex];
         if (!bar || bar.time === undefined) {
             return;
         }
-        
+
         const date = new Date(typeof bar.time === "string" ? bar.time : bar.time * 1000);
         const days = ["일", "월", "화", "수", "목", "금", "토"];
         sliderDateRef.current.innerText =
@@ -138,37 +138,37 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
             const percent = (sliderValue - minVal) / (maxVal - minVal);
             const thumbWidth = 120; // CSS에 지정한 thumb 너비 (TimeSlider.css 참고)
             const x = sliderRect.left - containerRect.left + percent * (sliderRect.width - thumbWidth) + thumbWidth / 2;
-            
+
             // 실제 너비를 측정하기 위해 일시적으로 표시
             const originalDisplay = sliderDateRef.current.style.display;
             sliderDateRef.current.style.display = 'block';
 
             const tooltipRect = sliderDateRef.current.getBoundingClientRect();
             sliderDateRef.current.style.display = originalDisplay;
-            
+
             const tooltipWidth = tooltipRect.width;
-            
+
             // 차트의 가격 축 너비 가져오기
             const rightScale = chart.priceScale('right');
             const rightScaleWidth = rightScale ? rightScale.width() : 0;
             const safetyMargin = 1; // 오른쪽 경계에 대한 안전 마진 (픽셀 단위)
             const adjustedRightScaleWidth = rightScaleWidth + safetyMargin;
-            
+
             // 컨테이너의 실제 가용 너비 (오른쪽 가격 축 및 안전 마진 고려)
             const effectiveContainerWidth = containerRect.width - adjustedRightScaleWidth;
-            
+
             // 왼쪽 경계를 벗어나는 경우
             if (x - tooltipWidth / 2 < 0) {
                 sliderDateRef.current.style.left = '0px';
                 sliderDateRef.current.style.right = 'auto';
                 sliderDateRef.current.style.transform = 'none'; // transform 제거
-            } 
+            }
             // 오른쪽 경계를 벗어나는 경우 (가격 축 및 안전 마진 고려)
             else if (x + tooltipWidth / 2 > effectiveContainerWidth) {
                 sliderDateRef.current.style.left = 'auto';
                 sliderDateRef.current.style.right = `${adjustedRightScaleWidth}px`; // 조정된 가격 축 너비 사용
                 sliderDateRef.current.style.transform = 'none'; // transform 제거
-            } 
+            }
             // 정상적인 경우
             else {
                 sliderDateRef.current.style.left = `${x}px`;
@@ -181,16 +181,16 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
     // 차트의 visible range 변경 시 슬라이더 중앙 바의 인덱스로 업데이트 (양방향 동기화)
     useEffect(() => {
         const updateFromVisibleRange = () => {
-            if (!chart) return; 
-            
+            if (!chart) return;
+
             // isLocked가 true이더라도 사용자가 차트를 직접 드래그 중일 때는 업데이트 허용
             // 데이터 로드 중(isLocked=true)이고 사용자 드래그가 아닌 경우에만 업데이트 무시
             if (isLocked && !userDraggedRef.current) return;
-            
+
             const logicalRange = chart.timeScale().getVisibleLogicalRange();
             if (!logicalRange) return;
             const center = Math.round((logicalRange.from + logicalRange.to) / 2);
-            
+
             // center 값이 유효한 범위(0 ~ candleStickData.length-1) 내에 있도록 제한
             const safeCenter = Math.max(0, Math.min(center, candleStickData.length - 1));
             setSliderValue(safeCenter);
@@ -205,18 +205,18 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
                 const handleMouseDown = () => {
                     userDraggedRef.current = true;
                 };
-                
+
                 // 마우스 업 시 사용자 드래그 종료로 간주
                 const handleMouseUp = () => {
                     userDraggedRef.current = false;
                 };
-                
+
                 chartElement.addEventListener('mousedown', handleMouseDown);
                 document.addEventListener('mouseup', handleMouseUp);
-                
+
                 // 이벤트 구독
                 chart.timeScale().subscribeVisibleLogicalRangeChange(updateFromVisibleRange);
-                
+
                 return () => {
                     chartElement.removeEventListener('mousedown', handleMouseDown);
                     document.removeEventListener('mouseup', handleMouseUp);
@@ -230,8 +230,9 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
                 };
             }
         }
-        
-        return () => {};
+
+        return () => {
+        };
     }, [chart, isLocked, candleStickData.length]);
 
     // 슬라이더 변경 시 차트의 visible range 업데이트
@@ -239,7 +240,7 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
         // 입력값이 유효한 범위(0 ~ candleStickData.length-1) 내에 있도록 제한
         const rawValue = Number(e.target.value);
         const value = Math.max(0, Math.min(rawValue, candleStickData.length - 1));
-        
+
         setSliderValue(value);
         if (!chart) {
             return;
@@ -254,7 +255,7 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
         const newFrom = value - visibleCount / 2;
         const newTo = value + visibleCount / 2;
 
-        chart.timeScale().setVisibleLogicalRange({ from: newFrom, to: newTo });
+        chart.timeScale().setVisibleLogicalRange({from: newFrom, to: newTo});
     };
 
     // 슬라이더 드래그 시작 시 툴팁 표시
@@ -303,7 +304,7 @@ const TimeSlider: React.FC<TimeSliderProps> = ({ chart, candleStickData, contain
                 onTouchStart={handleSliderMouseDown}
                 onTouchEnd={handleSliderMouseUp}
             />
-            <div id="sliderDate" ref={sliderDateRef} className="slider-date" style={{ display: "none" }}></div>
+            <div id="sliderDate" ref={sliderDateRef} className="slider-date" style={{display: "none"}}></div>
         </>
     );
 };

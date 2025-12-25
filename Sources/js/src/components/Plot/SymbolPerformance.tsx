@@ -501,7 +501,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
         return {allTimes: allEntryTimes, symbolDataArray};
     };
 
-    // 승률 데이터 생성 - 최적화된 버전  
+    // 승률 데이터 생성 - 최적화된 버전
     const generateWinRateData = () => {
         const tradeResults = preprocessedData.tradeResults;
 
@@ -1198,7 +1198,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
             const year = date.getFullYear();
 
             if (lastYear !== null && year !== lastYear) {
-                yearChangePoints.push({ year, time });
+                yearChangePoints.push({year, time});
             }
             lastYear = year;
         }
@@ -1987,7 +1987,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
             for (let entry of entries) {
                 const {width, height} = entry.contentRect;
                 chart.applyOptions({width, height});
-                
+
                 // 리사이즈 시 년도 그리드 다시 그리기
                 requestAnimationFrame(() => {
                     drawYearGridLines();
@@ -2058,7 +2058,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                     tooltipRef.current.remove();
                     tooltipRef.current = null;
                 }
-                
+
                 // 년도 그리드 컨테이너 제거
                 if (yearGridContainerRef.current) {
                     yearGridContainerRef.current.remove();

@@ -28,7 +28,7 @@ export const calculateAGRMetrics = (
 
     // 시작일 또는 종료일이 없으면 계산 불가
     if (!startDate || !endDate) {
-        return { cdgr: "-", cwgr: "-", cmgr: "-", cqgr: "-", cagr: "-" };
+        return {cdgr: "-", cwgr: "-", cmgr: "-", cqgr: "-", cagr: "-"};
     }
 
     // 총 거래 기간(일) 계산: 크립토 시스템이므로 365일 기준
@@ -48,4 +48,4 @@ export const calculateAGRMetrics = (
         cqgr,
         cagr
     };
-}; 
+};

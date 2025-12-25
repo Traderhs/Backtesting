@@ -174,12 +174,12 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
     useEffect(() => {
         setIsMounted(true);
         setIsLoading(true);
-        
+
         // 최소 1초 로딩
         const timer = setTimeout(() => {
             setIsLoading(false);
         }, 1000);
-        
+
         return () => {
             setIsMounted(false);
             clearTimeout(timer);
@@ -292,7 +292,7 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
 
         // 로딩 중이면 스피너 표시
         if (isLoading) {
-            return <LoadingSpinner />;
+            return <LoadingSpinner/>;
         }
 
         return (
@@ -419,4 +419,4 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
     }, [filteredTrades, isMounted, plotType, equityInitialized, netProfitLossInitialized, holdingTimePnlInitialized, symbolPerformanceInitialized, config, isLoading]);
 };
 
-export default Plot; 
+export default Plot;

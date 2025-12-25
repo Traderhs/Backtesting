@@ -147,7 +147,7 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
 
     useEffect(() => {
         try {
-            // filteredTrades가 유효할 때 계산 수행 
+            // filteredTrades가 유효할 때 계산 수행
             computeMetrics();
         } finally {
             // 계산 여부와 무관하게 무조건 준비 완료 상태 알림

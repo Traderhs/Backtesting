@@ -9,6 +9,6 @@
     z-index: 60;
     border: 1px solid rgba(255, 215, 0, 0.4);
     white-space: nowrap;
-    font-family: "'Inter', 'Pretendard', sans-serif";
+    font-family: "'Inter', 'Pretendard', sans-serif", serif;
     transition: opacity 0.2s ease-in-out;
-} 
+}
