@@ -25,7 +25,7 @@ function startCppProcess(activeClients, broadcastLog, baseDir) {
         return;
     }
 
-    const possiblePaths = [path.join(path.dirname(process.execPath), 'Backtesting.exe'), path.join(path.dirname(process.execPath), 'Backboard', 'Backtesting.exe'), path.join('d:', 'Programming', 'Backtesting', 'Builds', 'Release', 'Release', 'Backtesting.exe')];
+    const possiblePaths = [path.join(path.dirname(process.execPath), 'Backtesting.exe'), path.join(path.dirname(process.execPath), 'BackBoard', 'Backtesting.exe'), path.join('d:', 'Programming', 'Backtesting', 'Builds', 'Release', 'Release', 'Backtesting.exe')];
 
     // 세 후보 경로 중에서 매칭 시도
     let exePath = null;
@@ -165,7 +165,7 @@ let editorConfigLoading = false;
 let hmacKey = null;
 
 function getKeyPath(baseDir) {
-    return path.join(baseDir, 'Backboard', '.editorkey');
+    return path.join(baseDir, 'BackBoard', '.editorkey');
 }
 
 function loadOrCreateKey(baseDir, broadcastLog) {
@@ -578,7 +578,7 @@ async function ensureDirectory(dirPath) {
 }
 
 async function createProjectStructure(projectDir) {
-    const backboardDir = path.join(projectDir, 'Backboard');
+    const backboardDir = path.join(projectDir, 'BackBoard');
 
     const continuousDir = path.join(projectDir, 'Data', 'Continuous Klines');
     const markPriceDir = path.join(projectDir, 'Data', 'Mark Price Klines');
@@ -587,11 +587,11 @@ async function createProjectStructure(projectDir) {
 }
 
 function getEditorConfigPath(projectDir) {
-    return path.join(projectDir, 'Backboard', 'editor.json');
+    return path.join(projectDir, 'BackBoard', 'editor.json');
 }
 
-async function validateBackboardExe(projectDir) {
-    const backboardExePath = path.join(projectDir, 'Backboard.exe');
+async function validateBackBoardExe(projectDir) {
+    const backboardExePath = path.join(projectDir, 'BackBoard.exe');
 
     if (await fileExists(backboardExePath)) {
         return backboardExePath;
@@ -619,8 +619,8 @@ async function validateProjectDirectoryConfig(cfg, broadcastLog) {
 
     projectDirectory = path.resolve(projectDirectory);
 
-    if (!(await validateBackboardExe(projectDirectory))) {
-        broadcastLog("ERROR", `필수 파일이 없습니다: ${toPosix(path.join(projectDirectory, 'Backboard.exe'))}`, null, null);
+    if (!(await validateBackBoardExe(projectDirectory))) {
+        broadcastLog("ERROR", `필수 파일이 없습니다: ${toPosix(path.join(projectDirectory, 'BackBoard.exe'))}`, null, null);
 
         return false;
     }
@@ -675,7 +675,7 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
 
         if (activeClients && activeClients.size > 0) {
             while (true) {
-                broadcastLog("INFO", `Backboard/editor.json이 없습니다. 프로젝트 폴더 입력을 요청합니다.`, null, null);
+                broadcastLog("INFO", `BackBoard/editor.json이 없습니다. 프로젝트 폴더 입력을 요청합니다.`, null, null);
 
                 const provided = await requestProjectDirectoryFromClients();
                 if (!provided || typeof provided !== 'string' || provided.trim() === '') {
@@ -693,14 +693,14 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
                 }
 
                 const resolvedRoot = path.resolve(provided);
-                const backboardExe = await validateBackboardExe(resolvedRoot);
+                const backboardExe = await validateBackBoardExe(resolvedRoot);
 
                 if (!backboardExe) {
-                    broadcastLog("WARN", `Backboard.exe 파일을 찾을 수 없습니다: ${toPosix(resolvedRoot)}`, null, null);
+                    broadcastLog("WARN", `BackBoard.exe 파일을 찾을 수 없습니다: ${toPosix(resolvedRoot)}`, null, null);
 
                     try {
                         activeClients.forEach(c => c.send(JSON.stringify({
-                            action: 'projectDirectoryInvalid', reason: 'Backboard.exe 파일을 찾을 수 없습니다.'
+                            action: 'projectDirectoryInvalid', reason: 'BackBoard.exe 파일을 찾을 수 없습니다.'
                         })));
                     } catch (e) {
                         // 무시
@@ -773,12 +773,12 @@ function saveEditorConfig(config, broadcastLog, baseDir) {
 async function handleProvideProjectDirectory(ws, projectDir, activeClients, broadcastLog, baseDir) {
     if (projectDir && typeof projectDir === 'string') {
         const resolvedRoot = path.resolve(projectDir);
-        const backboardExe = await validateBackboardExe(resolvedRoot);
+        const backboardExe = await validateBackBoardExe(resolvedRoot);
         const editorConfigPath = getEditorConfigPath(resolvedRoot);
 
         if (!backboardExe) {
             ws.send(JSON.stringify({
-                action: "projectDirectoryInvalid", reason: `Backboard.exe 파일을 찾을 수 없습니다.`
+                action: "projectDirectoryInvalid", reason: `BackBoard.exe 파일을 찾을 수 없습니다.`
             }));
         } else if (await createProjectStructure(resolvedRoot)) {
             try {

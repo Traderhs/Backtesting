@@ -7,7 +7,7 @@ export default defineConfig({
     plugins: [react()],
     base: './',
     build: {
-        outDir: 'Backboard',
+        outDir: 'BackBoard',
         minify: 'terser',
         terserOptions: {
             compress: {
@@ -42,7 +42,7 @@ export default defineConfig({
     },
     server: {
         proxy: {
-            "/Backboard": {
+            "/BackBoard": {
                 target: `http://localhost:${process.env.BACKBOARD_PORT || 7777}`,
                 changeOrigin: true,
             },

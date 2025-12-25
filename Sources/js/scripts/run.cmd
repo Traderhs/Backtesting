@@ -41,13 +41,13 @@ if "%NEEDS_TW_BUILD%"=="true" (
 
 echo.
 echo [npm] 빌드 여부를 확인합니다.
-if not exist Backboard (
+if not exist BackBoard (
   set NEEDS_NPM_BUILD=true
 ) else (
   set SRCB_TICKS=0
   for /f "delims=" %%C in ('powershell -NoProfile -Command "(Get-ChildItem src -Recurse -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1).LastWriteTimeUtc.Ticks"') do set SRCB_TICKS=%%C
   set BACKB_TICKS=0
-  for /f "delims=" %%D in ('powershell -NoProfile -Command "(Get-ChildItem Backboard -Recurse -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1).LastWriteTimeUtc.Ticks"') do set BACKB_TICKS=%%D
+  for /f "delims=" %%D in ('powershell -NoProfile -Command "(Get-ChildItem BackBoard -Recurse -File | Sort-Object LastWriteTime -Descending | Select-Object -First 1).LastWriteTimeUtc.Ticks"') do set BACKB_TICKS=%%D
   call :CompareBigNumbers "!SRCB_TICKS!" "!BACKB_TICKS!" RES
   if "!RES!"=="GTR" (
     set NEEDS_NPM_BUILD=true

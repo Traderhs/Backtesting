@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "bin": "launch.js",
   "pkg": {
-    "outputPath": "Backboard Package",
+    "outputPath": "BackBoard Package",
     "targets": [
       "node18-win-x64"
     ],
@@ -17,7 +17,7 @@
     "build": "tsc -b config/tsconfig.json && vite build --config config/vite.config.ts",
     "lint": "eslint --config config/eslint.config.js .",
     "preview": "vite preview --config config/vite.config.ts",
-    "pkg:build": "pkg . --target node18-win-x64 --output Backboard Package/Backboard.exe",
+    "pkg:build": "pkg . --target node18-win-x64 --output BackBoard Package/BackBoard.exe",
     "postinstall": "node ./scripts/patch-deprecations.js"
   },
   "type": "commonjs",

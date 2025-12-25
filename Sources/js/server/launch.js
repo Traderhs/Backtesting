@@ -165,16 +165,16 @@ async function findAvailablePort(startPort) {
 // =====================================================================================================================
 // 정적 파일 제공
 // =====================================================================================================================
-const iconDir = path.join(baseDir, "Backboard", "icon");
-app.use("/Backboard", express.static(path.join(baseDir, "Backboard")));
+const iconDir = path.join(baseDir, "BackBoard", "Icons");
+app.use("/BackBoard", express.static(path.join(baseDir, "BackBoard")));
 
-const distPath = path.join(baseDir, "Backboard");
+const distPath = path.join(baseDir, "BackBoard");
 app.use(express.static(distPath));
 
 // =====================================================================================================================
 // API: config 가져오기
 // =====================================================================================================================
-// 서버에서 미리 로드한 Backboard/config.json을 클라이언트가 요청할 수 있도록 전역 변수와 API 제공
+// 서버에서 미리 로드한 BackBoard/config.json을 클라이언트가 요청할 수 있도록 전역 변수와 API 제공
 let config = null;
 
 app.get('/api/config', (req, res) => {
@@ -191,7 +191,7 @@ app.get('/api/config', (req, res) => {
 // =====================================================================================================================
 app.get('/api/trade-list', async (req, res) => {
     try {
-        const tradeListPath = path.join(baseDir, 'Backboard', 'trade_list.json');
+        const tradeListPath = path.join(baseDir, 'BackBoard', 'trade_list.json');
 
         // 파일 존재 확인
         await fsPromises.access(tradeListPath, fs.constants.F_OK);
@@ -216,7 +216,7 @@ app.get('/api/trade-list', async (req, res) => {
     } catch (error) {
         res.status(404).json({
             error: 'trade_list.json 파일을 찾을 수 없습니다.',
-            attemptedPath: toPosix(path.join(baseDir, 'Backboard', 'trade_list.json')),
+            attemptedPath: toPosix(path.join(baseDir, 'BackBoard', 'trade_list.json')),
             baseDir: toPosix(baseDir),
             cwd: toPosix(process.cwd()),
             details: error.message
@@ -257,7 +257,7 @@ app.get("/api/get-logo", async (req, res) => {
 
     const safeSymbolName = symbol.replace(/[^a-zA-Z0-9]/g, '_');
     const localFilePath = path.join(iconDir, `${safeSymbolName}.png`);
-    const localFileUrl = `/Backboard/icon/${safeSymbolName}.png`;
+    const localFileUrl = `/BackBoard/Icons/${safeSymbolName}.png`;
 
     try {
         await fsPromises.access(localFilePath, fs.constants.F_OK);
@@ -429,7 +429,7 @@ app.get("/api/get-source-code", async (req, res) => {
 // =====================================================================================================================
 app.head('/api/log', async (req, res) => {
     try {
-        const p = path.join(baseDir, 'Backboard', 'backtesting.log');
+        const p = path.join(baseDir, 'BackBoard', 'backtesting.log');
 
         let filePath = null;
         try {
@@ -461,7 +461,7 @@ app.head('/api/log', async (req, res) => {
 
 app.get('/api/log', async (req, res) => {
     try {
-        const p = path.join(baseDir, 'Backboard', 'backtesting.log');
+        const p = path.join(baseDir, 'BackBoard', 'backtesting.log');
 
         let filePath = null;
         try {
@@ -736,7 +736,7 @@ async function main() {
         const server = await startServer();
 
         // config.json에서 데이터 경로 파싱
-        const configPath = path.join(baseDir, "Backboard", "config.json");
+        const configPath = path.join(baseDir, "BackBoard", "config.json");
 
         try {
             // 전역 `config` 변수에 파일 내용을 로드
