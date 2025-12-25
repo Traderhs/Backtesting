@@ -225,8 +225,8 @@ class OrderHandler final : public BaseOrderHandler {
   ///
   /// 고저가를 확인할 때 강제 청산되었으면 강제 청산 가격은 청산 가격과 마크
   /// 가격의 차이를 시장 가격에서 조정하므로 실제 가격과 다를 수 있음에 주의
-  void CheckLiquidation(BarDataType market_bar_data_type, int symbol_idx, double price,
-                        PriceType price_type);
+  void CheckLiquidation(BarDataType market_bar_data_type, int symbol_idx,
+                        double price, PriceType price_type);
 
   /// 트레이딩 중인 심볼에서 지정된 가격을 기준으로 청산 대기 주문들이
   /// 체결됐는지 확인 후 해당 주문 정보들을 체결해야 하는 주문 벡터에

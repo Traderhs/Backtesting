@@ -225,7 +225,8 @@ class Engine final : public BaseEngine {
   /// 강제 청산 및 대기 중인 주문의 체결을 확인할 수 있도록
   /// 정보를 구조체 형태로 저장한 벡터를 반환하는 함수.
   [[nodiscard]] pair<vector<PriceData>, vector<PriceData>> GetPriceQueue(
-      BarDataType market_bar_data_type, const vector<int>& symbol_indices) const;
+      BarDataType market_bar_data_type,
+      const vector<int>& symbol_indices) const;
 
   /// 전 가격에서 현재 가격으로 올 때의 가격 방향을 계산하는 함수
   [[nodiscard]] Direction CalculatePriceDirection(

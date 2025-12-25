@@ -46,7 +46,7 @@ set(PRIVATE_STRATEGY_SOURCES "D:/Programming/Backtesting-Strategies/Sources")
 file(GLOB HEADERS   # 해당 경로에서 hpp 파일들을 GLOB (엔진, 전략, 지표 헤더 파일들)
         "Includes/**/*.hpp"
         "${PRIVATE_STRATEGY_INCLUDES}/Strategies/*.hpp")
-file(GLOB SOURCES  # 해당 경로에서 cpp 파일들을 GLOB (엔진, 전략, 지표 소스 파일들) 
+file(GLOB SOURCES  # 해당 경로에서 cpp 파일들을 GLOB (엔진, 전략, 지표 소스 파일들)
         "Sources/cpp/**/*.cpp"
         "${PRIVATE_STRATEGY_SOURCES}/Strategies/*.cpp")
 
