@@ -1,4 +1,4 @@
-import {useState, useEffect} from "react";
+import {useEffect, useState} from "react";
 
 interface ServerAlertProps {
     serverError: boolean;
@@ -12,7 +12,9 @@ export default function ServerAlert({serverError, message}: ServerAlertProps) {
         setVisible(serverError);
     }, [serverError]);
 
-    if (!visible) return null;
+    if (!visible) {
+        return null;
+    }
 
     return (
         <div
