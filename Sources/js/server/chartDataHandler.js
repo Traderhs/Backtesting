@@ -63,7 +63,7 @@ const COINGECKO_RATE_LIMIT_MS = 2000;
 
 const BINANCE_24HR_TICKER_URL = "https://api.binance.com/api/v3/ticker/24hr";
 const COINGECKO_LIST_URL = "https://api.coingecko.com/api/v3/coins/list";
-const USDT_FALLBACK_ICON_PATH = "/BackBoard/icon/USDT_fallback.png";
+const USDT_FALLBACK_ICON_PATH = "/BackBoard/Icons/USDT.png";
 const USDT_LOGO_URLS = [
     "https://coin-images.coingecko.com/coins/images/325/small/Tether.png",
     "https://s2.coinmarketcap.com/static/img/coins/64x64/825.png",
@@ -253,7 +253,7 @@ async function downloadAndSaveImage(imageUrl, savePath) {
 }
 
 async function initializeFallbackImage(iconDir) {
-    const fallbackPath = path.join(iconDir, "USDT_fallback.png");
+    const fallbackPath = path.join(iconDir, "USDT.png");
     try {
         await fsPromises.access(fallbackPath, require("fs").constants.F_OK);
         return;
