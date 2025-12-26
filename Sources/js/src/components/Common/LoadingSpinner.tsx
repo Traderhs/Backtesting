@@ -1,5 +1,5 @@
 import React, {useEffect} from 'react';
-import {motion, AnimatePresence} from 'framer-motion';
+import {AnimatePresence, motion} from 'framer-motion';
 import './LoadingSpinner.css';
 
 // 로딩 스피너 컴포넌트
