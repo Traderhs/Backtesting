@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef, useMemo, useCallback, forwardRef} from "react";
+import React, {forwardRef, useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {NumberFormatValues, NumericFormat} from 'react-number-format';
 import {useTradeFilter} from "../TradeFilter";
 import "./HoldingTimeFilter.css";

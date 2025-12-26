@@ -1,5 +1,5 @@
 import React, {useEffect} from "react";
-import {useTradeFilter, toggleOption} from "../TradeFilter";
+import {toggleOption, useTradeFilter} from "../TradeFilter";
 import {RESET_EXIT_NAME_FILTER} from "./FilterResetEvent";
 
 const ExitNameFilter: React.FC = () => {

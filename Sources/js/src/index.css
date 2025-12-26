@@ -94,14 +94,14 @@ html, body, #root {
 /* 애니메이션 적용 - 뒤쪽 탭 선택 */
 .slide-in-right .tab-content-exit {
     z-index: 1;
-    animation: slideOutToLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: slide-out-to-left 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     pointer-events: none;
     will-change: transform, opacity;
 }
 
 .slide-in-right .tab-content-enter {
     z-index: 2;
-    animation: slideInFromRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: slide-in-from-right 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     pointer-events: auto;
     will-change: transform, opacity;
 }
@@ -109,14 +109,14 @@ html, body, #root {
 /* 애니메이션 적용 - 앞쪽 탭 선택 */
 .slide-in-left .tab-content-exit {
     z-index: 1;
-    animation: slideOutToRight 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: slide-out-to-right 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     pointer-events: none;
     will-change: transform, opacity;
 }
 
 .slide-in-left .tab-content-enter {
     z-index: 2;
-    animation: slideInFromLeft 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: slide-in-from-left 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     pointer-events: auto;
     will-change: transform, opacity;
 }

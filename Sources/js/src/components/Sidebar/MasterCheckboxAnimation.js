@@ -27,8 +27,8 @@
             checkbox.style.animation = 'none';
             void checkbox.offsetWidth;
 
-            // 모든 체크박스에 동일한 shakeCheckbox 애니메이션 적용
-            checkbox.style.animation = 'shakeCheckbox 0.5s ease-in-out';
+            // 모든 체크박스에 동일한 shake-checkbox 애니메이션 적용
+            checkbox.style.animation = 'shake-checkbox 0.5s ease-in-out';
 
             // 애니메이션 종료 후 상태 초기화
             setTimeout(() => {
@@ -293,7 +293,7 @@
             style.id = 'checkbox-animation-styles';
             style.textContent = `
                 /* 체크박스 흔들림 애니메이션 정의 - 기존 애니메이션 유지 */
-                @keyframes shakeCheckbox {
+                @keyframes shake-checkbox {
                     0% { transform: rotate(0deg); }
                     20% { transform: rotate(-45deg); }
                     40% { transform: rotate(45deg); }
@@ -308,7 +308,7 @@
                 .custom-checkbox.header-checkbox:not(:checked)[data-prev-state="indeterminate"],
                 .custom-checkbox.header-checkbox:indeterminate[data-prev-state="checked"],
                 .custom-checkbox.header-checkbox:not(:checked)[data-animation-target="true"] {
-                    animation: shakeCheckbox 0.5s ease-in-out;
+                    animation: shake-checkbox 0.5s ease-in-out;
                 }
             `;
             document.head.appendChild(style);

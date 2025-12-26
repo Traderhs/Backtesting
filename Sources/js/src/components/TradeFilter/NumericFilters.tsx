@@ -1,6 +1,6 @@
-import React, {forwardRef, useEffect, useMemo, useRef, Dispatch, SetStateAction} from "react";
+import React, {Dispatch, forwardRef, SetStateAction, useEffect, useMemo, useRef} from "react";
 import {toggleOption, useTradeFilter} from "../TradeFilter";
-import {TradeFilter, FilterType} from "../TradeFilter/TradeFilterContext";
+import {FilterType, TradeFilter} from "../TradeFilter/TradeFilterContext";
 import {NumberFormatValues, NumericFormat} from 'react-number-format';
 import ResetFilterButton from './ResetFilterButton';
 import './NumericFilters.css';

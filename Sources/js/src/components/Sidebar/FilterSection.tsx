@@ -1,5 +1,5 @@
-import {memo, useState, useRef, useEffect, useCallback} from "react"
-import {motion, AnimatePresence} from 'framer-motion'
+import {memo, useCallback, useEffect, useRef, useState} from "react"
+import {AnimatePresence, motion} from 'framer-motion'
 import {Button} from "../ui/button.tsx"
 import {SidebarIcon} from "@/components/Sidebar/Sidebar.tsx"
 import {
@@ -93,7 +93,7 @@ const applyShakeAnimationWhenUnchecked = () => {
         style.id = 'shake-animation-style';
         style.textContent = `
             .shake-animation {
-                animation: shakeCheckbox 0.4s ease-in-out;
+                animation: shake-checkbox 0.4s ease-in-out;
             }
         `;
         document.head.appendChild(style);

@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useMemo} from "react";
+import React, {useEffect, useMemo, useState} from "react";
 import {useTradeFilter} from "../TradeFilter";
 import FilterCalendar from "./FilterCalendar";
 import ResetFilterButton from "./ResetFilterButton";

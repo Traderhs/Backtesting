@@ -7,18 +7,14 @@
    ================================================================= */
 :root {
     --vertical-line-height: 0px;
-    --font-family: "'Inter', 'Pretendard'", sans-serif;
-    --checkbox-color: rgba(255, 215, 0, 0.6);
-    --tab-bg-color: rgba(17, 17, 17, 0.9);
-    --tab-bg-hover-color: rgba(255, 215, 0, 0.1);
 }
 
 /* =================================================================
    Main FilterSection Container
    ================================================================= */
 .filter-section-container {
-    font-family: 'Inter', 'Pretendard', sans-serif;
     margin-left: 20px;
+    font-family: Inter, Pretendard, sans-serif;
 }
 
 /* =================================================================
@@ -26,35 +22,35 @@
    ================================================================= */
 .filter-toggle-container {
     width: 200px;
-    border-radius: 8px;
     overflow: hidden;
+    border-radius: 8px;
 }
 
 .filter-toggle-button {
-    background-color: rgba(17, 17, 17, 1);
-    border: 1px none rgba(255, 215, 0, 0.4);
-    height: 48px;
-    width: 200px;
-    border-radius: 8px;
-    font-family: 'Inter', 'Pretendard', sans-serif;
-    font-weight: 400;
-    letter-spacing: 0.5px;
-    box-shadow: none;
-    transition: all 0.2s ease;
     z-index: 50;
     display: flex;
     align-items: center;
-    outline: none;
-    color: white;
+    width: 200px;
+    height: 48px;
     margin: 0;
     padding: 10px 16px;
+    border: 1px none rgb(255 215 0 / 40%);
+    border-radius: 8px;
+    background-color: rgb(17 17 17 / 100%);
+    box-shadow: none;
+    color: white;
+    font-family: Inter, Pretendard, sans-serif;
+    font-weight: 400;
+    letter-spacing: 0.5px;
+    transition: all 0.2s ease;
+    outline: none;
 }
 
 .filter-toggle-button.active {
-    background-color: rgba(255, 215, 0, 0.4);
-    border-color: rgba(255, 215, 0, 0.8);
+    border-color: rgb(255 215 0 / 80%);
+    background-color: rgb(255 215 0 / 40%);
+    box-shadow: 0 0 5px rgb(255 215 0 / 30%);
     font-weight: 600;
-    box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
 }
 
 .filter-toggle-text {
@@ -74,44 +70,44 @@
    Filter Panel Styles
    ================================================================= */
 .filter-panel {
-    background-color: rgba(20, 20, 20, 0.6);
     padding: 15px;
+    overflow: visible;
+    border: 1px solid rgb(255 215 0 / 30%);
     border-radius: 8px;
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.3);
-    will-change: transform, opacity, height;
+    background-color: rgb(20 20 20 / 60%);
+    box-shadow: inset 0 0 10px rgb(0 0 0 / 30%);
     transform: translateZ(0);
     contain: layout style;
-    overflow: visible;
+    will-change: transform, opacity, height;
 }
 
 .filter-panel-container {
-    will-change: opacity, height, margin;
-    overflow: visible;
     width: 190px;
-    background-color: #0f0f0f;
-    padding: 0 4px;
     margin-left: 1.5rem;
+    padding: 0 4px;
+    overflow: visible;
+    background-color: #0f0f0f;
+    will-change: opacity, height, margin;
 }
 
 .filter-panel-content {
-    padding-left: 12px;
     padding-right: 12px;
+    padding-left: 12px;
 }
 
 /* =================================================================
    Tab Header Styles
    ================================================================= */
 .tabs-header-container {
-    border-bottom: 1px solid rgba(255, 215, 0, 0.4);
-    padding-bottom: 22px;
     margin-bottom: 16px;
+    padding-bottom: 22px;
     overflow: visible;
+    border-bottom: 1px solid rgb(255 215 0 / 40%);
 }
 
 .tabs-button-row {
-    width: 100%;
     display: flex;
+    width: 100%;
     overflow: visible;
 }
 
@@ -121,12 +117,12 @@
 .tab-button-container {
     position: relative;
     z-index: 2;
-    transition: background-color 0.2s ease;
-    overflow: visible !important;
-    will-change: transform, opacity;
-    transform: translateZ(0);
     flex: 1;
     margin: 0;
+    overflow: visible !important;
+    transform: translateZ(0);
+    transition: background-color 0.2s ease;
+    will-change: transform, opacity;
 }
 
 .tab-button-container:first-child {
@@ -138,9 +134,9 @@
 }
 
 .tab-button-wrapper {
-    border-radius: 8px;
-    overflow: visible;
     flex: 1;
+    overflow: visible;
+    border-radius: 8px;
 }
 
 .tab-button-wrapper.first {
@@ -159,89 +155,100 @@
    Tab Button Styles
    ================================================================= */
 .tab-filter-button {
+    position: relative !important;
+    z-index: 1 !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
     width: 100% !important;
     height: 100% !important;
     min-height: 36px !important;
-    border-radius: 8px !important;
-    overflow: visible !important;
-    position: relative !important;
-    z-index: 1 !important;
-    font-family: "'Inter', 'Pretendard'", sans-serif !important;
-    white-space: pre-line !important;
-    line-height: 1.2 !important;
-    transition: all 0.2s ease !important;
-    color: white;
-    font-size: 14px;
-    font-weight: 400;
-    padding: 8px 6px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    letter-spacing: 0.3px;
-    cursor: pointer;
-    outline: none;
-    text-align: center;
     margin: 0;
-    box-sizing: border-box;
-    background-color: rgba(17, 17, 17, 1);
-    border-color: rgba(255, 215, 0, 0.4);
+    padding: 8px 6px;
+    overflow: visible !important;
     border-width: 1px;
     border-style: solid;
+    border-color: rgb(255 215 0 / 40%);
+    border-radius: 8px !important;
+    background-color: rgb(17 17 17 / 100%);
+    color: white;
+    font-family: "'Inter', 'Pretendard'", sans-serif !important;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.2 !important;
+    letter-spacing: 0.3px;
+    text-align: center;
+    white-space: pre-line !important;
+    transition: all 0.2s ease !important;
+    cursor: pointer;
+    outline: none;
 }
 
 .tab-filter-button.active {
-    background-color: rgba(255, 215, 0, 0.4) !important;
-    border-color: rgba(255, 215, 0, 0.8) !important;
-    box-shadow: 0 0 5px rgba(255, 215, 0, 0.3) !important;
+    border-color: rgb(255 215 0 / 80%) !important;
+    background-color: rgb(255 215 0 / 40%) !important;
+    box-shadow: 0 0 5px rgb(255 215 0 / 30%) !important;
     font-weight: 600;
 }
 
 .tab-filter-button:hover {
-    transform: scale(1.03) !important;
-    border-color: rgba(255, 215, 0, 0.7) !important;
-    box-shadow: 0 0 3px rgba(255, 215, 0, 0.5) !important;
-    transition-duration: 0.2s !important;
     z-index: 3 !important;
+    border-color: rgb(255 215 0 / 70%) !important;
+    box-shadow: 0 0 3px rgb(255 215 0 / 50%) !important;
+    transform: scale(1.03) !important;
+    transition-duration: 0.2s !important;
 }
 
 .tab-button-container button {
-    font-size: 13px;
-    color: rgba(255, 255, 255, 0.7);
-    background-color: transparent;
-    border: none;
-    padding: 8px 12px;
-    text-transform: uppercase;
-    cursor: pointer;
     position: relative;
     width: 100%;
     height: 100%;
-    text-align: center;
-    transition: all 0.2s ease;
-    border-radius: 0;
+    padding: 8px 12px;
     overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
+    border: none;
+    border-radius: 0;
+    background-color: transparent;
+    color: rgb(255 255 255 / 70%);
+    font-size: 13px;
     font-weight: 500;
-    outline: none;
+    text-align: center;
+    text-transform: uppercase;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: all 0.2s ease;
     transition-duration: 0.2s !important;
+    cursor: pointer;
+    outline: none;
 }
 
 .tab-button-container.active-tab-button button {
-    font-weight: 600 !important;
-    color: rgba(255, 215, 0, 1) !important;
-    background-color: rgba(255, 215, 0, 0.1) !important;
-    border-color: rgba(255, 215, 0, 0.7) !important;
-    box-shadow: inset 0 0 3px rgba(255, 215, 0, 0.1), 0 0 6px rgba(255, 215, 0, 0.2) !important;
+    border-color: rgb(255 215 0 / 70%) !important;
     border-radius: 8px !important;
+    background-color: rgb(255 215 0 / 10%) !important;
+    box-shadow: inset 0 0 3px rgb(255 215 0 / 10%), 0 0 6px rgb(255 215 0 / 20%) !important;
+    color: rgb(255 215 0 / 100%) !important;
+    font-weight: 600 !important;
     transition-duration: 0.2s !important;
 }
 
 .tab-button-container button:hover {
-    background-color: rgba(34, 30, 13, 1) !important;
-    border-color: rgba(255, 215, 0, 0.5) !important;
-    box-shadow: 0 0 6px rgba(255, 215, 0, 0.15) !important;
-    color: rgba(255, 215, 0, 0.8) !important;
+    border-color: rgb(255 215 0 / 50%) !important;
+    background-color: rgb(34 30 13 / 100%) !important;
+    box-shadow: 0 0 6px rgb(255 215 0 / 15%) !important;
+    color: rgb(255 215 0 / 80%) !important;
     transition-duration: 0.2s !important;
+}
+
+/* =================================================================
+   Button Active States
+   ================================================================= */
+.recalculate-button-container button:active,
+.tab-button-container button:active,
+.time-filter-button-container button:active,
+.reset-all-filters-container button:active,
+.advanced-button-container button:active {
+    background-color: rgb(52 46 14) !important;
 }
 
 .tab-button-container button:active {
@@ -250,8 +257,16 @@
     outline: none;
 }
 
+.recalculate-container-active button:active,
+.tab-button-container.active-tab-button button:active,
+.time-filter-button-container.active-time-button button:active,
+.reset-all-filters-container.container-active button:active,
+.advanced-button-container.active-advanced-button button:active {
+    background-color: rgb(76 67 20) !important;
+}
+
 .tab-button-container.active-tab-button button:active {
-    box-shadow: inset 0 0 0 1000px rgba(255, 215, 0, 0.2), 0 0 5px rgba(255, 215, 0, 0.3) !important;
+    box-shadow: inset 0 0 0 1000px rgb(255 215 0 / 20%), 0 0 5px rgb(255 215 0 / 30%) !important;
 }
 
 /* =================================================================
@@ -266,27 +281,27 @@
     position: relative;
     width: 100%;
     height: auto;
-    overflow: visible;
     min-height: 50px;
+    overflow: visible;
     transition: height 0.5s ease;
 }
 
 .tab-content {
-    width: 100%;
-    transition: transform 0.5s ease, opacity 0.5s ease;
-    overflow: visible;
-    pointer-events: auto;
     position: relative;
+    width: 100%;
+    overflow: visible;
+    transition: transform 0.5s ease, opacity 0.5s ease;
+    pointer-events: auto;
 }
 
 .tab-content-hidden {
-    visibility: hidden;
-    pointer-events: none;
     position: absolute;
-    opacity: 0;
     top: 0;
-    left: 0;
     right: 0;
+    left: 0;
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
 }
 
 .tab-content-basic {
@@ -294,8 +309,8 @@
 }
 
 .tab-content-time {
-    transform-origin: center;
     padding-bottom: 4px;
+    transform-origin: center;
 }
 
 .tab-content-numeric {
@@ -306,14 +321,14 @@
    Filter Section Styles
    ================================================================= */
 .filter-section {
+    position: relative;
+    width: 100%;
     margin-bottom: 16px;
     padding-bottom: 16px;
-    border-bottom: 1px solid rgba(255, 215, 0, 0.4);
-    position: relative;
     overflow: visible;
-    will-change: auto;
+    border-bottom: 1px solid rgb(255 215 0 / 40%);
     contain: layout style;
-    width: 100%;
+    will-change: auto;
 }
 
 .filter-section:last-child {
@@ -323,9 +338,9 @@
 }
 
 .filter-section.no-border {
-    border-bottom: none !important;
     margin-bottom: 0 !important;
     padding-bottom: 0 !important;
+    border-bottom: none !important;
 }
 
 /* =================================================================
@@ -333,168 +348,243 @@
    ================================================================= */
 .sidebar-section .filter-header-with-checkbox,
 .filter-section .filter-header-with-checkbox {
+    position: relative;
     display: flex;
     align-items: center;
-    margin-bottom: 8px;
-    position: relative;
-    line-height: 1;
-    min-height: 20px;
-    will-change: auto;
-    cursor: pointer;
     width: fit-content;
+    min-height: 20px;
+    margin-bottom: 8px;
+    line-height: 1;
+    cursor: pointer;
+    will-change: auto;
 }
 
 .sidebar-section .filter-header-with-checkbox::after,
 .filter-section .filter-header-with-checkbox::after {
-    content: '';
     position: absolute;
-    top: -4px;
-    left: -8px;
-    right: -8px;
-    bottom: -4px;
-    background-color: transparent;
-    border-radius: 8px;
-    transition: background-color 0.2s ease;
     z-index: 0;
+    border-radius: 8px;
+    background-color: transparent;
+    transition: background-color 0.2s ease;
+    content: '';
+    inset: -4px -8px;
 }
 
 .sidebar-section .filter-header-with-checkbox:hover::after,
 .filter-section .filter-header-with-checkbox:hover::after {
-    background-color: rgba(255, 215, 0, 0.1);
+    background-color: rgb(255 215 0 / 10%);
 }
 
 .sidebar-section .filter-header-with-checkbox::before,
 .filter-section .filter-header-with-checkbox::before {
-    content: '';
     position: absolute;
     top: 100%;
     left: 8px;
-    width: 1px;
-    height: var(--vertical-line-height, 0px) !important;
-    background: rgba(255, 215, 0, 0.4) !important;
     z-index: 1;
-    pointer-events: none;
+    width: 1px;
+    height: var(--vertical-line-height, 0) !important;
     margin-top: 4px;
+    background: rgb(255 215 0 / 40%) !important;
+    pointer-events: none;
+    content: '';
 }
 
 .filter-section-title {
-    color: rgba(255, 215, 0, 0.9) !important;
-    font-size: 15px !important;
-    font-weight: 600 !important;
-    margin-bottom: 0 !important;
-    font-family: "'Inter', 'Pretendard'", sans-serif !important;
-    letter-spacing: 0.3px !important;
-    line-height: 1.2 !important;
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    will-change: color;
     position: relative;
     z-index: 2;
+    display: flex;
+    align-items: center;
+    margin-bottom: 0 !important;
+    color: rgb(255 215 0 / 90%) !important;
+    font-family: "'Inter', 'Pretendard'", sans-serif !important;
+    font-size: 15px !important;
+    font-weight: 600 !important;
+    line-height: 1.2 !important;
+    letter-spacing: 0.3px !important;
+    cursor: pointer;
+    will-change: color;
 }
 
 .sidebar-section .filter-header-with-checkbox:hover .filter-section-title,
 .filter-section .filter-header-with-checkbox:hover .filter-section-title {
-    color: rgba(255, 215, 0, 1) !important;
+    color: rgb(255 215 0 / 100%) !important;
 }
 
 .custom-checkbox.header-checkbox {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
+    position: relative;
+    flex-shrink: 0;
     width: 17px;
     height: 17px;
-    border: 2px solid rgba(255, 215, 0, 0.5);
-    border-radius: 3px;
-    background-color: rgba(17, 17, 17, 0.8);
-    cursor: pointer;
-    position: relative;
     margin-right: 7px;
-    flex-shrink: 0;
+    border: 2px solid rgb(255 215 0 / 50%);
+    border-radius: 3px;
+    background-color: rgb(17 17 17 / 80%);
     transform-origin: center;
+    cursor: pointer;
+    appearance: none;
     will-change: transform, background-color, border-color;
 }
 
 .custom-checkbox.header-checkbox:checked {
-    background-color: rgba(255, 215, 0, 0.3);
-    border-color: rgba(255, 215, 0, 0.8);
+    border-color: rgb(255 215 0 / 80%);
+    background-color: rgb(255 215 0 / 30%);
 }
 
 .custom-checkbox.header-checkbox:checked::after {
-    content: '✓';
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
-    color: rgba(255, 215, 0, 0.95);
+    color: rgb(255 215 0 / 95%);
     font-size: 11px;
     font-weight: bold;
-    animation: checkmarkSlide 0.2s ease-out 0s both;
+    transform: translate(-50%, -50%);
+    animation: checkmark-slide 0.2s ease-out 0s both;
+    content: '✓';
     will-change: transform, opacity;
 }
 
 .custom-checkbox.header-checkbox:indeterminate {
-    background-color: rgba(255, 215, 0, 0.2);
-    border-color: rgba(255, 215, 0, 0.6);
+    border-color: rgb(255 215 0 / 60%);
+    background-color: rgb(255 215 0 / 20%);
 }
 
 .custom-checkbox.header-checkbox:indeterminate::after {
-    content: '';
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
     width: 8px;
     height: 2px;
-    background-color: rgba(255, 215, 0, 0.9);
     border-radius: 1px;
+    background-color: rgb(255 215 0 / 90%);
+    transform: translate(-50%, -50%);
+    animation: indeterminate-slide 0.2s ease-out both;
+    content: '';
     will-change: transform, opacity;
-    animation: indeterminateSlide 0.2s ease-out both;
 }
 
 .custom-checkbox.header-checkbox:hover {
-    border-color: rgba(255, 215, 0, 0.8);
+    border-color: rgb(255 215 0 / 80%);
 }
 
 /* =================================================================
    Individual Checkbox Styles
    ================================================================= */
 .checkbox-container {
+    position: relative;
     display: flex;
     align-items: center;
+    width: fit-content;
+    min-height: 24px;
     margin-bottom: 6px;
+    margin-left: 16px;
     padding: 4px 8px;
+    overflow: visible;
     border-radius: 8px;
+    background-color: transparent;
     transition: background-color 0.2s ease;
     cursor: pointer;
-    position: relative;
-    margin-left: 16px;
-    min-height: 24px;
-    background-color: transparent;
     will-change: background-color;
-    overflow: visible;
-    width: fit-content;
 }
 
 .checkbox-container:hover {
-    background-color: rgba(255, 215, 0, 0.1);
     width: fit-content;
+    background-color: rgb(255 215 0 / 10%);
 }
 
 .checkbox-container::before {
-    content: '';
     position: absolute;
-    left: -8px;
     top: 50%;
+    left: -8px;
+    z-index: 0;
     width: 12px;
     height: 1px;
-    background: rgba(255, 215, 0, 0.4);
-    z-index: 0;
+    background: rgb(255 215 0 / 40%);
     pointer-events: none;
+    content: '';
 }
 
 .checkbox-container:last-of-type {
     margin-bottom: 0;
+}
+
+/* =================================================================
+   Custom Checkbox Base Styles
+   ================================================================= */
+.custom-checkbox {
+    position: relative;
+    flex-shrink: 0;
+    width: 17px;
+    height: 17px;
+    margin-right: 7px;
+    border: 2px solid rgb(255 215 0 / 50%);
+    border-radius: 3px;
+    background-color: rgb(17 17 17 / 80%);
+    transform-origin: center;
+    cursor: pointer;
+    appearance: none;
+    will-change: transform, background-color, border-color;
+}
+
+.custom-checkbox:checked {
+    border-color: rgb(255 215 0 / 80%);
+    background-color: rgb(255 215 0 / 30%);
+}
+
+.custom-checkbox:checked::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    color: rgb(255 215 0 / 90%);
+    font-size: 11px;
+    font-weight: bold;
+    transform: translate(-50%, -50%) scale(1);
+    animation: checkmark-slide 0.2s ease-out 0s both;
+    content: '✓';
+    will-change: transform, opacity;
+}
+
+.custom-checkbox:not(:checked)::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    color: rgb(255 215 0 / 90%);
+    font-size: 11px;
+    font-weight: bold;
+    transform: translate(-50%, -50%) scale(1);
+    animation: uncheckmark-slide 0.2s ease-out forwards;
+    content: '✓';
+    will-change: transform, opacity;
+}
+
+.custom-checkbox:not(:checked) {
+    animation: shake-checkbox 0.5s ease-in-out;
+}
+
+.custom-checkbox:indeterminate {
+    border-color: rgb(255 215 0 / 60%);
+    background-color: rgb(255 215 0 / 20%);
+}
+
+.custom-checkbox:indeterminate::after {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 8px;
+    height: 2px;
+    border-radius: 1px;
+    background-color: rgb(255 215 0 / 90%);
+    transform: translate(-50%, -50%);
+    animation: indeterminate-slide 0.2s ease-out both;
+    content: '';
+    will-change: transform, opacity;
+}
+
+.custom-checkbox:hover {
+    border-color: rgb(255 215 0 / 80%);
+}
+
+.header-checkbox:hover {
+    border-color: rgb(255 215 0 / 80%);
 }
 
 .checkbox-container .custom-checkbox {
@@ -502,148 +592,32 @@
     z-index: 3;
 }
 
-.checkbox-label {
-    color: rgba(255, 255, 255, 0.85) !important;
-    font-size: 14px !important;
-    font-family: "'Inter', 'Pretendard'", sans-serif !important;
-    cursor: pointer;
-    flex: 0 1 auto;
-    user-select: none;
-    transition: color 0.2s ease;
-    position: relative;
-    z-index: 2;
-    padding-left: 24px;
-    margin-left: -24px;
-    white-space: nowrap;
-}
-
 .checkbox-container:hover .checkbox-label {
-    color: rgba(255, 215, 0, 1) !important;
-}
-
-/* =================================================================
-   Custom Checkbox Base Styles
-   ================================================================= */
-.custom-checkbox {
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
-    width: 17px;
-    height: 17px;
-    border: 2px solid rgba(255, 215, 0, 0.5);
-    border-radius: 3px;
-    background-color: rgba(17, 17, 17, 0.8);
-    cursor: pointer;
-    position: relative;
-    margin-right: 7px;
-    flex-shrink: 0;
-    transform-origin: center;
-    will-change: transform, background-color, border-color;
-}
-
-.custom-checkbox:checked {
-    background-color: rgba(255, 215, 0, 0.3);
-    border-color: rgba(255, 215, 0, 0.8);
-}
-
-.custom-checkbox:checked::after {
-    content: '✓';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(1);
-    color: rgba(255, 215, 0, 0.9);
-    font-size: 11px;
-    font-weight: bold;
-    animation: checkmarkSlide 0.2s ease-out 0s both;
-    will-change: transform, opacity;
-}
-
-.custom-checkbox:not(:checked)::after {
-    content: '✓';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%) scale(1);
-    color: rgba(255, 215, 0, 0.9);
-    font-size: 11px;
-    font-weight: bold;
-    animation: uncheckmarkSlide 0.2s ease-out forwards;
-    will-change: transform, opacity;
-}
-
-.custom-checkbox:not(:checked) {
-    animation: shakeCheckbox 0.5s ease-in-out;
-}
-
-.custom-checkbox:indeterminate {
-    background-color: rgba(255, 215, 0, 0.2);
-    border-color: rgba(255, 215, 0, 0.6);
-}
-
-.custom-checkbox:indeterminate::after {
-    content: '';
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    width: 8px;
-    height: 2px;
-    background-color: rgba(255, 215, 0, 0.9);
-    border-radius: 1px;
-    will-change: transform, opacity;
-    animation: indeterminateSlide 0.2s ease-out both;
-}
-
-.custom-checkbox:hover {
-    border-color: rgba(255, 215, 0, 0.8);
-}
-
-.header-checkbox:hover {
-    border-color: rgba(255, 215, 0, 0.8);
-}
-
-/* =================================================================
-   Button Active States
-   ================================================================= */
-.tab-button-container button:active,
-.time-filter-button-container button:active,
-.recalculate-button-container button:active,
-.reset-all-filters-container button:active,
-.advanced-button-container button:active {
-    background-color: rgb(52, 46, 14) !important;
-}
-
-.tab-button-container.active-tab-button button:active,
-.time-filter-button-container.active-time-button button:active,
-.recalculate-container-active button:active,
-.reset-all-filters-container.container-active button:active,
-.advanced-button-container.active-advanced-button button:active {
-    background-color: rgb(76, 67, 20) !important;
+    color: rgb(255 215 0 / 100%) !important;
 }
 
 /* =================================================================
    Time Filter Button Styles
    ================================================================= */
 .time-filter-button {
-    background-color: rgba(17, 17, 17, 0.5);
-    border: 1px solid rgba(255, 215, 0, 0.2);
-    border-radius: 10px;
-    color: rgba(255, 255, 255, 0.8);
+    flex-grow: 1;
     padding: 6px 12px;
-    cursor: pointer;
+    border: 1px solid rgb(255 215 0 / 20%);
+    border-radius: 10px;
+    background-color: rgb(17 17 17 / 50%);
+    color: rgb(255 255 255 / 80%);
     font-size: 12px;
     text-align: center;
-    flex-grow: 1;
     transition: all 0.2s ease;
+    cursor: pointer;
     backdrop-filter: blur(3px);
 }
 
 .time-filter-buttons {
     display: flex;
+    flex-wrap: wrap;
     gap: 12px;
     margin-top: 16px;
-    flex-wrap: wrap;
     contain: layout style;
 }
 
@@ -671,30 +645,30 @@
    Input and Form Styles
    ================================================================= */
 .custom-input {
-    background-color: rgba(17, 17, 17, 0.8) !important;
-    border: 1px solid rgba(255, 215, 0, 0.3) !important;
-    border-radius: 8px !important;
     padding: 6px 8px !important;
-    color: rgba(255, 255, 255, 0.9) !important;
-    font-size: 12px !important;
+    border: 1px solid rgb(255 215 0 / 30%) !important;
+    border-radius: 8px !important;
+    background-color: rgb(17 17 17 / 80%) !important;
+    color: rgb(255 255 255 / 90%) !important;
     font-family: "'Inter', 'Pretendard'", sans-serif !important;
+    font-size: 12px !important;
     transition: all 0.2s ease !important;
     backdrop-filter: blur(3px) !important;
 }
 
 .custom-input:focus {
+    border-color: rgb(255 215 0 / 60%) !important;
+    background-color: rgb(17 17 17 / 90%) !important;
+    box-shadow: 0 0 6px rgb(255 215 0 / 30%) !important;
     outline: none !important;
-    border-color: rgba(255, 215, 0, 0.6) !important;
-    box-shadow: 0 0 6px rgba(255, 215, 0, 0.3) !important;
-    background-color: rgba(17, 17, 17, 0.9) !important;
 }
 
 .custom-input:hover {
-    border-color: rgba(255, 215, 0, 0.4) !important;
+    border-color: rgb(255 215 0 / 40%) !important;
 }
 
 .custom-input::placeholder {
-    color: rgba(255, 255, 255, 0.4) !important;
+    color: rgb(255 255 255 / 40%) !important;
     font-size: 11px !important;
 }
 
@@ -705,26 +679,26 @@
 }
 
 .custom-select {
-    background-color: rgba(17, 17, 17, 0.8) !important;
-    border: 1px solid rgba(255, 215, 0, 0.3) !important;
-    border-radius: 8px !important;
     padding: 6px 8px !important;
-    color: rgba(255, 255, 255, 0.9) !important;
-    font-size: 12px !important;
+    border: 1px solid rgb(255 215 0 / 30%) !important;
+    border-radius: 8px !important;
+    background-color: rgb(17 17 17 / 80%) !important;
+    color: rgb(255 255 255 / 90%) !important;
     font-family: "'Inter', 'Pretendard'", sans-serif !important;
+    font-size: 12px !important;
     transition: all 0.2s ease !important;
-    backdrop-filter: blur(3px) !important;
     cursor: pointer !important;
+    backdrop-filter: blur(3px) !important;
 }
 
 .custom-select:focus {
+    border-color: rgb(255 215 0 / 60%) !important;
+    box-shadow: 0 0 6px rgb(255 215 0 / 30%) !important;
     outline: none !important;
-    border-color: rgba(255, 215, 0, 0.6) !important;
-    box-shadow: 0 0 6px rgba(255, 215, 0, 0.3) !important;
 }
 
 .custom-select:hover {
-    border-color: rgba(255, 215, 0, 0.4) !important;
+    border-color: rgb(255 215 0 / 40%) !important;
 }
 
 /* =================================================================
@@ -732,75 +706,79 @@
    ================================================================= */
 .filter-group {
     margin-bottom: 16px;
-    border-radius: 8px;
     padding: 10px 12px;
-    background-color: rgba(17, 17, 17, 0.75);
-    border: 1px solid rgba(255, 215, 0, 0.2);
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    backdrop-filter: blur(3px);
+    border: 1px solid rgb(255 215 0 / 20%);
+    border-radius: 8px;
+    background-color: rgb(17 17 17 / 75%);
+    box-shadow: 0 4px 6px rgb(0 0 0 / 10%);
     transition: all 0.2s ease;
+    backdrop-filter: blur(3px);
 }
 
 .filter-group:hover {
-    border-color: rgba(255, 215, 0, 0.5);
+    border-color: rgb(255 215 0 / 50%);
     transform: translateZ(0) translateY(-1px);
 }
 
 .filter-title {
-    color: rgba(255, 215, 0, 0.9) !important;
+    margin-bottom: 12px !important;
+    padding-bottom: 8px !important;
+    border-bottom: 1px solid rgb(255 215 0 / 20%) !important;
+    color: rgb(255 215 0 / 90%) !important;
+    font-family: "'Inter', 'Pretendard'", sans-serif !important;
     font-size: 15px !important;
     font-weight: 600 !important;
-    margin-bottom: 12px !important;
-    font-family: "'Inter', 'Pretendard'", sans-serif !important;
     letter-spacing: 0.3px !important;
-    padding-bottom: 8px !important;
-    border-bottom: 1px solid rgba(255, 215, 0, 0.2) !important;
     will-change: color;
 }
 
 /* =================================================================
    Hover Effects
    ================================================================= */
-.sidebar-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox,
-.filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox {
-    border-color: rgba(255, 215, 0, 0.8);
+.custom-checkbox.header-checkbox:checked,
+.custom-checkbox.header-checkbox:indeterminate {
+    transition: all 0.2s ease;
 }
 
-.checkbox-container:hover .custom-checkbox {
-    border-color: rgba(255, 215, 0, 0.8);
-}
-
-.sidebar-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:checked,
-.sidebar-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:indeterminate,
-.filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:checked,
-.filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:indeterminate {
-    border-color: rgba(255, 215, 0, 0.5);
-}
-
-.sidebar-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:checked::after,
-.sidebar-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:indeterminate::after,
-.filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:checked::after,
-.filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:indeterminate::after {
-    color: rgba(255, 215, 0, 0.5);
-}
-
-.checkbox-container:hover .custom-checkbox:checked,
-.checkbox-container:hover .custom-checkbox:indeterminate {
-    border-color: rgba(255, 215, 0, 0.5);
-}
-
-.checkbox-container:hover .custom-checkbox:checked::after,
-.checkbox-container:hover .custom-checkbox:indeterminate::after {
-    color: rgba(255, 215, 0, 0.5);
+.custom-checkbox.header-checkbox:not(:checked, .indeterminate-prev) {
+    animation: shake-checkbox 0.5s ease-in-out;
 }
 
 .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox {
     transition: all 0.2s ease;
 }
 
-.custom-checkbox.header-checkbox:checked,
-.custom-checkbox.header-checkbox:indeterminate {
-    transition: all 0.2s ease;
+.sidebar-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox,
+.filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox {
+    border-color: rgb(255 215 0 / 80%);
+}
+
+.checkbox-container:hover .custom-checkbox {
+    border-color: rgb(255 215 0 / 80%);
+}
+
+.sidebar-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:checked,
+.sidebar-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:indeterminate,
+.filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:checked,
+.filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:indeterminate {
+    border-color: rgb(255 215 0 / 50%);
+}
+
+.sidebar-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:checked::after,
+.sidebar-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:indeterminate::after,
+.filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:checked::after,
+.filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:indeterminate::after {
+    color: rgb(255 215 0 / 50%);
+}
+
+.checkbox-container:hover .custom-checkbox:checked,
+.checkbox-container:hover .custom-checkbox:indeterminate {
+    border-color: rgb(255 215 0 / 50%);
+}
+
+.checkbox-container:hover .custom-checkbox:checked::after,
+.checkbox-container:hover .custom-checkbox:indeterminate::after {
+    color: rgb(255 215 0 / 50%);
 }
 
 /* =================================================================
@@ -814,181 +792,190 @@
     outline: none !important;
 }
 
-button, input, select, textarea {
-    outline: none !important;
-}
-
 /* =================================================================
    Tab Animation Classes
    ================================================================= */
 .slide-in-right .tab-content-exit {
-    animation: slideOutToLeft 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-    z-index: 1;
-    will-change: transform, opacity;
     position: absolute;
-    width: 100%;
     top: 0;
     left: 0;
+    z-index: 1;
+    width: 100%;
+    animation: slide-out-to-left 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
     pointer-events: none;
+    will-change: transform, opacity;
 }
 
 .slide-in-right .tab-content-enter {
-    animation: slideInFromRight 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-    z-index: 2;
-    will-change: transform, opacity;
     position: relative;
+    z-index: 2;
+    animation: slide-in-from-right 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+    will-change: transform, opacity;
 }
 
 .slide-in-left .tab-content-exit {
-    animation: slideOutToRight 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-    z-index: 1;
-    will-change: transform, opacity;
     position: absolute;
-    width: 100%;
     top: 0;
     left: 0;
+    z-index: 1;
+    width: 100%;
+    animation: slide-out-to-right 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
     pointer-events: none;
+    will-change: transform, opacity;
 }
 
 .slide-in-left .tab-content-enter {
-    animation: slideInFromLeft 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
-    z-index: 2;
-    will-change: transform, opacity;
     position: relative;
+    z-index: 2;
+    animation: slide-in-from-left 0.5s cubic-bezier(0.23, 1, 0.32, 1) forwards;
+    will-change: transform, opacity;
 }
 
 /* =================================================================
    Special Animation States
    ================================================================= */
-.custom-checkbox.header-checkbox:not(:checked):not(.indeterminate-prev) {
-    animation: shakeCheckbox 0.5s ease-in-out;
-}
-
 .custom-checkbox.header-checkbox[data-prev-state="indeterminate"]:not(:checked) {
-    animation: indeterminateToUnchecked 0.5s ease-in-out;
+    animation: indeterminate-to-unchecked 0.5s ease-in-out;
 }
 
 .custom-checkbox.header-checkbox[data-prev-state="checked"]:indeterminate {
-    animation: shakeCheckbox 0.5s ease-in-out;
+    animation: shake-checkbox 0.5s ease-in-out;
 }
 
 /* =================================================================
    Animations and Keyframes
    ================================================================= */
-@keyframes slideInFromRight {
+@keyframes slide-in-from-right {
     0% {
+        opacity: 0;
         transform: translate3d(30%, 0, 0);
-        opacity: 0;
     }
+
     100% {
-        transform: translate3d(0, 0, 0);
         opacity: 1;
+        transform: translate3d(0, 0, 0);
     }
 }
 
-@keyframes slideInFromLeft {
+@keyframes slide-in-from-left {
     0% {
+        opacity: 0;
         transform: translate3d(-30%, 0, 0);
-        opacity: 0;
     }
+
     100% {
-        transform: translate3d(0, 0, 0);
         opacity: 1;
+        transform: translate3d(0, 0, 0);
     }
 }
 
-@keyframes slideOutToLeft {
+@keyframes slide-out-to-left {
     0% {
-        transform: translate3d(0, 0, 0);
         opacity: 1;
+        transform: translate3d(0, 0, 0);
     }
+
     100% {
+        opacity: 0;
         transform: translate3d(-5%, 0, 0);
-        opacity: 0;
     }
 }
 
-@keyframes slideOutToRight {
+@keyframes slide-out-to-right {
     0% {
+        opacity: 1;
         transform: translate3d(0, 0, 0);
-        opacity: 1;
     }
+
     100% {
+        opacity: 0;
         transform: translate3d(5%, 0, 0);
-        opacity: 0;
     }
 }
 
-@keyframes checkmarkSlide {
+@keyframes checkmark-slide {
     0% {
+        opacity: 0;
         transform: translate(-50%, -50%) scale(0) rotate(-180deg) translateZ(0);
-        opacity: 0;
     }
+
     100% {
-        transform: translate(-50%, -50%) scale(1) rotate(0deg) translateZ(0);
         opacity: 1;
+        transform: translate(-50%, -50%) scale(1) rotate(0deg) translateZ(0);
     }
 }
 
-@keyframes uncheckmarkSlide {
+@keyframes uncheckmark-slide {
     0% {
-        transform: translate(-50%, -50%) scale(1) rotate(0deg) translateZ(0);
         opacity: 1;
+        transform: translate(-50%, -50%) scale(1) rotate(0deg) translateZ(0);
     }
+
     100% {
-        transform: translate(-50%, -50%) scale(0) rotate(180deg) translateZ(0);
         opacity: 0;
+        transform: translate(-50%, -50%) scale(0) rotate(180deg) translateZ(0);
     }
 }
 
-@keyframes shakeCheckbox {
+@keyframes shake-checkbox {
     0% {
         transform: rotate(0deg);
     }
+
     20% {
         transform: rotate(-45deg);
     }
+
     40% {
         transform: rotate(45deg);
     }
+
     60% {
         transform: rotate(-20deg);
     }
+
     80% {
         transform: rotate(10deg);
     }
+
     100% {
         transform: rotate(0deg);
     }
 }
 
-@keyframes indeterminateSlide {
+@keyframes indeterminate-slide {
     0% {
-        transform: translate(-50%, -50%) scale(0) rotateY(-90deg) translateZ(0);
         opacity: 0;
+        transform: translate(-50%, -50%) scale(0) rotateY(-90deg) translateZ(0);
     }
+
     100% {
-        transform: translate(-50%, -50%) scale(1) rotateY(0deg) translateZ(0);
         opacity: 1;
+        transform: translate(-50%, -50%) scale(1) rotateY(0deg) translateZ(0);
     }
 }
 
-@keyframes indeterminateToUnchecked {
+@keyframes indeterminate-to-unchecked {
     0% {
         transform: rotate(0deg);
     }
+
     20% {
         transform: rotate(-60deg);
     }
+
     40% {
         transform: rotate(60deg);
     }
+
     60% {
         transform: rotate(-30deg);
     }
+
     80% {
         transform: rotate(15deg);
     }
+
     100% {
         transform: rotate(0deg);
     }

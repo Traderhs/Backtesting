@@ -1,4 +1,4 @@
-import React, {useContext, useState, useEffect, useMemo} from "react";
+import React, {useContext, useEffect, useMemo, useState} from "react";
 import {TradeFilterContext} from "./TradeFilterContext";
 import './ResetAllFiltersButton.css';
 import {resetAllFilters} from "./FilterResetEvent";
