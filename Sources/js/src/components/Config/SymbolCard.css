@@ -1,79 +1,76 @@
 /* SymbolCard 공통 스타일 */
 .symbol-card-container {
+    position: relative;
     display: flex;
     flex-direction: column;
+    height: 100%;
+    min-height: 415px;
+    max-height: 415px;
+    overflow: hidden;
+    border: 1px solid transparent;
     border-radius: 8px;
     background: #1A1A1A;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    height: 100%;
-    position: relative;
-    overflow: hidden;
-    transition: none;
-    border: 1px solid transparent;
-    max-height: 415px;
-    min-height: 415px;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
     transform: translate3d(0, 0, 0);
+    transition: none;
     backface-visibility: hidden;
     will-change: transform, opacity;
 }
 
 .symbol-card-container:hover {
-    background: #222222;
+    background: #222;
     transition: background-color 0.2s ease;
 }
 
 .symbol-card-border {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    pointer-events: none;
     z-index: 1;
+    border: 1px solid rgb(255 215 0 / 30%);
+    border-radius: 8px;
+    pointer-events: none;
+    inset: 0;
 }
 
 .symbol-card-header {
-    font-family: 'Inter', 'Pretendard', sans-serif;
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-top: 0;
+    margin-bottom: 0;
+    margin-left: 0;
+    padding: 10px 18px 10px 24px;
+    overflow: hidden;
+    border-radius: 8px 8px 0 0;
+    background-color: #FFD7004D;
+    color: rgb(255 215 0 / 80%);
+    font-family: Inter, Pretendard, sans-serif;
     font-size: 18px;
     font-weight: 500;
     letter-spacing: 0.3px;
-    color: rgba(255, 215, 0, 0.8);
-    background-color: #FFD7004D;
-    padding: 10px 18px 10px 24px;
-    margin-left: 0;
-    margin-top: 0;
-    margin-bottom: 0;
-    position: relative;
-    overflow: hidden;
-    border-radius: 8px 8px 0 0;
-    display: flex;
-    align-items: center;
 }
 
 .symbol-card-header::after {
     position: absolute;
+    right: 0;
     bottom: 0;
     left: 0;
-    right: 0;
-    height: 2px;
-    background: rgba(255, 215, 0, 0.1);
-    content: '';
     width: 100%;
+    height: 2px;
+    background: rgb(255 215 0 / 10%);
+    content: '';
 }
 
 .symbol-card-content {
-    background: #111111;
-    border-radius: 0 0 8px 8px;
     position: relative;
-    flex: 1;
     display: flex;
+    flex: 1;
     flex-direction: column;
     height: 100%;
-    font-size: 12px;
-    overflow-y: auto;
     padding-top: 0;
+    overflow-y: auto;
+    border-radius: 0 0 8px 8px;
+    background: #111;
+    font-size: 12px;
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
     will-change: transform;
@@ -81,41 +78,71 @@
 
 .symbol-card-inner {
     position: relative;
+    z-index: 2;
     display: flex;
     align-items: stretch;
     max-width: 100%;
-    overflow-y: visible;
-    z-index: 2;
-    padding: 0;
     height: 100%;
     margin-top: 0;
+    padding: 0;
+    overflow-y: visible;
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
     will-change: transform;
 }
 
+.symbol-card-row {
+    display: flex;
+    align-items: center;
+    height: 18px;
+    margin-top: 4px;
+    margin-bottom: 12px;
+    padding-right: 16px;
+    padding-left: 24px;
+}
+
+.symbol-card-row-inner {
+    display: flex;
+    align-items: center;
+    height: 18px;
+}
+
 .symbol-card-left-section {
-    min-width: fit-content;
-    width: fit-content;
-    max-width: 50%;
-    margin-right: 0;
     position: relative;
+    top: 0;
     z-index: 3;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
-    background-color: rgba(255, 215, 0, 0.1);
-    border-radius: 0;
+    width: fit-content;
+    min-width: fit-content;
+    max-width: 50%;
+    margin-right: 0;
     padding: 0;
     overflow: hidden;
-    top: 0;
-    border-right: 2px solid rgba(255, 215, 0, 0.13);
-    white-space: nowrap;
     overflow-x: auto;
+    border-right: 2px solid rgb(255 215 0 / 13%);
+    border-radius: 0;
+    background-color: rgb(255 215 0 / 10%);
     text-overflow: ellipsis;
+    white-space: nowrap;
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
     will-change: transform;
+}
+
+/* 레버리지 구간 텍스트 간격 조정 */
+.leverage-bracket-left .symbol-card-row,
+.leverage-bracket-right .symbol-card-row {
+    margin-bottom: 14px;
+}
+
+.symbol-card-right-section .symbol-card-row {
+    padding-right: 24px;
+}
+
+.leverage-bracket-right .symbol-card-row {
+    padding-right: 24px;
 }
 
 .symbol-card-left-section .symbol-card-row:first-child {
@@ -123,19 +150,18 @@
 }
 
 .symbol-card-right-section {
-    min-width: 140px;
-    width: fit-content;
-    max-width: 100%;
     position: relative;
     z-index: 3;
-    overflow-y: hidden;
     display: flex;
     flex-direction: column;
     justify-content: flex-start;
+    width: fit-content;
+    min-width: 140px;
+    max-width: 100%;
     padding-top: 0;
-    white-space: nowrap;
-    overflow-x: auto;
+    overflow: auto hidden;
     text-overflow: ellipsis;
+    white-space: nowrap;
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
     will-change: transform;
@@ -145,170 +171,152 @@
     margin-top: 20px;
 }
 
-.symbol-card-row {
-    margin-bottom: 12px;
-    height: 18px;
-    display: flex;
-    align-items: center;
-    margin-top: 4px;
-    padding-left: 24px;
-    padding-right: 16px;
-}
-
-.symbol-card-row-inner {
-    display: flex;
-    align-items: center;
-    height: 18px;
-}
-
 .symbol-card-bullet {
-    color: rgba(255, 215, 0, 0.6);
+    margin-top: -3px;
     margin-right: 8px;
+    color: rgb(255 215 0 / 60%);
     font-size: 15px;
     line-height: 18px;
-    margin-top: -3px;
 }
 
 .symbol-card-label {
-    font-weight: 600;
-    color: rgba(255, 215, 0, 0.8);
-    font-size: 15px;
-    line-height: 18px;
     display: flex;
     align-items: center;
-    white-space: nowrap;
     overflow: hidden;
+    color: rgb(255 215 0 / 80%);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 18px;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .symbol-card-value {
-    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    color: #FFF;
     font-size: 15px;
     font-weight: 400;
     line-height: 18px;
-    display: flex;
-    align-items: center;
 }
 
 .symbol-card-path-value {
-    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    color: #FFF;
     font-size: 15px;
     font-weight: 400;
     line-height: 18px;
-    display: flex;
-    align-items: center;
 }
 
 .symbol-card-missing-list {
-    background: transparent;
-    border-radius: 8px;
-    border: 1.2px solid rgba(255, 215, 0, 0.18);
-    padding: 10px 0;
     max-width: 400px;
-    margin-bottom: 10px;
     max-height: 155px;
-    overflow-y: auto;
-    overflow-x: auto;
-    margin-left: 24px;
     margin-top: 5px;
+    margin-bottom: 10px;
+    margin-left: 24px;
+    padding: 10px 0;
+    overflow: auto;
+    border: 1.2px solid rgb(255 215 0 / 18%);
+    border-radius: 8px;
+    background: transparent;
 }
 
 .symbol-card-missing-item {
     display: flex;
     align-items: center;
-    padding: 2px 0 2px 20px;
     margin-left: 0;
+    padding: 2px 0 2px 20px;
 }
 
 .symbol-card-missing-bullet {
-    color: #FFFFFF;
+    margin-top: -3px;
     margin-right: 8px;
+    color: #FFF;
     font-size: 14px;
     line-height: 18px;
-    margin-top: -3px;
 }
 
 .symbol-card-missing-text {
+    color: #FFF;
     font-size: 14px;
     font-weight: 400;
-    color: #FFFFFF;
 }
 
 /* 레버리지 브라켓 전용 스타일 */
 .leverage-bracket-container {
+    position: relative;
     display: flex;
     flex-direction: column;
+    height: 100%;
+    min-height: 415px;
+    max-height: 415px;
+    overflow: hidden;
+    border: 1px solid transparent;
     border-radius: 8px;
     background: #1A1A1A;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    height: 100%;
-    position: relative;
-    overflow: hidden;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
     transition: none;
-    border: 1px solid transparent;
-    max-height: 415px;
-    min-height: 415px;
 }
 
 .leverage-bracket-container:hover {
-    background: #222222;
+    background: #222;
     transition: background-color 0.2s ease;
 }
 
 .leverage-bracket-content {
-    background: #111111;
-    border-radius: 0 0 8px 8px;
     position: relative;
-    flex: 1;
     display: flex;
+    flex: 1;
     flex-direction: column;
     height: 100%;
-    overflow-y: auto;
-    font-size: 12px;
     padding-top: 0;
+    overflow-y: auto;
+    border-radius: 0 0 8px 8px;
+    background: #111;
+    font-size: 12px;
 }
 
 .leverage-bracket-scroll {
-    height: 100%;
-    max-height: 400px;
-    padding: 0;
     position: relative;
     display: flex;
-    overflow: hidden;
+    height: 100%;
+    max-height: 400px;
     margin-top: 0;
+    padding: 0;
+    overflow: hidden;
 }
 
 .leverage-bracket-separator {
-    height: 2px;
-    background: rgba(255, 215, 0, 0.2);
     min-width: 100%;
+    height: 2px;
+    background: rgb(255 215 0 / 20%);
 }
 
 /* 왼쪽 영역의 가로선만 투명도 0.13으로 설정 */
 .leverage-bracket-left .leverage-bracket-separator {
-    background: rgba(255, 215, 0, 0.13);
+    background: rgb(255 215 0 / 13%);
 }
 
 .leverage-bracket-left {
-    width: 154px;
-    min-width: 154px;
     position: sticky;
+    top: 0;
     left: 0;
     z-index: 3;
-    background-color: rgba(255, 215, 0, 0.1);
-    border-radius: 0;
-    padding: 0;
-    overflow-x: hidden;
-    overflow-y: scroll;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
-    top: 0;
-    border-right: 2px solid rgba(255, 215, 0, 0.13);
-    white-space: nowrap;
-    text-overflow: ellipsis;
     flex-shrink: 0;
-    height: auto;
     box-sizing: border-box;
+    width: 154px;
+    min-width: 154px;
+    height: auto;
+    padding: 0;
+    overflow: hidden scroll;
+    border-right: 2px solid rgb(255 215 0 / 13%);
+    border-radius: 0;
+    background-color: rgb(255 215 0 / 10%);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
 }
 
 /* 왼쪽 영역 스크롤바 숨기기 - WebKit (Chrome, Safari, Edge) */
@@ -321,29 +329,20 @@
 }
 
 .leverage-bracket-right {
-    flex: 1;
-    min-width: 140px;
     position: relative;
     z-index: 2;
-    padding-top: 0;
-    white-space: nowrap;
-    overflow-x: auto;
-    overflow-y: auto;
-    text-overflow: ellipsis;
-    height: auto;
+    flex: 1;
     box-sizing: border-box;
+    min-width: 140px;
+    height: auto;
+    padding-top: 0;
+    overflow: auto;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
-
-/* 스크롤바 스타일 제거 - 브라우저 기본 스타일 사용 */
 
 .leverage-bracket-right .symbol-card-row:first-child {
     margin-top: 15px;
-}
-
-/* 레버리지 구간 텍스트 간격 조정 */
-.leverage-bracket-left .symbol-card-row,
-.leverage-bracket-right .symbol-card-row {
-    margin-bottom: 14px;
 }
 
 /* 글로벌 스타일 */
@@ -351,11 +350,11 @@
     z-index: 9999 !important;
 }
 
-.MuiPopover-root {
+.muipopover-root {
     z-index: 9999 !important;
 }
 
-.symbol-dropdown-paper .MuiMenuItem-root {
+.symbol-dropdown-paper .mui-menu-item-root {
     pointer-events: auto !important;
 }
 
@@ -363,44 +362,37 @@
     0% {
         transform: translateX(-100%);
     }
+
     100% {
         transform: translateX(100%);
     }
 }
 
 .symbol-card-header:hover::before {
-    content: '' !important;
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
+    z-index: 2 !important; /* 높은 z-index로 셀 내용 위에 표시 */
     width: 100% !important;
     height: 100% !important;
-    background: linear-gradient(to right, transparent, rgba(255, 215, 0, 0.2), transparent) !important;
+    background: linear-gradient(to right, transparent, rgb(255 215 0 / 20%), transparent) !important;
     animation: sweep 1.5s ease infinite !important;
     pointer-events: none !important;
-    z-index: 2 !important; /* 높은 z-index로 셀 내용 위에 표시 */
+    content: '' !important;
 }
 
 /* 거래소 정보 컨텐츠 스타일 */
 .exchange-info-content {
-    background: #111111;
-    border-radius: 0 0 8px 8px;
     position: relative;
-    flex: 1;
     display: flex;
+    flex: 1;
     flex-direction: column;
     height: 100%;
-    overflow-y: auto;
-    font-size: 12px;
     padding-top: 0;
-}
-
-.symbol-card-right-section .symbol-card-row {
-    padding-right: 24px;
-}
-
-.leverage-bracket-right .symbol-card-row {
-    padding-right: 24px;
+    overflow-y: auto;
+    border-radius: 0 0 8px 8px;
+    background: #111;
+    font-size: 12px;
 }
 
 .symbol-card-right-section .symbol-card-row-inner {
@@ -418,46 +410,67 @@
 
 /* symbol-card-grid 스타일 추가 */
 .symbol-card-grid {
-    background-color: #111111;
+    background-color: #111;
     isolation: isolate;
 }
 
 /* 거래소 정보 전용 스타일 - StrategyIndicatorCard의 info 스타일과 동일 */
 .exchange-info-item {
     position: relative;
+    z-index: 2;
     display: flex;
     width: 100%;
-    z-index: 2;
-    overflow: visible;
     height: 365px;
     min-height: unset;
-    transition: none;
+    overflow: visible;
     background-color: transparent;
     transform: translate3d(0, 0, 0);
+    transition: none;
     backface-visibility: hidden;
     will-change: transform;
 }
 
 .exchange-info-left {
-    min-width: fit-content; /* 동적 너비 조정을 위해 변경 */
-    width: fit-content; /* 동적 너비 조정을 위해 변경 */
     position: sticky;
+    top: 0;
     left: 0;
     z-index: 3;
-    background-color: rgba(255, 215, 0, 0.1);
-    border-radius: 0;
-    padding: 0;
-    overflow-x: hidden;
-    overflow-y: scroll;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
-    top: 0;
-    border-right: 2px solid rgba(255, 215, 0, 0.13);
-    white-space: nowrap;
-    text-overflow: ellipsis;
     flex-shrink: 0;
-    height: auto;
     box-sizing: border-box;
+    width: fit-content; /* 동적 너비 조정을 위해 변경 */
+    min-width: fit-content; /* 동적 너비 조정을 위해 변경 */
+    height: auto;
+    padding: 0;
+    overflow: hidden scroll;
+    border-right: 2px solid rgb(255 215 0 / 13%);
+    border-radius: 0;
+    background-color: rgb(255 215 0 / 10%);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+}
+
+/* 거래소 정보 행 스타일 */
+.exchange-info-row {
+    display: flex;
+    align-items: center;
+    height: 18px;
+    min-height: 18px;
+    margin-top: 4px;
+    margin-bottom: 14px;
+    padding-right: 16px;
+    padding-left: 24px;
+}
+
+.exchange-info-row-inner {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: min-content;
+    height: 18px;
+    min-height: 18px;
+    line-height: 18px;
 }
 
 /* 거래소 정보 왼쪽 영역 스크롤바 숨기기 */
@@ -470,81 +483,58 @@
 }
 
 .exchange-info-right {
-    flex: 1;
-    min-width: 140px;
     position: relative;
     z-index: 2;
-    padding-top: 0;
-    white-space: nowrap;
-    overflow-x: auto !important;
-    overflow-y: auto !important;
-    text-overflow: ellipsis;
-    height: auto;
+    flex: 1;
     box-sizing: border-box;
+    min-width: 140px;
+    height: auto;
+    padding-top: 0;
+    overflow: auto !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .exchange-info-right .exchange-info-row:first-child {
     margin-top: 20px;
 }
 
-/* 거래소 정보 행 스타일 */
-.exchange-info-row {
-    margin-bottom: 14px;
-    min-height: 18px;
-    height: 18px;
-    display: flex;
-    align-items: center;
-    margin-top: 4px;
-    padding-left: 24px;
-    padding-right: 16px;
-}
-
-.exchange-info-row-inner {
-    display: flex;
-    align-items: center;
-    min-height: 18px;
-    height: 18px;
-    line-height: 18px;
-    width: 100%;
-    min-width: min-content;
-}
-
 /* 거래소 정보 불릿, 라벨, 값 스타일 */
 .exchange-info-bullet {
-    color: rgba(255, 215, 0, 0.8);
+    display: flex;
+    flex-shrink: 0;
+    align-items: center;
+    margin-top: -1px;
     margin-right: 8px;
+    color: rgb(255 215 0 / 80%);
     font-size: 15px;
     line-height: 18px;
-    margin-top: -1px;
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
 }
 
 .exchange-info-label {
-    font-weight: 600;
-    color: rgba(255, 215, 0, 0.8);
-    font-size: 15px;
-    line-height: 18px;
     display: flex;
     align-items: center;
-    white-space: nowrap;
     overflow: hidden;
+    color: rgb(255 215 0 / 80%);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 18px;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .exchange-info-value {
-    color: #FFFFFF;
-    font-size: 15px;
-    font-weight: 400;
-    line-height: 18px;
     display: flex;
     align-items: center;
-    white-space: nowrap;
-    overflow: visible;
     width: max-content;
     min-width: 100%;
     padding-top: 1px;
+    overflow: visible;
+    color: #FFF;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 18px;
+    white-space: nowrap;
 }
 
 /* 거래소 정보 오른쪽 영역 패딩 조정 */

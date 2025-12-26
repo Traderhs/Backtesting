@@ -364,7 +364,7 @@ const StrategyIndicatorCard = memo(({
         if (isDropdownOpen) {
             // DOM이 렌더링된 후 실행
             requestAnimationFrame(() => {
-                const selectedMenuItem = document.querySelector('.MuiPaper-root .MuiMenuItem-root.Mui-selected');
+                const selectedMenuItem = document.querySelector('.MuiPaper-root .mui-menu-item-root.Mui-selected');
                 if (selectedMenuItem) {
                     selectedMenuItem.scrollIntoView({block: 'nearest'});
                 }

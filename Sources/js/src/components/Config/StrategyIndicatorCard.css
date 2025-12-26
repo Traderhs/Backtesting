@@ -1,90 +1,87 @@
 /* StrategyIndicatorCard 공통 스타일 */
 .card-container {
+    position: relative;
     display: flex;
     flex-direction: column;
+    height: 100%;
+    margin-bottom: 16px;
+    overflow: hidden;
+    border: 1px solid transparent;
     border-radius: 8px;
     background: #1A1A1A;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
-    height: 100%;
-    position: relative;
-    overflow: hidden;
-    transition: background-color 0.2s ease;
-    border: 1px solid transparent;
-    margin-bottom: 16px;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
     transform: translate3d(0, 0, 0);
+    transition: background-color 0.2s ease;
     backface-visibility: hidden;
     will-change: transform, opacity;
 }
 
 .card-container:hover {
-    background: #222222;
+    background: #222;
 }
 
 .card-border {
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    pointer-events: none;
     z-index: 1;
+    border: 1px solid rgb(255 215 0 / 30%);
+    border-radius: 8px;
+    pointer-events: none;
+    inset: 0;
 }
 
 .card-header {
-    font-family: 'Inter', 'Pretendard', sans-serif !important;
+    position: relative;
+    display: flex;
+    align-items: center;
+    margin-top: 0;
+    margin-bottom: 0;
+    margin-left: 0;
+    padding: 10px 18px 10px 24px;
+    overflow: hidden;
+    border-radius: 8px 8px 0 0;
+    background-color: #FFD7004D;
+    color: rgb(255 215 0 / 80%);
+    font-family: Inter, Pretendard, sans-serif !important;
     font-size: 18px;
     font-weight: 500;
     letter-spacing: 0.3px;
-    color: rgba(255, 215, 0, 0.8);
-    background-color: #FFD7004D;
-    padding: 10px 18px 10px 24px;
-    margin-left: 0;
-    margin-top: 0;
-    margin-bottom: 0;
-    position: relative;
-    overflow: hidden;
-    border-radius: 8px 8px 0 0;
-    display: flex;
-    align-items: center;
 }
 
 .card-header::after {
     position: absolute;
+    right: 0;
     bottom: 0;
     left: 0;
-    right: 0;
-    height: 2px;
-    background: rgba(255, 215, 0, 0.1);
-    content: '';
     width: 100%;
+    height: 2px;
+    background: rgb(255 215 0 / 10%);
+    content: '';
 }
 
 .card-header:hover::before {
-    content: '' !important;
     position: absolute !important;
     top: 0 !important;
     left: 0 !important;
+    z-index: 2 !important; /* 높은 z-index로 셀 내용 위에 표시 */
     width: 100% !important;
     height: 100% !important;
-    background: linear-gradient(to right, transparent, rgba(255, 215, 0, 0.2), transparent) !important;
+    background: linear-gradient(to right, transparent, rgb(255 215 0 / 20%), transparent) !important;
     animation: sweep 1.5s ease infinite !important;
     pointer-events: none !important;
-    z-index: 2 !important; /* 높은 z-index로 셀 내용 위에 표시 */
+    content: '' !important;
 }
 
 .card-content {
-    background: #111111;
-    border-radius: 0 0 8px 8px;
     position: relative;
-    flex: 1;
     display: flex;
+    flex: 1;
     flex-direction: column;
     height: 100%;
-    font-size: 12px;
-    overflow-y: auto;
     padding: 0;
+    overflow-y: auto;
+    border-radius: 0 0 8px 8px;
+    background: #111;
+    font-size: 12px;
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
     will-change: transform;
@@ -100,13 +97,13 @@
 }
 
 .card-row {
-    margin-bottom: 12px;
-    height: 18px;
     display: flex;
     align-items: center;
+    height: 18px;
     margin-top: 4px;
-    padding-left: 24px;
+    margin-bottom: 12px;
     padding-right: 16px;
+    padding-left: 24px;
 }
 
 .card-row-inner {
@@ -116,42 +113,42 @@
 }
 
 .card-bullet {
-    color: rgba(255, 215, 0, 0.6);
+    margin-top: -3px;
     margin-right: 8px;
+    color: rgb(255 215 0 / 60%);
     font-size: 15px;
     line-height: 18px;
-    margin-top: -3px;
 }
 
 .card-label {
-    font-weight: 600;
-    color: rgba(255, 215, 0, 0.8);
-    font-size: 15px;
-    line-height: 18px;
     display: flex;
     align-items: center;
-    white-space: nowrap;
     overflow: hidden;
+    color: rgb(255 215 0 / 80%);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 18px;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .card-value {
-    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    color: #FFF;
     font-size: 15px;
     font-weight: 400;
     line-height: 18px;
-    display: flex;
-    align-items: center;
 }
 
 /* 컨테이너 스타일 */
 .item-container {
-    background: #1A1A1A;
-    border-radius: 8px;
-    padding: 15px;
     margin-top: 15px;
-    border: 1px solid rgba(255, 215, 0, 0.15);
-    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+    padding: 15px;
+    border: 1px solid rgb(255 215 0 / 15%);
+    border-radius: 8px;
+    background: #1A1A1A;
+    box-shadow: 0 2px 6px rgb(0 0 0 / 15%);
 }
 
 .item-header {
@@ -162,40 +159,40 @@
 }
 
 .item-title {
-    font-weight: 600;
-    color: #E0E0E0;
-    font-size: 16px;
     display: flex;
     align-items: center;
+    color: #E0E0E0;
+    font-size: 16px;
+    font-weight: 600;
 }
 
 .item-dropdown {
-    background-color: #222222;
-    color: #E0E0E0;
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    border-radius: 4px;
     padding: 4px 8px;
+    border: 1px solid rgb(255 215 0 / 30%);
+    border-radius: 4px;
+    background-color: #222;
+    color: #E0E0E0;
     font-size: 14px;
     outline: none;
 }
 
 .item-dropdown:focus {
-    border-color: rgba(255, 215, 0, 0.6);
-    box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.2);
+    border-color: rgb(255 215 0 / 60%);
+    box-shadow: 0 0 0 2px rgb(255 215 0 / 20%);
 }
 
 .item-list-item {
-    background: #111111;
-    padding: 8px 10px;
-    border-radius: 4px;
-    margin-bottom: 8px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 8px;
+    padding: 8px 10px;
+    border-radius: 4px;
+    background: #111;
 }
 
 .item-name {
-    color: #CCCCCC;
+    color: #CCC;
 }
 
 .item-name-highlight {
@@ -203,63 +200,62 @@
 }
 
 .item-timeframe {
-    color: #999999;
     margin-left: 8px;
+    color: #999;
 }
 
 .item-classname {
-    color: #888888;
     margin-left: 8px;
-    font-style: italic;
+    color: #888;
     font-size: 0.9em;
+    font-style: italic;
 }
 
 .item-button {
+    padding: 4px 8px;
+    border: 1px solid rgb(255 215 0 / 30%);
+    border-radius: 4px;
     background-color: #1A1A1A;
     color: #FFD700;
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    border-radius: 4px;
-    padding: 4px 8px;
     font-size: 12px;
-    cursor: pointer;
     transition: background-color 0.2s;
+    cursor: pointer;
 }
 
 .item-button:hover {
-    background-color: #222222;
+    background-color: #222;
 }
 
 /* 코드 영역 공통 스타일 */
 .code-container {
+    position: relative;
     display: flex;
     flex-direction: row;
     width: 100%;
-    background-color: #111111;
-    overflow: hidden;
     max-height: 365px; /* SymbolCard의 바 데이터 카드의 내용 영역 높이와 일치 */
-    position: relative;
     margin-bottom: 0;
+    overflow: hidden;
+    background-color: #111;
     contain: paint; /* 성능 최적화 */
 }
 
 /* 코드 영역 왼쪽 (라인 번호) */
 .code-left {
-    min-width: 77px;
-    width: 77px;
-    background-color: rgba(255, 215, 0, 0.1);
-    border-right: 2px solid rgba(255, 215, 0, 0.13);
-    z-index: 3;
-    padding: 12px 0 18px 0; /* 상단 12px, 하단 18px 패딩 */
-    box-sizing: border-box;
-    flex-shrink: 0;
-    overflow-y: auto;
-    overflow-x: hidden;
     position: sticky;
     left: 0;
+    z-index: 3;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    width: 77px;
+    min-width: 77px;
     max-height: 365px; /* SymbolCard의 바 데이터 카드의 내용 영역 높이와 일치 */
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
+    padding: 12px 0 18px; /* 상단 12px, 하단 18px 패딩 */
+    overflow: hidden auto;
+    border-right: 2px solid rgb(255 215 0 / 13%);
+    background-color: rgb(255 215 0 / 10%);
     contain: paint; /* 성능 최적화 */
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
 }
 
 /* 코드 영역 왼쪽 스크롤바 숨기기 - WebKit (Chrome, Safari, Edge) */
@@ -270,129 +266,119 @@
 /* 코드 영역 오른쪽 (코드) */
 .code-right {
     flex: 1;
-    background-color: #111111;
-    padding: 12px 0 18px 0; /* 상단 12px, 하단 18px 패딩 - 왼쪽과 정확히 일치 */
-    overflow-x: auto;
-    overflow-y: auto;
     max-height: 365px; /* SymbolCard의 바 데이터 카드의 내용 영역 높이와 일치 */
+    padding: 12px 0 18px; /* 상단 12px, 하단 18px 패딩 - 왼쪽과 정확히 일치 */
+    overflow: auto;
+    background-color: #111;
     scrollbar-gutter: stable; /* 스크롤바 공간 확보 */
 }
 
 /* 코드 라인 번호 영역 */
 .code-line-number {
-    min-width: 77px;
-    width: 77px;
-    padding: 0;
-    margin: 0 0 3px 0;
     display: flex;
-    align-items: center;
     justify-content: flex-end;
-    min-height: 1.5em;
-    height: 1.5em;
+    align-items: center;
     box-sizing: border-box;
+    width: 77px;
+    min-width: 77px;
+    height: 1.5em;
+    min-height: 1.5em;
+    margin: 0 0 3px;
+    padding: 0;
 }
 
 /* 라인 번호 스타일 */
 .line-number {
-    font-family: 'JetBrains Mono', 'Inter', 'Pretendard', sans-serif;
-    font-size: 13px;
-    color: rgba(255, 215, 0, 0.6);
     display: flex;
-    align-items: center;
     justify-content: flex-end;
+    align-items: center;
+    width: 100%;
+    height: 100%;
     padding-right: 16px;
     padding-left: 16px;
-    width: 100%;
-    user-select: none;
-    height: 100%;
+    color: rgb(255 215 0 / 60%);
+    font-family: 'JetBrains Mono', Inter, Pretendard, sans-serif;
+    font-size: 13px;
     line-height: 1.5em;
+    user-select: none;
 }
 
 /* 코드 내용 영역 */
 .code-line-content {
-    overflow-y: hidden;
-    overflow-x: hidden; /* 개별 라인의 가로 스크롤바 제거 */
-    padding: 0 16px 0 24px;
-    margin: 0 0 3px 0;
     position: relative;
-    min-height: 1.5em;
-    height: 1.5em;
     display: flex;
     align-items: center;
-    white-space: pre;
     box-sizing: border-box;
     width: max-content; /* 내용 길이에 맞게 너비 조정 */
     min-width: calc(100% - 40px); /* 최소 너비 설정 (패딩 고려) */
+    height: 1.5em;
+    min-height: 1.5em;
+    margin: 0 0 3px;
+    padding: 0 16px 0 24px;
+    overflow: hidden; /* 개별 라인의 가로 스크롤바 제거 */
     line-height: 1.5em;
+    white-space: pre;
 }
 
 /* 코드 오른쪽 영역에서 텍스트가 잘리지 않도록 설정 */
 .code-right .code-line-content {
-    overflow-y: hidden;
-    overflow-x: visible; /* 가로 방향으로 내용이 넘칠 수 있도록 */
-    padding: 0 16px 0 24px;
-    margin: 0 0 3px 0;
     position: relative;
-    min-height: 1.5em;
-    height: 1.5em;
     display: flex;
     align-items: center;
-    white-space: pre;
     box-sizing: border-box;
     width: max-content; /* 내용 길이에 맞게 너비 조정 */
     min-width: calc(100% - 40px); /* 최소 너비 설정 (패딩 고려) */
+    height: 1.5em;
+    min-height: 1.5em;
+    margin: 0 0 3px;
+    padding: 0 16px 0 24px;
+    overflow: visible hidden; /* 가로 방향으로 내용이 넘칠 수 있도록 */
     line-height: 1.5em;
+    white-space: pre;
 }
 
 /* SyntaxHighlighter 컨테이너 */
 .code-line-content pre {
-    margin: 0 !important;
-    padding: 0 !important;
     display: flex !important;
     align-items: center !important;
     width: 100% !important;
-    background-color: transparent !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible hidden !important; /* 내용 잘림 방지 */
     border: none !important;
-    overflow-x: visible !important; /* 내용 잘림 방지 */
-    overflow-y: hidden !important;
+    background-color: transparent !important;
     line-height: 1.5em !important;
 }
 
 /* SyntaxHighlighter 코드 블록 */
 .code-line-content code {
-    font-family: 'JetBrains Mono', 'Inter', 'Pretendard', sans-serif !important;
-    font-size: 13px !important;
-    line-height: 1.5em !important;
-    font-variant-ligatures: none !important;
-    white-space: pre !important;
-    overflow-x: visible !important; /* 내용 잘림 방지 */
-    overflow-y: hidden !important;
     display: flex !important;
     align-items: center !important;
     margin: 0 !important;
     padding: 0 !important;
+    overflow: visible hidden !important; /* 내용 잘림 방지 */
+    font-family: 'JetBrains Mono', Inter, Pretendard, sans-serif !important;
+    font-size: 13px !important;
+    line-height: 1.5em !important;
+    white-space: pre !important;
+    font-variant-ligatures: none !important;
 }
 
 /* 코드 래퍼 스타일 - 모든 코드 영역에 공통 적용 */
 .code-wrapper {
-    padding: 0;
     position: relative;
-    width: 100%;
     display: flex;
-    flex-direction: column;
     flex: 1 1 0;
+    flex-direction: column;
+    width: 100%;
+    padding: 0;
 }
 
 /* 빈 라인도 제대로 표시되도록 */
 .code-line-content pre:empty::after {
-    content: " ";
     display: inline-block;
     height: 1.5em;
-}
-
-/* 스크롤바 크기 고려한 패딩 조정 */
-.code-left {
-    padding-bottom: 18px; /* 기본 패딩으로 통일 */
+    content: " ";
 }
 
 /* 왼쪽 영역 가로 스크롤바 숨기기 */
@@ -403,12 +389,12 @@
 /* 스크롤바 코너 영역 스타일 추가 */
 .code-left::-webkit-scrollbar-corner,
 .code-right::-webkit-scrollbar-corner {
-    background-color: #111111; /* 배경색을 코드 영역 배경색과 일치 */
+    background-color: #111; /* 배경색을 코드 영역 배경색과 일치 */
 }
 
 .info-left::-webkit-scrollbar-corner,
 .info-right::-webkit-scrollbar-corner {
-    background-color: #111111; /* 배경색을 정보 영역 배경색과 일치 */
+    background-color: #111; /* 배경색을 정보 영역 배경색과 일치 */
 }
 
 .code-left.has-scrollbar-padding {
@@ -431,32 +417,32 @@
 /* Syntax Highlighter 공통 스타일 */
 .code-highlighter {
     position: relative !important;
-    background-color: #111111 !important;
+    width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
-    border-radius: 0 !important;
-    font-size: 13px !important;
-    width: 100% !important;
     overflow: visible !important;
-    font-variant-ligatures: none !important; /* 리가처 비활성화 */
+    border-radius: 0 !important;
+    background-color: #111 !important;
+    font-size: 13px !important;
     line-height: 1.5 !important;
+    font-variant-ligatures: none !important; /* 리가처 비활성화 */
 }
 
 /* 코드 내용 스타일 */
 .code-highlighter code {
-    font-family: 'JetBrains Mono', 'Inter', 'Pretendard', sans-serif !important;
-    white-space: pre !important;
-    line-height: 1.5 !important;
-    font-variant-ligatures: none !important; /* 리가처 비활성화 */
-    background-color: #111111 !important; /* 배경색 강제 적용 */
     display: flex !important;
     align-items: center !important; /* 수직 중앙 정렬 */
+    background-color: #111 !important; /* 배경색 강제 적용 */
+    font-family: 'JetBrains Mono', Inter, Pretendard, sans-serif !important;
+    line-height: 1.5 !important;
+    white-space: pre !important;
+    font-variant-ligatures: none !important; /* 리가처 비활성화 */
 }
 
 /* 코드 토큰 클래스 스타일 */
 .code-highlighter .token {
-    font-family: 'JetBrains Mono', 'Inter', 'Pretendard', sans-serif !important;
     background: transparent !important;
+    font-family: 'JetBrains Mono', Inter, Pretendard, sans-serif !important;
     font-variant-ligatures: none !important; /* 리가처 비활성화 */
     vertical-align: middle !important; /* 수직 중앙 정렬 */
 }
@@ -464,7 +450,7 @@
 /* oneDark 테마 스타일 오버라이드 */
 pre[class*="language-"],
 code[class*="language-"] {
-    background: #111111 !important;
+    background: #111 !important;
 }
 
 /* Syntax Highlighter 내부 요소 스타일 오버라이드 */
@@ -475,11 +461,11 @@ code[class*="language-"] {
 
 /* 코드 하이라이터 내 코드 행 스타일 */
 .code-highlighter .react-syntax-highlighter-line {
-    min-height: 1.5em !important;
-    line-height: 1.5 !important;
-    font-family: 'JetBrains Mono', 'Inter', 'Pretendard', sans-serif !important;
     display: flex !important;
     align-items: center !important; /* 수직 중앙 정렬 */
+    min-height: 1.5em !important;
+    font-family: 'JetBrains Mono', Inter, Pretendard, sans-serif !important;
+    line-height: 1.5 !important;
 }
 
 /* SyntaxHighlighter pre 요소 여백 제거 */
@@ -487,12 +473,7 @@ code[class*="language-"] {
     margin: 15px 0 !important;
     padding-top: 0 !important;
     padding-bottom: 0 !important;
-}
-
-/* SyntaxHighlighter 스크롤 스타일 */
-.code-right pre {
-    overflow-x: auto !important;
-    overflow-y: hidden !important;
+    overflow: auto hidden !important;
 }
 
 /* pre 태그 내부의 코드 블록 영역 스타일 */
@@ -540,14 +521,14 @@ code[class*="language-"] {
     display: flex;
     justify-content: center;
     align-items: center;
-    padding: 16px;
-    background-color: #111111;
     width: 100%;
     min-height: 100px;
+    padding: 16px;
+    background-color: #111;
 }
 
 .card-loading {
-    color: #CCCCCC;
+    color: #CCC;
 }
 
 .card-error {
@@ -556,44 +537,44 @@ code[class*="language-"] {
 
 /* NoDataMessage를 위한 전용 컨테이너 스타일 */
 .no-data-container {
-    width: 100%;
-    height: 100%;
-    min-height: 200px;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
+    width: 100%;
+    height: 100%;
+    min-height: 200px;
 }
 
 /* 구분선 스타일 */
 .separator {
-    height: 2px;
-    background: rgba(255, 215, 0, 0.3);
     min-width: 100%;
+    height: 2px;
     min-height: 2px;
+    background: rgb(255 215 0 / 30%);
 }
 
 /* 정보 상단 왼쪽 구분선 */
 .info-separator-left {
-    height: 2px;
-    background: rgba(255, 215, 0, 0.13);
     min-width: 100%;
+    height: 2px;
     min-height: 2px;
+    background: rgb(255 215 0 / 13%);
 }
 
 /* 정보 상단 오른쪽 구분선 */
 .info-separator-right {
-    height: 2px;
-    background: rgba(255, 215, 0, 0.2);
-    min-width: 100%;
-    min-height: 2px;
-    width: 100%; /* 너비 100%로 설정 */
-    margin-left: 0; /* 왼쪽 마진 제거 */
-    margin-right: 0; /* 오른쪽 마진 제거 */
-    box-sizing: border-box; /* 박스 사이징 설정 */
     position: relative; /* 상대 위치 설정 */
     display: block; /* 블록 요소로 표시 */
+    box-sizing: border-box; /* 박스 사이징 설정 */
+    width: 100%; /* 너비 100%로 설정 */
+    min-width: 100%;
+    height: 2px;
+    min-height: 2px;
+    margin-right: 0; /* 오른쪽 마진 제거 */
+    margin-left: 0; /* 왼쪽 마진 제거 */
     overflow: visible; /* 오버플로우 허용 */
+    background: rgb(255 215 0 / 20%);
 }
 
 /* 카드 관련 스타일 */
@@ -606,79 +587,79 @@ code[class*="language-"] {
 }
 
 .card-divider {
-    height: 1px;
     width: 100%;
-    background-color: rgba(255, 215, 0, 0.13);
+    height: 1px;
     margin: 16px 0;
+    background-color: rgb(255 215 0 / 13%);
 }
 
 .card-section-title {
-    font-weight: 600;
-    color: rgba(255, 215, 0, 0.8);
-    font-size: 16px;
-    margin-bottom: 12px;
     display: flex;
     align-items: center;
+    margin-bottom: 12px;
     padding-left: 24px;
+    color: rgb(255 215 0 / 80%);
+    font-size: 16px;
+    font-weight: 600;
 }
 
 /* 좌우 구분 스타일을 위한 오버라이드 */
 .info-row {
-    margin-bottom: 14px;
-    min-height: 18px;
-    height: 18px;
     display: flex;
     align-items: center;
+    height: 18px;
+    min-height: 18px;
     margin-top: 4px;
-    padding-left: 24px;
+    margin-bottom: 14px;
     padding-right: 16px;
+    padding-left: 24px;
 }
 
 .info-row-inner {
     display: flex;
     align-items: center;
-    min-height: 18px;
-    height: 18px;
-    line-height: 18px; /* 수직 정렬 보장 */
     width: 100%; /* 전체 너비 사용 */
     min-width: min-content; /* 내용에 맞는 최소 너비 */
+    height: 18px;
+    min-height: 18px;
+    line-height: 18px; /* 수직 정렬 보장 */
 }
 
 .info-bullet {
-    color: rgba(255, 215, 0, 0.8);
+    display: flex;
+    flex-shrink: 0; /* 크기 고정 */
+    align-items: center;
+    margin-top: -1px; /* 미세 조정 */
     margin-right: 8px;
+    color: rgb(255 215 0 / 80%);
     font-size: 15px;
     line-height: 18px;
-    margin-top: -1px; /* 미세 조정 */
-    flex-shrink: 0; /* 크기 고정 */
-    display: flex;
-    align-items: center;
 }
 
 .info-label {
-    font-weight: 600;
-    color: rgba(255, 215, 0, 0.8);
-    font-size: 15px;
-    line-height: 18px;
     display: flex;
     align-items: center;
-    white-space: nowrap;
     overflow: hidden;
+    color: rgb(255 215 0 / 80%);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 18px;
     text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .info-value {
-    color: #FFFFFF;
-    font-size: 15px;
-    font-weight: 400;
-    line-height: 18px;
     display: flex;
     align-items: center;
-    white-space: nowrap;
-    overflow: visible; /* 텍스트가 잘리지 않도록 변경 */
     width: max-content; /* 내용에 맞게 너비 조정 */
     min-width: 100%; /* 최소 너비 설정 */
     padding-top: 1px; /* 상단 공간 추가 */
+    overflow: visible; /* 텍스트가 잘리지 않도록 변경 */
+    color: #FFF;
+    font-size: 15px;
+    font-weight: 400;
+    line-height: 18px;
+    white-space: nowrap;
 }
 
 /* 좌우 영역 정렬을 위한 스타일 */
@@ -690,19 +671,19 @@ code[class*="language-"] {
 
 /* 전체 컨텐츠 영역의 스크롤 설정 */
 .card-content.info-content {
-    overflow-y: hidden;
     box-sizing: border-box;
+    overflow-y: hidden;
 }
 
 .header-name {
+    margin-right: auto;
+    margin-left: 24px;
+    overflow: hidden;
+    color: #FFF;
     font-size: 1.5rem;
     font-weight: 600;
-    color: #FFFFFF;
-    margin-right: auto;
-    white-space: nowrap;
-    overflow: hidden;
     text-overflow: ellipsis;
-    margin-left: 24px;
+    white-space: nowrap;
 }
 
 .header {
@@ -710,7 +691,7 @@ code[class*="language-"] {
     justify-content: space-between;
     align-items: center;
     padding: 28px 16px 12px;
-    background-color: #111111;
+    background-color: #111;
 }
 
 .dropdown-container {
@@ -718,23 +699,23 @@ code[class*="language-"] {
 }
 
 .sub-code-title {
-    font-size: 0.9em;
-    color: #999999;
     margin-left: 8px;
+    color: #999;
+    font-size: 0.9em;
 }
 
 /* 카드 레이아웃 */
 .card-wrapper {
+    position: relative;
     display: flex;
     flex-direction: column;
-    border-radius: 8px;
-    background: #111111;
-    border: 1.2px solid rgba(255, 215, 0, 0.4);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    margin-left: 4px;
     margin-right: 4px;
+    margin-left: 4px;
     overflow: hidden;
-    position: relative;
+    border: 1.2px solid rgb(255 215 0 / 40%);
+    border-radius: 8px;
+    background: #111;
+    box-shadow: 0 4px 10px rgb(0 0 0 / 30%);
     transform: translate3d(0, 0, 0);
     backface-visibility: hidden;
     will-change: transform;
@@ -745,17 +726,17 @@ code[class*="language-"] {
     display: flex;
     flex-direction: row;
     gap: 16px;
-    padding: 16px;
     width: 100%;
     height: 100%;
+    padding: 16px;
 }
 
 .card-left,
 .card-right {
-    flex: 1;
-    min-width: 0;
     display: flex;
+    flex: 1;
     flex-direction: column;
+    min-width: 0;
 }
 
 .card-left {
@@ -775,55 +756,54 @@ code[class*="language-"] {
 
 /* 정보 스타일 */
 .info-content {
-    padding: 0;
     position: relative;
     height: 100%;
+    padding: 0;
     overflow-y: auto;
 }
 
 /* 정보란 공통 스타일 */
 .info-item {
     position: relative;
+    z-index: 2;
     display: flex;
     width: 100%;
-    z-index: 2;
-    overflow: visible; /* hidden에서 visible로 변경하여 세로 스크롤이 가능하도록 함 */
     height: 365px; /* SymbolCard의 바 데이터 카드의 내용 영역 높이와 일치 */
     min-height: unset; /* 최소 높이 제거 */
-    transition: none; /* 높이 애니메이션 제거 */
+    overflow: visible; /* hidden에서 visible로 변경하여 세로 스크롤이 가능하도록 함 */
     background-color: transparent;
     transform: translate3d(0, 0, 0);
+    transition: none; /* 높이 애니메이션 제거 */
     backface-visibility: hidden;
     will-change: transform;
 }
 
 /* 정보란 높이 조정을 위한 스타일 */
 .card-content .info-item {
-    transition: none; /* 높이 애니메이션 제거 */
     max-height: 365px; /* 최대 높이 조정 */
+    transition: none; /* 높이 애니메이션 제거 */
 }
 
 /* 왼쪽 영역 스타일 */
 .info-left {
-    width: 154px;
-    min-width: 154px;
     position: sticky;
+    top: 0;
     left: 0;
     z-index: 3;
-    background-color: rgba(255, 215, 0, 0.1);
-    border-radius: 0;
-    padding: 0;
-    overflow-x: hidden;
-    overflow-y: scroll;
-    scrollbar-width: none; /* Firefox */
-    -ms-overflow-style: none; /* IE and Edge */
-    top: 0;
-    border-right: 2px solid rgba(255, 215, 0, 0.13);
-    white-space: nowrap;
-    text-overflow: ellipsis;
     flex-shrink: 0;
-    height: auto;
     box-sizing: border-box;
+    width: 154px;
+    min-width: 154px;
+    height: auto;
+    padding: 0;
+    overflow: hidden scroll;
+    border-right: 2px solid rgb(255 215 0 / 13%);
+    border-radius: 0;
+    background-color: rgb(255 215 0 / 10%);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
 }
 
 /* 왼쪽 영역 스크롤바 숨기기 - WebKit (Chrome, Safari, Edge) */
@@ -837,17 +817,16 @@ code[class*="language-"] {
 
 /* 오른쪽 영역 스타일 */
 .info-right {
-    flex: 1;
-    min-width: 140px;
     position: relative;
     z-index: 2;
-    padding-top: 0;
-    white-space: nowrap;
-    overflow-x: auto !important;
-    overflow-y: auto !important; /* 세로 스크롤바 항상 필요할 때 표시 */
-    text-overflow: ellipsis;
-    height: auto;
+    flex: 1;
     box-sizing: border-box;
+    min-width: 140px;
+    height: auto;
+    padding-top: 0;
+    overflow: auto !important; /* 세로 스크롤바 항상 필요할 때 표시 */
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 /* 오른쪽 영역 row-inner에 추가 패딩 */
@@ -864,71 +843,10 @@ code[class*="language-"] {
     0% {
         transform: translateX(-100%);
     }
+
     100% {
         transform: translateX(100%);
     }
-}
-
-/* info-bullet 스타일 */
-.info-bullet {
-    color: rgba(255, 215, 0, 0.8);
-    margin-right: 8px;
-    font-size: 15px;
-    line-height: 18px;
-    margin-top: -1px; /* 미세 조정 */
-    flex-shrink: 0; /* 크기 고정 */
-    display: flex;
-    align-items: center;
-}
-
-/* info-label 스타일 */
-.info-label {
-    font-weight: 600;
-    color: rgba(255, 215, 0, 0.8);
-    font-size: 15px;
-    line-height: 18px;
-    display: flex;
-    align-items: center;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* info-value 스타일 */
-.info-value {
-    color: #FFFFFF;
-    font-size: 15px;
-    font-weight: 400;
-    line-height: 18px;
-    display: flex;
-    align-items: center;
-    white-space: nowrap;
-    overflow: visible; /* 텍스트가 잘리지 않도록 변경 */
-    width: max-content; /* 내용에 맞게 너비 조정 */
-    min-width: 100%; /* 최소 너비 설정 */
-    padding-top: 1px; /* 상단 공간 추가 */
-}
-
-/* 행 스타일 */
-.info-row {
-    margin-bottom: 8px;
-    min-height: 18px;
-    height: 18px;
-    display: flex;
-    align-items: center;
-    margin-top: 4px;
-    padding-left: 24px;
-    padding-right: 16px;
-}
-
-.info-row-inner {
-    display: flex;
-    align-items: center;
-    min-height: 18px;
-    height: 18px;
-    line-height: 18px; /* 수직 정렬 보장 */
-    width: 100%; /* 전체 너비 사용 */
-    min-width: min-content; /* 내용에 맞는 최소 너비 */
 }
 
 /* 패딩 조정을 위한 클래스 추가 */
