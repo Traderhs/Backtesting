@@ -1,5 +1,5 @@
 'use client'
-import React, {useEffect, useState, useRef, useCallback, useMemo} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {motion} from 'framer-motion';
 import {useTradeFilter} from '@/components/TradeFilter';
 import {formatDollar, formatPercent} from '@/components/Performance/Utils';
@@ -7,6 +7,7 @@ import EquityCurve from '@/components/Plot/EquityCurve';
 import {calculatePerformanceMetrics} from '@/components/Performance/Report';
 import LoadingSpinner from '@/components/Common/LoadingSpinner';
 import NoDataMessage from '@/components/Common/NoDataMessage';
+
 // 지표 정보 정의
 const metrics = [
     {id: 'totalProfitLoss', title: '순손익'},
