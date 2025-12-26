@@ -1,14 +1,8 @@
-import React, {useState, useEffect, useRef} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {Button} from '../ui/button';
 import {useWebSocket} from '../Server/WebSocketContext';
-import {BarDataConfig, BarDataType, TimeframeUnit, timeframeToString, parseTimeframeString} from '@/types/barData.ts';
-import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from '@/components/ui/select';
+import {BarDataConfig, BarDataType, parseTimeframeString, timeframeToString, TimeframeUnit} from '@/types/barData.ts';
+import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue,} from '@/components/ui/select';
 import {Input} from '@/components/ui/input';
 import '../Common/LoadingSpinner.css';
 

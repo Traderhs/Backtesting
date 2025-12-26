@@ -1,4 +1,4 @@
-import {useRef, useEffect, useCallback} from "react";
+import {useCallback, useEffect, useRef} from "react";
 
 // 디바운스 함수 정의 (메인 스레드에서 사용)
 function debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void {
