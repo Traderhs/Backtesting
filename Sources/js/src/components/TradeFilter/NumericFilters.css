@@ -18,9 +18,6 @@
     font-feature-settings: "kern" 1;
     -webkit-tap-highlight-color: transparent;
 
-    /* 텍스트 렌더링 최적화 - 정확한 폭 측정을 위해 */
-    text-rendering: optimizelegibility;
-
     /* 브라우저별 텍스트 선택 추가 차단 */
     -webkit-touch-callout: none;
 
