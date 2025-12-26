@@ -1,6 +1,6 @@
-import {useState, useCallback, useEffect, useRef, memo} from "react"
-import {motion, AnimatePresence} from "framer-motion"
-import {Select, FormControl, InputLabel, MenuItem, Box, SelectChangeEvent} from '@mui/material';
+import {memo, useCallback, useEffect, useRef, useState} from "react"
+import {AnimatePresence, motion} from "framer-motion"
+import {Box, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent} from '@mui/material';
 import {useLogo} from "@/contexts/LogoContext";
 import "./SymbolCard.css";
 
@@ -205,7 +205,7 @@ const SymbolCard = memo(({
         if (isDropdownOpen) {
             // DOM이 렌더링된 후 실행
             requestAnimationFrame(() => {
-                const selectedMenuItem = document.querySelector('.symbol-dropdown-paper .MuiMenuItem-root.Mui-selected');
+                const selectedMenuItem = document.querySelector('.symbol-dropdown-paper .mui-menu-item-root.Mui-selected');
                 if (selectedMenuItem) {
                     selectedMenuItem.scrollIntoView({block: 'nearest'});
                 }
@@ -1340,12 +1340,12 @@ const SymbolCard = memo(({
                     }
                     
                     /* 호버 시 로고에 금색 테두리 추가 */
-                    .MuiMenuItem-root:hover .symbol-dropdown-icon-wrapper {
+                    .mui-menu-item-root:hover .symbol-dropdown-icon-wrapper {
                         border-color: rgba(255, 215, 0, 0.6) !important;
                         box-shadow: 0 0 6px rgba(255, 215, 0, 0.3) !important;
                     }
                     
-                    .MuiMenuItem-root:hover .symbol-dropdown-icon {
+                    .mui-menu-item-root:hover .symbol-dropdown-icon {
                         transform: scale(1.1);
                         filter: brightness(1.1);
                         transition: all 0.2s ease;

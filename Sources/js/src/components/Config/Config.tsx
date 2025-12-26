@@ -1,4 +1,4 @@
-import {useState, useEffect, useMemo, memo, useRef} from "react";
+import {memo, useEffect, useMemo, useRef, useState} from "react";
 import SymbolCard from "./SymbolCard"
 import StrategyIndicatorCard from "./StrategyIndicatorCard"
 import EngineCard from "./EngineCard"

@@ -1,6 +1,6 @@
-import {useState, useEffect, useRef, memo, useCallback} from "react"
+import {memo, useCallback, useEffect, useRef, useState} from "react"
 import {motion} from "framer-motion"
-import {parseDate, formatDuration} from "../Performance/Utils";
+import {formatDuration, parseDate} from "../Performance/Utils";
 import "./EngineCard.css";
 
 interface EngineSettings {
