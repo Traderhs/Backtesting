@@ -1,16 +1,24 @@
 export const safeNumber = (value: any): number => {
     const num = Number(value);
+
     return isNaN(num) ? 0 : num;
 };
 
 export const parseDate = (dateString: string | undefined): Date | null => {
-    if (!dateString || dateString === '-') return null;
+    if (!dateString || dateString === '-') {
+        return null;
+    }
+
     const date = new Date(dateString);
+
     return isNaN(date.getTime()) ? null : date;
 };
 
 export const formatDateTime = (date: Date | null): string => {
-    if (!date) return '-';
+    if (!date) {
+        return '-';
+    }
+
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -22,7 +30,10 @@ export const formatDateTime = (date: Date | null): string => {
 };
 
 export const formatDateTimeWithWeekday = (date: Date | null): string => {
-    if (!date) return '-';
+    if (!date) {
+        return '-';
+    }
+
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
@@ -36,11 +47,16 @@ export const formatDateTimeWithWeekday = (date: Date | null): string => {
 };
 
 export const formatDuration = (start: Date | null, end: Date | null): string => {
-    if (!start || !end || start.getTime() > end.getTime()) return "-";
+    if (!start || !end || start.getTime() > end.getTime()) {
+        return "-";
+    }
 
     let diff = Math.floor((end.getTime() - start.getTime()) / 1000);
-    if (diff < 0) return "-";
-    if (diff === 0) return "0초";
+    if (diff < 0) {
+        return "-";
+    } else if (diff === 0) {
+        return "0초";
+    }
 
     const units = [
         {value: 31536000, name: '년'},      // kYear

@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, {useEffect, useState} from 'react';
 import {useTradeFilter} from '@/components/TradeFilter';
 import {calculateBalanceMetrics} from './BalanceMetrics.ts';
 import {calculateFeeMetrics} from './FeeMetrics.ts';
@@ -12,7 +12,7 @@ import {calculateAGRMetrics} from './AGRMetrics';
 import {calculateRiskRewardMetrics} from './RiskRewardMetrics.ts';
 import {calculateRiskAdjustedReturnMetrics} from './RiskAdjustedReturnMetrics.ts';
 import {calculateTradeCountMetrics} from './TradeCountMetrics.ts';
-import {formatDateTime, parseDate, formatDuration, formatDollar, formatPercent} from './Utils.ts';
+import {formatDateTime, formatDollar, formatDuration, formatPercent, parseDate} from './Utils.ts';
 import {calculateStreaks} from './Streaks';
 import {calculateDrawdownMetrics} from './DrawdownMetrics';
 import {calculateHoldingTimeMetrics} from './HoldingTimeMetrics';

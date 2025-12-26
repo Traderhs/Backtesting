@@ -10,10 +10,13 @@ export const calculateFundingMetrics = (trades: any[]) => {
     // 거래 번호별로 그룹화
     const groupedByTradeNumber = trades.reduce((groups, trade) => {
         const tradeNumber = trade['거래 번호'];
+
         if (!groups[tradeNumber]) {
             groups[tradeNumber] = [];
         }
+
         groups[tradeNumber].push(trade);
+
         return groups;
     }, {} as Record<string, any[]>);
 
@@ -35,6 +38,7 @@ export const calculateFundingMetrics = (trades: any[]) => {
                 // 청산 시간이 더 큰(최신) 거래를 선택
                 const currentExitTime = current['청산 시간'];
                 const bestExitTime = best['청산 시간'];
+
                 return currentExitTime > bestExitTime ? current : best;
             }
             return best;

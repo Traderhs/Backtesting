@@ -1,5 +1,5 @@
 import {TradeItem} from "@/components/TradeFilter/TradeFilterContext";
-import {safeNumber, parseDate, formatDateTimeWithWeekday, calculatePercentage} from './Utils.ts';
+import {calculatePercentage, formatDateTimeWithWeekday, parseDate, safeNumber} from './Utils.ts';
 
 export interface BalanceMetricsResult {
     initialBalance: number;

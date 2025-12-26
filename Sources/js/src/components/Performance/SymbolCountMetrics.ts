@@ -18,6 +18,7 @@ export function calculateSymbolCountMetrics(actualTrades: Trade[]) {
         if (value === '-' || value === null || value === undefined || value === '') {
             return null;
         }
+
         return Number(value);
     });
 
