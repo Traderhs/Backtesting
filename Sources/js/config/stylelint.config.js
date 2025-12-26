@@ -171,6 +171,20 @@ module.exports = {
             {
                 unspecified: "bottomAlphabetical"
             }
-        ]
+        ],
+        "at-rule-no-unknown": [
+            true,
+            {
+                ignoreAtRules: [
+                    "tailwind",
+                    "apply",
+                    "layer",
+                    "variants",
+                    "responsive",
+                    "custom-variant",
+                    "theme"
+                ],
+            },
+        ],
     }
 };
