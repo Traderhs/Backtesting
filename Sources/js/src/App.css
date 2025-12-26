@@ -1,37 +1,37 @@
 #root {
-    max-width: 100%;
+    display: flex;
+    flex-direction: column;
     width: 100%;
+    max-width: 100%;
+    height: 100vh;
     margin: 0;
     padding: 0;
     text-align: left;
-    height: 100vh;
-    display: flex;
-    flex-direction: column;
 }
 
 /* 탭 컨텐츠 기본 스타일 */
 .tab-content {
-    will-change: transform, opacity, visibility;
     transition: opacity 0.3s ease-out;
+    will-change: transform, opacity, visibility;
 }
 
 /* 비활성 탭에 적용되는 최적화 스타일 */
 .tab-inactive {
+    /* 애니메이션 최적화 */
+    transition: none !important;
+
     /* 스크롤 성능 최적화 */
     overscroll-behavior: none;
 
     /* GPU 렌더링 중지 */
     will-change: auto;
-
-    /* 애니메이션 최적화 */
-    transition: none !important;
 }
 
 /* 숨겨진 탭 스타일 */
 .tab-content-hidden {
-    visibility: hidden;
     opacity: 0;
     pointer-events: none;
+    visibility: hidden;
 }
 
 /* 탭 진입 애니메이션 */
@@ -48,63 +48,19 @@
 
 /* 애니메이션 방향에 따른 컨테이너 스타일 */
 .tab-container.slide-in-right .tab-content-enter {
-    animation: slideInRight 0.5s forwards;
+    animation: slide-in-right 0.5s forwards;
 }
 
 .tab-container.slide-in-right .tab-content-exit {
-    animation: slideOutLeft 0.5s forwards;
+    animation: slide-out-left 0.5s forwards;
 }
 
 .tab-container.slide-in-left .tab-content-enter {
-    animation: slideInLeft 0.5s forwards;
+    animation: slide-in-left 0.5s forwards;
 }
 
 .tab-container.slide-in-left .tab-content-exit {
-    animation: slideOutRight 0.5s forwards;
-}
-
-@keyframes slideInRight {
-    from {
-        transform: translateX(15%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slideOutLeft {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(-15%);
-        opacity: 0;
-    }
-}
-
-@keyframes slideInLeft {
-    from {
-        transform: translateX(-15%);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slideOutRight {
-    from {
-        transform: translateX(0);
-        opacity: 1;
-    }
-    to {
-        transform: translateX(15%);
-        opacity: 0;
-    }
+    animation: slide-out-right 0.5s forwards;
 }
 
 .logo {
@@ -117,15 +73,7 @@
     from {
         transform: rotate(0deg);
     }
-    to {
-        transform: rotate(360deg);
-    }
-}
 
-@keyframes spin {
-    from {
-        transform: rotate(0deg);
-    }
     to {
         transform: rotate(360deg);
     }
@@ -139,14 +87,6 @@
     .chart-loading-indicator {
         animation: spin infinite 1s linear;
     }
-}
-
-.card {
-    padding: 2em;
-}
-
-.read-the-docs {
-    color: #888;
 }
 
 .performance-container {

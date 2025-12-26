@@ -125,6 +125,145 @@ export class TradeFilterManager {
         this.initializeWorkers();
     }
 
+    public filterTrades(
+        trades: TradeItem[],
+        filter: TradeFilter,
+        onProgress?: (progress: number) => void
+    ): Promise<{ trades: TradeItem[], hasBankruptcy: boolean }> {
+        return new Promise((resolve, reject) => {
+            try {
+                // 입력 검증
+                if (!trades || !Array.isArray(trades) || trades.length === 0) {
+                    resolve({trades: [], hasBankruptcy: false});
+                    return;
+                }
+
+                // 아무 필터도 적용되어 있지 않으면 원본 데이터 그대로 반환
+                if (!this.hasActiveFilters(filter)) {
+                    resolve({trades, hasBankruptcy: false});
+                    return;
+                }
+
+                // 이전 작업들 모두 취소
+                this.cancelAllActiveTasks();
+
+                // 작업 ID 생성
+                const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+                // 최신 작업으로 설정
+                this.latestTaskId = taskId;
+                this.activeTasks.add(taskId);
+
+                // 콜백 등록
+                this.callbacks.set(taskId, resolve);
+                if (onProgress) {
+                    this.progressCallbacks.set(taskId, onProgress);
+                }
+
+                // 자금 재계산 정보 저장
+                this.needsBalanceRecalculation.set(taskId, filter.recalculateBalance);
+                this.originalTradesMap.set(taskId, trades);
+
+                // 데이터가 작은 경우 단일 워커로 처리
+                if (trades.length < this.chunkSize * 2) {
+                    // 단일 워커도 청크 모드와 동일하게 필터링만 수행하고 자금 재계산은 메인 스레드에서
+                    const singleWorkerFilter = {...filter, recalculateBalance: false};
+                    const workerIndex = this.getAvailableWorker();
+                    if (workerIndex !== -1) {
+                        this.busyWorkers.add(workerIndex);
+                        this.workers[workerIndex].postMessage({
+                            type: 'filter',
+                            trades,
+                            filter: singleWorkerFilter,
+                            allTrades: trades,
+                            taskId,
+                            chunkIndex: 0,
+                            totalChunks: 1
+                        });
+                    } else {
+                        // 사용 가능한 워커가 없으면 대기열에 추가
+                        this.pendingTasks.push({
+                            id: taskId,
+                            chunk: trades,
+                            filter: singleWorkerFilter,
+                            allTrades: trades,
+                            chunkIndex: 0,
+                            totalChunks: 1
+                        });
+                    }
+                    return;
+                }
+
+                // 대량 데이터의 경우 청크로 분할
+                const chunks = this.createChunks(trades);
+
+                // 각 청크를 작업으로 생성
+                for (let i = 0; i < chunks.length; i++) {
+                    // 청크 처리 시에는 자금 재계산을 끄고 필터링만 수행
+                    const chunkFilter = {...filter, recalculateBalance: false};
+
+                    const task: WorkerTask = {
+                        id: taskId,
+                        chunk: chunks[i],
+                        filter: chunkFilter, // 자금 재계산 끈 필터 사용
+                        allTrades: trades,
+                        chunkIndex: i,
+                        totalChunks: chunks.length
+                    };
+
+                    const workerIndex = this.getAvailableWorker();
+                    if (workerIndex !== -1) {
+                        this.busyWorkers.add(workerIndex);
+                        this.workers[workerIndex].postMessage({
+                            type: 'filter',
+                            trades: task.chunk,
+                            filter: task.filter,
+                            allTrades: task.allTrades,
+                            taskId: task.id,
+                            chunkIndex: task.chunkIndex,
+                            totalChunks: task.totalChunks
+                        });
+                    } else {
+                        // 사용 가능한 워커가 없으면 대기열에 추가
+                        this.pendingTasks.push(task);
+                    }
+                }
+
+                // 진행률 초기화
+                if (onProgress) {
+                    onProgress(0);
+                }
+
+            } catch (error) {
+                console.error('필터링 작업 시작 실패:', error);
+                reject(error);
+            }
+        });
+    }
+
+    public destroy(): void {
+        // 모든 워커 종료
+        this.workers.forEach((worker, index) => {
+            try {
+                worker.terminate();
+            } catch (error) {
+                console.error(`워커 ${index} 종료 실패:`, error);
+            }
+        });
+
+        // 상태 초기화
+        this.workers = [];
+        this.busyWorkers.clear();
+        this.pendingTasks = [];
+        this.results.clear();
+        this.callbacks.clear();
+        this.progressCallbacks.clear();
+        this.needsBalanceRecalculation.clear();
+        this.originalTradesMap.clear();
+        this.latestTaskId = null;
+        this.activeTasks.clear();
+    }
+
     private initializeWorkers(): void {
         for (let i = 0; i < this.maxWorkers; i++) {
             try {
@@ -372,145 +511,6 @@ export class TradeFilterManager {
             this.busyWorkers.delete(workerIndex);
             this.handleTaskError(task.id, `워커 통신 실패: ${error}`);
         }
-    }
-
-    public filterTrades(
-        trades: TradeItem[],
-        filter: TradeFilter,
-        onProgress?: (progress: number) => void
-    ): Promise<{ trades: TradeItem[], hasBankruptcy: boolean }> {
-        return new Promise((resolve, reject) => {
-            try {
-                // 입력 검증
-                if (!trades || !Array.isArray(trades) || trades.length === 0) {
-                    resolve({trades: [], hasBankruptcy: false});
-                    return;
-                }
-
-                // 아무 필터도 적용되어 있지 않으면 원본 데이터 그대로 반환
-                if (!this.hasActiveFilters(filter)) {
-                    resolve({trades, hasBankruptcy: false});
-                    return;
-                }
-
-                // 이전 작업들 모두 취소
-                this.cancelAllActiveTasks();
-
-                // 작업 ID 생성
-                const taskId = `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-                // 최신 작업으로 설정
-                this.latestTaskId = taskId;
-                this.activeTasks.add(taskId);
-
-                // 콜백 등록
-                this.callbacks.set(taskId, resolve);
-                if (onProgress) {
-                    this.progressCallbacks.set(taskId, onProgress);
-                }
-
-                // 자금 재계산 정보 저장
-                this.needsBalanceRecalculation.set(taskId, filter.recalculateBalance);
-                this.originalTradesMap.set(taskId, trades);
-
-                // 데이터가 작은 경우 단일 워커로 처리
-                if (trades.length < this.chunkSize * 2) {
-                    // 단일 워커도 청크 모드와 동일하게 필터링만 수행하고 자금 재계산은 메인 스레드에서
-                    const singleWorkerFilter = {...filter, recalculateBalance: false};
-                    const workerIndex = this.getAvailableWorker();
-                    if (workerIndex !== -1) {
-                        this.busyWorkers.add(workerIndex);
-                        this.workers[workerIndex].postMessage({
-                            type: 'filter',
-                            trades,
-                            filter: singleWorkerFilter,
-                            allTrades: trades,
-                            taskId,
-                            chunkIndex: 0,
-                            totalChunks: 1
-                        });
-                    } else {
-                        // 사용 가능한 워커가 없으면 대기열에 추가
-                        this.pendingTasks.push({
-                            id: taskId,
-                            chunk: trades,
-                            filter: singleWorkerFilter,
-                            allTrades: trades,
-                            chunkIndex: 0,
-                            totalChunks: 1
-                        });
-                    }
-                    return;
-                }
-
-                // 대량 데이터의 경우 청크로 분할
-                const chunks = this.createChunks(trades);
-
-                // 각 청크를 작업으로 생성
-                for (let i = 0; i < chunks.length; i++) {
-                    // 청크 처리 시에는 자금 재계산을 끄고 필터링만 수행
-                    const chunkFilter = {...filter, recalculateBalance: false};
-
-                    const task: WorkerTask = {
-                        id: taskId,
-                        chunk: chunks[i],
-                        filter: chunkFilter, // 자금 재계산 끈 필터 사용
-                        allTrades: trades,
-                        chunkIndex: i,
-                        totalChunks: chunks.length
-                    };
-
-                    const workerIndex = this.getAvailableWorker();
-                    if (workerIndex !== -1) {
-                        this.busyWorkers.add(workerIndex);
-                        this.workers[workerIndex].postMessage({
-                            type: 'filter',
-                            trades: task.chunk,
-                            filter: task.filter,
-                            allTrades: task.allTrades,
-                            taskId: task.id,
-                            chunkIndex: task.chunkIndex,
-                            totalChunks: task.totalChunks
-                        });
-                    } else {
-                        // 사용 가능한 워커가 없으면 대기열에 추가
-                        this.pendingTasks.push(task);
-                    }
-                }
-
-                // 진행률 초기화
-                if (onProgress) {
-                    onProgress(0);
-                }
-
-            } catch (error) {
-                console.error('필터링 작업 시작 실패:', error);
-                reject(error);
-            }
-        });
-    }
-
-    public destroy(): void {
-        // 모든 워커 종료
-        this.workers.forEach((worker, index) => {
-            try {
-                worker.terminate();
-            } catch (error) {
-                console.error(`워커 ${index} 종료 실패:`, error);
-            }
-        });
-
-        // 상태 초기화
-        this.workers = [];
-        this.busyWorkers.clear();
-        this.pendingTasks = [];
-        this.results.clear();
-        this.callbacks.clear();
-        this.progressCallbacks.clear();
-        this.needsBalanceRecalculation.clear();
-        this.originalTradesMap.clear();
-        this.latestTaskId = null;
-        this.activeTasks.clear();
     }
 
     // 메인 스레드에서 자금 재계산 수행 (워커보다 빠름)
