@@ -12,7 +12,7 @@ const {
     downloadAndSaveImage,
     USDT_FALLBACK_ICON_PATH
 } = require("./chartDataHandler");
-const {startCppProcess, runSingleBacktesting, stopCppProcess} = require("./cppServer");
+const {startCppProcess, runSingleBacktesting, stopCppProcess} = require("./backtestingServer");
 
 // =====================================================================================================================
 // 전역 변수
@@ -585,7 +585,7 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
         setEditorConfigLoading,
         validateProjectDirectoryConfig,
         handleProvideProjectDirectory
-    } = require("./cppServer");
+    } = require("./backtestingServer");
 
     let shutdownTimer = null;
     const SHUTDOWN_DELAY = 500;
@@ -639,6 +639,14 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
                         setEditorConfig(null);
                     } else {
                         setEditorConfig(config);
+
+                        // 프로젝트 폴더가 설정되어 있으면 C++ 프로세스를 그 프로젝트 디렉터리에서 실행합니다.
+                        try {
+                            const startDir = config && config.projectDirectory ? config.projectDirectory : baseDir;
+                            startCppProcess(activeClients, broadcastLog, startDir);
+                        } catch (e) {
+                            broadcastLog("ERROR", `C++ 프로세스 시작 실패: ${e.message}`, null, null);
+                        }
                     }
                 } catch (e) {
                     broadcastLog("ERROR", `editor.json 로드 실패: ${e.message}`, null, null);
@@ -776,10 +784,6 @@ async function main() {
 
         // WebSocket 설정
         setupWebSocket(server, dataPaths, indicatorPaths);
-
-        // C++ 프로세스 시작
-        startCppProcess(activeClients, broadcastLog, baseDir);
-
     } catch (err) {
         broadcastLog("ERROR", `서버를 시작하는 데 실패했습니다.: ${err}`, null, null);
         process.exit(1);

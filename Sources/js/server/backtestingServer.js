@@ -21,7 +21,6 @@ let cppProcessReady = false;
 
 function startCppProcess(activeClients, broadcastLog, baseDir) {
     if (cppProcess) {
-        broadcastLog("INFO", `C++ 프로세스가 이미 실행 중입니다.`, null, null);
         return;
     }
 
@@ -41,9 +40,6 @@ function startCppProcess(activeClients, broadcastLog, baseDir) {
         return;
     }
 
-    broadcastLog("INFO", `C++ 백테스팅 프로세스를 시작합니다...`, null, null);
-    broadcastLog("INFO", `실행 파일: ${toPosix(exePath)}`, null, null);
-
     // 성능을 위한 NO_PARSE 모드
     const NO_PARSE = process.env.LAUNCH_NO_PARSE === '1' || process.env.BACKBOARD_NO_PARSE === '1';
 
@@ -51,8 +47,6 @@ function startCppProcess(activeClients, broadcastLog, baseDir) {
         cppProcess = spawn(exePath, ["--server"], {
             cwd: baseDir, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: false
         });
-
-        broadcastLog("INFO", `C++ 프로세스 PID: ${cppProcess.pid}`, null, null);
 
         cppProcess.stdout.on('data', (data) => {
             const output = data.toString().trim();
@@ -720,8 +714,6 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
                             return;
                         }
 
-                        broadcastLog("INFO", `editor.json 파일을 생성했습니다: ${toPosix(editorConfigPath)}`, null, null);
-
                         return defaultConfig;
                     } catch (err) {
                         broadcastLog("ERROR", `editor.json 생성 실패: ${err.message}`, null, null);
@@ -753,8 +745,6 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
 function saveEditorConfig(config, broadcastLog, baseDir) {
     const projectDir = config && config.projectDirectory;
     if (!projectDir) {
-        broadcastLog("ERROR", `editor.json 저장 실패: 프로젝트 폴더 정보가 없습니다.`, null, null);
-
         return false;
     }
 
@@ -810,6 +800,13 @@ async function handleProvideProjectDirectory(ws, projectDir, activeClients, broa
                     const obj = configToObj(defaultConfig);
                     writeSignedFileAtomic(editorConfigPath, obj, baseDir, broadcastLog);
                     editorConfig = defaultConfig;
+                }
+
+                // 프로젝트 디렉터리 설정 후 C++ 프로세스가 아직 시작되지 않았으면 시작
+                try {
+                    startCppProcess(activeClients, broadcastLog, resolvedRoot);
+                } catch (e) {
+                    broadcastLog("ERROR", `C++ 프로세스 시작 실패: ${e.message}`, null, null);
                 }
 
                 ws.send(JSON.stringify({
