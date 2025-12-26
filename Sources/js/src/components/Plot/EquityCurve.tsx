@@ -7,13 +7,13 @@ import {
     createChart,
     CrosshairMode,
     DeepPartial,
+    HistogramSeries,
     IChartApi,
+    LineSeries,
     LineStyle,
     MouseEventParams,
     PriceScaleMode,
-    Time,
-    LineSeries,
-    HistogramSeries
+    Time
 } from 'lightweight-charts';
 import {useTradeFilter} from '@/components/TradeFilter';
 import NoDataMessage from '@/components/Common/NoDataMessage';

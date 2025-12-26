@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useCallback, useState} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {useTradeFilter} from '@/components/TradeFilter';
 import LoadingSpinner from '@/components/Common/LoadingSpinner';
 import NoDataMessage from '@/components/Common/NoDataMessage';
