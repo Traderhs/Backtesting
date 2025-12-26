@@ -2,59 +2,57 @@
     position: absolute;
     bottom: 25px;
     z-index: 1100;
-    -webkit-appearance: none;
-    appearance: none;
     width: 100%;
     background: transparent;
     accent-color: transparent;
+    appearance: none;
 }
 
 .time-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
     width: 120px;
     height: 10px;
+    border: 2px solid #ccc;
     border-radius: 3px;
     background: #fff;
-    border: 2px solid #ccc;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 40%);
     cursor: pointer;
+    appearance: none;
 }
 
 .time-slider::-moz-range-thumb {
     width: 120px;
     height: 10px;
+    border: 2px solid #ccc;
     border-radius: 3px;
     background: #fff;
-    border: 2px solid #ccc;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 40%);
     cursor: pointer;
 }
 
 .time-slider::-ms-thumb {
     width: 120px;
     height: 10px;
+    border: 2px solid #ccc;
     border-radius: 3px;
     background: #fff;
-    border: 2px solid #ccc;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    box-shadow: 0 2px 4px rgb(0 0 0 / 40%);
     cursor: pointer;
 }
 
 .slider-date {
-    display: none;
     position: absolute;
     bottom: 40px;
     left: 0;
-    transform: translateX(-50%);
-    font-size: 14px;
-    color: #ffffff;
-    background-color: rgba(28, 28, 36, 0.95);
-    padding: 2px 7px 3px 7px;
-    border-radius: 3px;
-    pointer-events: none;
     z-index: 1101;
-    white-space: nowrap;
-    border: 1px solid rgba(255, 215, 0, 0.4);
+    display: none;
+    padding: 2px 7px 3px;
+    border: 1px solid rgb(255 215 0 / 40%);
+    border-radius: 3px;
+    background-color: rgb(28 28 36 / 95%);
+    color: #fff;
     font-family: inherit;
+    font-size: 14px;
+    white-space: nowrap;
+    transform: translateX(-50%);
+    pointer-events: none;
 }

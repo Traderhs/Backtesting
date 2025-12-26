@@ -2,15 +2,15 @@
     position: absolute;
     top: 20px;
     left: 20px;
+    z-index: 1000;
     display: flex;
     flex-direction: column;
-    background: rgba(15, 15, 15, 0);
-    color: white;
     padding: 8px 12px;
     border-radius: 4px;
+    background: rgb(15 15 15 / 0%);
+    color: white;
     font-family: sans-serif;
     line-height: 1.4;
-    z-index: 1000;
     pointer-events: none;
 }
 
@@ -29,17 +29,17 @@
 
 /* 심볼 아이콘 */
 .symbol-icon {
+    box-sizing: border-box;
     width: 40px;
     height: 40px;
+    margin-right: 12px;
+    padding: 2px;
+    border: 1px solid rgb(255 215 0 / 60%);
+    border-radius: 50%;
+    background-color: rgb(10 10 10 / 30%);
+    box-shadow: 0 0 5px rgb(255 215 0 / 30%);
     image-rendering: auto;
     vertical-align: middle;
-    margin-right: 12px;
-    border-radius: 50%;
-    border: 1px solid rgba(255, 215, 0, 0.6);
-    padding: 2px;
-    background-color: rgba(10, 10, 10, 0.3);
-    box-shadow: 0 0 5px rgba(255, 215, 0, 0.3);
-    box-sizing: border-box;
 }
 
 /* 심볼 텍스트 */
@@ -52,10 +52,10 @@
 
 /* 가격 정보: 심볼 오른쪽에 수평 배치 */
 .price-data {
-    font-size: 14px !important;
     display: flex;
     align-items: center;
     gap: 4px;
+    font-size: 14px !important;
 }
 
 /* 가격 그룹: 내부 텍스트들을 수평으로 묶음 */
