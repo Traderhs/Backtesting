@@ -1,4 +1,4 @@
-import React, {useEffect, useState, JSX, useRef} from 'react';
+import React, {JSX, useEffect, useRef, useState} from 'react';
 import {IChartApi, LineStyle, LineType} from 'lightweight-charts';
 import LineSeriesTemplate from './LineSeriesTemplate';
 import BaselineSeriesTemplate from './BaselineSeriesTemplate';

@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState, useCallback} from 'react';
+import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {useWebSocket} from '../Server/WebSocketContext';
 import {createChart, CrosshairMode, IChartApi, LineStyle} from 'lightweight-charts';
 import IndicatorSeriesContainer from './IndicatorSeriesContainer';

@@ -1,14 +1,13 @@
 .time-axis-tooltip {
     position: absolute;
-    pointer-events: none;
-    background-color: rgba(28, 28, 36, 0.95);
-    color: #ffffff;
-    padding: 2px 7px 3px 7px;
-    font-size: 14px;
-    border-radius: 3px;
     z-index: 1200;
     display: none;
+    padding: 2px 7px 3px;
+    border: 1px solid rgb(255 215 0 / 40%);
+    border-radius: 3px;
+    background-color: rgb(28 28 36 / 95%);
+    color: #fff;
+    font-size: 14px;
     white-space: nowrap;
-    border: 1px solid rgba(255, 215, 0, 0.4);
-    font-family: "'Inter', 'Pretendard'", sans-serif;
+    pointer-events: none;
 }

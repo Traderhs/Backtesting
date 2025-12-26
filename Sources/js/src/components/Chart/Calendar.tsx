@@ -1,4 +1,4 @@
-import React, {useState, useRef, useEffect} from 'react';
+import React, {useEffect, useRef, useState} from 'react';
 import {IChartApi} from 'lightweight-charts';
 import {useWebSocket} from '../Server/WebSocketContext';
 import './Calendar.css';

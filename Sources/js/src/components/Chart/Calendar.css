@@ -2,13 +2,13 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: transparent;
+    z-index: 1500;
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1500;
+    width: 100%;
+    height: 100%;
+    background-color: transparent;
     animation: fadeIn 0.2s ease-in-out;
     pointer-events: none;
 }
@@ -17,33 +17,35 @@
     from {
         opacity: 0;
     }
+
     to {
         opacity: 1;
     }
 }
 
 .calendar-container {
-    background-color: #1c1c24;
-    border-radius: 8px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
-    width: 300px;
-    overflow: hidden;
-    animation: zoomIn 0.2s ease-out;
-    user-select: none;
-    border: 1px solid rgba(255, 215, 0, 0.3);
     position: relative;
+    width: 300px;
     margin: 0;
+    overflow: hidden;
+    border: 1px solid rgb(255 215 0 / 30%);
+    border-radius: 8px;
+    background-color: #1c1c24;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 60%);
+    animation: zoomIn 0.2s ease-out;
     pointer-events: auto;
+    user-select: none;
 }
 
 @keyframes zoomIn {
     from {
-        transform: scale(0.95);
         opacity: 0;
+        transform: scale(0.95);
     }
+
     to {
-        transform: scale(1);
         opacity: 1;
+        transform: scale(1);
     }
 }
 
@@ -51,7 +53,7 @@
     display: flex;
     flex-direction: column;
     padding: 12px;
-    border-bottom: 1px solid rgba(255, 215, 0, 0.3);
+    border-bottom: 1px solid rgb(255 215 0 / 30%);
     background-color: #1c1c24;
     cursor: grab;
     user-select: none;
@@ -61,23 +63,23 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-left: 6px;
-    margin-bottom: 16px;
-    padding-top: 4px;
     min-height: 24px;
+    margin-bottom: 16px;
+    margin-left: 6px;
+    padding-top: 4px;
 }
 
 .chart-calendar-title {
-    color: rgba(255, 215, 0, 0.9);
-    font-weight: 600;
-    font-family: "'Inter', 'Pretendard'", sans-serif;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
     flex: 1;
     margin: 0 8px 0 0;
+    overflow: hidden;
+    color: rgb(255 215 0 / 90%);
+    font-family: "'Inter', 'Pretendard'", sans-serif;
     font-size: 18px !important;
+    font-weight: 600;
     line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .date-display {
@@ -90,12 +92,12 @@
     display: flex;
     flex-direction: row;
     align-items: center;
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    border-radius: 4px;
-    padding: 4px 8px;
-    margin-left: 6px;
-    background-color: #252a37;
     width: 130px;
+    margin-left: 6px;
+    padding: 4px 8px;
+    border: 1px solid rgb(255 215 0 / 30%);
+    border-radius: 4px;
+    background-color: #252a37;
     cursor: grab;
 }
 
@@ -105,30 +107,26 @@
 
 .date-input,
 .time-input {
-    user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
     cursor: text;
+    user-select: none;
 }
 
 .date-input {
-    color: #ffffff;
-    font-size: 14px;
-    font-weight: 500;
-    background: transparent;
-    border: none;
-    outline: none;
     width: 100%;
+    border: none;
+    background: transparent;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
 }
 
 .calendar-icon {
-    color: rgba(255, 215, 0, 0.7);
-    margin-left: 8px;
     display: flex;
-    align-items: center;
-    justify-content: center;
     flex-shrink: 0;
+    justify-content: center;
+    align-items: center;
+    margin-left: 8px;
+    color: rgb(255 215 0 / 70%);
     cursor: grab;
 }
 
@@ -137,9 +135,9 @@
 }
 
 .selected-time {
+    position: relative;
     display: flex;
     align-items: center;
-    position: relative;
 }
 
 .time-dropdown {
@@ -147,21 +145,18 @@
     width: 85px;
     cursor: pointer;
     user-select: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
 }
 
 .time-display {
     display: flex;
-    align-items: center;
     justify-content: space-between;
+    align-items: center;
     padding: 4px 8px;
-    background-color: #252a37;
-    border: 1px solid rgba(255, 215, 0, 0.3);
+    border: 1px solid rgb(255 215 0 / 30%);
     border-radius: 4px;
-    font-size: 14px;
+    background-color: #252a37;
     color: white;
+    font-size: 14px;
     cursor: grab;
 }
 
@@ -170,21 +165,21 @@
 }
 
 .time-input {
-    color: #ffffff;
-    font-size: 14px;
-    background: transparent;
-    border: none;
-    outline: none;
     width: 100%;
+    border: none;
+    background: transparent;
+    color: #fff;
+    font-size: 14px;
+    outline: none;
 }
 
 .clock-icon {
-    color: rgba(255, 215, 0, 0.7);
     display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-left: 4px;
     flex-shrink: 0;
+    justify-content: center;
+    align-items: center;
+    margin-left: 4px;
+    color: rgb(255 215 0 / 70%);
     cursor: grab;
 }
 
@@ -200,17 +195,17 @@
     position: absolute;
     top: 100%;
     left: 0;
+    z-index: 10;
     width: 100%;
     max-height: 180px;
-    overflow-y: auto;
-    background-color: #252a37;
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    border-radius: 4px;
-    z-index: 10;
     margin-top: 4px;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    overflow-y: auto;
+    border: 1px solid rgb(255 215 0 / 30%);
+    border-radius: 4px;
+    background-color: #252a37;
+    box-shadow: 0 4px 8px rgb(0 0 0 / 30%);
+    scrollbar-color: rgb(255 215 0 / 50%) rgb(0 0 0 / 10%);
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 215, 0, 0.5) rgba(0, 0, 0, 0.1);
 }
 
 /* 스크롤바 스타일 (크롬, Edge, Safari) */
@@ -219,70 +214,70 @@
 }
 
 .time-options::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.1);
     border-radius: 2px;
+    background: rgb(0 0 0 / 10%);
 }
 
 .time-options::-webkit-scrollbar-thumb {
-    background-color: rgba(255, 215, 0, 0.5);
     border-radius: 2px;
+    background-color: rgb(255 215 0 / 50%);
 }
 
 /* 스크롤바 위아래 버튼 숨기기 */
 .time-options::-webkit-scrollbar-button {
     display: none;
-    height: 0;
     width: 0;
+    height: 0;
 }
 
 /* Firefox 스크롤바 위아래 버튼 숨기기 */
 .time-options {
+    scrollbar-color: rgb(255 215 0 / 50%) transparent;
     scrollbar-width: thin;
-    scrollbar-color: rgba(255, 215, 0, 0.5) transparent;
 }
 
 .time-option {
     padding: 4px 8px;
-    cursor: pointer;
-    font-size: 14px;
     color: white;
-    font-family: 'Inter', 'Pretendard', sans-serif;
+    font-family: Inter, Pretendard, sans-serif;
+    font-size: 14px;
     transition: background-color 0.2s, color 0.2s;
+    cursor: pointer;
 }
 
 .time-option:hover {
-    background-color: rgba(255, 215, 0, 0.15);
+    background-color: rgb(255 215 0 / 15%);
 }
 
 .time-option.selected {
-    background-color: rgba(255, 215, 0, 0.2);
-    color: rgba(255, 215, 0, 0.9);
+    background-color: rgb(255 215 0 / 20%);
+    color: rgb(255 215 0 / 90%);
 }
 
 .time-option.selected:hover {
-    background-color: rgba(255, 215, 0, 0.25);
+    background-color: rgb(255 215 0 / 25%);
 }
 
 .close-button {
-    background: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 24px;
+    height: 24px;
+    margin: 0;
+    padding: 0;
     border: none;
+    border-radius: 4px;
+    background: none;
     color: #adb5bd;
     font-size: 20px;
     cursor: pointer;
-    padding: 0;
-    margin: 0;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 4px;
     outline: none;
 }
 
 .close-button:hover {
     background-color: #333840;
-    color: #ffffff;
+    color: #fff;
 }
 
 .close-button:active {
@@ -298,8 +293,8 @@
     justify-content: space-between;
     align-items: center;
     padding: 10px 12px;
+    border-bottom: 1px solid rgb(255 215 0 / 30%);
     background-color: #1c1c24;
-    border-bottom: 1px solid rgba(255, 215, 0, 0.3);
 }
 
 .navigator-buttons {
@@ -308,24 +303,24 @@
 }
 
 .month-btn, .year-btn {
-    background: none;
-    border: none;
-    color: #adb5bd;
-    cursor: pointer;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     width: 24px;
     height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    border: none;
     border-radius: 4px;
+    background: none;
+    color: #adb5bd;
     font-size: 14px;
     transition: all 0.2s ease;
+    cursor: pointer;
     outline: none;
 }
 
 .month-btn:hover, .year-btn:hover {
     background-color: #333840;
-    color: rgba(255, 215, 0, 0.8);
+    color: rgb(255 215 0 / 80%);
 }
 
 .month-btn:active, .year-btn:active {
@@ -337,7 +332,7 @@
 }
 
 .current-month {
-    color: #ffffff;
+    color: #fff;
     font-size: 14px;
     font-weight: 500;
 }
@@ -354,30 +349,30 @@
 }
 
 .weekday {
-    text-align: center;
-    color: rgba(255, 215, 0, 0.7);
-    font-size: 12px;
     padding: 4px 0;
+    color: rgb(255 215 0 / 70%);
+    font-size: 12px;
     font-weight: 500;
+    text-align: center;
 }
 
 .days-grid {
     display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    grid-template-rows: repeat(6, 1fr);
     gap: 2px;
+    grid-template-rows: repeat(6, 1fr);
+    grid-template-columns: repeat(7, 1fr);
 }
 
 .calendar-day {
     display: flex;
-    align-items: center;
     justify-content: center;
+    align-items: center;
     height: 30px;
-    font-size: 13px;
-    cursor: pointer;
     border-radius: 4px;
-    color: #ffffff;
+    color: #fff;
+    font-size: 13px;
     transition: none;
+    cursor: pointer;
 }
 
 .calendar-day:hover {
@@ -390,49 +385,49 @@
 }
 
 .calendar-day.selected {
-    background-color: rgba(255, 215, 0, 0.2);
-    color: rgba(255, 215, 0, 1);
+    border: 1px solid rgb(255 215 0 / 50%);
+    background-color: rgb(255 215 0 / 20%);
+    color: rgb(255 215 0 / 100%);
     font-weight: 500;
-    border: 1px solid rgba(255, 215, 0, 0.5);
     transition: none;
 }
 
 .calendar-day.today {
+    border: 1px solid #4d90fe;
     color: #4d90fe;
     font-weight: 500;
-    border: 1px solid #4d90fe;
     transition: none;
 }
 
 .calendar-day.today.selected {
-    color: rgba(255, 215, 0, 1);
-    border: 1px solid rgba(255, 215, 0, 0.5);
+    border: 1px solid rgb(255 215 0 / 50%);
+    color: rgb(255 215 0 / 100%);
     transition: none;
 }
 
 .calendar-footer {
     padding: 12px;
-    border-top: 1px solid rgba(255, 215, 0, 0.3);
+    border-top: 1px solid rgb(255 215 0 / 30%);
     background-color: #1c1c24;
 }
 
 .footer-buttons {
     display: flex;
     flex-direction: row-reverse;
-    gap: 10px;
     justify-content: center;
+    gap: 10px;
 }
 
 .cancel-button, .confirm-button {
-    padding: 6px 14px;
-    border-radius: 4px;
-    border: 1px solid rgba(255, 215, 0, 0.3);
-    color: white;
-    font-weight: 500;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    font-size: 13px;
     min-width: 80px;
+    padding: 6px 14px;
+    border: 1px solid rgb(255 215 0 / 30%);
+    border-radius: 4px;
+    color: white;
+    font-size: 13px;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
     outline: none;
 }
 
@@ -441,13 +436,13 @@
 }
 
 .cancel-button:hover {
+    border-color: rgb(255 215 0 / 30%);
     background-color: #4a4a58;
-    border-color: rgba(255, 215, 0, 0.3);
 }
 
 .cancel-button:active {
+    border-color: rgb(255 215 0 / 30%);
     background-color: #2a2a38 !important;
-    border-color: rgba(255, 215, 0, 0.3);
 }
 
 .cancel-button:focus {
@@ -455,18 +450,18 @@
 }
 
 .confirm-button {
-    background-color: rgba(255, 215, 0, 0.7);
+    background-color: rgb(255 215 0 / 70%);
     color: #000;
 }
 
 .confirm-button:hover {
-    background-color: rgba(255, 215, 0, 0.9);
-    border-color: rgba(255, 215, 0, 0.3);
+    border-color: rgb(255 215 0 / 30%);
+    background-color: rgb(255 215 0 / 90%);
 }
 
 .confirm-button:active {
-    background-color: rgba(255, 215, 0, 0.5) !important;
-    border-color: rgba(255, 215, 0, 0.3);
+    border-color: rgb(255 215 0 / 30%);
+    background-color: rgb(255 215 0 / 50%) !important;
 }
 
 .confirm-button:focus {
@@ -474,8 +469,8 @@
 }
 
 .confirm-button:disabled {
-    background-color: #555;
-    cursor: not-allowed;
-    color: #ccc;
     border-color: #444;
+    background-color: #555;
+    color: #ccc;
+    cursor: not-allowed;
 }

@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {IChartApi} from "lightweight-charts";
 import {useLogo} from "@/contexts/LogoContext";
 import "./TopInfo.css";
