@@ -1,5 +1,5 @@
-import {useState, useEffect, useRef, lazy, Suspense} from "react";
-import {WebSocketProvider, useWebSocket} from '@/components/Server/WebSocketContext';
+import {lazy, Suspense, useEffect, useRef, useState} from "react";
+import {useWebSocket, WebSocketProvider} from '@/components/Server/WebSocketContext';
 import ServerAlert from "@/components/Server/ServerAlert.tsx";
 import {TradeFilterProvider} from "@/components/TradeFilter/TradeFilterProvider.tsx";
 import {LogoProvider, useLogo} from "@/contexts/LogoContext";
