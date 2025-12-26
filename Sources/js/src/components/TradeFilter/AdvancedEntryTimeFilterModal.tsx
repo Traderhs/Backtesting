@@ -1,4 +1,4 @@
-import React, {useEffect, useState, useRef, useCallback, useMemo} from "react";
+import React, {useCallback, useEffect, useMemo, useRef, useState} from "react";
 import {Button} from "../ui/button.tsx";
 import {TradeItem} from "./TradeFilterContext";
 import TimeFilterCheckboxes from "./TimeFilterCheckboxes";
@@ -6,11 +6,11 @@ import './modal.css'
 import './AdvancedFilterModal.css'
 import './MasterCheckboxHover.css'
 import {
-    getYearOptions,
-    getMonthOptions,
     getDayOptions,
     getHourOptions,
     getMinuteSecondOptions,
+    getMonthOptions,
+    getYearOptions,
 } from "./TimeFilterOptions";
 import {useTradeFilter} from "../TradeFilter";
 import {createPortal} from 'react-dom';

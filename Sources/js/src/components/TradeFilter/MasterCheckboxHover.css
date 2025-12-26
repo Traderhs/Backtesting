@@ -1,80 +1,12 @@
 /* 1. 고급 필터의 마스터 체크박스 */
 .advanced-filter-section .filter-header-with-checkbox {
+    position: relative;
     display: flex;
     align-items: center;
     padding: 4px 8px;
     border-radius: 6px;
     transition: background-color 0.15s ease;
     cursor: pointer;
-    position: relative;
-}
-
-.advanced-filter-section .filter-header-with-checkbox:hover {
-    background-color: rgba(255, 215, 0, 0.1);
-}
-
-.advanced-filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox {
-    border-color: rgba(255, 215, 0, 0.8);
-}
-
-/* 체크된 상태에서 호버 시 테두리와 체크 표시 더 어둡게 */
-.advanced-filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:checked,
-.advanced-filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:indeterminate {
-    border-color: rgba(255, 215, 0, 0.5);
-}
-
-.advanced-filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:checked::after,
-.advanced-filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:indeterminate::after {
-    color: rgba(255, 215, 0, 0.5);
-}
-
-.advanced-filter-section .filter-header-with-checkbox:hover .filter-section-title {
-    color: rgba(255, 215, 0, 1);
-}
-
-/* 2. 고급 필터의 일반 체크박스 */
-.advanced-filter-section .checkbox-container {
-    position: relative;
-    cursor: pointer;
-    transition: background-color 0.15s ease;
-}
-
-.advanced-filter-section .checkbox-container:hover {
-    background-color: rgba(255, 215, 0, 0.1) !important;
-}
-
-.advanced-filter-section .checkbox-container:hover .custom-checkbox {
-    border-color: rgba(255, 215, 0, 0.8);
-}
-
-/* 체크된 상태에서 호버 시 테두리와 체크 표시 더 어둡게 */
-.advanced-filter-section .checkbox-container:hover .custom-checkbox:checked,
-.advanced-filter-section .checkbox-container:hover .custom-checkbox:indeterminate {
-    border-color: rgba(255, 215, 0, 0.5);
-}
-
-.advanced-filter-section .checkbox-container:hover .custom-checkbox:checked::after,
-.advanced-filter-section .checkbox-container:hover .custom-checkbox:indeterminate::after {
-    color: rgba(255, 215, 0, 0.5);
-}
-
-.advanced-filter-section .checkbox-container:hover .checkbox-label {
-    color: rgba(255, 215, 0, 1);
-}
-
-/* 클릭 영역 확장을 위한 가상 요소 - 고급 필터에만 적용 */
-.advanced-filter-section .filter-header-with-checkbox::after,
-.advanced-filter-section .checkbox-container::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 0;
-    border-radius: 6px;
 }
 
 /* 체크박스와 텍스트는 가상 요소보다 위에 표시 - 고급 필터에만 적용 */
@@ -84,4 +16,70 @@
 .advanced-filter-section .checkbox-container .checkbox-label {
     position: relative;
     z-index: 1;
+}
+
+
+.advanced-filter-section .filter-header-with-checkbox:hover {
+    background-color: rgb(255 215 0 / 10%);
+}
+
+.advanced-filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox {
+    border-color: rgb(255 215 0 / 80%);
+}
+
+/* 체크된 상태에서 호버 시 테두리와 체크 표시 더 어둡게 */
+.advanced-filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:checked,
+.advanced-filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:indeterminate {
+    border-color: rgb(255 215 0 / 50%);
+}
+
+.advanced-filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:checked::after,
+.advanced-filter-section .filter-header-with-checkbox:hover .custom-checkbox.header-checkbox:indeterminate::after {
+    color: rgb(255 215 0 / 50%);
+}
+
+.advanced-filter-section .filter-header-with-checkbox:hover .filter-section-title {
+    color: rgb(255 215 0 / 100%);
+}
+
+/* 2. 고급 필터의 일반 체크박스 */
+.advanced-filter-section .checkbox-container {
+    position: relative;
+    transition: background-color 0.15s ease;
+    cursor: pointer;
+}
+
+.advanced-filter-section .checkbox-container:hover {
+    background-color: rgb(255 215 0 / 10%) !important;
+}
+
+.advanced-filter-section .checkbox-container:hover .custom-checkbox {
+    border-color: rgb(255 215 0 / 80%);
+}
+
+/* 체크된 상태에서 호버 시 테두리와 체크 표시 더 어둡게 */
+.advanced-filter-section .checkbox-container:hover .custom-checkbox:checked,
+.advanced-filter-section .checkbox-container:hover .custom-checkbox:indeterminate {
+    border-color: rgb(255 215 0 / 50%);
+}
+
+.advanced-filter-section .checkbox-container:hover .custom-checkbox:checked::after,
+.advanced-filter-section .checkbox-container:hover .custom-checkbox:indeterminate::after {
+    color: rgb(255 215 0 / 50%);
+}
+
+.advanced-filter-section .checkbox-container:hover .checkbox-label {
+    color: rgb(255 215 0 / 100%);
+}
+
+/* 클릭 영역 확장을 위한 가상 요소 - 고급 필터에만 적용 */
+.advanced-filter-section .filter-header-with-checkbox::after,
+.advanced-filter-section .checkbox-container::after {
+    position: absolute;
+    z-index: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 6px;
+    content: '';
+    inset: 0;
 }

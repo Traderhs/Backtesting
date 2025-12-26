@@ -1,5 +1,5 @@
 import React, {useEffect} from "react";
-import {useTradeFilter, toggleOption} from "../TradeFilter";
+import {toggleOption, useTradeFilter} from "../TradeFilter";
 import {RESET_ENTRY_DIRECTION_FILTER} from "./FilterResetEvent";
 
 const EntryDirectionFilter: React.FC = () => {
