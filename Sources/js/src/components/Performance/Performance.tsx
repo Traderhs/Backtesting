@@ -1,9 +1,8 @@
-import {useState} from 'react';
+import React, {useState} from 'react';
 import {motion} from 'framer-motion';
 import Report from './Report';
 import Streaks from './Streaks';
 import './Performance.css';
-import React from 'react';
 import LoadingSpinner from '@/components/Common/LoadingSpinner';
 import NoDataMessage from '@/components/Common/NoDataMessage';
 import {useTradeFilter} from '@/components/TradeFilter';

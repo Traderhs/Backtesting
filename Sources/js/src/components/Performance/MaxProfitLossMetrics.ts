@@ -1,5 +1,5 @@
 import {TradeItem} from "@/components/TradeFilter/TradeFilterContext";
-import {safeNumber, parseDate, formatDateTimeWithWeekday} from './Utils.ts';
+import {formatDateTimeWithWeekday, parseDate, safeNumber} from './Utils.ts';
 
 export interface MaxProfitLossMetricsResult {
     maxProfit: number | string;

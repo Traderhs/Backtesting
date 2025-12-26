@@ -1,4 +1,4 @@
-import {useState, useEffect} from 'react';
+import {useEffect, useState} from 'react';
 import {useTradeFilter} from '@/components/TradeFilter';
 import {formatDollar} from './Utils';
 
