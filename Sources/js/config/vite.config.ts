@@ -8,6 +8,7 @@ export default defineConfig({
     base: './',
     build: {
         outDir: 'BackBoard',
+        assetsDir: 'Assets',
         minify: 'terser',
         terserOptions: {
             compress: {
