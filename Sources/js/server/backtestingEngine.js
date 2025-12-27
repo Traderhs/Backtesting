@@ -13,14 +13,14 @@ function toPosix(p) {
 }
 
 // =====================================================================================================================
-// C++ 프로세스 관리
+// C++ 백테스팅 엔진 관리
 // =====================================================================================================================
 
-let cppProcess = null;
-let cppProcessReady = false;
+let backtestingEngine = null;
+let backtestingEngineReady = false;
 
-function startCppProcess(activeClients, broadcastLog, baseDir) {
-    if (cppProcess) {
+function startBacktestingEngine(activeClients, broadcastLog, baseDir) {
+    if (backtestingEngine) {
         return;
     }
 
@@ -44,11 +44,11 @@ function startCppProcess(activeClients, broadcastLog, baseDir) {
     const NO_PARSE = process.env.LAUNCH_NO_PARSE === '1' || process.env.BACKBOARD_NO_PARSE === '1';
 
     try {
-        cppProcess = spawn(exePath, ["--server"], {
+        backtestingEngine = spawn(exePath, ["--server"], {
             cwd: baseDir, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: false
         });
 
-        cppProcess.stdout.on('data', (data) => {
+        backtestingEngine.stdout.on('data', (data) => {
             const output = data.toString().trim();
             if (process.env.LAUNCH_DEBUG_LOGS === '0') {
                 broadcastLog("INFO", `C++ STDOUT: ${output}`, null, null);
@@ -70,7 +70,7 @@ function startCppProcess(activeClients, broadcastLog, baseDir) {
                 }
 
                 if (cleaned.includes('백테스팅 엔진이 준비되었습니다.')) {
-                    cppProcessReady = true;
+                    backtestingEngineReady = true;
                     broadcastLog("INFO", `백테스팅 엔진이 준비되었습니다.`, null, null);
                     return;
                 }
@@ -93,7 +93,7 @@ function startCppProcess(activeClients, broadcastLog, baseDir) {
             });
         });
 
-        cppProcess.stderr.on('data', (data) => {
+        backtestingEngine.stderr.on('data', (data) => {
             if (process.env.LAUNCH_DEBUG_LOGS === '0') {
                 const ansiRegex = /\x1b\[[0-9;]*[mGKHF]/g;
                 const cleaned = data.toString().trim().replace(ansiRegex, '').trim();
@@ -102,30 +102,30 @@ function startCppProcess(activeClients, broadcastLog, baseDir) {
             }
         });
 
-        cppProcess.on('error', (err) => {
-            broadcastLog("ERROR", `C++ 프로세스 실행 실패: ${err.message}`, null, null);
+        backtestingEngine.on('error', (err) => {
+            broadcastLog("ERROR", `백테스팅 엔진 실행 실패: ${err.message}`, null, null);
 
-            cppProcess = null;
-            cppProcessReady = false;
+            backtestingEngine = null;
+            backtestingEngineReady = false;
         });
 
-        cppProcess.on('exit', (code, signal) => {
+        backtestingEngine.on('exit', (code, signal) => {
             const level = code === 0 ? "INFO" : "ERROR";
             const signalInfo = signal ? ` (시그널: ${signal})` : '';
 
-            broadcastLog(level, `C++ 프로세스 종료 (코드: ${code})${signalInfo}`, null, null);
+            broadcastLog(level, `백테스팅 엔진 종료 (코드: ${code})${signalInfo}`, null, null);
 
-            cppProcess = null;
-            cppProcessReady = false;
+            backtestingEngine = null;
+            backtestingEngineReady = false;
         });
     } catch (err) {
-        broadcastLog("ERROR", `C++ 프로세스 시작 실패: ${err.message}`, null, null);
+        broadcastLog("ERROR", `백테스팅 서버 시작 실패: ${err.message}`, null, null);
     }
 }
 
 function runSingleBacktesting(ws, symbolConfigs, barDataConfigs, useBarMagnifier, clearAndAddBarData, editorConfig, broadcastLog) {
-    if (!cppProcess || !cppProcessReady) {
-        broadcastLog("ERROR", "C++ 프로세스가 준비되지 않았습니다. 잠시 후 다시 시도해주세요.", null, null);
+    if (!backtestingEngine || !backtestingEngineReady) {
+        broadcastLog("ERROR", "백테스팅 엔진이 준비되지 않았습니다. 잠시 후 다시 시도해주세요.", null, null);
         return;
     }
 
@@ -138,16 +138,16 @@ function runSingleBacktesting(ws, symbolConfigs, barDataConfigs, useBarMagnifier
     };
 
     const command = `runSingleBacktesting ${JSON.stringify(config)}\n`;
-    cppProcess.stdin.write(command);
+    backtestingEngine.stdin.write(command);
 }
 
-function stopCppProcess() {
-    if (cppProcess) {
-        cppProcess.stdin.write("shutdown\n");
-        cppProcess.kill();
+function stopBacktestingEngine() {
+    if (backtestingEngine) {
+        backtestingEngine.stdin.write("shutdown\n");
+        backtestingEngine.kill();
 
-        cppProcess = null;
-        cppProcessReady = false;
+        backtestingEngine = null;
+        backtestingEngineReady = false;
     }
 }
 
@@ -473,8 +473,10 @@ function objToConfig(obj) {
 
 function createDefaultConfig(projectDirectory) {
     return {
-        logPanelOpen: false, logPanelHeight: 400,
-        projectDirectory: projectDirectory, useBarMagnifier: true,
+        logPanelOpen: false,
+        logPanelHeight: 400,
+        projectDirectory: projectDirectory,
+        useBarMagnifier: true,
         symbolConfigs: [],
         barDataConfigs: [{
             timeframe: null,
@@ -802,11 +804,11 @@ async function handleProvideProjectDirectory(ws, projectDir, activeClients, broa
                     editorConfig = defaultConfig;
                 }
 
-                // 프로젝트 디렉터리 설정 후 C++ 프로세스가 아직 시작되지 않았으면 시작
+                // 프로젝트 디렉터리 설정 후 백테스팅 엔진이 아직 시작되지 않았으면 시작
                 try {
-                    startCppProcess(activeClients, broadcastLog, resolvedRoot);
+                    startBacktestingEngine(activeClients, broadcastLog, resolvedRoot);
                 } catch (e) {
-                    broadcastLog("ERROR", `C++ 프로세스 시작 실패: ${e.message}`, null, null);
+                    broadcastLog("ERROR", `백테스팅 엔진 시작 실패: ${e.message}`, null, null);
                 }
 
                 ws.send(JSON.stringify({
@@ -842,9 +844,9 @@ function setEditorConfigLoading(loading) {
 }
 
 module.exports = {
-    startCppProcess,
+    startBacktestingEngine: startBacktestingEngine,
     runSingleBacktesting,
-    stopCppProcess,
+    stopBacktestingEngine: stopBacktestingEngine,
     loadOrCreateEditorConfig,
     saveEditorConfig,
     configToWs,
