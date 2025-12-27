@@ -12,7 +12,7 @@ const {
     downloadAndSaveImage,
     USDT_FALLBACK_ICON_PATH
 } = require("./chartDataHandler");
-const {startCppProcess, runSingleBacktesting, stopCppProcess} = require("./backtestingServer");
+const {startBacktestingEngine, runSingleBacktesting, stopBacktestingEngine} = require("./backtestingEngine");
 
 // =====================================================================================================================
 // 전역 변수
@@ -530,7 +530,7 @@ app.get('/api/log', async (req, res) => {
 // =====================================================================================================================
 app.get("/force-shutdown", (req, res) => {
     res.send("서버가 강제 종료됩니다.");
-    stopCppProcess();
+    stopBacktestingEngine();
     process.exit(0);
 });
 
@@ -585,7 +585,7 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
         setEditorConfigLoading,
         validateProjectDirectoryConfig,
         handleProvideProjectDirectory
-    } = require("./backtestingServer");
+    } = require("./backtestingEngine");
 
     let shutdownTimer = null;
     const SHUTDOWN_DELAY = 500;
@@ -640,12 +640,12 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
                     } else {
                         setEditorConfig(config);
 
-                        // 프로젝트 폴더가 설정되어 있으면 C++ 프로세스를 그 프로젝트 디렉터리에서 실행합니다.
+                        // 프로젝트 폴더가 설정되어 있으면 백테스팅 엔진을 그 프로젝트 디렉터리에서 실행합니다.
                         try {
                             const startDir = config && config.projectDirectory ? config.projectDirectory : baseDir;
-                            startCppProcess(activeClients, broadcastLog, startDir);
+                            startBacktestingEngine(activeClients, broadcastLog, startDir);
                         } catch (e) {
-                            broadcastLog("ERROR", `C++ 프로세스 시작 실패: ${e.message}`, null, null);
+                            broadcastLog("ERROR", `백테스팅 엔진 시작 실패: ${e.message}`, null, null);
                         }
                     }
                 } catch (e) {
