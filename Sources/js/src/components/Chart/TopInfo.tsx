@@ -455,7 +455,7 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
                         }
                     }
 
-                    // 지표 값 포맷팅 - 새로운 방식으로 변경
+                    // 지표 값 포맷팅
                     let formattedValue = typeof value === "number" && !isNaN(value) ?
                         formatIndicatorValue(value, info.name) : value;
 
@@ -483,7 +483,7 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
             // 메인 차트(오버레이) 지표: pane 0에 표시
             if (indicatorInfoPerPane[0]) {
                 const mainIndicatorHTML = indicatorInfoPerPane[0]
-                    .map((line) => `<div style="margin-bottom:2px;">${line}</div>`)
+                    .map((line) => `<div style="margin-bottom:4px;">${line}</div>`)
                     .join("");
                 setIndicatorInfo(mainIndicatorHTML);
             }
@@ -503,9 +503,9 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
                         const div = document.createElement("div");
                         div.id = "indicatorInfo_pane_" + pane;
                         div.style.position = "absolute";
-                        div.style.left = "20px";
+                        div.style.left = "16px";
                         div.style.top = getPaneTopOffset(pane) + "px"; // 실제 높이를 기반으로 계산
-                        div.style.marginTop = "12px";
+                        div.style.marginTop = "8px";
                         div.style.zIndex = "1000";
                         div.style.background = "rgba(17,17,17,0)";
                         div.style.color = "white";
@@ -513,7 +513,7 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
                         div.style.borderRadius = "4px";
                         div.style.fontFamily = "'Inter', 'Pretendard', sans-serif";
                         div.style.lineHeight = "1.4";
-                        div.style.fontSize = "14px";
+                        div.style.fontSize = "13px";
                         div.style.pointerEvents = "none";
 
                         // containerRef가 제공된 경우 사용, 없으면 document.body에 추가
