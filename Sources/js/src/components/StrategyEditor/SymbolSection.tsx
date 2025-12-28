@@ -217,6 +217,27 @@ export default function SymbolSection({
         });
     };
 
+    // 추가한 심볼들 초기화 핸들러
+    const handleResetSymbols = () => {
+        if (!confirm('추가한 심볼을 초기화하시겠습니까?')) {
+            return;
+        }
+        // 심볼 목록 및 로고 상태 초기화
+        setSymbolConfigs([]);
+        setSymbolLogos({});
+
+        // 입력/추천 상태 초기화
+        setSymbolInput('');
+        setSuggestionsVisible(false);
+        setSelectedSuggestionIndex(-1);
+        setJustAutocompleted(false);
+        setAutocompletedBase(null);
+        setSuggestionNavigated(false);
+
+        // 로그 남기기
+        addLog('INFO', '심볼 목록을 초기화했습니다.');
+    };
+
     // 컴포넌트가 마운트되거나 symbolConfigs가 바뀔 때, 아직 로고가 없는 심볼에 대해 로고를 가져옴
     useEffect(() => {
         for (const s of symbolConfigs) {
@@ -604,6 +625,8 @@ export default function SymbolSection({
                     </div>
                 )}
 
+                <Button onClick={handleResetSymbols}
+                        className="bg-red-600 hover:bg-red-700 text-white px-4">초기화</Button>
                 <Button onClick={() => {
                     const suggs = getSuggestions(symbolInput);
 
