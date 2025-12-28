@@ -269,6 +269,20 @@
     border-right: 2px solid rgb(255 215 0 / 40%) !important;
 }
 
+/* 심볼 아이콘 전용 스타일 - SymbolPerformance 스타일과 동일하게 원형, object-fit:cover */
+.trade-list-container .trade-symbol-icon {
+    display: block !important;
+    flex: 0 0 auto !important;
+    width: 17px !important;
+    height: 17px !important;
+    margin-right: 2px !important;
+    border-radius: 50% !important; /* 항상 원형으로 표시 */
+    transform: none !important;
+    filter: none !important;
+    object-fit: cover !important; /* 이미지를 자르더라도 비율 유지 및 꽉 채움 */
+    image-rendering: auto !important;
+}
+
 .trade-list-container .thin-border {
     border-right: 1px dashed rgb(255 215 0 / 40%) !important;
 }
