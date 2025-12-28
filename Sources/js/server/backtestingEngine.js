@@ -442,7 +442,13 @@ function configToObj(config) {
             "프로젝트 폴더": config ? (config.projectDirectory || "") : "",
             "바 돋보기 기능": (config && config.useBarMagnifier) ? "활성화" : "비활성화",
         },
-        "심볼 설정": Array.isArray(config && config.symbolConfigs) ? config.symbolConfigs : ((config && config.symbolConfigs) || []),
+        "심볼 설정": {
+            "심볼": Array.isArray(config && config.symbolConfigs) ? config.symbolConfigs : ((config && config.symbolConfigs) || []),
+            "페어": {
+                "선택된 페어": config ? (config.selectedPair || "") : "",
+                "커스텀 페어": Array.isArray(config && config.customPairs) ? config.customPairs : ((config && config.customPairs) || [])
+            }
+        },
         "바 데이터 설정": (config && Array.isArray(config.barDataConfigs)) ? config.barDataConfigs.map((bar_cfg) => ({
             "타임프레임": bar_cfg.timeframe, "바 데이터 폴더": bar_cfg.klinesDirectory, "바 데이터 유형": bar_cfg.barDataType,
         })) : [],
@@ -460,7 +466,16 @@ function objToConfig(obj) {
     cfg.projectDirectory = engine && (engine["프로젝트 폴더"] !== undefined) ? engine["프로젝트 폴더"] : "";
     cfg.useBarMagnifier = engine && (engine["바 돋보기 기능"] === "활성화");
 
-    cfg.symbolConfigs = obj["심볼 설정"] || [];
+    const symSection = obj && typeof obj === 'object' ? obj["심볼 설정"] : null;
+
+    if (symSection && typeof symSection === 'object') {
+        cfg.symbolConfigs = Array.isArray(symSection["심볼"]) ? symSection["심볼"] : [];
+
+        const pairCfgInner = symSection["페어"] || {};
+
+        cfg.selectedPair = typeof pairCfgInner["선택된 페어"] === 'string' ? pairCfgInner["선택된 페어"] : '';
+        cfg.customPairs = Array.isArray(pairCfgInner["커스텀 페어"]) ? pairCfgInner["커스텀 페어"] : [];
+    }
 
     cfg.barDataConfigs = (obj["바 데이터 설정"] || []).map((bar_data_config) => ({
         timeframe: bar_data_config["타임프레임"],
@@ -478,6 +493,8 @@ function createDefaultConfig(projectDirectory) {
         projectDirectory: projectDirectory,
         useBarMagnifier: true,
         symbolConfigs: [],
+        selectedPair: 'USDT',
+        customPairs: [],
         barDataConfigs: [{
             timeframe: null,
             klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Continuous Klines')),
@@ -508,7 +525,13 @@ function configToWs(config) {
             "프로젝트 폴더": (config && config.projectDirectory) ? toPosix(config.projectDirectory) : "",
             "바 돋보기 기능": !!(config && config.useBarMagnifier),
         },
-        "심볼 설정": (config && Array.isArray(config.symbolConfigs)) ? config.symbolConfigs : [],
+        "심볼 설정": {
+            "심볼": (config && Array.isArray(config.symbolConfigs)) ? config.symbolConfigs : [],
+            "페어": {
+                "선택된 페어": (config && typeof config.selectedPair === 'string') ? config.selectedPair : '',
+                "커스텀 페어": (config && Array.isArray(config.customPairs)) ? config.customPairs : []
+            }
+        },
         "바 데이터 설정": (config && Array.isArray(config.barDataConfigs)) ? config.barDataConfigs.map((b) => ({
             ...b, klinesDirectory: b.klinesDirectory ? toPosix(b.klinesDirectory) : b.klinesDirectory
         })) : [],
@@ -534,7 +557,10 @@ function wsToConfig(wsConfig) {
             projectDirectory: wsConfig["엔진 설정"]?.["프로젝트 폴더"] || "",
             useBarMagnifier: !!wsConfig["엔진 설정"]?.["바 돋보기 기능"],
 
-            symbolConfigs: Array.isArray(wsConfig["심볼 설정"]) ? wsConfig["심볼 설정"] : [],
+            symbolConfigs: Array.isArray(wsConfig["심볼 설정"]?.["심볼"]) ? wsConfig["심볼 설정"]["심볼"] : [],
+            selectedPair: (wsConfig["심볼 설정"] && wsConfig["심볼 설정"]["페어"] && typeof wsConfig["심볼 설정"]["페어"]["선택된 페어"] === 'string') ? wsConfig["심볼 설정"]["페어"]["선택된 페어"] : '',
+            customPairs: (wsConfig["심볼 설정"] && wsConfig["심볼 설정"]["페어"] && Array.isArray(wsConfig["심볼 설정"]["페어"]["커스텀 페어"])) ? wsConfig["심볼 설정"]["페어"]["커스텀 페어"] : [],
+
             barDataConfigs: Array.isArray(wsConfig["바 데이터 설정"]) ? wsConfig["바 데이터 설정"] : []
         };
     }
@@ -547,6 +573,9 @@ function wsToConfig(wsConfig) {
         useBarMagnifier: wsConfig.useBarMagnifier ?? true,
 
         symbolConfigs: Array.isArray(wsConfig.symbolConfigs) ? wsConfig.symbolConfigs : [],
+        selectedPair: typeof wsConfig.selectedPair === 'string' ? wsConfig.selectedPair : '',
+        customPairs: Array.isArray(wsConfig.customPairs) ? wsConfig.customPairs : [],
+
         barDataConfigs: Array.isArray(wsConfig.barDataConfigs) ? wsConfig.barDataConfigs : []
     };
 }

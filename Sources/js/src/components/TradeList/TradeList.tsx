@@ -78,8 +78,12 @@ const COMMA_FIELDS = new Set([
     "누적 손익률",
     "드로우다운",
     "최고 드로우다운",
-    "레버리지"
 ]);
+
+// 심볼 아이콘 관련 상수 (아이콘 너비 + 아이콘과 텍스트 간 간격)
+const SYMBOL_ICON_WIDTH = 17; // px
+const SYMBOL_ICON_GAP = 2; // px
+const SYMBOL_ICON_TOTAL = SYMBOL_ICON_WIDTH + SYMBOL_ICON_GAP; // px
 
 // 경계선 스타일을 위한 Set - 컴포넌트 밖에서 정의하여 재생성 방지
 const THICK_BORDER_COLUMNS = new Set([
@@ -414,6 +418,7 @@ interface TradeRowProps {
     selectedColumnGroup: string[]; // 선택된 열 그룹
     initialBalance: number;
     config: any;
+    symbolLogoMap: { [symbol: string]: string };
     isDifferentFromNext: boolean;
     isLastRowOfDataset: boolean;
     isNextRowBankrupt: boolean; // 다음 행이 파산 행인지
@@ -437,6 +442,7 @@ const TradeRow = React.memo<TradeRowProps>(({
                                                 selectedColumnGroup,
                                                 initialBalance,
                                                 config,
+                                                symbolLogoMap,
                                                 isDifferentFromNext,
                                                 isLastRowOfDataset,
                                                 isNextRowBankrupt,
@@ -669,7 +675,41 @@ const TradeRow = React.memo<TradeRowProps>(({
                         }}
                         style={cellStyle}
                     >
-                        {cell.formattedContent}
+                        {cell.key === "심볼 이름" ? (
+                            <div style={{display: 'flex', alignItems: 'center', gap: 4}}>
+                                {/* 아이콘: 로고가 있을 때만 표시, 없으면 아무 것도 표시하지 않음 */}
+                                {(() => {
+                                    const logo = symbolLogoMap[String(symbol).toUpperCase()] || symbolLogoMap[String(symbol)];
+                                    if (logo && String(symbol) !== '-') {
+                                        return (
+                                            <img
+                                                src={logo}
+                                                alt={String(symbol)}
+                                                className="trade-symbol-icon"
+                                                style={{flex: '0 0 auto'}}
+                                                onError={(e) => {
+                                                    const img = e.currentTarget as HTMLImageElement;
+                                                    img.onerror = null;
+                                                    img.style.display = 'none';
+                                                }}
+                                                onLoad={(e) => {
+                                                    const img = e.currentTarget as HTMLImageElement;
+                                                    img.style.display = '';
+                                                }}
+                                            />
+                                        );
+                                    }
+
+                                    // 심볼이 '-' 이거나 로고가 없으면 아이콘을 표시하지 않음
+                                    return null;
+                                })()}
+
+                                {/* 텍스트 */}
+                                <div style={{display: 'inline-block'}}>{cell.formattedContent}</div>
+                            </div>
+                        ) : (
+                            cell.formattedContent
+                        )}
                     </div>
                 );
             })}
@@ -706,6 +746,9 @@ const TradeRow = React.memo<TradeRowProps>(({
 
     // columnWidths와 config는 참조 비교만 (깊은 비교는 성능 저하)
     if (prevProps.columnWidths !== nextProps.columnWidths) return false;
+
+    // 심볼 아이콘 맵이 바뀌면 관련 셀들이 다시 그려져야 함
+    if (prevProps.symbolLogoMap !== nextProps.symbolLogoMap) return false;
     return prevProps.config === nextProps.config;
 });
 
@@ -986,7 +1029,11 @@ export default function TradeList({config}: TradeListProps) {
             if (headerKey === 'originalIdxForSort') return;
 
             const headerTextMetrics = context.measureText(headerKey);
-            const calculatedHeaderWidth = Math.ceil(headerTextMetrics.width + cellPadding);
+            // 심볼 아이콘이 있는 경우를 고려하여 헤더 너비에 아이콘 너비를 더함
+            let calculatedHeaderWidth = Math.ceil(headerTextMetrics.width + cellPadding);
+            if (headerKey === '심볼 이름') {
+                calculatedHeaderWidth = Math.ceil(calculatedHeaderWidth + SYMBOL_ICON_TOTAL);
+            }
 
             let maxDataTextWidth = 0;
             if (trades.length > 0) {
@@ -996,32 +1043,42 @@ export default function TradeList({config}: TradeListProps) {
 
                 for (let i = 0; i < trades.length; i += step) {
                     const trade = trades[i];
-                    const displayString = getDisplayStringForMeasuring(trade[headerKey], headerKey, config, getSymbolFromTrade(trade));
+                    const symbolForTrade = getSymbolFromTrade(trade);
+                    const displayString = getDisplayStringForMeasuring(trade[headerKey], headerKey, config, symbolForTrade);
 
                     // 빈 문자열이면 스킵
                     if (!displayString) continue;
 
                     const dataTextMetrics = context.measureText(displayString);
-                    maxDataTextWidth = Math.max(maxDataTextWidth, Math.ceil(dataTextMetrics.width));
+
+                    // 심볼 이름 열은 아이콘+간격을 포함한 너비로 계산
+                    const measuredWidth = Math.ceil(dataTextMetrics.width) + (headerKey === '심볼 이름' && symbolForTrade && String(symbolForTrade) !== '-' ? SYMBOL_ICON_TOTAL : 0);
+                    maxDataTextWidth = Math.max(maxDataTextWidth, measuredWidth);
                 }
 
                 // 추가로 처음 100개와 마지막 100개도 체크하여 극값 놓치지 않기
                 const additionalChecks = Math.min(100, trades.length);
                 for (let i = 0; i < additionalChecks; i++) {
                     const trade = trades[i];
-                    const displayString = getDisplayStringForMeasuring(trade[headerKey], headerKey, config, getSymbolFromTrade(trade));
+                    const symbolForTrade = getSymbolFromTrade(trade);
+                    const displayString = getDisplayStringForMeasuring(trade[headerKey], headerKey, config, symbolForTrade);
+
                     if (displayString) {
                         const dataTextMetrics = context.measureText(displayString);
-                        maxDataTextWidth = Math.max(maxDataTextWidth, Math.ceil(dataTextMetrics.width));
+                        const measuredWidth = Math.ceil(dataTextMetrics.width) + (headerKey === '심볼 이름' && symbolForTrade && String(symbolForTrade) !== '-' ? SYMBOL_ICON_TOTAL : 0);
+                        maxDataTextWidth = Math.max(maxDataTextWidth, measuredWidth);
                     }
                 }
 
                 for (let i = Math.max(0, trades.length - additionalChecks); i < trades.length; i++) {
                     const trade = trades[i];
-                    const displayString = getDisplayStringForMeasuring(trade[headerKey], headerKey, config, getSymbolFromTrade(trade));
+                    const symbolForTrade = getSymbolFromTrade(trade);
+                    const displayString = getDisplayStringForMeasuring(trade[headerKey], headerKey, config, symbolForTrade);
+
                     if (displayString) {
                         const dataTextMetrics = context.measureText(displayString);
-                        maxDataTextWidth = Math.max(maxDataTextWidth, Math.ceil(dataTextMetrics.width));
+                        const measuredWidth = Math.ceil(dataTextMetrics.width) + (headerKey === '심볼 이름' && symbolForTrade && String(symbolForTrade) !== '-' ? SYMBOL_ICON_TOTAL : 0);
+                        maxDataTextWidth = Math.max(maxDataTextWidth, measuredWidth);
                     }
                 }
             }
@@ -1151,6 +1208,52 @@ export default function TradeList({config}: TradeListProps) {
 
         return balance;
     }, [trades]);
+
+    // -------------------------
+    // 심볼 아이콘 관련 상태 및 페치 로직
+    // - 서버의 /api/get-logo?symbol=SYMBOL 엔드포인트를 사용하여 아이콘 URL을 받아옴
+    // - 한 번 페치한 심볼은 캐시에 저장하여 중복 요청을 방지
+    // -------------------------
+    const [symbolLogoMap, setSymbolLogoMap] = useState<{ [symbol: string]: string }>({});
+    const fetchingSymbolsRef = useRef<Set<string>>(new Set());
+
+    useEffect(() => {
+        if (!trades || trades.length === 0) {
+            return;
+        }
+
+        // 고유 심볼 목록 (대소문자 정규화
+        const symbols = Array.from(new Set(trades.map(t => String(t["심볼 이름"] || '').toUpperCase()).filter(Boolean)));
+        const toFetch = symbols.filter(s => s && !(s in symbolLogoMap) && !fetchingSymbolsRef.current.has(s));
+
+        if (toFetch.length === 0) {
+            return;
+        }
+
+        // 마크 중복 방지
+        toFetch.forEach(s => fetchingSymbolsRef.current.add(s));
+
+        // 병렬로 가져오기
+        Promise.all(toFetch.map(sym =>
+            fetch(`/api/get-logo?symbol=${encodeURIComponent(sym)}`)
+                .then(r => r.ok ? r.json() : null)
+                .then(json => ({sym, url: json && json.logoUrl ? json.logoUrl : null}))
+                .catch(() => ({sym, url: null}))
+        )).then(results => {
+            setSymbolLogoMap(prev => {
+                const next = {...prev};
+
+                results.forEach(({sym, url}) => {
+                    if (url) next[sym] = url;
+                });
+
+                return next;
+            });
+        }).finally(() => {
+            toFetch.forEach(s => fetchingSymbolsRef.current.delete(s));
+        });
+
+    }, [trades, symbolLogoMap]);
 
     // 렌더링할 가시적 거래 데이터 준비 - 최적화된 계산 및 메모리 절약
     const visibleTradesData = useMemo(() => {
@@ -1512,6 +1615,7 @@ export default function TradeList({config}: TradeListProps) {
                                             selectedColumnGroup={selectedColumnGroup}
                                             initialBalance={initialBalance}
                                             config={config}
+                                            symbolLogoMap={symbolLogoMap}
                                             isDifferentFromNext={isDifferentFromNext}
                                             isLastRowOfDataset={isLastRowOfDataset}
                                             isNextRowBankrupt={isNextRowBankrupt}
