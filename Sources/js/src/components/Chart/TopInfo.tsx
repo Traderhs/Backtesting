@@ -241,46 +241,43 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
             return;
         }
 
-        // 창 크기 변경 시 페인 라벨 위치 업데이트
-        const handleResize = () => {
-            setTimeout(() => {
-                repositionPaneLabels();
-            }, 100);
-        };
-        window.addEventListener("resize", handleResize);
+        let rafId: number | null = null;
 
-        // 페인 높이 변화 감지 인터벌
-        const intervalId = setInterval(() => {
-            const panes = chart.panes(); // IPaneApi[] 배열 (각 페인)
-            let changed = false;
+        const loop = () => {
+            try {
+                const panes = chart.panes();
+                const currentHeights = panes.map((p) => p.getHeight());
 
-            // 현재 페인 높이 배열 구하기
-            const currentHeights = panes.map((p) => p.getHeight());
-
-            // 이전 높이 배열과 길이가 다른지, 각 인덱스별 높이가 다른지 검사
-            if (currentHeights.length !== prevPaneHeightsRef.current.length) {
-                changed = true;
-            } else {
-                for (let i = 0; i < currentHeights.length; i++) {
-                    if (currentHeights[i] !== prevPaneHeightsRef.current[i]) {
-                        changed = true;
-                        break;
+                let changed = false;
+                if (currentHeights.length !== prevPaneHeightsRef.current.length) {
+                    changed = true;
+                } else {
+                    for (let i = 0; i < currentHeights.length; i++) {
+                        if (currentHeights[i] !== prevPaneHeightsRef.current[i]) {
+                            changed = true;
+                            break;
+                        }
                     }
                 }
+
+                if (changed) {
+                    prevPaneHeightsRef.current = currentHeights;
+
+                    repositionPaneLabels();
+                }
+            } catch (e) {
+                // 안전을 위해 예외 무시
             }
 
-            // 변화가 감지되면 재배치 함수 실행
-            if (changed) {
-                repositionPaneLabels();
-            }
+            rafId = requestAnimationFrame(loop);
+        };
 
-            // prevPaneHeights 갱신
-            prevPaneHeightsRef.current = currentHeights;
-        }, 100); // 0.1초 간격으로 체크
+        rafId = requestAnimationFrame(loop);
 
         return () => {
-            window.removeEventListener("resize", handleResize);
-            clearInterval(intervalId);
+            if (rafId !== null) {
+                cancelAnimationFrame(rafId);
+            }
         };
     }, [chart]);
 
