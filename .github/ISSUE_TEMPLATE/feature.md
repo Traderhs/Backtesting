@@ -1,7 +1,7 @@
 ---
 name: Feature
 about: 기능 추가 또는 개선
-title: "[Feat] "
+title: "[Feat][]"
 labels: enhancement
 assignees:
 ---
