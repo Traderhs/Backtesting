@@ -501,7 +501,7 @@ export default function SymbolSection({
                                     <div key={sugg} data-index={idx} onMouseDown={(ev) => {
                                         ev.preventDefault();
 
-                                        // 추천 선택 시 베이스 심볼만 자동완성 (페어 결합 없이)
+                                        // 추천 선택 시 베이스 심볼만 자동완성
                                         setSymbolInput(sugg);
                                         setCaretPos(sugg.length);
                                         setJustAutocompleted(true);
@@ -511,6 +511,7 @@ export default function SymbolSection({
 
                                         requestAnimationFrame(() => {
                                             const inputEl = document.getElementById('strategy-symbol-input') as HTMLInputElement | null;
+
                                             if (inputEl) {
                                                 try {
                                                     inputEl.focus();
