@@ -332,8 +332,8 @@ app.get('/api/symbols', async (req, res) => {
 
         // 기본으로 포함할 인기 심볼 (빠른 검색용)
         const popularSymbols = [
-            'BTCUSDT', 'ETHUSDT', 'BNBUSDT', 'SOLUSDT', 'XRPUSDT', 'ADAUSDT', 'DOGEUSDT',
-            'DOTUSDT', 'LTCUSDT', 'LINKUSDT', 'TRXUSDT', 'NEARUSDT', 'AVAXUSDT', 'ATOMUSDT'
+            'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE',
+            'DOT', 'LTC', 'LINK', 'TRX', 'NEAR', 'AVAX', 'ATOM'
         ];
 
         // 쿼리 파라미터로 추가 소스 지정 가능: include=popular,web
@@ -361,11 +361,31 @@ app.get('/api/symbols', async (req, res) => {
 
                     if (resp.ok) {
                         const data = await resp.json();
-                        const exchangeSymbols = data
-                            .map((p) => (p.symbol || '').toUpperCase())
-                            .filter(s => s.endsWith('USDT'));
 
-                        global.__symbol_cache = {ts: Date.now(), symbols: exchangeSymbols};
+                        // 모든 알려진 페어를 제거하여 베이스 심볼만 추출
+                        const knownPairs = ['USDT', 'USDC', 'BUSD', 'BTC', 'ETH', 'BNB', 'USD', 'EUR', 'GBP', 'JPY', 'KRW', 'SOL', 'DOGE'];
+                        const baseSymbols = new Set();
+
+                        data.forEach(p => {
+                            const symbol = (p.symbol || '').toUpperCase();
+                            if (!symbol) {
+                                return;
+                            }
+
+                            // 각 페어로 끝나는지 확인하고 베이스 심볼 추출
+                            for (const pair of knownPairs) {
+                                if (symbol.endsWith(pair) && symbol !== pair) {
+                                    const base = symbol.slice(0, -pair.length);
+
+                                    if (base && base.length >= 2) {
+                                        baseSymbols.add(base);
+                                        break;
+                                    }
+                                }
+                            }
+                        });
+
+                        global.__symbol_cache = {ts: Date.now(), symbols: Array.from(baseSymbols)};
                     }
                 } catch (e) {
                     // 네트워크 문제, 무시
@@ -377,6 +397,33 @@ app.get('/api/symbols', async (req, res) => {
                 symbols = Array.from(new Set([...symbols, ...global.__symbol_cache.symbols]));
             }
         }
+
+        // 디렉터리에서 가져온 심볼도 베이스 심볼로 변환
+        const knownPairs = ['USDT', 'USDC', 'BUSD', 'BTC', 'ETH', 'BNB', 'USD', 'EUR', 'GBP', 'JPY', 'KRW', 'SOL', 'DOGE'];
+        const baseSymbols = new Set();
+
+        symbols.forEach(symbol => {
+            let isBase = true;
+
+            for (const pair of knownPairs) {
+                if (symbol.endsWith(pair) && symbol !== pair) {
+                    const base = symbol.slice(0, -pair.length);
+
+                    if (base && base.length >= 2) {
+                        baseSymbols.add(base);
+                        isBase = false;
+                        break;
+                    }
+                }
+            }
+
+            // 페어로 끝나지 않는 경우 (이미 베이스 심볼) 또는 페어 자체인 경우
+            if (isBase && symbol.length >= 2) {
+                baseSymbols.add(symbol);
+            }
+        });
+
+        symbols = Array.from(baseSymbols);
 
         // 정렬 및 반환
         symbols = Array.from(new Set(symbols)).sort();

@@ -1125,6 +1125,47 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
     const isComponentMounted = useRef(true);
     const hasTooltipAppeared = useRef(false);
 
+    // 심볼 아이콘 URL 캐시
+    const [logoMap, setLogoMap] = useState<Map<string, string>>(new Map());
+
+    // configSymbols가 바뀔 때 서버에서 로고 URL을 가져와 캐시
+    useEffect(() => {
+        let mounted = true;
+        (async () => {
+            const map = new Map<string, string>();
+
+            await Promise.all(configSymbols.map(async (sym) => {
+                try {
+                    const resp = await fetch(`/api/get-logo?symbol=${encodeURIComponent(sym)}`);
+
+                    if (resp.ok) {
+                        const data = await resp.json();
+
+                        if (data && data.logoUrl) {
+                            map.set(sym, data.logoUrl);
+
+                            return;
+                        }
+                    }
+
+                    // 폴백: 로컬 아이콘 파일 경로를 기본으로 설정
+                    map.set(sym, `/BackBoard/Icons/${sym.replace(/[^a-zA-Z0-9]/g, '_')}.png`);
+                } catch (e) {
+                    // 실패 시 USDT 폴백 사용
+                    map.set(sym, '/BackBoard/Icons/USDT.png');
+                }
+            }));
+
+            if (mounted) {
+                setLogoMap(map);
+            }
+        })();
+
+        return () => {
+            mounted = false;
+        };
+    }, [configSymbols]);
+
     // Rainbow 색상 생성 함수
     const generateRainbowColors = (count: number): string[] => {
         const colors: string[] = [];
@@ -1599,13 +1640,19 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                             valueColor = value > 0 ? '#4caf50' : value == 0 ? '#ffffff' : '#f23645';
                         }
 
+                        const logoUrl = (logoMap && logoMap.get && logoMap.get(symbol)) || `/BackBoard/Icons/${symbol.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
+
                         return `
-            <div style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px;">
-              <span style="color: ${color}; font-size: 13px; padding: 0 6px; margin-right: 8px; position: relative; left: -6px;">${symbol}</span>
-              <div style="text-align: right;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 6px;">
+              <div style="display:flex; align-items:center; min-width:100px; max-width:200px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
+                <img src="${logoUrl}" style="width:16px;height:16px;border-radius:50%;margin-right:6px;object-fit:cover;flex:0 0 auto;" onerror="this.style.display='none'" alt=""/>
+                <span style="color: ${color}; font-size: 13px; overflow:hidden; text-overflow:ellipsis;">${symbol}</span>
+              </div>
+              
+              <div style="text-align: right; min-width:76px; padding-left:8px; flex:0 0 auto;">
                 <strong style="color: ${valueColor}; font-weight: 600; font-size: 14px;">${getTooltipFormatFunction(selectedMetric, timeframeStr)(displayValue)}</strong>
               </div>
-            </div>
+            </div> 
           `;
                     }).join('')
                 );
