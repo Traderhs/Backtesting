@@ -60,12 +60,12 @@ string Logger::log_directory_;
 // 빠른 레벨 문자열 반환 - 브랜치 예측 최적화
 const char* Logger::GetLevelString(const LogLevel level) {
   switch (level) {
-    case DEBUG_L: {
-      return "DEBUG";
-    }
-
     case INFO_L: {
       return "INFO";
+    }
+
+    case BALANCE_L: {
+      return "BALANCE";
     }
 
     case WARN_L: {
@@ -76,19 +76,21 @@ const char* Logger::GetLevelString(const LogLevel level) {
       return "ERROR";
     }
 
-    case BALANCE_L: {
-      return "BALANCE";
+    case DEBUG_L: {
+      return "DEBUG";
     }
 
     default: {
-      return "UNKNOWN";
+      return "INFO";
     }
   }
 }
 
 // 빠른 파일명 추출 - 역방향 스캔
 const char* Logger::ExtractFilename(const char* filepath) {
-  if (!filepath) return "";
+  if (!filepath) {
+    return "";
+  }
 
   const char* filename = filepath;
   const char* p = filepath;
@@ -97,6 +99,7 @@ const char* Logger::ExtractFilename(const char* filepath) {
     if (*p == '/' || *p == '\\') {
       filename = p + 1;
     }
+
     ++p;
   }
 
@@ -507,8 +510,8 @@ FORCE_INLINE void Logger::Log(const LogLevel& log_level, const string& message,
         break;
       }
 
-      case DEBUG_L: {
-        level_str = "DEBUG_L";
+      case BALANCE_L: {
+        level_str = "BALANCE_L";
         break;
       }
 
@@ -522,8 +525,8 @@ FORCE_INLINE void Logger::Log(const LogLevel& log_level, const string& message,
         break;
       }
 
-      case BALANCE_L: {
-        level_str = "BALANCE_L";
+      case DEBUG_L: {
+        level_str = "DEBUG_L";
         break;
       }
 
@@ -549,24 +552,35 @@ void Logger::LogNoFormat(const LogLevel& log_level, const string& message,
     // 브랜치 예측 최적화된 레벨 문자열 선택
     const char* level_str;
     switch (log_level) {
-      case INFO_L:
+      case INFO_L: {
         level_str = "INFO_L";
         break;
-      case DEBUG_L:
-        level_str = "DEBUG_L";
-        break;
-      case WARN_L:
-        level_str = "WARN_L";
-        break;
-      case ERROR_L:
-        level_str = "ERROR_L";
-        break;
-      case BALANCE_L:
+      }
+
+      case BALANCE_L: {
         level_str = "BALANCE_L";
         break;
-      default:
+      }
+
+      case WARN_L: {
+        level_str = "WARN_L";
+        break;
+      }
+
+      case ERROR_L: {
+        level_str = "ERROR_L";
+        break;
+      }
+
+      case DEBUG_L: {
+        level_str = "DEBUG_L";
+        break;
+      }
+
+      default: {
         level_str = "INFO_L";
         break;
+      }
     }
     ConsoleLog(level_str, message);
   }
@@ -669,10 +683,10 @@ void Logger::LogAndThrowError(const string& message, const string& file,
 }
 
 void Logger::ConsoleLog(const string& level, const string& message) {
-  if (level == "BALANCE_L" || level == "DEBUG_L") {
-    cout << "\033[90m" << message << "\033[0m" << endl;  // Gray
-  } else if (level == "INFO_L") {
+  if (level == "INFO_L") {
     cout << "\033[38;2;200;200;200m" << message << "\033[0m" << endl;  // White
+  } else if (level == "BALANCE_L" || level == "DEBUG_L") {
+    cout << "\033[90m" << message << "\033[0m" << endl;  // Gray
   } else if (level == "WARN_L") {
     cout << "\033[33m" << message << "\033[0m" << endl;  // Yellow
   } else if (level == "ERROR_L") {

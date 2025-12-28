@@ -117,15 +117,16 @@ const LogRow: React.FC<{
 
     // 로그 레벨에 따른 색상 결정
     const getLogLevelColor = () => {
-        if (line.includes('[DEBUG]')) {
-            return 'rgb(156, 220, 254)';
+        if (line.includes('[INFO]')) {
+            return 'rgb(255, 255, 255)';
+        } else if (line.includes('[BALANCE]') || line.includes('[DEBUG]')) {
+            return 'rgb(128, 128, 128)';
         } else if (line.includes('[WARN]')) {
             return 'rgb(229, 192, 123)';
         } else if (line.includes('[ERROR]')) {
             return 'rgb(224, 108, 117)';
-        } else if (line.includes('[BALANCE]')) {
-            return 'rgb(128, 128, 128)';
         }
+
         return '#ffffff';
     };
 
