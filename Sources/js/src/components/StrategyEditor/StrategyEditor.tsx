@@ -51,6 +51,7 @@ export default function StrategyEditor() {
     const {ws} = useWebSocket();
     const [apiKeyEnvVar, setApiKeyEnvVar] = useState<string>('');
     const [apiSecretEnvVar, setApiSecretEnvVar] = useState<string>('');
+    const [lastDataUpdates, setLastDataUpdates] = useState<string>('');
     const [projectDirectory, setProjectDirectory] = useState('');
     const [projectDirectoryInput, setProjectDirectoryInput] = useState('');
     const [showProjectDialog, setShowProjectDialog] = useState(false);
@@ -99,18 +100,27 @@ export default function StrategyEditor() {
             setIsLogPanelOpen(true);
         }
 
+        if (!apiKeyEnvVar.trim() || !apiSecretEnvVar.trim()) {
+            addLog('ERROR', 'API 키 및 시크릿의 환경 변수 이름을 모두 입력해 주세요.');
+
+            return;
+        }
+
+
+        if (symbolConfigs.length === 0) {
+            addLog('ERROR', '백테스팅을 실행하려면 최소 1개의 심볼이 필요합니다. 심볼을 추가해 주세요.');
+
+            return;
+        }
+
         const configsToValidate = barDataConfigs.filter(config =>
             config.barDataType !== BarDataType.MAGNIFIER || useBarMagnifier
         );
 
-        if (symbolConfigs.length === 0) {
-            addLog('ERROR', '백테스팅을 실행하려면 최소 1개의 심볼이 필요합니다.');
-            return;
-        }
-
         for (const config of configsToValidate) {
             if (!config.klinesDirectory.trim()) {
-                addLog('ERROR', `${config.barDataType} 바 데이터 폴더를 입력해주세요.`);
+                addLog('ERROR', `${config.barDataType} 바 데이터의 폴더를 입력해 주세요.`);
+
                 return;
             }
         }
@@ -120,14 +130,14 @@ export default function StrategyEditor() {
             const tf = config.timeframe;
 
             if (!tf || tf.value === null) {
-                const msg = `${config.barDataType} 바 데이터의 타임프레임 값이 비어있습니다.`;
+                const msg = `${config.barDataType} 바 데이터의 타임프레임 값을 입력해 주세요.`;
                 addLog('ERROR', msg);
 
                 return;
             }
 
             if (!tf || tf.unit === TimeframeUnit.NULL) {
-                const msg = `${config.barDataType} 바 데이터의 타임프레임 단위가 비어있습니다.`;
+                const msg = `${config.barDataType} 바 데이터의 타임프레임 단위를 입력해 주세요.`;
                 addLog('ERROR', msg);
 
                 return;
@@ -178,6 +188,9 @@ export default function StrategyEditor() {
 
                 apiSecretEnvVar={apiSecretEnvVar}
                 setApiSecretEnvVar={setApiSecretEnvVar}
+
+                lastDataUpdates={lastDataUpdates}
+                setLastDataUpdates={setLastDataUpdates}
 
                 projectDirectory={projectDirectory}
                 setProjectDirectory={setProjectDirectory}
@@ -230,18 +243,18 @@ export default function StrategyEditor() {
 
                 {/* API 설정 */}
                 <div className="mb-6 p-4 bg-[#071029] border border-gray-700 rounded-lg">
-                    <h2 className="text-sm font-medium text-gray-200 mb-2">API 환경변수 설정</h2>
-                    <p className="text-xs text-gray-400 mb-3">환경변수 이름만 저장합니다. 비밀값은 시스템 환경변수로 관리하세요.</p>
+                    <h2 className="text-sm font-medium text-gray-200 mb-2">API 환경 변수 설정</h2>
+                    <p className="text-xs text-gray-400 mb-3">환경 변수 이름만 저장합니다. 비밀값은 시스템 환경 변수로 관리하세요.</p>
                     <div className="grid grid-cols-2 gap-3">
                         <div>
-                            <label className="text-xs text-gray-300">API 키 환경변수 이름</label>
+                            <label className="text-xs text-gray-300">API 키 환경 변수 이름</label>
                             <Input type="text" value={apiKeyEnvVar}
                                    onChange={(e) => setApiKeyEnvVar(e.currentTarget.value)}
                                    placeholder="예: BINANCE_API_KEY"
                                    className="mt-1 bg-[#050a12] border-gray-600"/>
                         </div>
                         <div>
-                            <label className="text-xs text-gray-300">API 시크릿 환경변수 이름</label>
+                            <label className="text-xs text-gray-300">API 시크릿 환경 변수 이름</label>
                             <Input type="text" value={apiSecretEnvVar}
                                    onChange={(e) => setApiSecretEnvVar(e.currentTarget.value)}
                                    placeholder="예: BINANCE_API_SECRET"

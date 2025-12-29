@@ -51,6 +51,7 @@
 // =============================================================================
 
 // 표준 라이브러리
+#include <chrono>
 #include <format>
 #include <iostream>
 #include <sstream>
@@ -64,6 +65,8 @@
 #include "Engines/Backtesting.hpp"
 
 // 내부 헤더
+#include "Engines/Exception.hpp"
+#include "Engines/TimeUtils.hpp"
 #include "Strategies/DiceSystem.hpp"
 
 // 네임스페이스
@@ -94,10 +97,14 @@ void Backtesting::RunLocal() {
   // TODO 이 함수는 서버에서 실행해달라는 메시지만 로그. 그 외 fetch 코드만 주석
 
   // 거래소 정책은 계속 변화하므로 매번 저장
-  SetApiEnvVars("BINANCE_API_KEY", "BINANCE_API_SECRET");
   SetMarketDataDirectory("D:/Programming/Backtesting/Data");
+  SetApiEnvVars("BINANCE_API_KEY", "BINANCE_API_SECRET");
+
   FetchExchangeInfo();
   FetchLeverageBracket();
+
+  AddExchangeInfo("D:/Programming/Backtesting/Data/exchange_info.json");
+  AddLeverageBracket("D:/Programming/Backtesting/Data/leverage_bracket.json");
 
   // 엔진 설정
   SetConfig()
@@ -132,9 +139,6 @@ void Backtesting::RunLocal() {
   AddBarData(symbol_names, "1m",
              "D:/Programming/Backtesting/Data/Mark Price Klines", MARK_PRICE);
 
-  AddExchangeInfo("D:/Programming/Backtesting/Data/exchange_info.json");
-  AddLeverageBracket("D:/Programming/Backtesting/Data/leverage_bracket.json");
-
   AddFundingRates(symbol_names,
                   "D:/Programming/Backtesting/Data/Funding Rates");
 
@@ -146,7 +150,7 @@ void Backtesting::RunLocal() {
 
 void Backtesting::RunServer() {
   // 서버 모드로 진입했음을 알리는 로그를 출력하여 Js가 준비 상태를 감지
-  cout << "백테스팅 엔진이 준비되었습니다." << endl;
+  cout << "백테스팅 엔진 준비 완료" << endl;
   string line;
 
   // stdin 명령 루프
@@ -193,16 +197,124 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     const json& json_config = json::parse(json_str);
 
     // =======================================================================
-    // 환경 변수 설정 및 데이터 Fetch
+    // 변수 설정, 데이터 Fetch 및 추가
     // =======================================================================
+    const auto& project_directory =
+        json_config.at("projectDirectory").get<string>();
+    const auto& data_directory = project_directory + "/Data";
+
+    SetMarketDataDirectory(data_directory);
     SetApiEnvVars(json_config.at("apiKeyEnvVar").get<string>(),
                   json_config.at("apiSecretEnvVar").get<string>());
+
+    bool updated = false;
+    const auto now = chrono::duration_cast<chrono::milliseconds>(
+                         chrono::system_clock::now().time_since_epoch())
+                         .count();
+
+    const auto& exchange_info_path = data_directory + "/exchange_info.json";
+    const auto& leverage_bracket_path =
+        data_directory + "/leverage_bracket.json";
+
+    // 거래소 정보 파일이 존재하지 않을 때
+    const auto exist_exchange_info = filesystem::exists(exchange_info_path);
+    if (!exist_exchange_info) {
+      logger_->Log(INFO_L,
+                   "거래소 정보 파일이 존재하지 않아 데이터를 요청합니다.",
+                   __FILE__, __LINE__, true);
+
+      FetchExchangeInfo();
+      updated = true;
+    }
+
+    // 레버리지 구간 파일이 존재하지 않을 때
+    const auto exist_leverage_bracket =
+        filesystem::exists(leverage_bracket_path);
+    if (!exist_leverage_bracket) {
+      logger_->Log(INFO_L,
+                   "레버리지 구간 파일이 존재하지 않아 데이터를 요청합니다.",
+                   __FILE__, __LINE__, true);
+
+      FetchLeverageBracket();
+      updated = true;
+    }
+
+    // 두 파일이 모두 존재할 때
+    if (exist_exchange_info && exist_leverage_bracket) {
+      bool need_update = false;
+      string last_data_update_datetime;
+
+      // "마지막 데이터 업데이트" 항목이 존재하는지 확인
+      if (json_config.contains("lastDataUpdates")) {
+        // "마지막 데이터 업데이트"가 빈 문자열이 아닌지 확인
+        if (last_data_update_datetime =
+                json_config["lastDataUpdates"].get<string>();
+            !last_data_update_datetime.empty()) {
+          const auto last_data_update = UtcDatetimeToUtcTimestamp(
+              last_data_update_datetime, "%Y-%m-%d %H:%M:%S");
+
+          // 마지막 데이터 업데이트 시간으로부터 24시간이 지났으면
+          // 데이터 업데이트 필요
+          if (constexpr int64_t ts_24_hour_ms = 24 * 60 * 60 * 1000;
+              now - last_data_update >= ts_24_hour_ms) {
+            logger_->Log(
+                INFO_L,
+                format(
+                    "현재 시간 [{}]이 마지막 데이터 업데이트 시간 [{}]으로부터 "
+                    "24시간이 경과하여 데이터를 업데이트합니다.",
+                    UtcTimestampToUtcDatetime(now), last_data_update_datetime),
+                __FILE__, __LINE__, true);
+
+            need_update = true;
+          }
+        } else {
+          logger_->Log(INFO_L,
+                       "마지막 데이터 업데이트 시간이 존재하지 않아 데이터를 "
+                       "업데이트합니다.",
+                       __FILE__, __LINE__, true);
+
+          need_update = true;
+        }
+      } else {
+        // "마지막 데이터 업데이트" 항목 자체가 없는 경우 무조건 업데이트
+        logger_->Log(INFO_L,
+                     "마지막 데이터 업데이트 항목이 존재하지 않아 데이터를 "
+                     "업데이트합니다.",
+                     __FILE__, __LINE__, true);
+
+        need_update = true;
+      }
+
+      if (need_update) {
+        FetchExchangeInfo();
+        FetchLeverageBracket();
+
+        updated = true;
+      } else {
+        logger_->Log(
+            INFO_L,
+            format("현재 시간 [{}]이 마지막 데이터 업데이트 시간 [{}]으로부터 "
+                   "24시간이 경과하지 않아 데이터 업데이트를 건너뜁니다.",
+                   UtcTimestampToUtcDatetime(now), last_data_update_datetime),
+            __FILE__, __LINE__, true);
+      }
+    }
+
+    if (updated) {
+      const json& payload = UtcTimestampToUtcDatetime(now);
+
+      cout << "업데이트 완료" << payload.dump() << endl;
+    }
+
+    // 데이터 추가
+    AddExchangeInfo(exchange_info_path);
+    AddLeverageBracket(leverage_bracket_path);
 
     // =======================================================================
     // Config 설정
     // =======================================================================
     SetConfig()
-        .SetProjectDirectory(json_config.at("projectDirectory").get<string>())
+        .SetProjectDirectory(project_directory)
         .SetUseBarMagnifier(json_config.at("useBarMagnifier").get<bool>());
 
     // TODO 각종 설정 추가
@@ -219,8 +331,9 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
 
     // 서버에서 바 데이터 초기화 및 추가를 요청하거나,
     // 이전 바 데이터 추가 중 오류 발생 시 바 데이터를 초기화하고 다시 추가
+    // 초기 추가는 무조건 바 데이터 추가
     if (json_config.at("clearAndAddBarData").get<bool>() ||
-        bar_data_adding_error_occurred) {
+        bar_data_adding_error_occurred || is_first_adding) {
       // 초기 추가가 아닐 때만 바 데이터 초기화
       if (!is_first_adding) {
         if (!bar_data_adding_error_occurred) {
@@ -295,7 +408,7 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
                        bar_data_type);
           }
         }
-      } catch ([[maybe_unused]] const exception& e) {
+      } catch ([[maybe_unused]] const std::exception& e) {
         // 바 데이터 추가 중 발생한 오류는 다음 실행 때
         // 바 데이터를 강제로 초기화하도록 설정
         bar_data_adding_error_occurred = true;
@@ -310,7 +423,7 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     return;  // TODO 테스트용 임시 리턴
 
     RunBacktesting();
-  } catch (const exception& e) {
+  } catch (const std::exception& e) {
     logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
     Logger::LogAndThrowError("단일 백테스팅 실행 중 오류가 발생했습니다.",
                              __FILE__, __LINE__);
@@ -376,15 +489,33 @@ void Backtesting::UpdateFundingRates(const string& symbol) {
 }
 
 void Backtesting::FetchExchangeInfo() {
-  ValidateSettings();
-  BinanceFetcher(api_key_env_var_, api_secret_env_var_, market_data_directory_)
-      .FetchExchangeInfo();
+  try {
+    ValidateSettings();
+    BinanceFetcher(api_key_env_var_, api_secret_env_var_,
+                   market_data_directory_)
+        .FetchExchangeInfo();
+  } catch (const std::exception& e) {
+    if (server_mode) {
+      throw;
+    }
+
+    Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
+  }
 }
 
 void Backtesting::FetchLeverageBracket() {
-  ValidateSettings();
-  BinanceFetcher(api_key_env_var_, api_secret_env_var_, market_data_directory_)
-      .FetchLeverageBracket();
+  try {
+    ValidateSettings();
+    BinanceFetcher(api_key_env_var_, api_secret_env_var_,
+                   market_data_directory_)
+        .FetchLeverageBracket();
+  } catch (const std::exception& e) {
+    if (server_mode) {
+      throw;
+    }
+
+    Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
+  }
 }
 
 void Backtesting::AddBarData(const vector<string>& symbol_names,
@@ -436,17 +567,26 @@ void Backtesting::AddFundingRates(const vector<string>& symbol_names,
 
 void Backtesting::ValidateSettings() {
   if (market_data_directory_.empty()) {
-    Logger::LogAndThrowError(
+    if (server_mode) {
+      throw exception::InvalidValue(
+          "시장 데이터 경로가 설정되지 않았습니다. "
+          "Backboard 폴더 내 editor.json 및 editor.json.bak 파일 삭제 후 "
+          "백보드를 다시 실행해 주세요.");
+    }
+
+    throw exception::InvalidValue(
         "시장 데이터 경로가 설정되지 않았습니다. "
-        "Backtesting::SetMarketDataDirectory 함수를 호출해 주세요.",
-        __FILE__, __LINE__);
+        "Backtesting::SetMarketDataDirectory 함수를 호출해 주세요.");
   }
 
   if (api_key_env_var_.empty() || api_secret_env_var_.empty()) {
-    Logger::LogAndThrowError(
-        "API 환경변수가 설정되지 않았습니다. "
-        "Backtesting::SetApiEnvVars 함수를 호출해 주세요.",
-        __FILE__, __LINE__);
+    if (server_mode) {
+      throw exception::InvalidValue("API 환경 변수가 설정되지 않았습니다.");
+    }
+
+    throw exception::InvalidValue(
+        "API 환경 변수가 설정되지 않았습니다. "
+        "Backtesting::SetApiEnvVars 함수를 호출해 주세요.");
   }
 }
 

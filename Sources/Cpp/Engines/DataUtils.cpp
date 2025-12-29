@@ -599,11 +599,8 @@ string GetEnvVariable(const string& env_var) {
   }
 
   // 환경 변수가 없을 경우 예외 처리
-  Logger::LogAndThrowError(
-      format("환경 변수 [{}]이(가) 존재하지 않습니다.", env_var), __FILE__,
-      __LINE__);
-
-  return {};  // 환경 변수가 없으면 빈 문자열 반환
+  throw invalid_argument(
+      format("환경 변수 [{}]이(가) 존재하지 않습니다.", env_var));
 }
 
 void RunPythonScript(const string& script_path, const vector<string>& args) {
