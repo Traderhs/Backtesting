@@ -749,6 +749,13 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
 
                     case "saveEditorConfig":
                         const nextConfig = wsToConfig(msg.config);
+
+                        // 클라이언트가 빈 문자열을 보냈는데 서버에는 값이 있다면 서버 값을 유지
+                        const currentConfig = getEditorConfig();
+                        if (currentConfig && currentConfig.lastDataUpdates && !nextConfig.lastDataUpdates) {
+                            nextConfig.lastDataUpdates = currentConfig.lastDataUpdates;
+                        }
+
                         const success = saveEditorConfig(nextConfig, broadcastLog, baseDir);
 
                         ws.send(JSON.stringify({

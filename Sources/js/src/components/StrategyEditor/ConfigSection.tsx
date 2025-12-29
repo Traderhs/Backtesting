@@ -19,6 +19,9 @@ interface Props {
     apiSecretEnvVar: string;
     setApiSecretEnvVar: React.Dispatch<React.SetStateAction<string>>;
 
+    lastDataUpdates: string;
+    setLastDataUpdates: React.Dispatch<React.SetStateAction<string>>;
+
     projectDirectory: string;
     setProjectDirectory: React.Dispatch<React.SetStateAction<string>>;
 
@@ -65,6 +68,9 @@ export default function ConfigSection({
 
                                           apiSecretEnvVar,
                                           setApiSecretEnvVar,
+
+                                          lastDataUpdates,
+                                          setLastDataUpdates,
 
                                           projectDirectory,
                                           setProjectDirectory,
@@ -164,12 +170,16 @@ export default function ConfigSection({
                         // 엔진 설정
                         const engine = config['엔진 설정'] || {};
 
-                        if (typeof engine['API 키 환경변수'] === 'string') {
-                            setApiKeyEnvVar(engine['API 키 환경변수']);
+                        if (typeof engine['API 키 환경 변수'] === 'string') {
+                            setApiKeyEnvVar(engine['API 키 환경 변수']);
                         }
 
-                        if (typeof engine['API 시크릿 환경변수'] === 'string') {
-                            setApiSecretEnvVar(engine['API 시크릿 환경변수']);
+                        if (typeof engine['API 시크릿 환경 변수'] === 'string') {
+                            setApiSecretEnvVar(engine['API 시크릿 환경 변수']);
+                        }
+
+                        if (typeof engine['마지막 데이터 업데이트'] === 'string') {
+                            setLastDataUpdates(engine['마지막 데이터 업데이트']);
                         }
 
                         if (typeof engine['프로젝트 폴더'] === 'string') {
@@ -226,7 +236,7 @@ export default function ConfigSection({
         ws.addEventListener('message', handleMessage);
 
         return () => ws.removeEventListener('message', handleMessage);
-    }, [ws, setProjectDirectory, setIsLogPanelOpen, setLogPanelHeight, setUseBarMagnifier, setSymbolConfigs, setSelectedPair, setCustomPairs, setBarDataConfigs, setConfigLoaded, setShowProjectDialog]);
+    }, [ws, setIsLogPanelOpen, setLogPanelHeight, setLastDataUpdates, setProjectDirectory, setShowProjectDialog, setUseBarMagnifier, setSymbolConfigs, setSelectedPair, setCustomPairs, setBarDataConfigs, setConfigLoaded]);
 
     // 서버가 프로젝트 폴더 입력을 요청한 경우
     useEffect(() => {
@@ -249,8 +259,9 @@ export default function ConfigSection({
                     '로그 패널 높이': logPanelHeight,
                 },
                 '엔진 설정': {
-                    'API 키 환경변수': apiKeyEnvVar,
-                    'API 시크릿 환경변수': apiSecretEnvVar,
+                    'API 키 환경 변수': apiKeyEnvVar,
+                    'API 시크릿 환경 변수': apiSecretEnvVar,
+                    '마지막 데이터 업데이트': lastDataUpdates,
 
                     '프로젝트 폴더': projectDirectory ? projectDirectory.replace(/\\/g, '/') : projectDirectory,
                     '바 돋보기 기능': useBarMagnifier,
@@ -287,6 +298,7 @@ export default function ConfigSection({
         logPanelHeight,
         apiKeyEnvVar,
         apiSecretEnvVar,
+        lastDataUpdates,
         useBarMagnifier,
         symbolConfigs,
         selectedPair,

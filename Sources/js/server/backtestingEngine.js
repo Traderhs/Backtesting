@@ -69,9 +69,43 @@ function startBacktestingEngine(activeClients, broadcastLog, baseDir) {
                     return;
                 }
 
-                if (cleaned.includes('백테스팅 엔진이 준비되었습니다.')) {
+                if (cleaned.includes('백테스팅 엔진 준비 완료')) {
                     backtestingEngineReady = true;
                     broadcastLog("INFO", `백테스팅 엔진이 준비되었습니다.`, null, null);
+                    return;
+                }
+
+                if (cleaned.startsWith('업데이트 완료')) {
+                    try {
+                        const payloadText = cleaned.substring('업데이트 완료'.length).trim();
+                        const ts = JSON.parse(payloadText);
+
+                        if (typeof ts !== 'string') {
+                            return;
+                        }
+
+                        if (editorConfig && editorConfig.projectDirectory) {
+                            editorConfig.lastDataUpdates = ts;
+                            (async () => {
+                                await saveEditorConfig(editorConfig, broadcastLog, baseDir);
+                            })();
+
+                            // 클라이언트에게 설정 업데이트 전파
+                            if (activeClients) {
+                                activeClients.forEach(client => {
+                                    if (client.readyState === 1) {
+                                        client.send(JSON.stringify({
+                                            action: "editorConfigLoaded",
+                                            config: configToWs(editorConfig)
+                                        }));
+                                    }
+                                });
+                            }
+                        }
+                    } catch (e) {
+                        broadcastLog("WARN", `업데이트 완료 파싱 실패: ${e && e.message ? e.message : e}`, null, null);
+                    }
+
                     return;
                 }
 
@@ -132,6 +166,7 @@ function runSingleBacktesting(ws, symbolConfigs, barDataConfigs, useBarMagnifier
     const config = {
         apiKeyEnvVar: (editorConfig && editorConfig.apiKeyEnvVar) ? editorConfig.apiKeyEnvVar : "",
         apiSecretEnvVar: (editorConfig && editorConfig.apiSecretEnvVar) ? editorConfig.apiSecretEnvVar : "",
+        lastDataUpdates: (editorConfig && typeof editorConfig.lastDataUpdates === 'string') ? editorConfig.lastDataUpdates : "",
         projectDirectory: (editorConfig && editorConfig.projectDirectory) ? editorConfig.projectDirectory : "",
         useBarMagnifier: useBarMagnifier === undefined ? true : useBarMagnifier,
         clearAndAddBarData: clearAndAddBarData === undefined ? true : clearAndAddBarData,
@@ -441,8 +476,9 @@ function configToObj(config) {
             "로그 패널 높이": (config && config.logPanelHeight !== undefined) ? config.logPanelHeight : 400,
         },
         "엔진 설정": {
-            "API 키 환경변수": (config && typeof config.apiKeyEnvVar === 'string') ? config.apiKeyEnvVar : "",
-            "API 시크릿 환경변수": (config && typeof config.apiSecretEnvVar === 'string') ? config.apiSecretEnvVar : "",
+            "API 키 환경 변수": (config && typeof config.apiKeyEnvVar === 'string') ? config.apiKeyEnvVar : "",
+            "API 시크릿 환경 변수": (config && typeof config.apiSecretEnvVar === 'string') ? config.apiSecretEnvVar : "",
+            "마지막 데이터 업데이트": (config && typeof config.lastDataUpdates === 'string') ? config.lastDataUpdates : "",
 
             "프로젝트 폴더": config ? (config.projectDirectory || "") : "",
             "바 돋보기 기능": (config && config.useBarMagnifier) ? "활성화" : "비활성화",
@@ -470,8 +506,9 @@ function objToConfig(obj) {
 
     const engine = obj && typeof obj === 'object' ? obj["엔진 설정"] : null;
 
-    cfg.apiKeyEnvVar = (typeof obj["API 키 환경변수"] === 'string') ? obj["API 키 환경변수"] : (engine && typeof engine["API 키 환경변수"] === 'string' ? engine["API 키 환경변수"] : "");
-    cfg.apiSecretEnvVar = (typeof obj["API 시크릿 환경변수"] === 'string') ? obj["API 시크릿 환경변수"] : (engine && typeof engine["API 시크릿 환경변수"] === 'string' ? engine["API 시크릿 환경변수"] : "");
+    cfg.apiKeyEnvVar = (typeof obj["API 키 환경 변수"] === 'string') ? obj["API 키 환경 변수"] : (engine && typeof engine["API 키 환경 변수"] === 'string' ? engine["API 키 환경 변수"] : "");
+    cfg.apiSecretEnvVar = (typeof obj["API 시크릿 환경 변수"] === 'string') ? obj["API 시크릿 환경 변수"] : (engine && typeof engine["API 시크릿 환경 변수"] === 'string' ? engine["API 시크릿 환경 변수"] : "");
+    cfg.lastDataUpdates = (engine && typeof engine["마지막 데이터 업데이트"] === 'string') ? engine["마지막 데이터 업데이트"] : '';
 
     cfg.projectDirectory = engine && (engine["프로젝트 폴더"] !== undefined) ? engine["프로젝트 폴더"] : "";
     cfg.useBarMagnifier = engine && (engine["바 돋보기 기능"] === "활성화");
@@ -503,6 +540,7 @@ function createDefaultConfig(projectDirectory) {
 
         apiKeyEnvVar: "",
         apiSecretEnvVar: "",
+        lastDataUpdates: "",
 
         projectDirectory: projectDirectory,
         useBarMagnifier: true,
@@ -538,8 +576,9 @@ function configToWs(config) {
             "로그 패널 높이": (config && typeof config.logPanelHeight === 'number') ? config.logPanelHeight : 400,
         },
         "엔진 설정": {
-            "API 키 환경변수": (config && typeof config.apiKeyEnvVar === 'string') ? config.apiKeyEnvVar : "",
-            "API 시크릿 환경변수": (config && typeof config.apiSecretEnvVar === 'string') ? config.apiSecretEnvVar : "",
+            "API 키 환경 변수": (config && typeof config.apiKeyEnvVar === 'string') ? config.apiKeyEnvVar : "",
+            "API 시크릿 환경 변수": (config && typeof config.apiSecretEnvVar === 'string') ? config.apiSecretEnvVar : "",
+            "마지막 데이터 업데이트": (config && typeof config.lastDataUpdates === 'string') ? config.lastDataUpdates : "",
 
             "프로젝트 폴더": (config && config.projectDirectory) ? toPosix(config.projectDirectory) : "",
             "바 돋보기 기능": !!(config && config.useBarMagnifier),
@@ -573,8 +612,9 @@ function wsToConfig(wsConfig) {
             logPanelOpen: !!wsConfig["에디터 설정"]?.["로그 패널 열림"],
             logPanelHeight: (typeof wsConfig["에디터 설정"]?.["로그 패널 높이"] === 'number') ? wsConfig["에디터 설정"]["로그 패널 높이"] : 400,
 
-            apiKeyEnvVar: (typeof wsConfig["API 키 환경변수"] === 'string') ? wsConfig["API 키 환경변수"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["API 키 환경변수"] === 'string' ? wsConfig["엔진 설정"]["API 키 환경변수"] : ''),
-            apiSecretEnvVar: (typeof wsConfig["API 시크릿 환경변수"] === 'string') ? wsConfig["API 시크릿 환경변수"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["API 시크릿 환경변수"] === 'string' ? wsConfig["엔진 설정"]["API 시크릿 환경변수"] : ''),
+            apiKeyEnvVar: (typeof wsConfig["API 키 환경 변수"] === 'string') ? wsConfig["API 키 환경 변수"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["API 키 환경 변수"] === 'string' ? wsConfig["엔진 설정"]["API 키 환경 변수"] : ''),
+            apiSecretEnvVar: (typeof wsConfig["API 시크릿 환경 변수"] === 'string') ? wsConfig["API 시크릿 환경 변수"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["API 시크릿 환경 변수"] === 'string' ? wsConfig["엔진 설정"]["API 시크릿 환경 변수"] : ''),
+            lastDataUpdates: (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["마지막 데이터 업데이트"] === 'string') ? wsConfig["엔진 설정"]["마지막 데이터 업데이트"] : '',
 
             projectDirectory: wsConfig["엔진 설정"]?.["프로젝트 폴더"] || "",
             useBarMagnifier: !!wsConfig["엔진 설정"]?.["바 돋보기 기능"],
@@ -593,6 +633,7 @@ function wsToConfig(wsConfig) {
 
         apiKeyEnvVar: typeof wsConfig.apiKeyEnvVar === 'string' ? wsConfig.apiKeyEnvVar : '',
         apiSecretEnvVar: typeof wsConfig.apiSecretEnvVar === 'string' ? wsConfig.apiSecretEnvVar : '',
+        lastDataUpdates: (typeof wsConfig.lastDataUpdates === 'string') ? wsConfig.lastDataUpdates : '',
 
         projectDirectory: wsConfig.projectDirectory || "",
         useBarMagnifier: wsConfig.useBarMagnifier ?? true,

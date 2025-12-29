@@ -623,10 +623,10 @@ void BinanceFetcher::FetchExchangeInfo() const {
   try {
     JsonToFile(Fetch(exchange_info_url_), save_path);
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, "\n" + string(e.what()), __FILE__, __LINE__, true);
-    Logger::LogAndThrowError(
-        "바이낸스 거래소 정보 파일을 생성하는 데 실패했습니다.", __FILE__,
-        __LINE__);
+    logger_->Log(ERROR_L, string(e.what()), __FILE__, __LINE__, true);
+
+    throw runtime_error(
+        "바이낸스 거래소 정보 파일을 생성하는 데 실패했습니다.");
   }
 
   logger_->Log(INFO_L,
@@ -644,10 +644,10 @@ void BinanceFetcher::FetchLeverageBracket() const {
                      header_, api_key_env_var_, api_secret_env_var_),
                save_path);
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, "\n" + string(e.what()), __FILE__, __LINE__, true);
-    Logger::LogAndThrowError(
-        "바이낸스 레버리지 구간 파일을 생성하는 데 실패했습니다.", __FILE__,
-        __LINE__);
+    logger_->Log(ERROR_L, string(e.what()), __FILE__, __LINE__, true);
+
+    throw runtime_error(
+        "바이낸스 레버리지 구간 파일을 생성하는 데 실패했습니다.");
   }
 
   logger_->Log(
