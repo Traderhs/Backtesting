@@ -616,8 +616,15 @@ const Chart: React.FC<{
                                 }
 
                                 requestAnimationFrame(() => {
-                                    if (!chartRef.current || !isChartVisible) return;
-                                    chartRef.current.timeScale().fitContent();
+                                    if (!chartRef.current || !isChartVisible) {
+                                        return;
+                                    }
+
+                                    // Calendar 요청의 경우, 불필요한 fitContent/초기 중앙 이동을 생략하여
+                                    // 로딩 후 직접 목표 시간으로 깔끔하게 이동
+                                    if (!isCalendarDateRequest) {
+                                        chartRef.current.timeScale().fitContent();
+                                    }
 
                                     // 2단계 렌더링 보장
                                     setTimeout(() => {
@@ -625,17 +632,25 @@ const Chart: React.FC<{
                                         setIsChartInitialized(true);
                                         setIsTimeSliderLocked(false); // 초기 로드 및 모든 처리 완료 후 슬라이더 잠금 해제
 
-                                        // 첫 데이터 포인트로 이동하여 화면 중앙에 표시
+                                        // 초기 데이터 로드 시만 기본 중앙 위치로 이동
                                         if (chartRef.current && dataCacheRef.current.length > 0 && isChartVisible) {
-                                            // 첫 데이터 포인트의 인덱스는 0
-                                            const firstPointIndex = 0;
-                                            // 화면 너비의 절반 정도를 확보하여 첫 포인트가 화면 중앙에 오도록 설정
-                                            const visibleBars = Math.floor((chartRef.current.timeScale().width() / 10) * 0.8); // 대략적인 화면에 표시되는 바 개수
-                                            // 첫 포인트가 화면 중앙에 오도록 범위 설정
-                                            chartRef.current.timeScale().setVisibleLogicalRange({
-                                                from: firstPointIndex - Math.floor(visibleBars / 2),
-                                                to: firstPointIndex + Math.floor(visibleBars / 2)
-                                            });
+                                            if (!isCalendarDateRequest) {
+                                                // 첫 데이터 포인트의 인덱스는 0
+                                                const firstPointIndex = 0;
+
+                                                // 화면 너비의 절반 정도를 확보하여 첫 포인트가 화면 중앙에 오도록 설정
+                                                const visibleBars = Math.floor((chartRef.current.timeScale().width() / 10) * 0.8); // 대략적인 화면에 표시되는 바 개수
+
+                                                // 첫 포인트가 화면 중앙에 오도록 범위 설정
+                                                chartRef.current.timeScale().setVisibleLogicalRange({
+                                                    from: firstPointIndex - Math.floor(visibleBars / 2),
+                                                    to: firstPointIndex + Math.floor(visibleBars / 2)
+                                                });
+                                            } else {
+                                                // 캘린더 요청인 경우: 초기 중앙 이동은 생략하고
+                                                // Calendar -> Chart 흐름에서 Calendar가 완료 신호를 받은 후
+                                                // 바로 목표 시간으로 이동
+                                            }
                                         }
 
                                         if (candleStickRendererRef.current && isChartVisible) {
@@ -648,9 +663,8 @@ const Chart: React.FC<{
                                             setTimeout(() => {
                                                 (window as any).calendarDataResetComplete = true;
 
-                                                // 달력 이동 완료 후 targetTime 초기화
+                                                // 달력 이동 완료 플래그 설정
                                                 calendarMoveCompletedRef.current = true;
-                                                setTargetTime(undefined);
                                             }, 100);
                                         }
                                     }, 100);
