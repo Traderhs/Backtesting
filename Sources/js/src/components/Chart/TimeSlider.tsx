@@ -47,14 +47,25 @@ const TimeSlider: React.FC<TimeSliderProps> = ({chart, candleStickData, containe
             const timeScale = chart.timeScale();
             const logicalRange = timeScale.getVisibleLogicalRange();
 
-            if (logicalRange) {
-                const visibleCount = logicalRange.to - logicalRange.from;
-                const newFrom = targetIndex - visibleCount / 2;
-                const newTo = targetIndex + visibleCount / 2;
+            let visibleCount: number;
 
-                // 차트 위치 업데이트
-                timeScale.setVisibleLogicalRange({from: newFrom, to: newTo});
+            if (logicalRange) {
+                visibleCount = logicalRange.to - logicalRange.from;
+            } else {
+                // logicalRange가 없으면 대략적인 화면에 표시되는 바 개수를 사용하여 fallback 처리
+                // chart.timeScale().width() 를 사용해 유추
+                try {
+                    visibleCount = Math.floor((chart.timeScale().width() / 10) * 0.8);
+                } catch (e) {
+                    visibleCount = 50; // 최후의 수단 기본값
+                }
             }
+
+            const newFrom = targetIndex - visibleCount / 2;
+            const newTo = targetIndex + visibleCount / 2;
+
+            // 차트 위치 업데이트
+            timeScale.setVisibleLogicalRange({from: newFrom, to: newTo});
         }
     };
 
