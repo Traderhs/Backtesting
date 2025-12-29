@@ -52,6 +52,10 @@ static FastLogBuffer warn_buffer;
 static FastLogBuffer error_buffer;
 static FastLogBuffer backtesting_buffer;
 
+// 초기 로그 파일이 생성되는 임시 디렉터리
+// (프로젝트 디렉터리 입력 전 로그가 생성되는 경우를 대비하여 임시 로그 저장)
+static string temp_log_directory;
+
 // 정적 멤버 변수 정의
 mutex Logger::mutex_;
 shared_ptr<Logger> Logger::instance_;
@@ -184,14 +188,39 @@ Logger::Logger(const string& debug_log_name, const string& info_log_name,
                const string& warn_log_name, const string& error_log_name,
                const string& backtesting_log_name)
     : stop_logging_(false) {
-  const string& log_path = log_directory_.empty() ? "./" : log_directory_ + "/";
+  // 로그 디렉터리가 아직 설정되지 않은 경우에는 임시 디렉터리에 로그를 생성
+  // SetLogDirectory가 호출되면 임시 로그 파일들을 프로젝트의 Logs로 이동
+  string initial_log_path;
 
-  debug_log_.open(log_path + debug_log_name, ios::app);
-  info_log_.open(log_path + info_log_name, ios::app);
-  warn_log_.open(log_path + warn_log_name, ios::app);
-  error_log_.open(log_path + error_log_name, ios::app);
+  if (!log_directory_.empty()) {
+    initial_log_path = log_directory_ + "/";
+  } else {
+    // 임시 로그 디렉터리 생성
+    try {
+      const auto tdir = filesystem::temp_directory_path();
+      temp_log_directory = (tdir / "BacktestingLogs").string();
 
-  const string& backtesting_log_path = log_path + backtesting_log_name;
+      if (!filesystem::exists(temp_log_directory)) {
+        filesystem::create_directories(temp_log_directory);
+      }
+    } catch (...) {
+      // 실패 시 백업으로 현재 디렉터리에 Logs 폴더를 만들어서 사용
+      temp_log_directory = "./Logs";
+
+      if (!filesystem::exists(temp_log_directory)) {
+        filesystem::create_directories(temp_log_directory);
+      }
+    }
+
+    initial_log_path = temp_log_directory + "/";
+  }
+
+  debug_log_.open(initial_log_path + debug_log_name, ios::app);
+  info_log_.open(initial_log_path + info_log_name, ios::app);
+  warn_log_.open(initial_log_path + warn_log_name, ios::app);
+  error_log_.open(initial_log_path + error_log_name, ios::app);
+
+  const string backtesting_log_path = initial_log_path + backtesting_log_name;
 
   // 생성자는 새 프로그램 실행이므로 항상 새로 시작
   backtesting_log_.open(backtesting_log_path, ios::out | ios::trunc);
@@ -306,29 +335,42 @@ void Logger::SetLogDirectory(const string& log_directory) {
                                 backtesting_name};
 
       for (const auto& file : log_files) {
-        if (filesystem::exists("./" + file)) {
-          try {
-            filesystem::rename("./" + file,
-                               format("{}/{}", log_directory, file));
-          } catch (...) {
-            // 이동 실패 시 기존 파일에 내용 추가 후 현재 파일 삭제
+        // 파일 후보 목록: 임시 로그 디렉터리와 현재 작업 디렉터리의 로그 폴더
+        const vector src_candidates = {
+            format("{}/{}", temp_log_directory, file), "./Logs/" + file};
 
-            // 기존 파일이 있다면 현재 파일 내용을 끝에 추가
-            if (const string& target_path =
-                    format("{}/{}", log_directory, file);
-                filesystem::exists(target_path)) {
-              ofstream target_file(target_path, ios::app);
-              ifstream source_file("./" + file);
+        for (const auto& src : src_candidates) {
+          if (src.empty()) {
+            continue;
+          }
 
-              target_file << source_file.rdbuf();
-              target_file.close();
-              source_file.close();
-            } else {
-              // 기존 파일이 없다면 단순 복사
-              filesystem::copy_file("./" + file, target_path);
+          if (filesystem::exists(src)) {
+            try {
+              filesystem::rename(src, format("{}/{}", log_directory, file));
+
+              break;  // 성공하면 다음 파일로
+            } catch (...) {
+              // 이동 실패 시 기존 파일에 내용 추가 후 현재 파일 삭제
+
+              // 기존 파일이 있다면 현재 파일 내용을 끝에 추가
+              if (const string& target_path =
+                      format("{}/{}", log_directory, file);
+                  filesystem::exists(target_path)) {
+                ofstream target_file(target_path, ios::app);
+                ifstream source_file(src);
+
+                target_file << source_file.rdbuf();
+                target_file.close();
+                source_file.close();
+              } else {
+                // 기존 파일이 없다면 단순 복사
+                filesystem::copy_file(src, target_path);
+              }
+
+              filesystem::remove(src);
+
+              break;  // 처리 완료, 다음 파일로
             }
-
-            filesystem::remove("./" + file);
           }
         }
       }
@@ -381,6 +423,7 @@ shared_ptr<Logger>& Logger::GetLogger(const string& debug_log_name,
                    backtesting_log_name),
         Deleter());
   }
+
   return instance_;
 }
 
