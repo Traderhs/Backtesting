@@ -164,8 +164,19 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
         // 시리즈 컴포넌트 생성 전 indicatorSeriesRefs.current 초기화
         indicatorSeriesRefs.current = {};
 
+        // 페인 카운트 초기화: 컴포넌트 재생성 시 중복 카운트 방지
+        if (typeof window !== 'undefined') {
+            window.paneCount = undefined;
+        }
+
         const paneMapping: { [paneName: string]: number } = {};
         let nextPaneIndex = 1; // 메인 차트는 paneIndex 0
+
+        const cleanupPaneCount = () => {
+            if (typeof window !== 'undefined') {
+                window.paneCount = undefined;
+            }
+        }
 
         const comps: JSX.Element[] = [];
         let componentCount = 0;
@@ -296,6 +307,10 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
         });
 
         setSeriesComponents(comps);
+
+        return () => {
+            cleanupPaneCount();
+        };
     }, [chart, config, indicatorDataMap, priceStep, pricePrecision]);
 
     return <div style={{opacity: isVisible ? 1 : 0, transition: 'opacity 0.3s ease'}}>
