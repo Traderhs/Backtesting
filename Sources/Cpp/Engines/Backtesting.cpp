@@ -193,6 +193,12 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     const json& json_config = json::parse(json_str);
 
     // =======================================================================
+    // 환경 변수 설정 및 데이터 Fetch
+    // =======================================================================
+    SetApiEnvVars(json_config.at("apiKeyEnvVar").get<string>(),
+                  json_config.at("apiSecretEnvVar").get<string>());
+
+    // =======================================================================
     // Config 설정
     // =======================================================================
     SetConfig()

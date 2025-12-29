@@ -130,6 +130,8 @@ function runSingleBacktesting(ws, symbolConfigs, barDataConfigs, useBarMagnifier
     }
 
     const config = {
+        apiKeyEnvVar: (editorConfig && editorConfig.apiKeyEnvVar) ? editorConfig.apiKeyEnvVar : "",
+        apiSecretEnvVar: (editorConfig && editorConfig.apiSecretEnvVar) ? editorConfig.apiSecretEnvVar : "",
         projectDirectory: (editorConfig && editorConfig.projectDirectory) ? editorConfig.projectDirectory : "",
         useBarMagnifier: useBarMagnifier === undefined ? true : useBarMagnifier,
         clearAndAddBarData: clearAndAddBarData === undefined ? true : clearAndAddBarData,
@@ -439,6 +441,9 @@ function configToObj(config) {
             "로그 패널 높이": (config && config.logPanelHeight !== undefined) ? config.logPanelHeight : 400,
         },
         "엔진 설정": {
+            "API 키 환경변수": (config && typeof config.apiKeyEnvVar === 'string') ? config.apiKeyEnvVar : "",
+            "API 시크릿 환경변수": (config && typeof config.apiSecretEnvVar === 'string') ? config.apiSecretEnvVar : "",
+
             "프로젝트 폴더": config ? (config.projectDirectory || "") : "",
             "바 돋보기 기능": (config && config.useBarMagnifier) ? "활성화" : "비활성화",
         },
@@ -459,10 +464,15 @@ function objToConfig(obj) {
     const cfg = {};
 
     const editor = obj && typeof obj === 'object' ? obj["에디터 설정"] : null;
+
     cfg.logPanelOpen = editor && (editor["로그 패널 열림"] === "열림");
     cfg.logPanelHeight = editor && (editor["로그 패널 높이"] !== undefined) ? editor["로그 패널 높이"] : 400;
 
     const engine = obj && typeof obj === 'object' ? obj["엔진 설정"] : null;
+
+    cfg.apiKeyEnvVar = (typeof obj["API 키 환경변수"] === 'string') ? obj["API 키 환경변수"] : (engine && typeof engine["API 키 환경변수"] === 'string' ? engine["API 키 환경변수"] : "");
+    cfg.apiSecretEnvVar = (typeof obj["API 시크릿 환경변수"] === 'string') ? obj["API 시크릿 환경변수"] : (engine && typeof engine["API 시크릿 환경변수"] === 'string' ? engine["API 시크릿 환경변수"] : "");
+
     cfg.projectDirectory = engine && (engine["프로젝트 폴더"] !== undefined) ? engine["프로젝트 폴더"] : "";
     cfg.useBarMagnifier = engine && (engine["바 돋보기 기능"] === "활성화");
 
@@ -490,11 +500,17 @@ function createDefaultConfig(projectDirectory) {
     return {
         logPanelOpen: false,
         logPanelHeight: 400,
+
+        apiKeyEnvVar: "",
+        apiSecretEnvVar: "",
+
         projectDirectory: projectDirectory,
         useBarMagnifier: true,
+
         symbolConfigs: [],
         selectedPair: 'USDT',
         customPairs: [],
+
         barDataConfigs: [{
             timeframe: null,
             klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Continuous Klines')),
@@ -522,6 +538,9 @@ function configToWs(config) {
             "로그 패널 높이": (config && typeof config.logPanelHeight === 'number') ? config.logPanelHeight : 400,
         },
         "엔진 설정": {
+            "API 키 환경변수": (config && typeof config.apiKeyEnvVar === 'string') ? config.apiKeyEnvVar : "",
+            "API 시크릿 환경변수": (config && typeof config.apiSecretEnvVar === 'string') ? config.apiSecretEnvVar : "",
+
             "프로젝트 폴더": (config && config.projectDirectory) ? toPosix(config.projectDirectory) : "",
             "바 돋보기 기능": !!(config && config.useBarMagnifier),
         },
@@ -554,6 +573,9 @@ function wsToConfig(wsConfig) {
             logPanelOpen: !!wsConfig["에디터 설정"]?.["로그 패널 열림"],
             logPanelHeight: (typeof wsConfig["에디터 설정"]?.["로그 패널 높이"] === 'number') ? wsConfig["에디터 설정"]["로그 패널 높이"] : 400,
 
+            apiKeyEnvVar: (typeof wsConfig["API 키 환경변수"] === 'string') ? wsConfig["API 키 환경변수"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["API 키 환경변수"] === 'string' ? wsConfig["엔진 설정"]["API 키 환경변수"] : ''),
+            apiSecretEnvVar: (typeof wsConfig["API 시크릿 환경변수"] === 'string') ? wsConfig["API 시크릿 환경변수"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["API 시크릿 환경변수"] === 'string' ? wsConfig["엔진 설정"]["API 시크릿 환경변수"] : ''),
+
             projectDirectory: wsConfig["엔진 설정"]?.["프로젝트 폴더"] || "",
             useBarMagnifier: !!wsConfig["엔진 설정"]?.["바 돋보기 기능"],
 
@@ -568,6 +590,9 @@ function wsToConfig(wsConfig) {
     return {
         logPanelOpen: wsConfig.logPanelOpen ?? false,
         logPanelHeight: wsConfig.logPanelHeight ?? 400,
+
+        apiKeyEnvVar: typeof wsConfig.apiKeyEnvVar === 'string' ? wsConfig.apiKeyEnvVar : '',
+        apiSecretEnvVar: typeof wsConfig.apiSecretEnvVar === 'string' ? wsConfig.apiSecretEnvVar : '',
 
         projectDirectory: wsConfig.projectDirectory || "",
         useBarMagnifier: wsConfig.useBarMagnifier ?? true,
