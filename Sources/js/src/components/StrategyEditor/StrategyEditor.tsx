@@ -1,5 +1,6 @@
 import {useRef, useState} from 'react';
 import {Button} from '../ui/button';
+import {Input} from '@/components/ui/input';
 import {useWebSocket} from '../Server/WebSocketContext';
 import {BarDataConfig, BarDataType, timeframeToString, TimeframeUnit} from '@/types/barData.ts';
 import LogPanel from './LogPanel';
@@ -47,12 +48,14 @@ export default function StrategyEditor() {
         }
     ]);
 
+    const {ws} = useWebSocket();
+    const [apiKeyEnvVar, setApiKeyEnvVar] = useState<string>('');
+    const [apiSecretEnvVar, setApiSecretEnvVar] = useState<string>('');
+    const [projectDirectory, setProjectDirectory] = useState('');
+    const [projectDirectoryInput, setProjectDirectoryInput] = useState('');
+    const [showProjectDialog, setShowProjectDialog] = useState(false);
     const [useBarMagnifier, setUseBarMagnifier] = useState(true);
     const [configLoaded, setConfigLoaded] = useState(false);
-    const {ws} = useWebSocket();
-    const [showProjectDialog, setShowProjectDialog] = useState(false);
-    const [projectDirectoryInput, setProjectDirectoryInput] = useState('');
-    const [projectDirectory, setProjectDirectory] = useState('');
 
     // 설정의 이전 해시값 저장 (변경 감지용)
     const previousConfigHash = useRef<string>('');
@@ -162,29 +165,46 @@ export default function StrategyEditor() {
         <div className="flex flex-col h-full w-full">
             {/* 프로젝트 폴더 다이얼로그 & Config 관리 */}
             <ConfigSection
-                projectDirectory={projectDirectory}
-                setProjectDirectory={setProjectDirectory}
-                projectDirectoryInput={projectDirectoryInput}
-                setProjectDirectoryInput={setProjectDirectoryInput}
-                showProjectDialog={showProjectDialog}
-                setShowProjectDialog={setShowProjectDialog}
-                useBarMagnifier={useBarMagnifier}
-                setUseBarMagnifier={setUseBarMagnifier}
-                symbolConfigs={symbolConfigs}
-                setSymbolConfigs={setSymbolConfigs}
-                selectedPair={selectedPair}
-                setSelectedPair={setSelectedPair}
-                customPairs={customPairs}
-                setCustomPairs={setCustomPairs}
-                barDataConfigs={barDataConfigs}
-                setBarDataConfigs={setBarDataConfigs}
                 isLogPanelOpen={isLogPanelOpen}
                 setIsLogPanelOpen={setIsLogPanelOpen}
+
                 logPanelHeight={logPanelHeight}
                 setLogPanelHeight={setLogPanelHeight}
+
+                addLog={addLog}
+
+                apiKeyEnvVar={apiKeyEnvVar}
+                setApiKeyEnvVar={setApiKeyEnvVar}
+
+                apiSecretEnvVar={apiSecretEnvVar}
+                setApiSecretEnvVar={setApiSecretEnvVar}
+
+                projectDirectory={projectDirectory}
+                setProjectDirectory={setProjectDirectory}
+
+                projectDirectoryInput={projectDirectoryInput}
+                setProjectDirectoryInput={setProjectDirectoryInput}
+
+                showProjectDialog={showProjectDialog}
+                setShowProjectDialog={setShowProjectDialog}
+
+                useBarMagnifier={useBarMagnifier}
+                setUseBarMagnifier={setUseBarMagnifier}
+
+                symbolConfigs={symbolConfigs}
+                setSymbolConfigs={setSymbolConfigs}
+
+                selectedPair={selectedPair}
+                setSelectedPair={setSelectedPair}
+
+                customPairs={customPairs}
+                setCustomPairs={setCustomPairs}
+
+                barDataConfigs={barDataConfigs}
+                setBarDataConfigs={setBarDataConfigs}
+
                 configLoaded={configLoaded}
                 setConfigLoaded={setConfigLoaded}
-                addLog={addLog}
             />
 
             {/* 메인 콘텐츠 영역 */}
@@ -205,6 +225,28 @@ export default function StrategyEditor() {
                         >
                             백테스팅 실행
                         </Button>
+                    </div>
+                </div>
+
+                {/* API 설정 */}
+                <div className="mb-6 p-4 bg-[#071029] border border-gray-700 rounded-lg">
+                    <h2 className="text-sm font-medium text-gray-200 mb-2">API 환경변수 설정</h2>
+                    <p className="text-xs text-gray-400 mb-3">환경변수 이름만 저장합니다. 비밀값은 시스템 환경변수로 관리하세요.</p>
+                    <div className="grid grid-cols-2 gap-3">
+                        <div>
+                            <label className="text-xs text-gray-300">API 키 환경변수 이름</label>
+                            <Input type="text" value={apiKeyEnvVar}
+                                   onChange={(e) => setApiKeyEnvVar(e.currentTarget.value)}
+                                   placeholder="예: BINANCE_API_KEY"
+                                   className="mt-1 bg-[#050a12] border-gray-600"/>
+                        </div>
+                        <div>
+                            <label className="text-xs text-gray-300">API 시크릿 환경변수 이름</label>
+                            <Input type="text" value={apiSecretEnvVar}
+                                   onChange={(e) => setApiSecretEnvVar(e.currentTarget.value)}
+                                   placeholder="예: BINANCE_API_SECRET"
+                                   className="mt-1 bg-[#050a12] border-gray-600"/>
+                        </div>
                     </div>
                 </div>
 

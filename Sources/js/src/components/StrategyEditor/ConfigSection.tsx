@@ -5,29 +5,46 @@ import {useWebSocket} from '../Server/WebSocketContext';
 import {BarDataConfig, parseTimeframeString, timeframeToString} from '@/types/barData.ts';
 
 interface Props {
-    projectDirectory: string;
-    setProjectDirectory: React.Dispatch<React.SetStateAction<string>>;
-    projectDirectoryInput: string;
-    setProjectDirectoryInput: React.Dispatch<React.SetStateAction<string>>;
-    showProjectDialog: boolean;
-    setShowProjectDialog: React.Dispatch<React.SetStateAction<boolean>>;
-    useBarMagnifier: boolean;
-    setUseBarMagnifier: React.Dispatch<React.SetStateAction<boolean>>;
-    symbolConfigs: string[];
-    setSymbolConfigs: React.Dispatch<React.SetStateAction<string[]>>;
-    selectedPair: string;
-    setSelectedPair: React.Dispatch<React.SetStateAction<string>>;
-    customPairs: string[];
-    setCustomPairs: React.Dispatch<React.SetStateAction<string[]>>;
-    barDataConfigs: BarDataConfig[];
-    setBarDataConfigs: React.Dispatch<React.SetStateAction<BarDataConfig[]>>;
     isLogPanelOpen: boolean;
     setIsLogPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
+
     logPanelHeight: number;
     setLogPanelHeight: React.Dispatch<React.SetStateAction<number>>;
+
+    addLog: (level: string, message: string, timestamp?: string | null, fileInfo?: string | null) => void;
+
+    apiKeyEnvVar: string;
+    setApiKeyEnvVar: React.Dispatch<React.SetStateAction<string>>;
+
+    apiSecretEnvVar: string;
+    setApiSecretEnvVar: React.Dispatch<React.SetStateAction<string>>;
+
+    projectDirectory: string;
+    setProjectDirectory: React.Dispatch<React.SetStateAction<string>>;
+
+    projectDirectoryInput: string;
+    setProjectDirectoryInput: React.Dispatch<React.SetStateAction<string>>;
+
+    showProjectDialog: boolean;
+    setShowProjectDialog: React.Dispatch<React.SetStateAction<boolean>>;
+
+    useBarMagnifier: boolean;
+    setUseBarMagnifier: React.Dispatch<React.SetStateAction<boolean>>;
+
+    symbolConfigs: string[];
+    setSymbolConfigs: React.Dispatch<React.SetStateAction<string[]>>;
+
+    selectedPair: string;
+    setSelectedPair: React.Dispatch<React.SetStateAction<string>>;
+
+    customPairs: string[];
+    setCustomPairs: React.Dispatch<React.SetStateAction<string[]>>;
+
+    barDataConfigs: BarDataConfig[];
+    setBarDataConfigs: React.Dispatch<React.SetStateAction<BarDataConfig[]>>;
+
     configLoaded: boolean;
     setConfigLoaded: React.Dispatch<React.SetStateAction<boolean>>;
-    addLog: (level: string, message: string, timestamp?: string | null, fileInfo?: string | null) => void;
 }
 
 /**
@@ -35,35 +52,54 @@ interface Props {
  * editor.json 저장, 프로젝트 폴더 입력 다이얼로그 관리
  */
 export default function ConfigSection({
-                                          projectDirectory,
-                                          setProjectDirectory,
-                                          projectDirectoryInput,
-                                          setProjectDirectoryInput,
-                                          showProjectDialog,
-                                          setShowProjectDialog,
-                                          useBarMagnifier,
-                                          setUseBarMagnifier,
-                                          symbolConfigs,
-                                          setSymbolConfigs,
-                                          selectedPair,
-                                          setSelectedPair,
-                                          customPairs,
-                                          setCustomPairs,
-                                          barDataConfigs,
-                                          setBarDataConfigs,
                                           isLogPanelOpen,
                                           setIsLogPanelOpen,
+
                                           logPanelHeight,
                                           setLogPanelHeight,
+
+                                          addLog,
+
+                                          apiKeyEnvVar,
+                                          setApiKeyEnvVar,
+
+                                          apiSecretEnvVar,
+                                          setApiSecretEnvVar,
+
+                                          projectDirectory,
+                                          setProjectDirectory,
+
+                                          projectDirectoryInput,
+                                          setProjectDirectoryInput,
+
+                                          showProjectDialog,
+                                          setShowProjectDialog,
+
+                                          useBarMagnifier,
+                                          setUseBarMagnifier,
+
+                                          symbolConfigs,
+                                          setSymbolConfigs,
+
+                                          selectedPair,
+                                          setSelectedPair,
+
+                                          customPairs,
+                                          setCustomPairs,
+
+                                          barDataConfigs,
+                                          setBarDataConfigs,
+
                                           configLoaded,
-                                          setConfigLoaded,
-                                          addLog
+                                          setConfigLoaded
                                       }: Props) {
     const {ws, clearProjectDirectoryRequest, projectDirectoryRequested} = useWebSocket();
 
     // 컴포넌트 마운트 시 editor.json 로드 (ws가 CONNECTING 상태일 때 open 이벤트도 처리)
     useEffect(() => {
-        if (!ws) return;
+        if (!ws) {
+            return;
+        }
 
         const trySendLoad = () => {
             if (ws.readyState === WebSocket.OPEN && !configLoaded) {
@@ -127,6 +163,14 @@ export default function ConfigSection({
 
                         // 엔진 설정
                         const engine = config['엔진 설정'] || {};
+
+                        if (typeof engine['API 키 환경변수'] === 'string') {
+                            setApiKeyEnvVar(engine['API 키 환경변수']);
+                        }
+
+                        if (typeof engine['API 시크릿 환경변수'] === 'string') {
+                            setApiSecretEnvVar(engine['API 시크릿 환경변수']);
+                        }
 
                         if (typeof engine['프로젝트 폴더'] === 'string') {
                             setProjectDirectory(engine['프로젝트 폴더']);
@@ -205,6 +249,9 @@ export default function ConfigSection({
                     '로그 패널 높이': logPanelHeight,
                 },
                 '엔진 설정': {
+                    'API 키 환경변수': apiKeyEnvVar,
+                    'API 시크릿 환경변수': apiSecretEnvVar,
+
                     '프로젝트 폴더': projectDirectory ? projectDirectory.replace(/\\/g, '/') : projectDirectory,
                     '바 돋보기 기능': useBarMagnifier,
                 },
@@ -236,13 +283,15 @@ export default function ConfigSection({
 
         return () => clearTimeout(timer);
     }, [
+        isLogPanelOpen,
+        logPanelHeight,
+        apiKeyEnvVar,
+        apiSecretEnvVar,
         useBarMagnifier,
         symbolConfigs,
         selectedPair,
         customPairs,
-        barDataConfigs,
-        isLogPanelOpen,
-        logPanelHeight
+        barDataConfigs
     ]);
 
     // 프로젝트 디렉토리 제공
