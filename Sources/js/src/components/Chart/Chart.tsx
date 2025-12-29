@@ -467,6 +467,11 @@ const Chart: React.FC<{
                                 // 지표 데이터도 초기화
                                 setIndicatorDataMap({});
 
+                                // 캘린더 요청 시 페인 카운트 초기화 (중복 증가 방지)
+                                if (typeof window !== 'undefined') {
+                                    (window as any).paneCount = undefined;
+                                }
+
                                 // loadedFrom/To 범위도 리셋
                                 loadedFromRef.current = null;
                                 loadedToRef.current = null;
