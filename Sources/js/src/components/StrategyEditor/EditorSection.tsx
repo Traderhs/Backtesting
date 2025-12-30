@@ -362,18 +362,71 @@ export default function EditorSection({
                             {logs.length === 0 ? (
                                 <div className="text-gray-500 text-center mt-8">백테스팅을 실행하면 로그가 여기에 표시됩니다.</div>
                             ) : (
-                                logs.map((log, index) => (
-                                    log.level === 'SEPARATOR' ? (
-                                        <div key={index} className="my-2">
-                                            <div style={{
-                                                whiteSpace: 'pre',
-                                                fontFamily: "'Inter', 'Pretendard', monospace",
-                                                fontSize: '14px',
-                                                lineHeight: '1.4',
-                                                color: 'rgba(255, 215, 0, 0.4)',
-                                            }}>{'─'.repeat(150)}</div>
-                                        </div>
-                                    ) : (
+                                logs.map((log, index) => {
+                                    if (log.level === 'SEPARATOR') {
+                                        return (
+                                            <div key={index} className="my-2">
+                                                <div style={{
+                                                    whiteSpace: 'pre',
+                                                    fontFamily: "'Inter', 'Pretendard', monospace",
+                                                    fontSize: '14px',
+                                                    lineHeight: '1.4',
+                                                    color: 'rgba(255, 215, 0, 0.4)',
+                                                }}>{'─'.repeat(150)}</div>
+                                            </div>
+                                        );
+                                    }
+
+                                    // 메시지 내용에서 날짜 및 파일:라인 패턴 하이라이트
+                                    const highlightMessage = () => {
+                                        const message = log.message;
+                                        const elements: React.ReactNode[] = [];
+                                        const logLevelColor = getLogColor(log.level);
+
+                                        // 대괄호 포함/미포함 모두 처리: 날짜와 파일:라인 패턴
+                                        const regex = /(\[?\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}]?)|(\[?[\w.\/\\-]+\.(?:cpp|hpp):\d+]?)/g;
+                                        let lastIndex = 0;
+                                        let key = 0;
+
+                                        for (const match of message.matchAll(regex)) {
+                                            const matchIndex = match.index ?? 0;
+
+                                            // 일반 텍스트
+                                            if (lastIndex < matchIndex) {
+                                                const text = message.slice(lastIndex, matchIndex);
+                                                elements.push(<span key={key++}
+                                                                    style={{color: logLevelColor}}>{text}</span>);
+                                            }
+
+                                            const token = match[0];
+
+                                            // 대괄호 제거 후 판단용 문자열
+                                            const stripped = token.replace(/^\[/, '').replace(/]$/, '');
+
+                                            if (/^\d{4}-\d{2}-\d{2}/.test(stripped)) {
+                                                // 날짜 패턴
+                                                elements.push(<span key={key++}
+                                                                    style={{color: 'rgb(106, 153, 85)'}}>{token}</span>);
+                                            } else {
+                                                // 파일:라인 패턴
+                                                elements.push(<span key={key++}
+                                                                    style={{color: 'rgb(86, 156, 214)'}}>{token}</span>);
+                                            }
+
+                                            lastIndex = matchIndex + match[0].length;
+                                        }
+
+                                        // 남은 일반 텍스트
+                                        if (lastIndex < message.length) {
+                                            const text = message.slice(lastIndex);
+                                            elements.push(<span key={key++}
+                                                                style={{color: logLevelColor}}>{text}</span>);
+                                        }
+
+                                        return elements;
+                                    };
+
+                                    return (
                                         <div key={index} className="mb-1">
                                             {log.timestamp &&
                                                 <span style={{color: 'rgb(106, 153, 85)'}}>[{log.timestamp}]</span>}
@@ -384,10 +437,10 @@ export default function EditorSection({
                                             {log.fileInfo && <><span
                                                 style={{color: 'rgb(86, 156, 214)'}}>[{log.fileInfo}]</span></>}
                                             {' '}
-                                            <span style={{color: getLogColor(log.level)}}>{log.message}</span>
+                                            <span>{highlightMessage()}</span>
                                         </div>
-                                    )
-                                ))
+                                    );
+                                })
                             )}
                         </div>
                     </div>
