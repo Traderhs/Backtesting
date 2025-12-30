@@ -614,7 +614,7 @@ function configToWs(config) {
         })) : [],
         "엔진 설정": {
             "프로젝트 폴더": (config && config.projectDirectory) ? toPosix(config.projectDirectory) : "",
-            "바 돋보기 기능": !!(config && config.useBarMagnifier),
+            "바 돋보기 기능": (config && config.useBarMagnifier) ? "활성화" : "비활성화",
         },
     };
 }
