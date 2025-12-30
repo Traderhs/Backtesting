@@ -11,8 +11,8 @@ Config::Config()
     : initial_balance_(NAN),
       taker_fee_percentage_(NAN),
       maker_fee_percentage_(NAN),
-      check_same_bar_data_(4, true),
-      check_same_bar_data_with_target_(true) {
+      check_same_bar_data_with_target_(true),
+      check_same_bar_data_(4, true) {
   // 증가 카운터는 SetConfig 함수로만 증가하는데 SetConfig 없이 직접 생성자
   // 호출로 전 증가 카운터가 현재 증가 카운터와 같다면 오류 발생
   if (pre_creation_counter_ == creation_counter_) {
@@ -69,16 +69,6 @@ Config& Config::SetMakerFeePercentage(const double maker_fee_percentage) {
   return *this;
 }
 
-Config& Config::SetCheckLimitMaxQty(bool check_limit_max_qty) {
-  check_limit_max_qty_ = check_limit_max_qty;
-  return *this;
-}
-
-Config& Config::SetCheckLimitMinQty(bool check_limit_min_qty) {
-  check_limit_min_qty_ = check_limit_min_qty;
-  return *this;
-}
-
 Config& Config::SetCheckMarketMaxQty(bool check_market_max_qty) {
   check_market_max_qty_ = check_market_max_qty;
   return *this;
@@ -89,18 +79,28 @@ Config& Config::SetCheckMarketMinQty(bool check_market_min_qty) {
   return *this;
 }
 
+Config& Config::SetCheckLimitMaxQty(bool check_limit_max_qty) {
+  check_limit_max_qty_ = check_limit_max_qty;
+  return *this;
+}
+
+Config& Config::SetCheckLimitMinQty(bool check_limit_min_qty) {
+  check_limit_min_qty_ = check_limit_min_qty;
+  return *this;
+}
+
 Config& Config::SetCheckMinNotionalValue(bool check_min_notional_value) {
   check_min_notional_value_ = check_min_notional_value;
   return *this;
 }
 
-Config& Config::DisableSameBarDataCheck(BarDataType bar_data_type) {
-  check_same_bar_data_[static_cast<size_t>(bar_data_type)] = false;
+Config& Config::DisableSameBarDataWithTargetCheck() {
+  check_same_bar_data_with_target_ = false;
   return *this;
 }
 
-Config& Config::DisableSameBarDataWithTargetCheck() {
-  check_same_bar_data_with_target_ = false;
+Config& Config::DisableSameBarDataCheck(BarDataType bar_data_type) {
+  check_same_bar_data_[static_cast<size_t>(bar_data_type)] = false;
   return *this;
 }
 
@@ -111,26 +111,26 @@ double Config::GetInitialBalance() const { return initial_balance_; }
 double Config::GetTakerFeePercentage() const { return taker_fee_percentage_; }
 double Config::GetMakerFeePercentage() const { return maker_fee_percentage_; }
 shared_ptr<Slippage> Config::GetSlippage() const { return slippage_; }
-optional<bool> Config::GetCheckLimitMaxQty() const {
-  return check_limit_max_qty_;
-}
-optional<bool> Config::GetCheckLimitMinQty() const {
-  return check_limit_min_qty_;
-}
 optional<bool> Config::GetCheckMarketMaxQty() const {
   return check_market_max_qty_;
 }
 optional<bool> Config::GetCheckMarketMinQty() const {
   return check_market_min_qty_;
 }
+optional<bool> Config::GetCheckLimitMaxQty() const {
+  return check_limit_max_qty_;
+}
+optional<bool> Config::GetCheckLimitMinQty() const {
+  return check_limit_min_qty_;
+}
 optional<bool> Config::GetCheckMinNotionalValue() const {
   return check_min_notional_value_;
 }
-vector<bool> Config::GetCheckSameBarData() const {
-  return check_same_bar_data_;
-}
 bool Config::GetCheckSameBarDataWithTarget() const {
   return check_same_bar_data_with_target_;
+}
+vector<bool> Config::GetCheckSameBarData() const {
+  return check_same_bar_data_;
 }
 
 }  // namespace backtesting::engine

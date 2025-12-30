@@ -170,10 +170,10 @@ class BaseOrderHandler {
   shared_ptr<Slippage> slippage_;  // 슬리피지 계산 방법
   double taker_fee_percentage_;    // 테이커 수수료율
   double maker_fee_percentage_;    // 메이커 수수료율
-  bool check_limit_max_qty_;       // 지정가 최대 수량 검사 여부
-  bool check_limit_min_qty_;       // 지정가 최소 수량 검사 여부
   bool check_market_max_qty_;      // 시장가 최대 수량 검사 여부
   bool check_market_min_qty_;      // 시장가 최소 수량 검사 여부
+  bool check_limit_max_qty_;       // 지정가 최대 수량 검사 여부
+  bool check_limit_min_qty_;       // 지정가 최소 수량 검사 여부
   bool check_min_notional_value_;  // 최소 명목 가치 검사 여부
 
   // 심볼 정보

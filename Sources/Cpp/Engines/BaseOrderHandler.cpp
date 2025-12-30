@@ -28,10 +28,10 @@ BaseOrderHandler::BaseOrderHandler()
     : initial_balance_(NAN),
       taker_fee_percentage_(NAN),
       maker_fee_percentage_(NAN),
-      check_limit_max_qty_(true),
-      check_limit_min_qty_(true),
       check_market_max_qty_(true),
       check_market_min_qty_(true),
+      check_limit_max_qty_(true),
+      check_limit_min_qty_(true),
       check_min_notional_value_(true),
       current_position_size_(0),
       just_entered_(false),
@@ -606,10 +606,10 @@ void BaseOrderHandler::Initialize(const int num_symbols,
   slippage_ = config_->GetSlippage();
   taker_fee_percentage_ = config_->GetTakerFeePercentage();
   maker_fee_percentage_ = config_->GetMakerFeePercentage();
-  check_limit_max_qty_ = *config_->GetCheckLimitMaxQty();
-  check_limit_min_qty_ = *config_->GetCheckLimitMinQty();
   check_market_max_qty_ = *config_->GetCheckMarketMaxQty();
   check_market_min_qty_ = *config_->GetCheckMarketMinQty();
+  check_limit_max_qty_ = *config_->GetCheckLimitMaxQty();
+  check_limit_min_qty_ = *config_->GetCheckLimitMinQty();
   check_min_notional_value_ = *config_->GetCheckMinNotionalValue();
 
   // 심볼 이름 초기화
