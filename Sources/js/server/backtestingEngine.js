@@ -167,11 +167,11 @@ function runSingleBacktesting(ws, symbolConfigs, barDataConfigs, useBarMagnifier
         apiKeyEnvVar: (editorConfig && editorConfig.apiKeyEnvVar) ? editorConfig.apiKeyEnvVar : "",
         apiSecretEnvVar: (editorConfig && editorConfig.apiSecretEnvVar) ? editorConfig.apiSecretEnvVar : "",
         lastDataUpdates: (editorConfig && typeof editorConfig.lastDataUpdates === 'string') ? editorConfig.lastDataUpdates : "",
-        projectDirectory: (editorConfig && editorConfig.projectDirectory) ? editorConfig.projectDirectory : "",
-        useBarMagnifier: useBarMagnifier === undefined ? true : useBarMagnifier,
-        clearAndAddBarData: clearAndAddBarData === undefined ? true : clearAndAddBarData,
+        clearAndAddBarData: clearAndAddBarData !== undefined ? clearAndAddBarData : true,
         symbolConfigs: symbolConfigs || [],
         barDataConfigs: barDataConfigs || [],
+        projectDirectory: (editorConfig && editorConfig.projectDirectory) ? editorConfig.projectDirectory : "",
+        useBarMagnifier: useBarMagnifier !== undefined ? useBarMagnifier : true
     };
 
     const command = `runSingleBacktesting ${JSON.stringify(config)}\n`;
@@ -475,13 +475,13 @@ function configToObj(config) {
             "로그 패널 열림": (config && config.logPanelOpen) ? "열림" : "닫힘",
             "로그 패널 높이": (config && config.logPanelHeight !== undefined) ? config.logPanelHeight : 400,
         },
-        "엔진 설정": {
+        "거래소 설정": {
             "API 키 환경 변수": (config && typeof config.apiKeyEnvVar === 'string') ? config.apiKeyEnvVar : "",
             "API 시크릿 환경 변수": (config && typeof config.apiSecretEnvVar === 'string') ? config.apiSecretEnvVar : "",
-            "마지막 데이터 업데이트": (config && typeof config.lastDataUpdates === 'string') ? config.lastDataUpdates : "",
 
-            "프로젝트 폴더": config ? (config.projectDirectory || "") : "",
-            "바 돋보기 기능": (config && config.useBarMagnifier) ? "활성화" : "비활성화",
+            "거래소 정보 파일 경로": (config && typeof config.exchangeInfoPath === 'string') ? config.exchangeInfoPath : "",
+            "레버리지 구간 파일 경로": (config && typeof config.leverageBracketPath === 'string') ? config.leverageBracketPath : "",
+            "마지막 데이터 업데이트": (config && typeof config.lastDataUpdates === 'string') ? config.lastDataUpdates : "",
         },
         "심볼 설정": {
             "심볼": Array.isArray(config && config.symbolConfigs) ? config.symbolConfigs : ((config && config.symbolConfigs) || []),
@@ -493,26 +493,33 @@ function configToObj(config) {
         "바 데이터 설정": (config && Array.isArray(config.barDataConfigs)) ? config.barDataConfigs.map((bar_cfg) => ({
             "타임프레임": bar_cfg.timeframe, "바 데이터 폴더": bar_cfg.klinesDirectory, "바 데이터 유형": bar_cfg.barDataType,
         })) : [],
+        "엔진 설정": {
+            "프로젝트 폴더": config ? (config.projectDirectory || "") : "",
+            "바 돋보기 기능": (config && config.useBarMagnifier) ? "활성화" : "비활성화",
+        },
     };
 }
 
 function objToConfig(obj) {
     const cfg = {};
 
+    // 에디터 설정
     const editor = obj && typeof obj === 'object' ? obj["에디터 설정"] : null;
 
     cfg.logPanelOpen = editor && (editor["로그 패널 열림"] === "열림");
     cfg.logPanelHeight = editor && (editor["로그 패널 높이"] !== undefined) ? editor["로그 패널 높이"] : 400;
 
-    const engine = obj && typeof obj === 'object' ? obj["엔진 설정"] : null;
+    // 거래소 설정
+    const exchange = obj && typeof obj === 'object' ? obj["거래소 설정"] : null;
 
-    cfg.apiKeyEnvVar = (typeof obj["API 키 환경 변수"] === 'string') ? obj["API 키 환경 변수"] : (engine && typeof engine["API 키 환경 변수"] === 'string' ? engine["API 키 환경 변수"] : "");
-    cfg.apiSecretEnvVar = (typeof obj["API 시크릿 환경 변수"] === 'string') ? obj["API 시크릿 환경 변수"] : (engine && typeof engine["API 시크릿 환경 변수"] === 'string' ? engine["API 시크릿 환경 변수"] : "");
-    cfg.lastDataUpdates = (engine && typeof engine["마지막 데이터 업데이트"] === 'string') ? engine["마지막 데이터 업데이트"] : '';
+    cfg.apiKeyEnvVar = (exchange && typeof exchange["API 키 환경 변수"] === 'string') ? exchange["API 키 환경 변수"] : (engine && typeof engine["API 키 환경 변수"] === 'string' ? engine["API 키 환경 변수"] : (typeof obj["API 키 환경 변수"] === 'string' ? obj["API 키 환경 변수"] : ""));
+    cfg.apiSecretEnvVar = (exchange && typeof exchange["API 시크릿 환경 변수"] === 'string') ? exchange["API 시크릿 환경 변수"] : (engine && typeof engine["API 시크릿 환경 변수"] === 'string' ? engine["API 시크릿 환경 변수"] : (typeof obj["API 시크릿 환경 변수"] === 'string' ? obj["API 시크릿 환경 변수"] : ""));
 
-    cfg.projectDirectory = engine && (engine["프로젝트 폴더"] !== undefined) ? engine["프로젝트 폴더"] : "";
-    cfg.useBarMagnifier = engine && (engine["바 돋보기 기능"] === "활성화");
+    cfg.exchangeInfoPath = (exchange && typeof exchange["거래소 정보 파일 경로"] === 'string') ? exchange["거래소 정보 파일 경로"] : (engine && typeof engine["거래소 정보 파일 경로"] === 'string' ? engine["거래소 정보 파일 경로"] : (typeof obj["거래소 정보 파일 경로"] === 'string' ? obj["거래소 정보 파일 경로"] : ''));
+    cfg.leverageBracketPath = (exchange && typeof exchange["레버리지 구간 파일 경로"] === 'string') ? exchange["레버리지 구간 파일 경로"] : (engine && typeof engine["레버리지 구간 파일 경로"] === 'string' ? engine["레버리지 구간 파일 경로"] : (typeof obj["레버리지 구간 파일 경로"] === 'string' ? obj["레버리지 구간 파일 경로"] : ''));
+    cfg.lastDataUpdates = (exchange && typeof exchange["마지막 데이터 업데이트"] === 'string') ? exchange["마지막 데이터 업데이트"] : (engine && typeof engine["마지막 데이터 업데이트"] === 'string' ? engine["마지막 데이터 업데이트"] : "");
 
+    // 심볼 설정
     const symSection = obj && typeof obj === 'object' ? obj["심볼 설정"] : null;
 
     if (symSection && typeof symSection === 'object') {
@@ -524,11 +531,18 @@ function objToConfig(obj) {
         cfg.customPairs = Array.isArray(pairCfgInner["커스텀 페어"]) ? pairCfgInner["커스텀 페어"] : [];
     }
 
+    // 바 데이터 설정
     cfg.barDataConfigs = (obj["바 데이터 설정"] || []).map((bar_data_config) => ({
         timeframe: bar_data_config["타임프레임"],
         klinesDirectory: bar_data_config["바 데이터 폴더"],
         barDataType: bar_data_config["바 데이터 유형"],
     }));
+
+    // 엔진 설정
+    const engine = obj && typeof obj === 'object' ? obj["엔진 설정"] : null;
+
+    cfg.projectDirectory = engine && (engine["프로젝트 폴더"] !== undefined) ? engine["프로젝트 폴더"] : "";
+    cfg.useBarMagnifier = engine && (engine["바 돋보기 기능"] === "활성화");
 
     return cfg;
 }
@@ -540,10 +554,10 @@ function createDefaultConfig(projectDirectory) {
 
         apiKeyEnvVar: "",
         apiSecretEnvVar: "",
-        lastDataUpdates: "",
 
-        projectDirectory: projectDirectory,
-        useBarMagnifier: true,
+        exchangeInfoPath: toPosix(path.join(projectDirectory, 'Data', 'exchange_info.json')),
+        leverageBracketPath: toPosix(path.join(projectDirectory, 'Data', 'leverage_bracket.json')),
+        lastDataUpdates: "",
 
         symbolConfigs: [],
         selectedPair: 'USDT',
@@ -565,7 +579,10 @@ function createDefaultConfig(projectDirectory) {
             timeframe: null,
             klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Mark Price Klines')),
             barDataType: '마크 가격'
-        }]
+        }],
+
+        projectDirectory: projectDirectory,
+        useBarMagnifier: true,
     };
 }
 
@@ -575,13 +592,13 @@ function configToWs(config) {
             "로그 패널 열림": !!(config && config.logPanelOpen),
             "로그 패널 높이": (config && typeof config.logPanelHeight === 'number') ? config.logPanelHeight : 400,
         },
-        "엔진 설정": {
+        "거래소 설정": {
             "API 키 환경 변수": (config && typeof config.apiKeyEnvVar === 'string') ? config.apiKeyEnvVar : "",
             "API 시크릿 환경 변수": (config && typeof config.apiSecretEnvVar === 'string') ? config.apiSecretEnvVar : "",
-            "마지막 데이터 업데이트": (config && typeof config.lastDataUpdates === 'string') ? config.lastDataUpdates : "",
 
-            "프로젝트 폴더": (config && config.projectDirectory) ? toPosix(config.projectDirectory) : "",
-            "바 돋보기 기능": !!(config && config.useBarMagnifier),
+            "거래소 정보 파일 경로": (config && typeof config.exchangeInfoPath === 'string') ? config.exchangeInfoPath : "",
+            "레버리지 구간 파일 경로": (config && typeof config.leverageBracketPath === 'string') ? config.leverageBracketPath : "",
+            "마지막 데이터 업데이트": (config && typeof config.lastDataUpdates === 'string') ? config.lastDataUpdates : "",
         },
         "심볼 설정": {
             "심볼": (config && Array.isArray(config.symbolConfigs)) ? config.symbolConfigs : [],
@@ -593,6 +610,10 @@ function configToWs(config) {
         "바 데이터 설정": (config && Array.isArray(config.barDataConfigs)) ? config.barDataConfigs.map((b) => ({
             ...b, klinesDirectory: b.klinesDirectory ? toPosix(b.klinesDirectory) : b.klinesDirectory
         })) : [],
+        "엔진 설정": {
+            "프로젝트 폴더": (config && config.projectDirectory) ? toPosix(config.projectDirectory) : "",
+            "바 돋보기 기능": !!(config && config.useBarMagnifier),
+        },
     };
 }
 
@@ -607,23 +628,26 @@ function wsToConfig(wsConfig) {
         };
     }
 
-    if (wsConfig["에디터 설정"] || wsConfig["엔진 설정"] || wsConfig["심볼 설정"] || wsConfig["바 데이터 설정"]) {
+    if (wsConfig["에디터 설정"] || wsConfig["엔진 설정"] || wsConfig["심볼 설정"] || wsConfig["바 데이터 설정"] || wsConfig["거래소 설정"]) {
         return {
             logPanelOpen: !!wsConfig["에디터 설정"]?.["로그 패널 열림"],
             logPanelHeight: (typeof wsConfig["에디터 설정"]?.["로그 패널 높이"] === 'number') ? wsConfig["에디터 설정"]["로그 패널 높이"] : 400,
 
-            apiKeyEnvVar: (typeof wsConfig["API 키 환경 변수"] === 'string') ? wsConfig["API 키 환경 변수"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["API 키 환경 변수"] === 'string' ? wsConfig["엔진 설정"]["API 키 환경 변수"] : ''),
-            apiSecretEnvVar: (typeof wsConfig["API 시크릿 환경 변수"] === 'string') ? wsConfig["API 시크릿 환경 변수"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["API 시크릿 환경 변수"] === 'string' ? wsConfig["엔진 설정"]["API 시크릿 환경 변수"] : ''),
-            lastDataUpdates: (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["마지막 데이터 업데이트"] === 'string') ? wsConfig["엔진 설정"]["마지막 데이터 업데이트"] : '',
+            apiKeyEnvVar: (wsConfig["거래소 설정"] && typeof wsConfig["거래소 설정"]["API 키 환경 변수"] === 'string') ? wsConfig["거래소 설정"]["API 키 환경 변수"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["API 키 환경 변수"] === 'string' ? wsConfig["엔진 설정"]["API 키 환경 변수"] : ''),
+            apiSecretEnvVar: (wsConfig["거래소 설정"] && typeof wsConfig["거래소 설정"]["API 시크릿 환경 변수"] === 'string') ? wsConfig["거래소 설정"]["API 시크릿 환경 변수"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["API 시크릿 환경 변수"] === 'string' ? wsConfig["엔진 설정"]["API 시크릿 환경 변수"] : ''),
 
-            projectDirectory: wsConfig["엔진 설정"]?.["프로젝트 폴더"] || "",
-            useBarMagnifier: !!wsConfig["엔진 설정"]?.["바 돋보기 기능"],
+            exchangeInfoPath: (wsConfig["거래소 설정"] && typeof wsConfig["거래소 설정"]["거래소 정보 파일 경로"] === 'string') ? wsConfig["거래소 설정"]["거래소 정보 파일 경로"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["거래소 정보 파일 경로"] === 'string' ? wsConfig["엔진 설정"]["거래소 정보 파일 경로"] : ''),
+            leverageBracketPath: (wsConfig["거래소 설정"] && typeof wsConfig["거래소 설정"]["레버리지 구간 파일 경로"] === 'string') ? wsConfig["거래소 설정"]["레버리지 구간 파일 경로"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["레버리지 구간 파일 경로"] === 'string' ? wsConfig["엔진 설정"]["레버리지 구간 파일 경로"] : ''),
+            lastDataUpdates: (wsConfig["거래소 설정"] && typeof wsConfig["거래소 설정"]["마지막 데이터 업데이트"] === 'string') ? wsConfig["거래소 설정"]["마지막 데이터 업데이트"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["마지막 데이터 업데이트"] === 'string' ? wsConfig["엔진 설정"]["마지막 데이터 업데이트"] : ''),
 
             symbolConfigs: Array.isArray(wsConfig["심볼 설정"]?.["심볼"]) ? wsConfig["심볼 설정"]["심볼"] : [],
             selectedPair: (wsConfig["심볼 설정"] && wsConfig["심볼 설정"]["페어"] && typeof wsConfig["심볼 설정"]["페어"]["선택된 페어"] === 'string') ? wsConfig["심볼 설정"]["페어"]["선택된 페어"] : '',
             customPairs: (wsConfig["심볼 설정"] && wsConfig["심볼 설정"]["페어"] && Array.isArray(wsConfig["심볼 설정"]["페어"]["커스텀 페어"])) ? wsConfig["심볼 설정"]["페어"]["커스텀 페어"] : [],
 
-            barDataConfigs: Array.isArray(wsConfig["바 데이터 설정"]) ? wsConfig["바 데이터 설정"] : []
+            barDataConfigs: Array.isArray(wsConfig["바 데이터 설정"]) ? wsConfig["바 데이터 설정"] : [],
+
+            projectDirectory: wsConfig["엔진 설정"]?.["프로젝트 폴더"] || "",
+            useBarMagnifier: !!wsConfig["엔진 설정"]?.["바 돋보기 기능"]
         };
     }
 
@@ -633,16 +657,19 @@ function wsToConfig(wsConfig) {
 
         apiKeyEnvVar: typeof wsConfig.apiKeyEnvVar === 'string' ? wsConfig.apiKeyEnvVar : '',
         apiSecretEnvVar: typeof wsConfig.apiSecretEnvVar === 'string' ? wsConfig.apiSecretEnvVar : '',
-        lastDataUpdates: (typeof wsConfig.lastDataUpdates === 'string') ? wsConfig.lastDataUpdates : '',
 
-        projectDirectory: wsConfig.projectDirectory || "",
-        useBarMagnifier: wsConfig.useBarMagnifier ?? true,
+        exchangeInfoPath: typeof wsConfig.exchangeInfoPath === 'string' ? wsConfig.exchangeInfoPath : '',
+        leverageBracketPath: typeof wsConfig.leverageBracketPath === 'string' ? wsConfig.leverageBracketPath : '',
+        lastDataUpdates: (typeof wsConfig.lastDataUpdates === 'string') ? wsConfig.lastDataUpdates : '',
 
         symbolConfigs: Array.isArray(wsConfig.symbolConfigs) ? wsConfig.symbolConfigs : [],
         selectedPair: typeof wsConfig.selectedPair === 'string' ? wsConfig.selectedPair : '',
         customPairs: Array.isArray(wsConfig.customPairs) ? wsConfig.customPairs : [],
 
-        barDataConfigs: Array.isArray(wsConfig.barDataConfigs) ? wsConfig.barDataConfigs : []
+        barDataConfigs: Array.isArray(wsConfig.barDataConfigs) ? wsConfig.barDataConfigs : [],
+
+        projectDirectory: wsConfig.projectDirectory || "",
+        useBarMagnifier: wsConfig.useBarMagnifier ?? true
     };
 }
 

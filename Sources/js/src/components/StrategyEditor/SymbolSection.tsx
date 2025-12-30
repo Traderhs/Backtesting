@@ -3,16 +3,7 @@ import {Input} from '@/components/ui/input';
 import {Button} from '../ui/button';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
 import {useWebSocket} from '../Server/WebSocketContext';
-
-interface Props {
-    symbolConfigs: string[];
-    setSymbolConfigs: React.Dispatch<React.SetStateAction<string[]>>;
-    addLog: (level: string, message: string, timestamp?: string | null, fileInfo?: string | null) => void;
-    selectedPair: string;
-    setSelectedPair: React.Dispatch<React.SetStateAction<string>>;
-    customPairs: string[];
-    setCustomPairs: React.Dispatch<React.SetStateAction<string[]>>;
-}
+import {useStrategy} from './StrategyContext';
 
 // 기본 페어 목록 (우선순위대로)
 const DEFAULT_PAIRS = [
@@ -22,22 +13,24 @@ const DEFAULT_PAIRS = [
     'USD', 'KRW', 'JPY', 'EUR', 'GBP'  // 일반적으로 많이 쓰는 페어
 ];
 
-export default function SymbolSection({
-                                          symbolConfigs,
-                                          setSymbolConfigs,
-                                          addLog,
-                                          selectedPair,
-                                          setSelectedPair,
-                                          customPairs,
-                                          setCustomPairs
-                                      }: Props) {
+export default function SymbolSection() {
+    const {
+        symbolConfigs,
+        setSymbolConfigs,
+        selectedPair,
+        setSelectedPair,
+        customPairs,
+        setCustomPairs,
+        addLog,
+    } = useStrategy();
+
     const [symbolLogos, setSymbolLogos] = useState<Record<string, { url: string | null; loading: boolean }>>({});
     const [symbolInput, setSymbolInput] = useState<string>('');
     const [knownSymbols, setKnownSymbols] = useState<string[]>([]);
     const [suggestionsVisible, setSuggestionsVisible] = useState<boolean>(false);
     const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(-1);
     const [justAutocompleted, setJustAutocompleted] = useState<boolean>(false);
-    const [autocompletedBase, setAutocompletedBase] = useState<string | null>(null); // Tab/Click으로 자동완성된 베이스 심볼
+    const [autocompletedBase, setAutocompletedBase] = useState<string | null>(null);
     const [caretPos, setCaretPos] = useState<number | null>(null);
     const suggestionsContainerRef = useRef<HTMLDivElement | null>(null);
 
