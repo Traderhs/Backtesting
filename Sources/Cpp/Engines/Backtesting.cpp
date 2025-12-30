@@ -15,10 +15,11 @@
 // For commercial licensing inquiries, please contact: dice000908@gmail.com
 
 // =============================================================================
-//  ● Backtesting - 다중 심볼에 대한 고속, 정밀 백테스팅을 지원하는 프로그램 ●
+//  ● Backtesting - 바이낸스 선물 구조를 반영한 다중 심볼 백테스팅 엔진 ●
 //
-//  ◆ 다중 자산 포트폴리오 백테스팅 ◆
+//  ◆ 다중 심볼 포트폴리오 백테스팅 ◆
 //  ◆ 벡터화 내부 구조로 고속 백테스팅 ◆
+//  ◆ 펀딩, 강제 청산, 레버리지 등 반영 ◆
 //  ◆ 그래프 시각화 분석 ◆
 //  ◆ 성과 통계 분석 ◆
 //  ◆ 워크 포워드, 몬테카를로 시뮬레이션 등 고급 통계 분석 ◆
@@ -197,10 +198,20 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     const json& json_config = json::parse(json_str);
 
     // =======================================================================
-    // 변수 설정, 데이터 Fetch 및 추가
+    // Config 설정
     // =======================================================================
     const auto& project_directory =
         json_config.at("projectDirectory").get<string>();
+
+    SetConfig()
+        .SetProjectDirectory(project_directory)
+        .SetUseBarMagnifier(json_config.at("useBarMagnifier").get<bool>());
+
+    // TODO 각종 설정 추가
+
+    // =======================================================================
+    // 변수 설정, 데이터 Fetch 및 추가
+    // =======================================================================
     const auto& data_directory = project_directory + "/Data";
 
     SetMarketDataDirectory(data_directory);
@@ -309,15 +320,6 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     // 데이터 추가
     AddExchangeInfo(exchange_info_path);
     AddLeverageBracket(leverage_bracket_path);
-
-    // =======================================================================
-    // Config 설정
-    // =======================================================================
-    SetConfig()
-        .SetProjectDirectory(project_directory)
-        .SetUseBarMagnifier(json_config.at("useBarMagnifier").get<bool>());
-
-    // TODO 각종 설정 추가
 
     // =========================================================================
     // 바 데이터 추가
