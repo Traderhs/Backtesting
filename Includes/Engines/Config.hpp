@@ -110,26 +110,26 @@ class Config final {
     return *this;
   }
 
-  // 지정가 최대 수량 검사를 하는지 여부를 설정하는 함수
-  Config& SetCheckLimitMaxQty(bool check_limit_max_qty);
-
-  // 지정가 최소 수량 검사를 하는지 여부를 설정하는 함수
-  Config& SetCheckLimitMinQty(bool check_limit_min_qty);
-
   // 시장가 최대 수량 검사를 하는지 여부를 설정하는 함수
   Config& SetCheckMarketMaxQty(bool check_market_max_qty);
 
   // 시장가 최소 수량 검사를 하는지 여부를 설정하는 함수
   Config& SetCheckMarketMinQty(bool check_market_min_qty);
 
+  // 지정가 최대 수량 검사를 하는지 여부를 설정하는 함수
+  Config& SetCheckLimitMaxQty(bool check_limit_max_qty);
+
+  // 지정가 최소 수량 검사를 하는지 여부를 설정하는 함수
+  Config& SetCheckLimitMinQty(bool check_limit_min_qty);
+
   // 최소 명목 가치 검사를 하는지 여부를 설정하는 함수
   Config& SetCheckMinNotionalValue(bool check_min_notional_value);
 
-  // 심볼 간 바 데이터 중복 검사를 비활성화하는 함수
-  Config& DisableSameBarDataCheck(BarDataType bar_data_type);
-
   // 마크 가격 바 데이터와 목표 바 데이터의 중복 검사를 비활성화하는 함수
   Config& DisableSameBarDataWithTargetCheck();
+
+  // 심볼 간 바 데이터 중복 검사를 비활성화하는 함수
+  Config& DisableSameBarDataCheck(BarDataType bar_data_type);
 
   [[nodiscard]] static string GetProjectDirectory();
   [[nodiscard]] optional<Period> GetBacktestPeriod() const;
@@ -138,13 +138,13 @@ class Config final {
   [[nodiscard]] double GetTakerFeePercentage() const;
   [[nodiscard]] double GetMakerFeePercentage() const;
   [[nodiscard]] shared_ptr<Slippage> GetSlippage() const;
-  [[nodiscard]] optional<bool> GetCheckLimitMaxQty() const;
-  [[nodiscard]] optional<bool> GetCheckLimitMinQty() const;
   [[nodiscard]] optional<bool> GetCheckMarketMaxQty() const;
   [[nodiscard]] optional<bool> GetCheckMarketMinQty() const;
+  [[nodiscard]] optional<bool> GetCheckLimitMaxQty() const;
+  [[nodiscard]] optional<bool> GetCheckLimitMinQty() const;
   [[nodiscard]] optional<bool> GetCheckMinNotionalValue() const;
-  [[nodiscard]] vector<bool> GetCheckSameBarData() const;
   [[nodiscard]] bool GetCheckSameBarDataWithTarget() const;
+  [[nodiscard]] vector<bool> GetCheckSameBarData() const;
 
  private:
   static shared_ptr<Logger>& logger_;
@@ -180,20 +180,20 @@ class Config final {
   /// 슬리피지 계산 모델
   shared_ptr<Slippage> slippage_;
 
-  optional<bool> check_limit_max_qty_;       // 지정가 최대 수량 검사 여부
-  optional<bool> check_limit_min_qty_;       // 지정가 최소 수량 검사 여부
   optional<bool> check_market_max_qty_;      // 시장가 최대 수량 검사 여부
   optional<bool> check_market_min_qty_;      // 시장가 최소 수량 검사 여부
+  optional<bool> check_limit_max_qty_;       // 지정가 최대 수량 검사 여부
+  optional<bool> check_limit_min_qty_;       // 지정가 최소 수량 검사 여부
   optional<bool> check_min_notional_value_;  // 최소 명목 가치 검사 여부
+
+  /// 마크 가격 바 데이터에서 목표 바 데이터와의 중복된 바 데이터 검사를 하는지
+  /// 여부를 결정하는 플래그.
+  bool check_same_bar_data_with_target_;
 
   /// 심볼 간 중복된 바 데이터 검사를 하는지 여부를 결정하는 플래그.
   ///
   /// 바 데이터 유형마다 분리하여 작동.
   vector<bool> check_same_bar_data_;
-
-  /// 마크 가격 바 데이터에서 목표 바 데이터와의 중복된 바 데이터 검사를 하는지
-  /// 여부를 결정하는 플래그.
-  bool check_same_bar_data_with_target_;
 };
 
 }  // namespace backtesting::engine

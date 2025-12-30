@@ -180,10 +180,10 @@ void Engine::IsValidConfig() {
     const auto initial_balance = config_->GetInitialBalance();
     const auto taker_fee_percentage = config_->GetTakerFeePercentage();
     const auto maker_fee_percentage = config_->GetMakerFeePercentage();
-    const auto& opt_check_limit_max_qty = config_->GetCheckLimitMaxQty();
-    const auto& opt_check_limit_min_qty = config_->GetCheckLimitMinQty();
     const auto& opt_check_market_max_qty = config_->GetCheckMarketMaxQty();
     const auto& opt_check_market_min_qty = config_->GetCheckMarketMinQty();
+    const auto& opt_check_limit_max_qty = config_->GetCheckLimitMaxQty();
+    const auto& opt_check_limit_min_qty = config_->GetCheckLimitMinQty();
     const auto& opt_check_min_notional_value =
         config_->GetCheckMinNotionalValue();
     const auto& slippage = config_->GetSlippage();
@@ -287,20 +287,6 @@ void Engine::IsValidConfig() {
       Logger::LogAndThrowError(*error_msg, __FILE__, __LINE__);
     }
 
-    if (!opt_check_limit_max_qty) {
-      Logger::LogAndThrowError(
-          "지정가 최대 수량 검사 여부가 초기화되지 않았습니다. "
-          "Backtesting::SetConfig().SetCheckLimitMaxQty 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
-    }
-
-    if (!opt_check_limit_min_qty) {
-      Logger::LogAndThrowError(
-          "지정가 최소 수량 검사 여부가 초기화되지 않았습니다. "
-          "Backtesting::SetConfig().SetCheckLimitMinQty 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
-    }
-
     if (!opt_check_market_max_qty) {
       Logger::LogAndThrowError(
           "시장가 최대 수량 검사 여부가 초기화되지 않았습니다. "
@@ -312,6 +298,20 @@ void Engine::IsValidConfig() {
       Logger::LogAndThrowError(
           "시장가 최소 수량 검사 여부가 초기화되지 않았습니다. "
           "Backtesting::SetConfig().SetCheckMarketMinQty 함수를 호출해 주세요.",
+          __FILE__, __LINE__);
+    }
+
+    if (!opt_check_limit_max_qty) {
+      Logger::LogAndThrowError(
+          "지정가 최대 수량 검사 여부가 초기화되지 않았습니다. "
+          "Backtesting::SetConfig().SetCheckLimitMaxQty 함수를 호출해 주세요.",
+          __FILE__, __LINE__);
+    }
+
+    if (!opt_check_limit_min_qty) {
+      Logger::LogAndThrowError(
+          "지정가 최소 수량 검사 여부가 초기화되지 않았습니다. "
+          "Backtesting::SetConfig().SetCheckLimitMinQty 함수를 호출해 주세요.",
           __FILE__, __LINE__);
     }
 

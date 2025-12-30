@@ -554,10 +554,10 @@ void Analyzer::SaveConfig() {
             {"가격 소수점 정밀도", symbol_info.GetPricePrecision()},
             {"수량 최소 단위", symbol_info.GetQtyStep()},
             {"수량 소수점 정밀도", symbol_info.GetQtyPrecision()},
-            {"지정가 최대 수량", symbol_info.GetLimitMaxQty()},
-            {"지정가 최소 수량", symbol_info.GetLimitMinQty()},
             {"시장가 최대 수량", symbol_info.GetMarketMaxQty()},
             {"시장가 최소 수량", symbol_info.GetMarketMinQty()},
+            {"지정가 최대 수량", symbol_info.GetLimitMaxQty()},
+            {"지정가 최소 수량", symbol_info.GetLimitMinQty()},
             {"최소 명목 가치", symbol_info.GetMinNotionalValue()},
             {"강제 청산 수수료율", symbol_info.GetLiquidationFeeRate()}};
 
@@ -578,54 +578,6 @@ void Analyzer::SaveConfig() {
                {"유지 마진율", maintenance_margin_rate},
                {"유지 금액", maintenance_amount}});
         }
-
-        // 펀딩 비율 저장
-        const auto& funding_rates = symbol_info.GetFundingRates();
-        int positive_funding_count = 0, negative_funding_count = 0;
-        double max_funding_rate = 0, min_funding_rate = 0;
-        double total_funding_rate = 0;
-
-        for (const auto& funding_info : funding_rates) {
-          const auto funding_rate = funding_info.funding_rate;
-          total_funding_rate += funding_rate;
-
-          if (funding_rate > 0) {
-            positive_funding_count++;
-
-            if (funding_rate > max_funding_rate) {
-              max_funding_rate = funding_rate;
-            }
-          } else if (funding_rate < 0) {
-            negative_funding_count++;
-
-            if (funding_rate < min_funding_rate) {
-              min_funding_rate = funding_rate;
-            }
-          }
-        }
-
-        // 평균 펀딩 비율 계산 (소수점 8자리에서 반올림)
-        // -> 백보드에서는 100을 곱하므로 6자리로 보임
-        double average_funding_rate = 0;
-        if (!funding_rates.empty()) {
-          average_funding_rate =
-              total_funding_rate / static_cast<double>(funding_rates.size());
-          average_funding_rate = round(average_funding_rate * 1e8) / 1e8;
-        }
-
-        symbol["펀딩 비율"] = {
-            {"데이터 경로", symbol_info.GetFundingRatesPath()},
-            {"데이터 기간",
-             {{"시작",
-               UtcTimestampToUtcDatetime(funding_rates.front().funding_time)},
-              {"종료",
-               UtcTimestampToUtcDatetime(funding_rates.back().funding_time)}}},
-            {"합계 펀딩 횟수", funding_rates.size()},
-            {"양수 펀딩 횟수", positive_funding_count},
-            {"음수 펀딩 횟수", negative_funding_count},
-            {"평균 펀딩 비율", average_funding_rate},
-            {"최고 펀딩 비율", max_funding_rate},
-            {"최저 펀딩 비율", min_funding_rate}};
 
         // 트레이딩 바 정보 저장
         const auto trading_num_bars = trading_bar_data->GetNumBars(symbol_idx);
@@ -725,6 +677,54 @@ void Analyzer::SaveConfig() {
             {"누락된 바",
              {{"개수", mark_price_missing_count},
               {"시간", mark_price_missing_times}}}};
+
+        // 펀딩 비율 저장
+        const auto& funding_rates = symbol_info.GetFundingRates();
+        int positive_funding_count = 0, negative_funding_count = 0;
+        double max_funding_rate = 0, min_funding_rate = 0;
+        double total_funding_rate = 0;
+
+        for (const auto& funding_info : funding_rates) {
+          const auto funding_rate = funding_info.funding_rate;
+          total_funding_rate += funding_rate;
+
+          if (funding_rate > 0) {
+            positive_funding_count++;
+
+            if (funding_rate > max_funding_rate) {
+              max_funding_rate = funding_rate;
+            }
+          } else if (funding_rate < 0) {
+            negative_funding_count++;
+
+            if (funding_rate < min_funding_rate) {
+              min_funding_rate = funding_rate;
+            }
+          }
+        }
+
+        // 평균 펀딩 비율 계산 (소수점 8자리에서 반올림)
+        // -> 백보드에서는 100을 곱하므로 6자리로 보임
+        double average_funding_rate = 0;
+        if (!funding_rates.empty()) {
+          average_funding_rate =
+              total_funding_rate / static_cast<double>(funding_rates.size());
+          average_funding_rate = round(average_funding_rate * 1e8) / 1e8;
+        }
+
+        symbol["펀딩 비율"] = {
+            {"데이터 경로", symbol_info.GetFundingRatesPath()},
+            {"데이터 기간",
+             {{"시작",
+               UtcTimestampToUtcDatetime(funding_rates.front().funding_time)},
+              {"종료",
+               UtcTimestampToUtcDatetime(funding_rates.back().funding_time)}}},
+            {"합계 펀딩 횟수", funding_rates.size()},
+            {"양수 펀딩 횟수", positive_funding_count},
+            {"음수 펀딩 횟수", negative_funding_count},
+            {"평균 펀딩 비율", average_funding_rate},
+            {"최고 펀딩 비율", max_funding_rate},
+            {"최저 펀딩 비율", min_funding_rate}};
       });
 
   // 병렬 처리 결과를 메인 config에 추가
@@ -808,20 +808,21 @@ void Analyzer::SaveConfig() {
   }
 
   // 검사 옵션들 추가
-  config["엔진 설정"]["지정가 최대 수량 검사"] =
-      *config_->GetCheckLimitMaxQty() ? "활성화" : "비활성화";
-  config["엔진 설정"]["지정가 최소 수량 검사"] =
-      *config_->GetCheckLimitMinQty() ? "활성화" : "비활성화";
   config["엔진 설정"]["시장가 최대 수량 검사"] =
       *config_->GetCheckMarketMaxQty() ? "활성화" : "비활성화";
   config["엔진 설정"]["시장가 최소 수량 검사"] =
       *config_->GetCheckMarketMinQty() ? "활성화" : "비활성화";
+  config["엔진 설정"]["지정가 최대 수량 검사"] =
+      *config_->GetCheckLimitMaxQty() ? "활성화" : "비활성화";
+  config["엔진 설정"]["지정가 최소 수량 검사"] =
+      *config_->GetCheckLimitMinQty() ? "활성화" : "비활성화";
   config["엔진 설정"]["최소 명목 가치 검사"] =
       *config_->GetCheckMinNotionalValue() ? "활성화" : "비활성화";
+
+  // 심볼 간 바 데이터 중복 검사 설정
   config["엔진 설정"]["마크 가격 바 데이터와 목표 바 데이터 중복 검사"] =
       config_->GetCheckSameBarDataWithTarget() ? "활성화" : "비활성화";
 
-  // 심볼 간 바 데이터 중복 검사 설정
   const vector<string> bar_data_type_str = {
       "트레이딩 바 데이터", "돋보기 바 데이터", "참조 바 데이터",
       "마크 가격 바 데이터"};
