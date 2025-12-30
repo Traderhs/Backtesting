@@ -101,11 +101,16 @@ void Backtesting::RunLocal() {
   SetMarketDataDirectory("D:/Programming/Backtesting/Data");
   SetApiEnvVars("BINANCE_API_KEY", "BINANCE_API_SECRET");
 
-  FetchExchangeInfo();
-  FetchLeverageBracket();
+  const auto& exchange_info_path =
+      "D:/Programming/Backtesting/Data/exchange_info.json";
+  const auto& leverage_bracket_path =
+      "D:/Programming/Backtesting/Data/leverage_bracket.json";
 
-  AddExchangeInfo("D:/Programming/Backtesting/Data/exchange_info.json");
-  AddLeverageBracket("D:/Programming/Backtesting/Data/leverage_bracket.json");
+  FetchExchangeInfo(exchange_info_path);
+  FetchLeverageBracket(leverage_bracket_path);
+
+  AddExchangeInfo(exchange_info_path);
+  AddLeverageBracket(leverage_bracket_path);
 
   // 엔진 설정
   SetConfig()
@@ -198,34 +203,20 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     const json& json_config = json::parse(json_str);
 
     // =======================================================================
-    // Config 설정
+    // 거래소 설정
     // =======================================================================
     const auto& project_directory =
         json_config.at("projectDirectory").get<string>();
+    const auto& exchange_info_path =
+        json_config.at("exchangeInfoPath").get<string>();
+    const auto& leverage_bracket_path =
+        json_config.at("leverageBracketPath").get<string>();
 
-    SetConfig()
-        .SetProjectDirectory(project_directory)
-        .SetUseBarMagnifier(json_config.at("useBarMagnifier").get<bool>());
-
-    // TODO 각종 설정 추가
-
-    // =======================================================================
-    // 변수 설정, 데이터 Fetch 및 추가
-    // =======================================================================
-    const auto& data_directory = project_directory + "/Data";
-
-    SetMarketDataDirectory(data_directory);
+    SetMarketDataDirectory(project_directory + "/Data");
     SetApiEnvVars(json_config.at("apiKeyEnvVar").get<string>(),
                   json_config.at("apiSecretEnvVar").get<string>());
 
     bool updated = false;
-    const auto now = chrono::duration_cast<chrono::milliseconds>(
-                         chrono::system_clock::now().time_since_epoch())
-                         .count();
-
-    const auto& exchange_info_path = data_directory + "/exchange_info.json";
-    const auto& leverage_bracket_path =
-        data_directory + "/leverage_bracket.json";
 
     // 거래소 정보 파일이 존재하지 않을 때
     const auto exist_exchange_info = filesystem::exists(exchange_info_path);
@@ -234,7 +225,7 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
                    "거래소 정보 파일이 존재하지 않아 데이터를 요청합니다.",
                    __FILE__, __LINE__, true);
 
-      FetchExchangeInfo();
+      FetchExchangeInfo(exchange_info_path);
       updated = true;
     }
 
@@ -246,9 +237,13 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
                    "레버리지 구간 파일이 존재하지 않아 데이터를 요청합니다.",
                    __FILE__, __LINE__, true);
 
-      FetchLeverageBracket();
+      FetchLeverageBracket(leverage_bracket_path);
       updated = true;
     }
+
+    const auto now = chrono::duration_cast<chrono::milliseconds>(
+                         chrono::system_clock::now().time_since_epoch())
+                         .count();
 
     // 두 파일이 모두 존재할 때
     if (exist_exchange_info && exist_leverage_bracket) {
@@ -297,8 +292,8 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
       }
 
       if (need_update) {
-        FetchExchangeInfo();
-        FetchLeverageBracket();
+        FetchExchangeInfo(exchange_info_path);
+        FetchLeverageBracket(leverage_bracket_path);
 
         updated = true;
       } else {
@@ -322,7 +317,7 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     AddLeverageBracket(leverage_bracket_path);
 
     // =========================================================================
-    // 바 데이터 추가
+    // 바 데이터 설정
     // =========================================================================
     // 서버에서 바 데이터 초기화 및 추가를 요청할 때 사용
     // (초기 추가, 심볼/바 데이터 설정 변경 감지 시 수행)
@@ -422,6 +417,15 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
                    __FILE__, __LINE__, true);
     }
 
+    // =======================================================================
+    // 엔진 설정
+    // =======================================================================
+    SetConfig()
+        .SetProjectDirectory(project_directory)
+        .SetUseBarMagnifier(json_config.at("useBarMagnifier").get<bool>());
+
+    // TODO 각종 설정 추가
+
     return;  // TODO 테스트용 임시 리턴
 
     RunBacktesting();
@@ -490,12 +494,10 @@ void Backtesting::UpdateFundingRates(const string& symbol) {
       .UpdateFundingRates(symbol);
 }
 
-void Backtesting::FetchExchangeInfo() {
+void Backtesting::FetchExchangeInfo(const string& exchange_info_path) {
   try {
     ValidateSettings();
-    BinanceFetcher(api_key_env_var_, api_secret_env_var_,
-                   market_data_directory_)
-        .FetchExchangeInfo();
+    BinanceFetcher::FetchExchangeInfo(exchange_info_path);
   } catch (const std::exception& e) {
     if (server_mode) {
       throw;
@@ -505,12 +507,12 @@ void Backtesting::FetchExchangeInfo() {
   }
 }
 
-void Backtesting::FetchLeverageBracket() {
+void Backtesting::FetchLeverageBracket(const string& leverage_bracket_path) {
   try {
     ValidateSettings();
     BinanceFetcher(api_key_env_var_, api_secret_env_var_,
                    market_data_directory_)
-        .FetchLeverageBracket();
+        .FetchLeverageBracket(leverage_bracket_path);
   } catch (const std::exception& e) {
     if (server_mode) {
       throw;

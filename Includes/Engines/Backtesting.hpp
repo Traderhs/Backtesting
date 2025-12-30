@@ -113,10 +113,10 @@ class Backtesting {
   static void UpdateFundingRates(const string& symbol);
 
   /// 바이낸스 선물 거래소 정보를 Fetch하고 저장하는 함수
-  static void FetchExchangeInfo();
+  static void FetchExchangeInfo(const string& exchange_info_path);
 
   /// 바이낸스 레버리지 구간을 Fecth하고 저장하는 함수
-  static void FetchLeverageBracket();
+  static void FetchLeverageBracket(const string& leverage_bracket_path);
 
   /// 주어진 데이터 폴더에서 각 심볼들의 폴더를 찾아 Parquet 데이터를 읽고
   /// 지정된 바 데이터 유형으로 처리하여 바 핸들러에 추가하는 함수

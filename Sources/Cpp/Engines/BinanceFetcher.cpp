@@ -617,11 +617,9 @@ void BinanceFetcher::UpdateFundingRates(const string& symbol) const {
   Engine::LogSeparator(true);
 }
 
-void BinanceFetcher::FetchExchangeInfo() const {
-  const string& save_path = market_data_directory_ + "/exchange_info.json";
-
+void BinanceFetcher::FetchExchangeInfo(const string& exchange_info_path) {
   try {
-    JsonToFile(Fetch(exchange_info_url_), save_path);
+    JsonToFile(Fetch(exchange_info_url_), exchange_info_path);
   } catch (const exception& e) {
     logger_->Log(ERROR_L, string(e.what()), __FILE__, __LINE__, true);
 
@@ -631,18 +629,17 @@ void BinanceFetcher::FetchExchangeInfo() const {
 
   logger_->Log(INFO_L,
                format("바이낸스 거래소 정보 파일이 [{}] 경로에 저장되었습니다.",
-                      ConvertBackslashToSlash(save_path)),
+                      ConvertBackslashToSlash(exchange_info_path)),
                __FILE__, __LINE__, true);
 }
 
-void BinanceFetcher::FetchLeverageBracket() const {
-  const string& save_path = market_data_directory_ + "/leverage_bracket.json";
-
+void BinanceFetcher::FetchLeverageBracket(
+    const string& leverage_bracket_path) const {
   try {
     JsonToFile(Fetch(leverage_bracket_url_,
                      {{"timestamp", to_string(GetServerTime())}}, true, false,
                      header_, api_key_env_var_, api_secret_env_var_),
-               save_path);
+               leverage_bracket_path);
   } catch (const exception& e) {
     logger_->Log(ERROR_L, string(e.what()), __FILE__, __LINE__, true);
 
@@ -653,7 +650,7 @@ void BinanceFetcher::FetchLeverageBracket() const {
   logger_->Log(
       INFO_L,
       format("바이낸스 레버리지 구간 파일이 [{}] 경로에 저장되었습니다.",
-             ConvertBackslashToSlash(save_path)),
+             ConvertBackslashToSlash(leverage_bracket_path)),
       __FILE__, __LINE__, true);
 }
 

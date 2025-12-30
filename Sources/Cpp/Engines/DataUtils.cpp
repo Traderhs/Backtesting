@@ -29,6 +29,7 @@
 
 // 내부 헤더
 #include "Engines/Config.hpp"
+#include "Engines/Exception.hpp"
 #include "Engines/Logger.hpp"
 
 // 네임 스페이스
@@ -289,7 +290,7 @@ double GetDoubleFromJson(const json& data, const string& key) {
     // 그 외의 경우에는 오류 처리
     Logger::LogAndThrowError("유효하지 않은 값이 존재합니다.", __FILE__,
                              __LINE__);
-  } catch ([[maybe_unused]] const exception& e) {
+  } catch ([[maybe_unused]] const std::exception& e) {
     Logger::LogAndThrowError(format("[{}] 키에서 오류가 발생했습니다.", key),
                              __FILE__, __LINE__);
     throw;
@@ -426,8 +427,8 @@ void JsonToFile(future<json> data, const string& file_path) {
     file << data.get().dump(4);  // 4는 들여쓰기를 위한 인자
     file.close();
   } else {
-    Logger::LogAndThrowError(format("{} 파일을 열 수 없습니다.", file_path),
-                             __FILE__, __LINE__);
+    throw exception::InvalidValue(
+        format("[{}] 파일을 열 수 없습니다.", file_path));
   }
 }
 
