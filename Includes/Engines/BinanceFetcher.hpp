@@ -90,10 +90,10 @@ class BinanceFetcher final : public BaseFetcher {
   void UpdateFundingRates(const string& symbol) const;
 
   /// 바이낸스 선물 거래소 정보를 Fetch하고 json 형식으로 저장하는 함수
-  void FetchExchangeInfo() const;
+  static void FetchExchangeInfo(const string& exchange_info_path);
 
   /// 바이낸스 레버리지 구간을 Fecth하고 json 형식으로 저장하는 함수
-  void FetchLeverageBracket() const;
+  void FetchLeverageBracket(const string& leverage_bracket_path) const;
 
  private:
   static shared_ptr<Logger>& logger_;  // 로그용 객체

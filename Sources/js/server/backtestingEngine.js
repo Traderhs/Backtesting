@@ -166,6 +166,8 @@ function runSingleBacktesting(ws, symbolConfigs, barDataConfigs, useBarMagnifier
     const config = {
         apiKeyEnvVar: (editorConfig && editorConfig.apiKeyEnvVar) ? editorConfig.apiKeyEnvVar : "",
         apiSecretEnvVar: (editorConfig && editorConfig.apiSecretEnvVar) ? editorConfig.apiSecretEnvVar : "",
+        exchangeInfoPath: (editorConfig && editorConfig.exchangeInfoPath) ? toPosix(editorConfig.exchangeInfoPath) : "",
+        leverageBracketPath: (editorConfig && editorConfig.leverageBracketPath) ? toPosix(editorConfig.leverageBracketPath) : "",
         lastDataUpdates: (editorConfig && typeof editorConfig.lastDataUpdates === 'string') ? editorConfig.lastDataUpdates : "",
         clearAndAddBarData: clearAndAddBarData !== undefined ? clearAndAddBarData : true,
         symbolConfigs: symbolConfigs || [],
