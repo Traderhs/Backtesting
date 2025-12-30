@@ -1,355 +1,121 @@
-import React, {useEffect} from 'react';
+import {useState} from 'react';
 import {Button} from '../ui/button';
 import {Input} from '@/components/ui/input';
-import {useWebSocket} from '../Server/WebSocketContext';
-import {BarDataConfig, parseTimeframeString, timeframeToString} from '@/types/barData.ts';
+import {useStrategy} from './StrategyContext';
 
-interface Props {
-    isLogPanelOpen: boolean;
-    setIsLogPanelOpen: React.Dispatch<React.SetStateAction<boolean>>;
+export default function ConfigSection() {
+    const {engineConfig, setEngineConfig, addLog} = useStrategy();
 
-    logPanelHeight: number;
-    setLogPanelHeight: React.Dispatch<React.SetStateAction<number>>;
+    const [showProjectDialog, setShowProjectDialog] = useState(false);
+    const [projectDirectoryInput, setProjectDirectoryInput] = useState('');
 
-    addLog: (level: string, message: string, timestamp?: string | null, fileInfo?: string | null) => void;
-
-    apiKeyEnvVar: string;
-    setApiKeyEnvVar: React.Dispatch<React.SetStateAction<string>>;
-
-    apiSecretEnvVar: string;
-    setApiSecretEnvVar: React.Dispatch<React.SetStateAction<string>>;
-
-    lastDataUpdates: string;
-    setLastDataUpdates: React.Dispatch<React.SetStateAction<string>>;
-
-    projectDirectory: string;
-    setProjectDirectory: React.Dispatch<React.SetStateAction<string>>;
-
-    projectDirectoryInput: string;
-    setProjectDirectoryInput: React.Dispatch<React.SetStateAction<string>>;
-
-    showProjectDialog: boolean;
-    setShowProjectDialog: React.Dispatch<React.SetStateAction<boolean>>;
-
-    useBarMagnifier: boolean;
-    setUseBarMagnifier: React.Dispatch<React.SetStateAction<boolean>>;
-
-    symbolConfigs: string[];
-    setSymbolConfigs: React.Dispatch<React.SetStateAction<string[]>>;
-
-    selectedPair: string;
-    setSelectedPair: React.Dispatch<React.SetStateAction<string>>;
-
-    customPairs: string[];
-    setCustomPairs: React.Dispatch<React.SetStateAction<string[]>>;
-
-    barDataConfigs: BarDataConfig[];
-    setBarDataConfigs: React.Dispatch<React.SetStateAction<BarDataConfig[]>>;
-
-    configLoaded: boolean;
-    setConfigLoaded: React.Dispatch<React.SetStateAction<boolean>>;
-}
-
-/**
- * 설정 및 프로젝트 디렉토리 관리 컴포넌트
- * editor.json 저장, 프로젝트 폴더 입력 다이얼로그 관리
- */
-export default function ConfigSection({
-                                          isLogPanelOpen,
-                                          setIsLogPanelOpen,
-
-                                          logPanelHeight,
-                                          setLogPanelHeight,
-
-                                          addLog,
-
-                                          apiKeyEnvVar,
-                                          setApiKeyEnvVar,
-
-                                          apiSecretEnvVar,
-                                          setApiSecretEnvVar,
-
-                                          lastDataUpdates,
-                                          setLastDataUpdates,
-
-                                          projectDirectory,
-                                          setProjectDirectory,
-
-                                          projectDirectoryInput,
-                                          setProjectDirectoryInput,
-
-                                          showProjectDialog,
-                                          setShowProjectDialog,
-
-                                          useBarMagnifier,
-                                          setUseBarMagnifier,
-
-                                          symbolConfigs,
-                                          setSymbolConfigs,
-
-                                          selectedPair,
-                                          setSelectedPair,
-
-                                          customPairs,
-                                          setCustomPairs,
-
-                                          barDataConfigs,
-                                          setBarDataConfigs,
-
-                                          configLoaded,
-                                          setConfigLoaded
-                                      }: Props) {
-    const {ws, clearProjectDirectoryRequest, projectDirectoryRequested} = useWebSocket();
-
-    // 컴포넌트 마운트 시 editor.json 로드 (ws가 CONNECTING 상태일 때 open 이벤트도 처리)
-    useEffect(() => {
-        if (!ws) {
+    // 프로젝트 디렉토리 설정 핸들러
+    const handleSetProjectDirectory = () => {
+        if (!projectDirectoryInput.trim()) {
+            addLog('ERROR', '프로젝트 디렉토리 경로를 입력해 주세요.');
             return;
         }
 
-        const trySendLoad = () => {
-            if (ws.readyState === WebSocket.OPEN && !configLoaded) {
-                try {
-                    ws.send(JSON.stringify({action: 'loadEditorConfig'}));
-                } catch (e) {
-                    console.error('loadEditorConfig 전송 실패:', e);
-                }
-            }
-        };
-
-        // 즉시 시도
-        trySendLoad();
-
-        // 아직 OPEN이 아니면 open 이벤트에서 재시도
-        const onOpen = () => {
-            trySendLoad();
-        };
-
-        ws.addEventListener('open', onOpen);
-
-        return () => {
-            try {
-                ws.removeEventListener('open', onOpen);
-            } catch (e) {
-                // 무시
-            }
-        };
-    }, [ws, configLoaded]);
-
-    // WebSocket 메시지 수신
-    useEffect(() => {
-        if (!ws) {
-            return;
-        }
-
-        const handleMessage = (event: MessageEvent) => {
-            try {
-                const data = JSON.parse(event.data);
-
-                if (data.action === 'requestProjectDirectory') {
-                    setShowProjectDialog(true);
-                } else if (data.action === 'projectDirectoryInvalid') {
-                    setShowProjectDialog(true);
-                } else if (data.action === 'editorConfigLoaded') {
-                    const config = data.config;
-
-                    if (config && typeof config === 'object' && (config['에디터 설정'] || config['엔진 설정'])) {
-                        // 에디터 설정
-                        const editor = config['에디터 설정'] || {};
-
-                        if (typeof editor['로그 패널 열림'] === 'boolean') {
-                            setIsLogPanelOpen(editor['로그 패널 열림']);
-                        } else if (typeof editor['로그 패널 열림'] === 'string') {
-                            setIsLogPanelOpen(editor['로그 패널 열림'] === "열림");
-                        }
-
-                        if (typeof editor['로그 패널 높이'] === 'number') {
-                            setLogPanelHeight(editor['로그 패널 높이']);
-                        }
-
-                        // 엔진 설정
-                        const engine = config['엔진 설정'] || {};
-
-                        if (typeof engine['API 키 환경 변수'] === 'string') {
-                            setApiKeyEnvVar(engine['API 키 환경 변수']);
-                        }
-
-                        if (typeof engine['API 시크릿 환경 변수'] === 'string') {
-                            setApiSecretEnvVar(engine['API 시크릿 환경 변수']);
-                        }
-
-                        if (typeof engine['마지막 데이터 업데이트'] === 'string') {
-                            setLastDataUpdates(engine['마지막 데이터 업데이트']);
-                        }
-
-                        if (typeof engine['프로젝트 폴더'] === 'string') {
-                            setProjectDirectory(engine['프로젝트 폴더']);
-                        }
-
-                        if (typeof engine['바 돋보기 기능'] === 'boolean') {
-                            setUseBarMagnifier(engine['바 돋보기 기능']);
-                        } else if (typeof engine['바 돋보기 기능'] === 'string') {
-                            setUseBarMagnifier(engine['바 돋보기 기능'] === "활성화");
-                        }
-
-                        // 심볼 설정
-                        const symbolSection = config['심볼 설정'];
-
-                        if (symbolSection && typeof symbolSection === 'object') {
-                            // 심볼 배열 파싱
-                            if (Array.isArray(symbolSection['심볼'])) {
-                                setSymbolConfigs(symbolSection['심볼']);
-                            } else {
-                                setSymbolConfigs([]);
-                            }
-
-                            // 페어 파싱
-                            const innerPair = symbolSection['페어'] || {};
-                            if (typeof innerPair['선택된 페어'] === 'string') {
-                                setSelectedPair(innerPair['선택된 페어']);
-                            }
-
-                            if (Array.isArray(innerPair['커스텀 페어'])) {
-                                setCustomPairs(innerPair['커스텀 페어']);
-                            }
-                        }
-
-                        // 바 데이터 설정
-                        if (Array.isArray(config['바 데이터 설정'])) {
-                            const loadedConfigs = config['바 데이터 설정'].map((barDataConfig: any) => ({
-                                timeframe: parseTimeframeString(barDataConfig.timeframe),
-                                klinesDirectory: barDataConfig.klinesDirectory,
-                                barDataType: barDataConfig.barDataType
-                            }));
-
-                            setBarDataConfigs(loadedConfigs);
-                        }
-                    }
-
-                    setConfigLoaded(true);
-                }
-            } catch (err) {
-                console.error('메시지 파싱 오류:', err);
-            }
-        };
-
-        ws.addEventListener('message', handleMessage);
-
-        return () => ws.removeEventListener('message', handleMessage);
-    }, [ws, setIsLogPanelOpen, setLogPanelHeight, setLastDataUpdates, setProjectDirectory, setShowProjectDialog, setUseBarMagnifier, setSymbolConfigs, setSelectedPair, setCustomPairs, setBarDataConfigs, setConfigLoaded]);
-
-    // 서버가 프로젝트 폴더 입력을 요청한 경우
-    useEffect(() => {
-        if (projectDirectoryRequested && !showProjectDialog) {
-            setShowProjectDialog(true);
-        }
-    }, [projectDirectoryRequested, showProjectDialog, setShowProjectDialog]);
-
-    // editor.json 저장 함수
-    const saveConfig = () => {
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-            return;
-        }
-
-        ws.send(JSON.stringify({
-            action: 'saveEditorConfig',
-            config: {
-                '에디터 설정': {
-                    '로그 패널 열림': isLogPanelOpen,
-                    '로그 패널 높이': logPanelHeight,
-                },
-                '엔진 설정': {
-                    'API 키 환경 변수': apiKeyEnvVar,
-                    'API 시크릿 환경 변수': apiSecretEnvVar,
-                    '마지막 데이터 업데이트': lastDataUpdates,
-
-                    '프로젝트 폴더': projectDirectory ? projectDirectory.replace(/\\/g, '/') : projectDirectory,
-                    '바 돋보기 기능': useBarMagnifier,
-                },
-                '심볼 설정': {
-                    '심볼': symbolConfigs,
-                    '페어': {
-                        '선택된 페어': selectedPair,
-                        '커스텀 페어': customPairs,
-                    }
-                },
-                '바 데이터 설정': barDataConfigs.map(config => ({
-                    timeframe: timeframeToString(config.timeframe),
-                    klinesDirectory: (config.klinesDirectory || '').replace(/\\/g, '/'),
-                    barDataType: config.barDataType
-                })),
-            }
-        }));
-    };
-
-    // 설정이 변경될 때마다 자동 저장 (초기 로드 제외)
-    useEffect(() => {
-        if (!configLoaded) {
-            return;
-        }
-
-        const timer = setTimeout(() => {
-            saveConfig();
-        }, 300);
-
-        return () => clearTimeout(timer);
-    }, [
-        isLogPanelOpen,
-        logPanelHeight,
-        apiKeyEnvVar,
-        apiSecretEnvVar,
-        lastDataUpdates,
-        useBarMagnifier,
-        symbolConfigs,
-        selectedPair,
-        customPairs,
-        barDataConfigs
-    ]);
-
-    // 프로젝트 디렉토리 제공
-    const handleProvideProjectDirectory = () => {
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-            return;
-        }
-
-        if (!projectDirectoryInput || projectDirectoryInput.trim() === '') {
-            addLog('ERROR', '프로젝트 폴더 경로를 입력해주세요.');
-            return;
-        }
-
-        const normalizedProjectDir = projectDirectoryInput.replace(/\\/g, '/');
-        ws.send(JSON.stringify({action: 'provideProjectDirectory', projectDirectory: normalizedProjectDir}));
-
-        setProjectDirectory(normalizedProjectDir);
+        setEngineConfig(prev => ({...prev, projectDirectory: projectDirectoryInput.trim()}));
         setShowProjectDialog(false);
-
-        // 서버 요청 플래그 해제
-        try {
-            clearProjectDirectoryRequest();
-        } catch (e) {
-            // 무시
-        }
     };
 
-    // 프로젝트 디렉토리 다이얼로그
-    if (!showProjectDialog) {
-        return null;
-    }
+    // 돋보기 바 사용 여부 토글
+    const toggleBarMagnifier = (checked: boolean) => {
+        setEngineConfig(prev => ({...prev, useBarMagnifier: checked}));
+    };
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/60"/>
-            <div className="relative bg-[#0f1724] rounded-lg p-6 w-[520px] border border-gray-600 z-10">
-                <h3 className="text-lg font-semibold text-white mb-3">프로젝트 폴더 입력</h3>
-                <p className="text-sm text-gray-300 mb-3">프로젝트 폴더를 입력하세요. 해당 폴더에 BackBoard.exe가 존재해야 합니다.</p>
-                <Input type="text" value={projectDirectoryInput}
-                       onChange={(e) => setProjectDirectoryInput(e.currentTarget.value)}
-                       placeholder="프로젝트 폴더 경로"
-                       className="mb-4 bg-[#0b1220] border-gray-600"/>
-                <div className="flex justify-end gap-2">
-                    <Button onClick={handleProvideProjectDirectory} className="bg-blue-600">입력</Button>
+        <div className="mb-6 p-4 bg-[#071029] border border-gray-700 rounded-lg">
+            <h2 className="text-lg font-semibold text-white mb-4">엔진 설정</h2>
+
+            <div className="space-y-4">
+                {/* 프로젝트 디렉토리 설정 */}
+                <div>
+                    <label className="text-xs text-gray-300 block mb-1">프로젝트 루트 디렉토리</label>
+                    <div className="flex gap-2">
+                        <Input
+                            type="text"
+                            value={engineConfig.projectDirectory}
+                            readOnly
+                            placeholder="프로젝트 루트 디렉토리를 설정하세요"
+                            className="bg-[#050a12] border-gray-600 flex-1"
+                        />
+                        <Button
+                            onClick={() => {
+                                setProjectDirectoryInput(engineConfig.projectDirectory);
+                                setShowProjectDialog(true);
+                            }}
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                        >
+                            설정
+                        </Button>
+                    </div>
+                    <p className="text-xs text-gray-400 mt-1">
+                        데이터 파일 경로의 기준이 되는 디렉토리입니다. (예: D:/Programming/Backtesting)
+                    </p>
                 </div>
+
+                {/* 돋보기 바 설정 */}
+                <div className="flex items-center space-x-2">
+                    <input
+                        type="checkbox"
+                        id="useBarMagnifier"
+                        checked={engineConfig.useBarMagnifier}
+                        onChange={(e) => toggleBarMagnifier(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-2"
+                    />
+                    <label
+                        htmlFor="useBarMagnifier"
+                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 text-gray-200"
+                    >
+                        바 돋보기(Bar Magnifier) 사용
+                    </label>
+                </div>
+                <p className="text-xs text-gray-400 ml-6">
+                    트레이딩 바 내부를 더 작은 타임프레임으로 시뮬레이션하여 체결 정확도를 높입니다.
+                </p>
             </div>
+
+            {/* 프로젝트 디렉토리 설정 다이얼로그 */}
+            {showProjectDialog && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60" onClick={() => setShowProjectDialog(false)}/>
+                    <div
+                        className="relative bg-[#1a1a1a] rounded-lg p-6 w-[520px] border border-gray-700 z-10 text-white">
+                        <h3 className="text-lg font-semibold mb-4">프로젝트 디렉토리 설정</h3>
+                        <div className="py-4">
+                            <label className="text-sm text-gray-300 mb-2 block">
+                                프로젝트 루트 경로 (절대 경로)
+                            </label>
+                            <Input
+                                value={projectDirectoryInput}
+                                onChange={(e) => setProjectDirectoryInput(e.target.value)}
+                                placeholder="예: D:/Programming/Backtesting"
+                                className="bg-[#0a0a0a] border-gray-600 text-white"
+                            />
+                            <p className="text-xs text-gray-400 mt-2">
+                                이 경로는 데이터 파일 등을 찾을 때 기준 경로로 사용됩니다.
+                            </p>
+                        </div>
+                        <div className="flex justify-end gap-2 mt-4">
+                            <Button
+                                variant="outline"
+                                onClick={() => setShowProjectDialog(false)}
+                                className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white"
+                            >
+                                취소
+                            </Button>
+                            <Button
+                                onClick={handleSetProjectDirectory}
+                                className="bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                                확인
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

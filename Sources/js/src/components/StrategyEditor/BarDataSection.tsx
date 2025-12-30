@@ -3,27 +3,22 @@ import {Button} from '../ui/button';
 import {BarDataConfig, BarDataType, TimeframeUnit} from '@/types/barData.ts';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/components/ui/select';
 import {Input} from '@/components/ui/input';
-
-interface BarDataSectionProps {
-    barDataConfigs: BarDataConfig[];
-    setBarDataConfigs: React.Dispatch<React.SetStateAction<BarDataConfig[]>>;
-    useBarMagnifier: boolean;
-    setUseBarMagnifier: React.Dispatch<React.SetStateAction<boolean>>;
-    projectDirectory: string;
-    configLoaded: boolean;
-}
+import {useStrategy} from './StrategyContext';
 
 /**
  * 바 데이터 설정 섹션 컴포넌트
  * 트레이딩/돋보기/참조/마크 가격 바 데이터 설정 관리
  */
-export default function BarDataSection({
-                                           barDataConfigs,
-                                           setBarDataConfigs,
-                                           useBarMagnifier,
-                                           setUseBarMagnifier,
-                                           projectDirectory
-                                       }: BarDataSectionProps) {
+export default function BarDataSection() {
+    const {
+        barDataConfigs,
+        setBarDataConfigs,
+        engineConfig,
+        setEngineConfig
+    } = useStrategy();
+
+    const {projectDirectory, useBarMagnifier} = engineConfig;
+
     // 바 데이터 타임프레임 Select의 열린 인덱스
     const [openTimeframeSelectIndex, setOpenTimeframeSelectIndex] = useState<number | null>(null);
 
@@ -128,7 +123,10 @@ export default function BarDataSection({
                                                 type="checkbox"
                                                 checked={useBarMagnifier}
                                                 onChange={(e) => {
-                                                    setUseBarMagnifier(e.target.checked);
+                                                    setEngineConfig(prev => ({
+                                                        ...prev,
+                                                        useBarMagnifier: e.target.checked
+                                                    }));
                                                 }}
                                                 className="w-3.5 h-3.5"
                                             />
