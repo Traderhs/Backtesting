@@ -132,12 +132,20 @@ export default function EditorSection({
                         // 심볼 설정
                         const symbolSection = config['심볼 설정'];
                         if (symbolSection && typeof symbolSection === 'object') {
-                            if (Array.isArray(symbolSection['심볼'])) setSymbolConfigs(symbolSection['심볼']);
-                            else setSymbolConfigs([]);
+                            if (Array.isArray(symbolSection['심볼'])) {
+                                setSymbolConfigs(symbolSection['심볼']);
+                            } else {
+                                setSymbolConfigs([]);
+                            }
 
                             const innerPair = symbolSection['페어'] || {};
-                            if (typeof innerPair['선택된 페어'] === 'string') setSelectedPair(innerPair['선택된 페어']);
-                            if (Array.isArray(innerPair['커스텀 페어'])) setCustomPairs(innerPair['커스텀 페어']);
+                            if (typeof innerPair['선택된 페어'] === 'string') {
+                                setSelectedPair(innerPair['선택된 페어']);
+                            }
+
+                            if (Array.isArray(innerPair['커스텀 페어'])) {
+                                setCustomPairs(innerPair['커스텀 페어']);
+                            }
                         }
 
                         // 바 데이터 설정
@@ -147,6 +155,7 @@ export default function EditorSection({
                                 klinesDirectory: barDataConfig.klinesDirectory,
                                 barDataType: barDataConfig.barDataType
                             }));
+
                             setBarDataConfigs(loadedConfigs);
                         }
 
@@ -158,11 +167,11 @@ export default function EditorSection({
                         if (typeof engine['프로젝트 폴더'] === 'string') {
                             newProjectDir = engine['프로젝트 폴더'];
                         }
-                        if (typeof engine['바 돋보기 기능'] === 'boolean') {
-                            newUseMagnifier = engine['바 돋보기 기능'];
-                        } else if (typeof engine['바 돋보기 기능'] === 'string') {
+
+                        if (typeof engine['바 돋보기 기능'] === 'string') {
                             newUseMagnifier = engine['바 돋보기 기능'] === "활성화";
                         }
+
                         setEngineConfig({projectDirectory: newProjectDir, useBarMagnifier: newUseMagnifier});
                     }
                     setConfigLoaded(true);
@@ -197,6 +206,7 @@ export default function EditorSection({
                 '거래소 설정': {
                     'API 키 환경 변수': exchangeConfig.apiKeyEnvVar,
                     'API 시크릿 환경 변수': exchangeConfig.apiSecretEnvVar,
+
                     '거래소 정보 파일 경로': exchangeConfig.exchangeInfoPath,
                     '레버리지 구간 파일 경로': exchangeConfig.leverageBracketPath,
                     '마지막 데이터 업데이트': lastDataUpdates,
@@ -215,7 +225,7 @@ export default function EditorSection({
                 })),
                 '엔진 설정': {
                     '프로젝트 폴더': engineConfig.projectDirectory ? engineConfig.projectDirectory.replace(/\\/g, '/') : engineConfig.projectDirectory,
-                    '바 돋보기 기능': engineConfig.useBarMagnifier,
+                    '바 돋보기 기능': engineConfig.useBarMagnifier ? "활성화" : "비활성화",
                 },
             }
         }));
