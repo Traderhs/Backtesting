@@ -2,23 +2,21 @@
 
 # Backtesting
 
-A Windows-oriented, high-performance multi-symbol portfolio backtesting system.
-It combines a C++20 engine built for speed and determinism with a React/TypeScript dashboard (BackBoard) that visualizes
-outputs saved to disk.
+A high-performance multi-symbol backtesting engine meticulously architected to mirror the **Binance Futures** trading environment.
+It combines a C++20 core built for speed and determinism with a React/TypeScript dashboard (BackBoard) that provides comprehensive visualization of simulation results.
 
 ---
 
 ## Overview
 
-This repository is organized around a simple contract:
+This system is designed to simulate the intricacies of the Binance Futures ecosystem with high fidelity. It operates on a streamlined workflow:
 
-1. **Market data in** (Parquet time series under `Data/`)
-2. **Simulation in** (C++ engine: vectorized bars, margin/fees/slippage)
-3. **Results out** (a timestamped folder under `Results/`)
-4. **Visualization** (BackBoard reads `Results/<run>/BackBoard/*`)
+1. **Market Data Ingestion**: High-efficiency Parquet time series (OHLCV, Mark Price) located in `Data/`.
+2. **Core Simulation**: A C++ engine executing vectorized bar processing with precise handling of isolated margin, funding rates, and fee structures specific to Binance.
+3. **Result Generation**: Comprehensive output generation in timestamped directories under `Results/`.
+4. **Visualization**: Interactive analysis via BackBoard, reading directly from `Results/<run>/BackBoard/*`.
 
-The engine is designed to backtest **multiple symbols in a single run**, while keeping execution rules explicit (bar
-assumptions, magnifier bars, isolated margin).
+The engine supports **multi-symbol portfolio backtesting in a single execution**, maintaining explicit control over execution logic including bar assumptions, magnifier bar granularity, and isolated margin mechanics.
 
 ---
 
