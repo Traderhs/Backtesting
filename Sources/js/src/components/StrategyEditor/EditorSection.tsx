@@ -6,7 +6,6 @@ import {parseTimeframeString, timeframeToString} from '@/types/barData.ts';
 import {useStrategy} from './StrategyContext';
 
 interface Props {
-    // LogPanel 관련
     isLogPanelOpen: boolean;
     setIsLogPanelOpen: (v: boolean) => void;
     logPanelHeight: number;
@@ -161,18 +160,41 @@ export default function EditorSection({
 
                         // 엔진 설정
                         const engine = config['엔진 설정'] || {};
-                        let newProjectDir = engineConfig.projectDirectory;
-                        let newUseMagnifier = engineConfig.useBarMagnifier;
+                        const newEngineConfig = {
+                            projectDirectory: typeof engine['프로젝트 폴더'] === 'string' ? engine['프로젝트 폴더'] : '',
 
-                        if (typeof engine['프로젝트 폴더'] === 'string') {
-                            newProjectDir = engine['프로젝트 폴더'];
-                        }
+                            useBacktestPeriodStart: engine['백테스팅 기간 처음부터'] === "사용",
+                            useBacktestPeriodEnd: engine['백테스팅 기간 끝까지'] === "사용",
+                            backtestPeriodStart: typeof engine['백테스팅 기간 시작'] === 'string' ? engine['백테스팅 기간 시작'] : '',
+                            backtestPeriodEnd: typeof engine['백테스팅 기간 종료'] === 'string' ? engine['백테스팅 기간 종료'] : '',
+                            backtestPeriodFormat: typeof engine['백테스팅 기간 형식'] === 'string' ? engine['백테스팅 기간 형식'] : '%Y-%m-%d %H:%M:%S',
 
-                        if (typeof engine['바 돋보기 기능'] === 'string') {
-                            newUseMagnifier = engine['바 돋보기 기능'] === "활성화";
-                        }
+                            useBarMagnifier: engine['바 돋보기 기능'] === "활성화",
 
-                        setEngineConfig({projectDirectory: newProjectDir, useBarMagnifier: newUseMagnifier});
+                            initialBalance: typeof engine['초기 자금'] === 'number' ? engine['초기 자금'] : undefined,
+
+                            takerFeePercentage: typeof engine['테이커 수수료율'] === 'number' ? engine['테이커 수수료율'] : undefined,
+                            makerFeePercentage: typeof engine['메이커 수수료율'] === 'number' ? engine['메이커 수수료율'] : undefined,
+
+                            slippageModel: typeof engine['슬리피지 모델'] === 'string' ? engine['슬리피지 모델'] as 'PercentageSlippage' | 'MarketImpactSlippage' : 'MarketImpactSlippage',
+                            slippageTakerPercentage: typeof engine['테이커 슬리피지율'] === 'number' ? engine['테이커 슬리피지율'] : undefined,
+                            slippageMakerPercentage: typeof engine['메이커 슬리피지율'] === 'number' ? engine['메이커 슬리피지율'] : undefined,
+                            slippageStressMultiplier: typeof engine['슬리피지 스트레스 계수'] === 'number' ? engine['슬리피지 스트레스 계수'] : undefined,
+
+                            checkMarketMaxQty: engine['시장가 최대 수량 검사'] === "활성화",
+                            checkMarketMinQty: engine['시장가 최소 수량 검사'] === "활성화",
+                            checkLimitMaxQty: engine['지정가 최대 수량 검사'] === "활성화",
+                            checkLimitMinQty: engine['지정가 최소 수량 검사'] === "활성화",
+                            checkMinNotionalValue: engine['최소 명목 가치 검사'] === "활성화",
+
+                            checkSameBarDataWithTarget: engine['마크 가격 바 데이터와 목표 바 데이터 중복 검사'] === "활성화",
+                            checkSameBarDataTrading: engine['심볼 간 트레이딩 바 데이터 중복 검사'] === "활성화",
+                            checkSameBarDataMagnifier: engine['심볼 간 돋보기 바 데이터 중복 검사'] === "활성화",
+                            checkSameBarDataReference: engine['심볼 간 참조 바 데이터 중복 검사'] === "활성화",
+                            checkSameBarDataMarkPrice: engine['심볼 간 마크 가격 바 데이터 중복 검사'] === "활성화",
+                        };
+
+                        setEngineConfig(newEngineConfig);
                     }
                     setConfigLoaded(true);
                 }
@@ -225,7 +247,36 @@ export default function EditorSection({
                 })),
                 '엔진 설정': {
                     '프로젝트 폴더': engineConfig.projectDirectory ? engineConfig.projectDirectory.replace(/\\/g, '/') : engineConfig.projectDirectory,
+
+                    '백테스팅 기간 처음부터': engineConfig.useBacktestPeriodStart ? "사용" : "미사용",
+                    '백테스팅 기간 끝까지': engineConfig.useBacktestPeriodEnd ? "사용" : "미사용",
+                    '백테스팅 기간 시작': engineConfig.backtestPeriodStart,
+                    '백테스팅 기간 종료': engineConfig.backtestPeriodEnd,
+                    '백테스팅 기간 형식': engineConfig.backtestPeriodFormat,
+
                     '바 돋보기 기능': engineConfig.useBarMagnifier ? "활성화" : "비활성화",
+
+                    '초기 자금': engineConfig.initialBalance,
+
+                    '테이커 수수료율': engineConfig.takerFeePercentage,
+                    '메이커 수수료율': engineConfig.makerFeePercentage,
+
+                    '슬리피지 모델': engineConfig.slippageModel,
+                    '테이커 슬리피지율': engineConfig.slippageTakerPercentage,
+                    '메이커 슬리피지율': engineConfig.slippageMakerPercentage,
+                    '슬리피지 스트레스 계수': engineConfig.slippageStressMultiplier,
+
+                    '시장가 최대 수량 검사': engineConfig.checkMarketMaxQty ? "활성화" : "비활성화",
+                    '시장가 최소 수량 검사': engineConfig.checkMarketMinQty ? "활성화" : "비활성화",
+                    '지정가 최대 수량 검사': engineConfig.checkLimitMaxQty ? "활성화" : "비활성화",
+                    '지정가 최소 수량 검사': engineConfig.checkLimitMinQty ? "활성화" : "비활성화",
+                    '최소 명목 가치 검사': engineConfig.checkMinNotionalValue ? "활성화" : "비활성화",
+
+                    '마크 가격 바 데이터와 목표 바 데이터 중복 검사': engineConfig.checkSameBarDataWithTarget ? "활성화" : "비활성화",
+                    '심볼 간 트레이딩 바 데이터 중복 검사': engineConfig.checkSameBarDataTrading ? "활성화" : "비활성화",
+                    '심볼 간 돋보기 바 데이터 중복 검사': engineConfig.checkSameBarDataMagnifier ? "활성화" : "비활성화",
+                    '심볼 간 참조 바 데이터 중복 검사': engineConfig.checkSameBarDataReference ? "활성화" : "비활성화",
+                    '심볼 간 마크 가격 바 데이터 중복 검사': engineConfig.checkSameBarDataMarkPrice ? "활성화" : "비활성화",
                 },
             }
         }));
@@ -268,20 +319,28 @@ export default function EditorSection({
         }
     };
 
-    // --- LogPanel UI Logic ---
     const getLogColor = (level: string) => {
         switch (level) {
-            case 'INFO':
+            case 'INFO': {
                 return 'rgb(255, 255, 255)';
+            }
+
             case 'BALANCE':
-            case 'DEBUG':
+            case 'DEBUG': {
                 return 'rgb(128, 128, 128)';
-            case 'WARN':
+            }
+
+            case 'WARN': {
                 return 'rgb(229, 192, 123)';
-            case 'ERROR':
+            }
+
+            case 'ERROR': {
                 return 'rgb(224, 108, 117)';
-            default:
+            }
+
+            default: {
                 return '#ffffff';
+            }
         }
     };
 

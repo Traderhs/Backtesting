@@ -166,14 +166,48 @@ function runSingleBacktesting(ws, symbolConfigs, barDataConfigs, useBarMagnifier
     const config = {
         apiKeyEnvVar: (editorConfig && editorConfig.apiKeyEnvVar) ? editorConfig.apiKeyEnvVar : "",
         apiSecretEnvVar: (editorConfig && editorConfig.apiSecretEnvVar) ? editorConfig.apiSecretEnvVar : "",
+
         exchangeInfoPath: (editorConfig && editorConfig.exchangeInfoPath) ? toPosix(editorConfig.exchangeInfoPath) : "",
         leverageBracketPath: (editorConfig && editorConfig.leverageBracketPath) ? toPosix(editorConfig.leverageBracketPath) : "",
         lastDataUpdates: (editorConfig && typeof editorConfig.lastDataUpdates === 'string') ? editorConfig.lastDataUpdates : "",
+
         clearAndAddBarData: clearAndAddBarData !== undefined ? clearAndAddBarData : true,
+
         symbolConfigs: symbolConfigs || [],
+
         barDataConfigs: barDataConfigs || [],
+
         projectDirectory: (editorConfig && editorConfig.projectDirectory) ? editorConfig.projectDirectory : "",
-        useBarMagnifier: useBarMagnifier !== undefined ? useBarMagnifier : true
+
+        useBacktestPeriodStart: (editorConfig && typeof editorConfig.useBacktestPeriodStart === 'boolean') ? editorConfig.useBacktestPeriodStart : true,
+        useBacktestPeriodEnd: (editorConfig && typeof editorConfig.useBacktestPeriodEnd === 'boolean') ? editorConfig.useBacktestPeriodEnd : true,
+        backtestPeriodStart: (editorConfig && editorConfig.backtestPeriodStart) ? editorConfig.backtestPeriodStart : "",
+        backtestPeriodEnd: (editorConfig && editorConfig.backtestPeriodEnd) ? editorConfig.backtestPeriodEnd : "",
+        backtestPeriodFormat: (editorConfig && editorConfig.backtestPeriodFormat) ? editorConfig.backtestPeriodFormat : "%Y-%m-%d %H:%M:%S",
+
+        useBarMagnifier: useBarMagnifier !== undefined ? useBarMagnifier : true,
+
+        initialBalance: (editorConfig && typeof editorConfig.initialBalance === 'number') ? editorConfig.initialBalance : undefined,
+
+        takerFeePercentage: (editorConfig && typeof editorConfig.takerFeePercentage === 'number') ? editorConfig.takerFeePercentage : undefined,
+        makerFeePercentage: (editorConfig && typeof editorConfig.makerFeePercentage === 'number') ? editorConfig.makerFeePercentage : undefined,
+
+        slippageModel: (editorConfig && editorConfig.slippageModel) ? editorConfig.slippageModel : "MarketImpactSlippage",
+        slippageTakerPercentage: (editorConfig && typeof editorConfig.slippageTakerPercentage === 'number') ? editorConfig.slippageTakerPercentage : undefined,
+        slippageMakerPercentage: (editorConfig && typeof editorConfig.slippageMakerPercentage === 'number') ? editorConfig.slippageMakerPercentage : undefined,
+        slippageStressMultiplier: (editorConfig && typeof editorConfig.slippageStressMultiplier === 'number') ? editorConfig.slippageStressMultiplier : undefined,
+
+        checkMarketMaxQty: (editorConfig && typeof editorConfig.checkMarketMaxQty === 'boolean') ? editorConfig.checkMarketMaxQty : true,
+        checkMarketMinQty: (editorConfig && typeof editorConfig.checkMarketMinQty === 'boolean') ? editorConfig.checkMarketMinQty : true,
+        checkLimitMaxQty: (editorConfig && typeof editorConfig.checkLimitMaxQty === 'boolean') ? editorConfig.checkLimitMaxQty : true,
+        checkLimitMinQty: (editorConfig && typeof editorConfig.checkLimitMinQty === 'boolean') ? editorConfig.checkLimitMinQty : true,
+        checkMinNotionalValue: (editorConfig && typeof editorConfig.checkMinNotionalValue === 'boolean') ? editorConfig.checkMinNotionalValue : true,
+
+        checkSameBarDataWithTarget: (editorConfig && typeof editorConfig.checkSameBarDataWithTarget === 'boolean') ? editorConfig.checkSameBarDataWithTarget : true,
+        checkSameBarDataTrading: (editorConfig && typeof editorConfig.checkSameBarDataTrading === 'boolean') ? editorConfig.checkSameBarDataTrading : true,
+        checkSameBarDataMagnifier: (editorConfig && typeof editorConfig.checkSameBarDataMagnifier === 'boolean') ? editorConfig.checkSameBarDataMagnifier : true,
+        checkSameBarDataReference: (editorConfig && typeof editorConfig.checkSameBarDataReference === 'boolean') ? editorConfig.checkSameBarDataReference : true,
+        checkSameBarDataMarkPrice: (editorConfig && typeof editorConfig.checkSameBarDataMarkPrice === 'boolean') ? editorConfig.checkSameBarDataMarkPrice : true
     };
 
     const command = `runSingleBacktesting ${JSON.stringify(config)}\n`;
@@ -474,79 +508,130 @@ function configToObj(config) {
     return {
         "에디터 설정": {
             "서명": "",
-            "로그 패널 열림": (config && config.logPanelOpen) ? "열림" : "닫힘",
-            "로그 패널 높이": (config && config.logPanelHeight !== undefined) ? config.logPanelHeight : 400,
+            "로그 패널 열림": config?.logPanelOpen ? "열림" : "닫힘",
+            "로그 패널 높이": config?.logPanelHeight ?? 400,
         },
         "거래소 설정": {
-            "API 키 환경 변수": (config && typeof config.apiKeyEnvVar === 'string') ? config.apiKeyEnvVar : "",
-            "API 시크릿 환경 변수": (config && typeof config.apiSecretEnvVar === 'string') ? config.apiSecretEnvVar : "",
+            "API 키 환경 변수": config?.apiKeyEnvVar ?? "",
+            "API 시크릿 환경 변수": config?.apiSecretEnvVar ?? "",
 
-            "거래소 정보 파일 경로": (config && typeof config.exchangeInfoPath === 'string') ? config.exchangeInfoPath : "",
-            "레버리지 구간 파일 경로": (config && typeof config.leverageBracketPath === 'string') ? config.leverageBracketPath : "",
-            "마지막 데이터 업데이트": (config && typeof config.lastDataUpdates === 'string') ? config.lastDataUpdates : "",
+            "거래소 정보 파일 경로": config?.exchangeInfoPath ?? "",
+            "레버리지 구간 파일 경로": config?.leverageBracketPath ?? "",
+            "마지막 데이터 업데이트": config?.lastDataUpdates ?? "",
         },
         "심볼 설정": {
-            "심볼": Array.isArray(config && config.symbolConfigs) ? config.symbolConfigs : ((config && config.symbolConfigs) || []),
+            "심볼": config?.symbolConfigs ?? [],
             "페어": {
-                "선택된 페어": config ? (config.selectedPair || "") : "",
-                "커스텀 페어": Array.isArray(config && config.customPairs) ? config.customPairs : ((config && config.customPairs) || [])
+                "선택된 페어": config?.selectedPair ?? "",
+                "커스텀 페어": config?.customPairs ?? []
             }
         },
-        "바 데이터 설정": (config && Array.isArray(config.barDataConfigs)) ? config.barDataConfigs.map((bar_cfg) => ({
-            "타임프레임": bar_cfg.timeframe, "바 데이터 폴더": bar_cfg.klinesDirectory, "바 데이터 유형": bar_cfg.barDataType,
-        })) : [],
+        "바 데이터 설정": (config?.barDataConfigs ?? []).map((bar_cfg) => ({
+            "타임프레임": bar_cfg.timeframe,
+            "바 데이터 폴더": bar_cfg.klinesDirectory,
+            "바 데이터 유형": bar_cfg.barDataType,
+        })),
         "엔진 설정": {
-            "프로젝트 폴더": config ? (config.projectDirectory || "") : "",
-            "바 돋보기 기능": (config && config.useBarMagnifier) ? "활성화" : "비활성화",
+            "프로젝트 폴더": config?.projectDirectory ?? "",
+
+            "백테스팅 기간 처음부터": config?.useBacktestPeriodStart ? "사용" : "미사용",
+            "백테스팅 기간 끝까지": config?.useBacktestPeriodEnd ? "사용" : "미사용",
+            "백테스팅 기간 시작": config?.backtestPeriodStart ?? "",
+            "백테스팅 기간 종료": config?.backtestPeriodEnd ?? "",
+            "백테스팅 기간 형식": config?.backtestPeriodFormat ?? "%Y-%m-%d %H:%M:%S",
+
+            "바 돋보기 기능": config?.useBarMagnifier ? "활성화" : "비활성화",
+
+            "초기 자금": config?.initialBalance ?? undefined,
+
+            "테이커 수수료율": config?.takerFeePercentage ?? undefined,
+            "메이커 수수료율": config?.makerFeePercentage ?? undefined,
+
+            "슬리피지 모델": config?.slippageModel ?? "MarketImpactSlippage",
+            "테이커 슬리피지율": config?.slippageTakerPercentage ?? undefined,
+            "메이커 슬리피지율": config?.slippageMakerPercentage ?? undefined,
+            "슬리피지 스트레스 계수": config?.slippageStressMultiplier ?? undefined,
+
+            "시장가 최대 수량 검사": config?.checkMarketMaxQty ? "활성화" : "비활성화",
+            "시장가 최소 수량 검사": config?.checkMarketMinQty ? "활성화" : "비활성화",
+            "지정가 최대 수량 검사": config?.checkLimitMaxQty ? "활성화" : "비활성화",
+            "지정가 최소 수량 검사": config?.checkLimitMinQty ? "활성화" : "비활성화",
+            "최소 명목 가치 검사": config?.checkMinNotionalValue ? "활성화" : "비활성화",
+
+            "마크 가격 바 데이터와 목표 바 데이터 중복 검사": config?.checkSameBarDataWithTarget ? "활성화" : "비활성화",
+            "심볼 간 트레이딩 바 데이터 중복 검사": config?.checkSameBarDataTrading ? "활성화" : "비활성화",
+            "심볼 간 돋보기 바 데이터 중복 검사": config?.checkSameBarDataMagnifier ? "활성화" : "비활성화",
+            "심볼 간 참조 바 데이터 중복 검사": config?.checkSameBarDataReference ? "활성화" : "비활성화",
+            "심볼 간 마크 가격 바 데이터 중복 검사": config?.checkSameBarDataMarkPrice ? "활성화" : "비활성화"
         },
     };
 }
 
 function objToConfig(obj) {
-    const cfg = {};
+    // 각 섹션 먼저 추출
+    const editor = obj?.['에디터 설정'];
+    const exchange = obj?.['거래소 설정'];
+    const symSection = obj?.['심볼 설정'];
+    const engine = obj?.['엔진 설정'];
 
-    // 에디터 설정
-    const editor = obj && typeof obj === 'object' ? obj["에디터 설정"] : null;
+    return {
+        // 에디터 설정
+        logPanelOpen: editor?.['로그 패널 열림'] === '열림',
+        logPanelHeight: editor?.['로그 패널 높이'] ?? 400,
 
-    cfg.logPanelOpen = editor && (editor["로그 패널 열림"] === "열림");
-    cfg.logPanelHeight = editor && (editor["로그 패널 높이"] !== undefined) ? editor["로그 패널 높이"] : 400;
+        // 거래소 설정
+        apiKeyEnvVar: exchange?.['API 키 환경 변수'] ?? '',
+        apiSecretEnvVar: exchange?.['API 시크릿 환경 변수'] ?? '',
 
-    // 거래소 설정
-    const exchange = obj && typeof obj === 'object' ? obj["거래소 설정"] : null;
+        exchangeInfoPath: exchange?.['거래소 정보 파일 경로'] ?? '',
+        leverageBracketPath: exchange?.['레버리지 구간 파일 경로'] ?? '',
+        lastDataUpdates: exchange?.['마지막 데이터 업데이트'] ?? '',
 
-    cfg.apiKeyEnvVar = (exchange && typeof exchange["API 키 환경 변수"] === 'string') ? exchange["API 키 환경 변수"] : (engine && typeof engine["API 키 환경 변수"] === 'string' ? engine["API 키 환경 변수"] : (typeof obj["API 키 환경 변수"] === 'string' ? obj["API 키 환경 변수"] : ""));
-    cfg.apiSecretEnvVar = (exchange && typeof exchange["API 시크릿 환경 변수"] === 'string') ? exchange["API 시크릿 환경 변수"] : (engine && typeof engine["API 시크릿 환경 변수"] === 'string' ? engine["API 시크릿 환경 변수"] : (typeof obj["API 시크릿 환경 변수"] === 'string' ? obj["API 시크릿 환경 변수"] : ""));
+        // 심볼 설정
+        symbolConfigs: symSection?.['심볼'] ?? [],
+        selectedPair: symSection?.['페어']?.['선택된 페어'] ?? '',
+        customPairs: symSection?.['페어']?.['커스텀 페어'] ?? [],
 
-    cfg.exchangeInfoPath = (exchange && typeof exchange["거래소 정보 파일 경로"] === 'string') ? exchange["거래소 정보 파일 경로"] : (engine && typeof engine["거래소 정보 파일 경로"] === 'string' ? engine["거래소 정보 파일 경로"] : (typeof obj["거래소 정보 파일 경로"] === 'string' ? obj["거래소 정보 파일 경로"] : ''));
-    cfg.leverageBracketPath = (exchange && typeof exchange["레버리지 구간 파일 경로"] === 'string') ? exchange["레버리지 구간 파일 경로"] : (engine && typeof engine["레버리지 구간 파일 경로"] === 'string' ? engine["레버리지 구간 파일 경로"] : (typeof obj["레버리지 구간 파일 경로"] === 'string' ? obj["레버리지 구간 파일 경로"] : ''));
-    cfg.lastDataUpdates = (exchange && typeof exchange["마지막 데이터 업데이트"] === 'string') ? exchange["마지막 데이터 업데이트"] : (engine && typeof engine["마지막 데이터 업데이트"] === 'string' ? engine["마지막 데이터 업데이트"] : "");
+        // 바 데이터 설정
+        barDataConfigs: (obj?.['바 데이터 설정'] ?? []).map((bar_data_config) => ({
+            timeframe: bar_data_config['타임프레임'],
+            klinesDirectory: bar_data_config['바 데이터 폴더'],
+            barDataType: bar_data_config['바 데이터 유형'],
+        })),
 
-    // 심볼 설정
-    const symSection = obj && typeof obj === 'object' ? obj["심볼 설정"] : null;
+        // 엔진 설정
+        projectDirectory: engine?.['프로젝트 폴더'] ?? '',
 
-    if (symSection && typeof symSection === 'object') {
-        cfg.symbolConfigs = Array.isArray(symSection["심볼"]) ? symSection["심볼"] : [];
+        useBacktestPeriodStart: engine?.['백테스팅 기간 처음부터'] === '사용',
+        useBacktestPeriodEnd: engine?.['백테스팅 기간 끝까지'] === '사용',
+        backtestPeriodStart: engine?.['백테스팅 기간 시작'] ?? '',
+        backtestPeriodEnd: engine?.['백테스팅 기간 종료'] ?? '',
+        backtestPeriodFormat: engine?.['백테스팅 기간 형식'] ?? '%Y-%m-%d %H:%M:%S',
 
-        const pairCfgInner = symSection["페어"] || {};
+        useBarMagnifier: engine?.['바 돋보기 기능'] === '활성화',
 
-        cfg.selectedPair = typeof pairCfgInner["선택된 페어"] === 'string' ? pairCfgInner["선택된 페어"] : '';
-        cfg.customPairs = Array.isArray(pairCfgInner["커스텀 페어"]) ? pairCfgInner["커스텀 페어"] : [];
-    }
+        initialBalance: engine?.['초기 자금'] ?? undefined,
 
-    // 바 데이터 설정
-    cfg.barDataConfigs = (obj["바 데이터 설정"] || []).map((bar_data_config) => ({
-        timeframe: bar_data_config["타임프레임"],
-        klinesDirectory: bar_data_config["바 데이터 폴더"],
-        barDataType: bar_data_config["바 데이터 유형"],
-    }));
+        takerFeePercentage: engine?.['테이커 수수료율'] ?? undefined,
+        makerFeePercentage: engine?.['메이커 수수료율'] ?? undefined,
 
-    // 엔진 설정
-    const engine = obj && typeof obj === 'object' ? obj["엔진 설정"] : null;
+        slippageModel: engine?.['슬리피지 모델'] ?? 'MarketImpactSlippage',
+        slippageTakerPercentage: engine?.['테이커 슬리피지율'] ?? undefined,
+        slippageMakerPercentage: engine?.['메이커 슬리피지율'] ?? undefined,
+        slippageStressMultiplier: engine?.['슬리피지 스트레스 계수'] ?? undefined,
 
-    cfg.projectDirectory = engine && (engine["프로젝트 폴더"] !== undefined) ? engine["프로젝트 폴더"] : "";
-    cfg.useBarMagnifier = engine && (engine["바 돋보기 기능"] === "활성화");
+        checkMarketMaxQty: engine?.['시장가 최대 수량 검사'] === '활성화',
+        checkMarketMinQty: engine?.['시장가 최소 수량 검사'] === '활성화',
+        checkLimitMaxQty: engine?.['지정가 최대 수량 검사'] === '활성화',
+        checkLimitMinQty: engine?.['지정가 최소 수량 검사'] === '활성화',
+        checkMinNotionalValue: engine?.['최소 명목 가치 검사'] === '활성화',
 
-    return cfg;
+        checkSameBarDataWithTarget: engine?.['마크 가격 바 데이터와 목표 바 데이터 중복 검사'] === '활성화',
+        checkSameBarDataTrading: engine?.['심볼 간 트레이딩 바 데이터 중복 검사'] === '활성화',
+        checkSameBarDataMagnifier: engine?.['심볼 간 돋보기 바 데이터 중복 검사'] === '활성화',
+        checkSameBarDataReference: engine?.['심볼 간 참조 바 데이터 중복 검사'] === '활성화',
+        checkSameBarDataMarkPrice: engine?.['심볼 간 마크 가격 바 데이터 중복 검사'] === '활성화'
+    };
 }
 
 function createDefaultConfig(projectDirectory) {
@@ -584,94 +669,217 @@ function createDefaultConfig(projectDirectory) {
         }],
 
         projectDirectory: projectDirectory,
+
+        useBacktestPeriodStart: true,
+        useBacktestPeriodEnd: true,
+        backtestPeriodStart: "",
+        backtestPeriodEnd: "",
+        backtestPeriodFormat: "%Y-%m-%d %H:%M:%S",
+
         useBarMagnifier: true,
+
+        initialBalance: undefined,
+
+        takerFeePercentage: undefined,
+        makerFeePercentage: undefined,
+
+        slippageModel: "MarketImpactSlippage",
+        slippageTakerPercentage: undefined,
+        slippageMakerPercentage: undefined,
+        slippageStressMultiplier: undefined,
+
+        checkMarketMaxQty: true,
+        checkMarketMinQty: true,
+        checkLimitMaxQty: true,
+        checkLimitMinQty: true,
+        checkMinNotionalValue: true,
+
+        checkSameBarDataWithTarget: true,
+        checkSameBarDataTrading: true,
+        checkSameBarDataMagnifier: true,
+        checkSameBarDataReference: true,
+        checkSameBarDataMarkPrice: true
     };
 }
 
 function configToWs(config) {
     return {
         "에디터 설정": {
-            "로그 패널 열림": !!(config && config.logPanelOpen),
-            "로그 패널 높이": (config && typeof config.logPanelHeight === 'number') ? config.logPanelHeight : 400,
+            "로그 패널 열림": config?.logPanelOpen ? "열림" : "닫힘",
+            "로그 패널 높이": config?.logPanelHeight ?? 400,
         },
         "거래소 설정": {
-            "API 키 환경 변수": (config && typeof config.apiKeyEnvVar === 'string') ? config.apiKeyEnvVar : "",
-            "API 시크릿 환경 변수": (config && typeof config.apiSecretEnvVar === 'string') ? config.apiSecretEnvVar : "",
+            "API 키 환경 변수": config?.apiKeyEnvVar ?? "",
+            "API 시크릿 환경 변수": config?.apiSecretEnvVar ?? "",
 
-            "거래소 정보 파일 경로": (config && typeof config.exchangeInfoPath === 'string') ? config.exchangeInfoPath : "",
-            "레버리지 구간 파일 경로": (config && typeof config.leverageBracketPath === 'string') ? config.leverageBracketPath : "",
-            "마지막 데이터 업데이트": (config && typeof config.lastDataUpdates === 'string') ? config.lastDataUpdates : "",
+            "거래소 정보 파일 경로": config?.exchangeInfoPath ?? "",
+            "레버리지 구간 파일 경로": config?.leverageBracketPath ?? "",
+            "마지막 데이터 업데이트": config?.lastDataUpdates ?? "",
         },
         "심볼 설정": {
-            "심볼": (config && Array.isArray(config.symbolConfigs)) ? config.symbolConfigs : [],
+            "심볼": config?.symbolConfigs ?? [],
             "페어": {
-                "선택된 페어": (config && typeof config.selectedPair === 'string') ? config.selectedPair : '',
-                "커스텀 페어": (config && Array.isArray(config.customPairs)) ? config.customPairs : []
+                "선택된 페어": config?.selectedPair ?? '',
+                "커스텀 페어": config?.customPairs ?? []
             }
         },
-        "바 데이터 설정": (config && Array.isArray(config.barDataConfigs)) ? config.barDataConfigs.map((b) => ({
+        "바 데이터 설정": (config?.barDataConfigs ?? []).map((b) => ({
             ...b, klinesDirectory: b.klinesDirectory ? toPosix(b.klinesDirectory) : b.klinesDirectory
-        })) : [],
+        })),
         "엔진 설정": {
-            "프로젝트 폴더": (config && config.projectDirectory) ? toPosix(config.projectDirectory) : "",
-            "바 돋보기 기능": (config && config.useBarMagnifier) ? "활성화" : "비활성화",
-        },
-    };
+            "프로젝트 폴더": config?.projectDirectory ? toPosix(config.projectDirectory) : "",
+
+            "백테스팅 기간 처음부터": config?.useBacktestPeriodStart ? "사용" : "미사용",
+            "백테스팅 기간 끝까지": config?.useBacktestPeriodEnd ? "사용" : "미사용",
+            "백테스팅 기간 시작": config?.backtestPeriodStart ?? "",
+            "백테스팅 기간 종료": config?.backtestPeriodEnd ?? "",
+            "백테스팅 기간 형식": config?.backtestPeriodFormat ?? "%Y-%m-%d %H:%M:%S",
+
+            "바 돋보기 기능": config?.useBarMagnifier ? "활성화" : "비활성화",
+
+            "초기 자금": config?.initialBalance ?? undefined,
+
+            "테이커 수수료율": config?.takerFeePercentage ?? undefined,
+            "메이커 수수료율": config?.makerFeePercentage ?? undefined,
+
+            "슬리피지 모델": config?.slippageModel ?? "MarketImpactSlippage",
+            "테이커 슬리피지율": config?.slippageTakerPercentage ?? undefined,
+            "메이커 슬리피지율": config?.slippageMakerPercentage ?? undefined,
+            "슬리피지 스트레스 계수": config?.slippageStressMultiplier ?? undefined,
+
+            "시장가 최대 수량 검사": config?.checkMarketMaxQty ? "활성화" : "비활성화",
+            "시장가 최소 수량 검사": config?.checkMarketMinQty ? "활성화" : "비활성화",
+            "지정가 최대 수량 검사": config?.checkLimitMaxQty ? "활성화" : "비활성화",
+            "지정가 최소 수량 검사": config?.checkLimitMinQty ? "활성화" : "비활성화",
+            "최소 명목 가치 검사": config?.checkMinNotionalValue ? "활성화" : "비활성화",
+
+            "마크 가격 바 데이터와 목표 바 데이터 중복 검사": config?.checkSameBarDataWithTarget ? "활성화" : "비활성화",
+            "심볼 간 트레이딩 바 데이터 중복 검사": config?.checkSameBarDataTrading ? "활성화" : "비활성화",
+            "심볼 간 돋보기 바 데이터 중복 검사": config?.checkSameBarDataMagnifier ? "활성화" : "비활성화",
+            "심볼 간 참조 바 데이터 중복 검사": config?.checkSameBarDataReference ? "활성화" : "비활성화",
+            "심볼 간 마크 가격 바 데이터 중복 검사": config?.checkSameBarDataMarkPrice ? "활성화" : "비활성화"
+        }
+    }
 }
 
 function wsToConfig(wsConfig) {
     if (!wsConfig || typeof wsConfig !== 'object') {
         return {
-            logPanelOpen: false, logPanelHeight: 400,
-
+            logPanelOpen: false,
+            logPanelHeight: 400,
             useBarMagnifier: true,
-
-            symbolConfigs: [], barDataConfigs: []
+            symbolConfigs: [],
+            barDataConfigs: []
         };
     }
 
-    if (wsConfig["에디터 설정"] || wsConfig["엔진 설정"] || wsConfig["심볼 설정"] || wsConfig["바 데이터 설정"] || wsConfig["거래소 설정"]) {
+    // 한국어 키 형식인지 확인
+    const editor = wsConfig["에디터 설정"];
+    const exchange = wsConfig["거래소 설정"];
+    const symSection = wsConfig["심볼 설정"];
+    const engine = wsConfig["엔진 설정"];
+
+    if (editor || exchange || symSection || engine) {
         return {
-            logPanelOpen: !!wsConfig["에디터 설정"]?.["로그 패널 열림"],
-            logPanelHeight: (typeof wsConfig["에디터 설정"]?.["로그 패널 높이"] === 'number') ? wsConfig["에디터 설정"]["로그 패널 높이"] : 400,
+            logPanelOpen: editor?.["로그 패널 열림"] === "열림",
+            logPanelHeight: editor?.["로그 패널 높이"] ?? 400,
 
-            apiKeyEnvVar: (wsConfig["거래소 설정"] && typeof wsConfig["거래소 설정"]["API 키 환경 변수"] === 'string') ? wsConfig["거래소 설정"]["API 키 환경 변수"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["API 키 환경 변수"] === 'string' ? wsConfig["엔진 설정"]["API 키 환경 변수"] : ''),
-            apiSecretEnvVar: (wsConfig["거래소 설정"] && typeof wsConfig["거래소 설정"]["API 시크릿 환경 변수"] === 'string') ? wsConfig["거래소 설정"]["API 시크릿 환경 변수"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["API 시크릿 환경 변수"] === 'string' ? wsConfig["엔진 설정"]["API 시크릿 환경 변수"] : ''),
+            apiKeyEnvVar: exchange?.["API 키 환경 변수"] ?? engine?.["API 키 환경 변수"] ?? '',
+            apiSecretEnvVar: exchange?.["API 시크릿 환경 변수"] ?? engine?.["API 시크릿 환경 변수"] ?? '',
 
-            exchangeInfoPath: (wsConfig["거래소 설정"] && typeof wsConfig["거래소 설정"]["거래소 정보 파일 경로"] === 'string') ? wsConfig["거래소 설정"]["거래소 정보 파일 경로"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["거래소 정보 파일 경로"] === 'string' ? wsConfig["엔진 설정"]["거래소 정보 파일 경로"] : ''),
-            leverageBracketPath: (wsConfig["거래소 설정"] && typeof wsConfig["거래소 설정"]["레버리지 구간 파일 경로"] === 'string') ? wsConfig["거래소 설정"]["레버리지 구간 파일 경로"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["레버리지 구간 파일 경로"] === 'string' ? wsConfig["엔진 설정"]["레버리지 구간 파일 경로"] : ''),
-            lastDataUpdates: (wsConfig["거래소 설정"] && typeof wsConfig["거래소 설정"]["마지막 데이터 업데이트"] === 'string') ? wsConfig["거래소 설정"]["마지막 데이터 업데이트"] : (wsConfig["엔진 설정"] && typeof wsConfig["엔진 설정"]["마지막 데이터 업데이트"] === 'string' ? wsConfig["엔진 설정"]["마지막 데이터 업데이트"] : ''),
+            exchangeInfoPath: exchange?.["거래소 정보 파일 경로"] ?? engine?.["거래소 정보 파일 경로"] ?? '',
+            leverageBracketPath: exchange?.["레버리지 구간 파일 경로"] ?? engine?.["레버리지 구간 파일 경로"] ?? '',
+            lastDataUpdates: exchange?.["마지막 데이터 업데이트"] ?? engine?.["마지막 데이터 업데이트"] ?? '',
 
-            symbolConfigs: Array.isArray(wsConfig["심볼 설정"]?.["심볼"]) ? wsConfig["심볼 설정"]["심볼"] : [],
-            selectedPair: (wsConfig["심볼 설정"] && wsConfig["심볼 설정"]["페어"] && typeof wsConfig["심볼 설정"]["페어"]["선택된 페어"] === 'string') ? wsConfig["심볼 설정"]["페어"]["선택된 페어"] : '',
-            customPairs: (wsConfig["심볼 설정"] && wsConfig["심볼 설정"]["페어"] && Array.isArray(wsConfig["심볼 설정"]["페어"]["커스텀 페어"])) ? wsConfig["심볼 설정"]["페어"]["커스텀 페어"] : [],
+            symbolConfigs: symSection?.["심볼"] ?? [],
+            selectedPair: symSection?.["페어"]?.["선택된 페어"] ?? '',
+            customPairs: symSection?.["페어"]?.["커스텀 페어"] ?? [],
 
-            barDataConfigs: Array.isArray(wsConfig["바 데이터 설정"]) ? wsConfig["바 데이터 설정"] : [],
+            barDataConfigs: wsConfig["바 데이터 설정"] ?? [],
 
-            projectDirectory: wsConfig["엔진 설정"]?.["프로젝트 폴더"] || "",
-            useBarMagnifier: !!wsConfig["엔진 설정"]?.["바 돋보기 기능"]
+            projectDirectory: engine?.["프로젝트 폴더"] ?? "",
+
+            useBacktestPeriodStart: engine?.["백테스팅 기간 처음부터"] === "사용",
+            useBacktestPeriodEnd: engine?.["백테스팅 기간 끝까지"] === "사용",
+            backtestPeriodStart: engine?.["백테스팅 기간 시작"] ?? "",
+            backtestPeriodEnd: engine?.["백테스팅 기간 종료"] ?? "",
+            backtestPeriodFormat: engine?.["백테스팅 기간 형식"] ?? "%Y-%m-%d %H:%M:%S",
+
+            useBarMagnifier: engine?.["바 돋보기 기능"] === "활성화",
+
+            initialBalance: engine?.["초기 자금"] ?? undefined,
+
+            takerFeePercentage: engine?.["테이커 수수료율"] ?? undefined,
+            makerFeePercentage: engine?.["메이커 수수료율"] ?? undefined,
+
+            slippageModel: engine?.["슬리피지 모델"] ?? "MarketImpactSlippage",
+            slippageTakerPercentage: engine?.["테이커 슬리피지율"] ?? undefined,
+            slippageMakerPercentage: engine?.["메이커 슬리피지율"] ?? undefined,
+            slippageStressMultiplier: engine?.["슬리피지 스트레스 계수"] ?? undefined,
+
+            checkMarketMaxQty: engine?.["시장가 최대 수량 검사"] === "활성화",
+            checkMarketMinQty: engine?.["시장가 최소 수량 검사"] === "활성화",
+            checkLimitMaxQty: engine?.["지정가 최대 수량 검사"] === "활성화",
+            checkLimitMinQty: engine?.["지정가 최소 수량 검사"] === "활성화",
+            checkMinNotionalValue: engine?.["최소 명목 가치 검사"] === "활성화",
+
+            checkSameBarDataWithTarget: engine?.["마크 가격 바 데이터와 목표 바 데이터 중복 검사"] === "활성화",
+            checkSameBarDataTrading: engine?.["심볼 간 트레이딩 바 데이터 중복 검사"] === "활성화",
+            checkSameBarDataMagnifier: engine?.["심볼 간 돋보기 바 데이터 중복 검사"] === "활성화",
+            checkSameBarDataReference: engine?.["심볼 간 참조 바 데이터 중복 검사"] === "활성화",
+            checkSameBarDataMarkPrice: engine?.["심볼 간 마크 가격 바 데이터 중복 검사"] === "활성화"
         };
     }
 
+    // 영어 키 형식
     return {
         logPanelOpen: wsConfig.logPanelOpen ?? false,
         logPanelHeight: wsConfig.logPanelHeight ?? 400,
 
-        apiKeyEnvVar: typeof wsConfig.apiKeyEnvVar === 'string' ? wsConfig.apiKeyEnvVar : '',
-        apiSecretEnvVar: typeof wsConfig.apiSecretEnvVar === 'string' ? wsConfig.apiSecretEnvVar : '',
+        apiKeyEnvVar: wsConfig.apiKeyEnvVar ?? '',
+        apiSecretEnvVar: wsConfig.apiSecretEnvVar ?? '',
 
-        exchangeInfoPath: typeof wsConfig.exchangeInfoPath === 'string' ? wsConfig.exchangeInfoPath : '',
-        leverageBracketPath: typeof wsConfig.leverageBracketPath === 'string' ? wsConfig.leverageBracketPath : '',
-        lastDataUpdates: (typeof wsConfig.lastDataUpdates === 'string') ? wsConfig.lastDataUpdates : '',
+        exchangeInfoPath: wsConfig.exchangeInfoPath ?? '',
+        leverageBracketPath: wsConfig.leverageBracketPath ?? '',
+        lastDataUpdates: wsConfig.lastDataUpdates ?? '',
 
-        symbolConfigs: Array.isArray(wsConfig.symbolConfigs) ? wsConfig.symbolConfigs : [],
-        selectedPair: typeof wsConfig.selectedPair === 'string' ? wsConfig.selectedPair : '',
-        customPairs: Array.isArray(wsConfig.customPairs) ? wsConfig.customPairs : [],
+        symbolConfigs: wsConfig.symbolConfigs ?? [],
+        selectedPair: wsConfig.selectedPair ?? '',
+        customPairs: wsConfig.customPairs ?? [],
 
-        barDataConfigs: Array.isArray(wsConfig.barDataConfigs) ? wsConfig.barDataConfigs : [],
+        barDataConfigs: wsConfig.barDataConfigs ?? [],
 
-        projectDirectory: wsConfig.projectDirectory || "",
-        useBarMagnifier: wsConfig.useBarMagnifier ?? true
+        projectDirectory: wsConfig.projectDirectory ?? "",
+
+        useBacktestPeriodStart: wsConfig.useBacktestPeriodStart ?? true,
+        useBacktestPeriodEnd: wsConfig.useBacktestPeriodEnd ?? true,
+        backtestPeriodStart: wsConfig.backtestPeriodStart ?? "",
+        backtestPeriodEnd: wsConfig.backtestPeriodEnd ?? "",
+        backtestPeriodFormat: wsConfig.backtestPeriodFormat ?? "%Y-%m-%d %H:%M:%S",
+
+        useBarMagnifier: wsConfig.useBarMagnifier ?? true,
+
+        initialBalance: wsConfig.initialBalance ?? undefined,
+
+        takerFeePercentage: wsConfig.takerFeePercentage ?? undefined,
+        makerFeePercentage: wsConfig.makerFeePercentage ?? undefined,
+
+        slippageModel: wsConfig.slippageModel ?? "MarketImpactSlippage",
+        slippageTakerPercentage: wsConfig.slippageTakerPercentage ?? undefined,
+        slippageMakerPercentage: wsConfig.slippageMakerPercentage ?? undefined,
+        slippageStressMultiplier: wsConfig.slippageStressMultiplier ?? undefined,
+
+        checkMarketMaxQty: wsConfig.checkMarketMaxQty ?? true,
+        checkMarketMinQty: wsConfig.checkMarketMinQty ?? true,
+        checkLimitMaxQty: wsConfig.checkLimitMaxQty ?? true,
+        checkLimitMinQty: wsConfig.checkLimitMinQty ?? true,
+        checkMinNotionalValue: wsConfig.checkMinNotionalValue ?? true,
+
+        checkSameBarDataWithTarget: wsConfig.checkSameBarDataWithTarget ?? true,
+        checkSameBarDataTrading: wsConfig.checkSameBarDataTrading ?? true,
+        checkSameBarDataMagnifier: wsConfig.checkSameBarDataMagnifier ?? true,
+        checkSameBarDataReference: wsConfig.checkSameBarDataReference ?? true,
+        checkSameBarDataMarkPrice: wsConfig.checkSameBarDataMarkPrice ?? true
     };
 }
 

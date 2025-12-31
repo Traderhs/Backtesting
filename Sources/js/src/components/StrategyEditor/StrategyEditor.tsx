@@ -74,7 +74,6 @@ function StrategyEditorContent() {
             return;
         }
 
-
         if (symbolConfigs.length === 0) {
             addLog('ERROR', '백테스팅을 실행하려면 최소 1개의 심볼이 필요합니다. 심볼을 추가해 주세요.');
             return;
@@ -101,6 +100,50 @@ function StrategyEditorContent() {
 
             if (!tf || tf.unit === TimeframeUnit.NULL) {
                 addLog('ERROR', `${config.barDataType} 바 데이터의 타임프레임 단위를 입력해 주세요.`);
+                return;
+            }
+        }
+
+        // 엔진 설정 검사
+        // 백테스팅 기간 체크 박스 검증: 체크 안되어있는데 칸이 비워져 있는 경우
+        if (!engineConfig.useBacktestPeriodStart && !engineConfig.backtestPeriodStart.trim()) {
+            addLog('ERROR', '백테스팅 기간의 시작을 입력하거나 [처음부터] 체크 박스를 선택해 주세요.');
+            return;
+        }
+
+        if (!engineConfig.useBacktestPeriodEnd && !engineConfig.backtestPeriodEnd.trim()) {
+            addLog('ERROR', '백테스팅 기간의 종료를 입력하거나 [끝까지] 체크 박스를 선택해 주세요.');
+            return;
+        }
+
+        if (!engineConfig.initialBalance) {
+            addLog('ERROR', '초기 자금을 입력해 주세요.');
+            return;
+        }
+
+        if (!engineConfig.takerFeePercentage) {
+            addLog('ERROR', '테이커 수수료율을 입력해 주세요.');
+            return;
+        }
+
+        if (!engineConfig.makerFeePercentage) {
+            addLog('ERROR', '메이커 수수료율을 입력해 주세요.');
+            return;
+        }
+
+        if (engineConfig.slippageModel == 'PercentageSlippage') {
+            if (!engineConfig.slippageTakerPercentage) {
+                addLog('ERROR', '테이커 슬리피지율을 입력해 주세요.');
+                return;
+            }
+
+            if (!engineConfig.slippageMakerPercentage) {
+                addLog('ERROR', '메이커 슬리피지율을 입력해 주세요.');
+                return;
+            }
+        } else if (engineConfig.slippageModel == 'MarketImpactSlippage') {
+            if (!engineConfig.slippageStressMultiplier) {
+                addLog('ERROR', '슬리피지 스트레스 계수를 입력해 주세요.');
                 return;
             }
         }
