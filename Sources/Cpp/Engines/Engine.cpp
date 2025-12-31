@@ -37,7 +37,8 @@ using namespace utils;
 namespace backtesting::engine {
 
 Engine::Engine()
-    : use_bar_magnifier_(false),
+    : server_mode_(false),
+      use_bar_magnifier_(false),
       trading_indices_(),
       magnifier_indices_(),
       mark_price_indices_(),
@@ -68,7 +69,9 @@ shared_ptr<Engine>& Engine::GetEngine() {
   return instance_;
 }
 
-void Engine::Backtesting() {
+void Engine::Backtesting(const bool server_mode) {
+  server_mode_ = server_mode;
+
   LogSeparator(true);
   Initialize();
 
@@ -331,7 +334,7 @@ void Engine::IsValidConfig() {
   }
 }
 
-void Engine::IsValidBarData() {
+void Engine::IsValidBarData() const {
   try {
     const auto& trading_bar_data = bar_->GetBarData(TRADING, "");
     const auto trading_num_symbols = trading_bar_data->GetNumSymbols();
@@ -359,7 +362,12 @@ void Engine::IsValidBarData() {
             "가능성이 있습니다.",
             __FILE__, __LINE__, true);
 
-        // TODO 서버 모드면 로그 다르게 하기. 이런 거 모두 찾아 수정
+        if (server_mode_) {
+          throw runtime_error(
+              "이 검사를 비활성화하고 싶다면 심볼 간 트레이딩 바 데이터 중복 "
+              "검사 체크 박스를 해제해 주세요.");
+        }
+
         Logger::LogAndThrowError(
             "이 검사를 비활성화하고 싶다면 "
             "Backtesting::SetConfig().DisableSameBarDataCheck 함수를 "
@@ -416,6 +424,13 @@ void Engine::IsValidBarData() {
               "돋보기 바 데이터에 중복된 데이터가 다른 심볼로 추가되었을 "
               "가능성이 있습니다.",
               __FILE__, __LINE__, true);
+
+          if (server_mode_) {
+            throw runtime_error(
+                "이 검사를 비활성화하고 싶다면 심볼 간 돋보기 바 데이터 중복 "
+                "검사 체크 박스를 해제해 주세요.");
+          }
+
           Logger::LogAndThrowError(
               "이 검사를 비활성화하고 싶다면 "
               "Backtesting::SetConfig().DisableSameBarDataCheck 함수를 "
@@ -483,6 +498,13 @@ void Engine::IsValidBarData() {
                               "심볼로 추가되었을 가능성이 있습니다.",
                               reference_timeframe),
                        __FILE__, __LINE__, true);
+
+          if (server_mode_) {
+            throw runtime_error(
+                "이 검사를 비활성화하고 싶다면 심볼 간 참조 바 데이터 중복 "
+                "검사 체크 박스를 해제해 주세요.");
+          }
+
           Logger::LogAndThrowError(
               "이 검사를 비활성화하고 싶다면 "
               "Backtesting::SetConfig().DisableSameBarDataCheck 함수를 "
@@ -557,6 +579,13 @@ void Engine::IsValidBarData() {
             "마크 가격 바 데이터에 중복된 데이터가 다른 심볼로 추가되었을 "
             "가능성이 있습니다.",
             __FILE__, __LINE__, true);
+
+        if (server_mode_) {
+          throw runtime_error(
+              "이 검사를 비활성화하고 싶다면 심볼 간 마크 가격 바 데이터 중복 "
+              "검사 체크 박스를 해제해 주세요.");
+        }
+
         Logger::LogAndThrowError(
             "이 검사를 비활성화하고 싶다면 "
             "Backtesting::SetConfig().DisableSameBarDataCheck 함수를 "
@@ -600,6 +629,13 @@ void Engine::IsValidBarData() {
                     use_bar_magnifier ? "돋보기" : "트레이딩",
                     target_bar_data->GetSafeSymbolName(target_symbol_idx)),
                 __FILE__, __LINE__, true);
+
+            if (server_mode_) {
+              throw runtime_error(
+                  "이 검사를 비활성화하고 싶다면 마크 가격 바 데이터와 목표 바 "
+                  "데이터 중복 검사 체크 박스를 해제해 주세요.");
+            }
+
             Logger::LogAndThrowError(
                 "이 검사를 비활성화하고 싶다면 "
                 "Backtesting::SetConfig().DisableSameBarDataWithTargetCheck "
@@ -714,6 +750,20 @@ void Engine::IsValidSymbolInfo() {
   const auto trading_num_symbols = trading_bar_data->GetNumSymbols();
 
   try {
+    if (exchange_info_.empty()) {
+      Logger::LogAndThrowError(
+          "엔진에 거래소 정보가 추가되지 않았습니다. "
+          "Backtesting::AddExchangeInfo 함수를 호출해 주세요.",
+          __FILE__, __LINE__);
+    }
+
+    if (leverage_bracket_.empty()) {
+      Logger::LogAndThrowError(
+          "엔진에 레버리지 구간이 추가되지 않았습니다. "
+          "Backtesting::AddLeverageBracket 함수를 호출해 주세요.",
+          __FILE__, __LINE__);
+    }
+
     if (funding_rates_.empty()) {
       Logger::LogAndThrowError(
           "엔진에 펀딩 비율이 추가되지 않았습니다. "
@@ -741,20 +791,6 @@ void Engine::IsValidSymbolInfo() {
                    symbol_name),
             __FILE__, __LINE__);
       }
-    }
-
-    if (exchange_info_.empty()) {
-      Logger::LogAndThrowError(
-          "엔진에 거래소 정보가 추가되지 않았습니다. "
-          "Backtesting::AddExchangeInfo 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
-    }
-
-    if (leverage_bracket_.empty()) {
-      Logger::LogAndThrowError(
-          "엔진에 레버리지 구간이 추가되지 않았습니다. "
-          "Backtesting::AddLeverageBracket 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
     }
 
     logger_->Log(INFO_L, "심볼 정보 유효성 검증이 완료되었습니다.", __FILE__,

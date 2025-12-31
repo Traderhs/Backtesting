@@ -87,7 +87,7 @@ static bool server_mode = false;
 
 void Backtesting::RunBacktesting() {
   try {
-    Engine::GetEngine()->Backtesting();
+    Engine::GetEngine()->Backtesting(server_mode);
   } catch (...) {
     Logger::LogAndThrowError("백테스팅 실행 중 오류가 발생했습니다.", __FILE__,
                              __LINE__);
@@ -97,7 +97,7 @@ void Backtesting::RunBacktesting() {
 void Backtesting::RunLocal() {
   // TODO 이 함수는 서버에서 실행해달라는 메시지만 로그. 그 외 fetch 코드만 주석
 
-  // 거래소 정책은 계속 변화하므로 매번 저장
+  // 거래소 설정
   SetMarketDataDirectory("D:/Programming/Backtesting/Data");
   SetApiEnvVars("BINANCE_API_KEY", "BINANCE_API_SECRET");
 
@@ -111,21 +111,6 @@ void Backtesting::RunLocal() {
 
   AddExchangeInfo(exchange_info_path);
   AddLeverageBracket(leverage_bracket_path);
-
-  // 엔진 설정
-  SetConfig()
-      .SetProjectDirectory("D:/Programming/Backtesting")
-      .SetBacktestPeriod()
-      .SetUseBarMagnifier(true)
-      .SetInitialBalance(10000)
-      .SetTakerFeePercentage(0.045)
-      .SetMakerFeePercentage(0.018)
-      .SetSlippage(MarketImpactSlippage(2))
-      .SetCheckLimitMaxQty(false)
-      .SetCheckLimitMinQty(false)
-      .SetCheckMarketMaxQty(false)
-      .SetCheckMarketMinQty(false)
-      .SetCheckMinNotionalValue(true);
 
   // 심볼 설정
   const vector<string>& symbol_names = {
@@ -147,6 +132,21 @@ void Backtesting::RunLocal() {
 
   AddFundingRates(symbol_names,
                   "D:/Programming/Backtesting/Data/Funding Rates");
+
+  // 엔진 설정
+  SetConfig()
+      .SetProjectDirectory("D:/Programming/Backtesting")
+      .SetBacktestPeriod()
+      .SetUseBarMagnifier(true)
+      .SetInitialBalance(10000)
+      .SetTakerFeePercentage(0.045)
+      .SetMakerFeePercentage(0.018)
+      .SetSlippage(MarketImpactSlippage(2))
+      .SetCheckMarketMaxQty(false)
+      .SetCheckMarketMinQty(false)
+      .SetCheckLimitMaxQty(false)
+      .SetCheckLimitMinQty(false)
+      .SetCheckMinNotionalValue(true);
 
   // 전략 설정
   AddStrategy<DiceSystem>("Dice System");
@@ -420,11 +420,73 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     // =======================================================================
     // 엔진 설정
     // =======================================================================
-    SetConfig()
-        .SetProjectDirectory(project_directory)
-        .SetUseBarMagnifier(json_config.at("useBarMagnifier").get<bool>());
+    // "처음부터" 사용 시 무조건 처음부터 사용
+    const auto& backtest_period_start =
+        json_config.at("useBacktestPeriodStart").get<bool>()
+            ? ""
+            : json_config.at("backtestPeriodStart").get<string>();
 
-    // TODO 각종 설정 추가
+    // "끝까지" 사용 시 무조건 끝까지 사용
+    const auto& backtest_period_end =
+        json_config.at("useBacktestPeriodEnd").get<bool>()
+            ? ""
+            : json_config.at("backtestPeriodEnd").get<string>();
+
+    auto& config_builder =
+        SetConfig()
+            .SetProjectDirectory(project_directory)
+            .SetBacktestPeriod(
+                backtest_period_start, backtest_period_end,
+                json_config.at("backtestPeriodFormat").get<string>())
+            .SetUseBarMagnifier(json_config.at("useBarMagnifier").get<bool>())
+            .SetInitialBalance(json_config.at("initialBalance").get<double>())
+            .SetTakerFeePercentage(
+                json_config.at("takerFeePercentage").get<double>())
+            .SetMakerFeePercentage(
+                json_config.at("makerFeePercentage").get<double>());
+
+    // 슬리피지 타입에 따라 설정
+    if (const auto& slippage_model =
+            json_config.at("slippageModel").get<string>();
+        slippage_model == "PercentageSlippage") {
+      config_builder.SetSlippage(PercentageSlippage(
+          json_config.at("slippageTakerPercentage").get<double>(),
+          json_config.at("slippageMakerPercentage").get<double>()));
+    } else if (slippage_model == "MarketImpactSlippage") {
+      config_builder.SetSlippage(MarketImpactSlippage(
+          json_config.at("slippageStressMultiplier").get<double>()));
+    } else {
+      throw runtime_error("서버 오류: 잘못된 슬리피지 타입 지정");
+    }
+
+    config_builder
+        .SetCheckMarketMaxQty(json_config.at("checkMarketMaxQty").get<bool>())
+        .SetCheckMarketMinQty(json_config.at("checkMarketMinQty").get<bool>())
+        .SetCheckLimitMaxQty(json_config.at("checkLimitMaxQty").get<bool>())
+        .SetCheckLimitMinQty(json_config.at("checkLimitMinQty").get<bool>())
+        .SetCheckMinNotionalValue(
+            json_config.at("checkMinNotionalValue").get<bool>());
+
+    // 바 데이터 중복 검사 설정
+    if (!json_config.at("checkSameBarDataWithTarget").get<bool>()) {
+      config_builder.DisableSameBarDataWithTargetCheck();
+    }
+
+    if (!json_config.at("checkSameBarDataTrading").get<bool>()) {
+      config_builder.DisableSameBarDataCheck(TRADING);
+    }
+
+    if (!json_config.at("checkSameBarDataMagnifier").get<bool>()) {
+      config_builder.DisableSameBarDataCheck(MAGNIFIER);
+    }
+
+    if (!json_config.at("checkSameBarDataReference").get<bool>()) {
+      config_builder.DisableSameBarDataCheck(REFERENCE);
+    }
+
+    if (!json_config.at("checkSameBarDataMarkPrice").get<bool>()) {
+      config_builder.DisableSameBarDataCheck(MARK_PRICE);
+    }
 
     return;  // TODO 테스트용 임시 리턴
 

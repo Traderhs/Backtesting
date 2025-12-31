@@ -18,8 +18,44 @@ export interface ExchangeConfig {
 }
 
 export interface EngineConfig {
+    // 프로젝트 폴더
     projectDirectory: string;
+
+    useBacktestPeriodStart: boolean;  // true면 처음부터, false면 backtestPeriodStart 사용
+    useBacktestPeriodEnd: boolean;    // true면 끝까지, false면 backtestPeriodEnd 사용
+    backtestPeriodStart: string;
+    backtestPeriodEnd: string;
+    backtestPeriodFormat: string;
+
+    // 바 돋보기 기능
     useBarMagnifier: boolean;
+
+    // 초기 자금
+    initialBalance: number | undefined;
+
+    // 수수료
+    takerFeePercentage: number | undefined;
+    makerFeePercentage: number | undefined;
+
+    // 슬리피지
+    slippageModel: 'PercentageSlippage' | 'MarketImpactSlippage';
+    slippageTakerPercentage: number | undefined;  // PercentageSlippage용
+    slippageMakerPercentage: number | undefined;  // PercentageSlippage용
+    slippageStressMultiplier: number | undefined; // MarketImpactSlippage용
+
+    // 수량 검사
+    checkMarketMaxQty: boolean;
+    checkMarketMinQty: boolean;
+    checkLimitMaxQty: boolean;
+    checkLimitMinQty: boolean;
+    checkMinNotionalValue: boolean;
+
+    // 바 데이터 중복 검사
+    checkSameBarDataWithTarget: boolean;
+    checkSameBarDataTrading: boolean;
+    checkSameBarDataMagnifier: boolean;
+    checkSameBarDataReference: boolean;
+    checkSameBarDataMarkPrice: boolean;
 }
 
 interface StrategyContextType {
@@ -106,7 +142,36 @@ export function StrategyProvider({children}: { children: ReactNode }) {
     // 엔진 설정
     const [engineConfig, setEngineConfig] = useState<EngineConfig>({
         projectDirectory: '',
-        useBarMagnifier: true
+
+        useBacktestPeriodStart: true,
+        useBacktestPeriodEnd: true,
+        backtestPeriodStart: '',
+        backtestPeriodEnd: '',
+        backtestPeriodFormat: '%Y-%m-%d %H:%M:%S',
+
+        useBarMagnifier: true,
+
+        initialBalance: undefined,
+
+        takerFeePercentage: undefined,
+        makerFeePercentage: undefined,
+
+        slippageModel: 'MarketImpactSlippage',
+        slippageTakerPercentage: undefined,
+        slippageMakerPercentage: undefined,
+        slippageStressMultiplier: undefined,
+
+        checkMarketMaxQty: true,
+        checkMarketMinQty: true,
+        checkLimitMaxQty: true,
+        checkLimitMinQty: true,
+        checkMinNotionalValue: true,
+
+        checkSameBarDataWithTarget: true,
+        checkSameBarDataTrading: true,
+        checkSameBarDataMagnifier: true,
+        checkSameBarDataReference: true,
+        checkSameBarDataMarkPrice: true
     });
 
     // 호출자 파일명을 간단히 추출

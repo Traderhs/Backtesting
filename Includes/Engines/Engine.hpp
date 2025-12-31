@@ -75,7 +75,7 @@ class Engine final : public BaseEngine {
   static shared_ptr<Engine>& GetEngine();
 
   /// 백테스팅을 실행하는 함수
-  void Backtesting();
+  void Backtesting(bool server_mode);
 
   /// 현재 사용 중인 전략의 실행 타입을 설정하는 함수
   void SetCurrentStrategyType(StrategyType strategy_type);
@@ -102,6 +102,9 @@ class Engine final : public BaseEngine {
    public:
     void operator()(const Engine* p) const;
   };
+
+  // 서버 모드 여부
+  bool server_mode_;
 
   // 백테스팅 시작 시간
   static chrono::steady_clock::time_point backtesting_start_time_;
@@ -165,7 +168,7 @@ class Engine final : public BaseEngine {
   static void IsValidConfig();
 
   /// 바 데이터의 유효성을 검증하는 함수
-  static void IsValidBarData();
+  void IsValidBarData() const;
 
   /// Start, End의 시간 범위가 바 데이터 시간 범위 내인지 유효성을 검증하는 함수
   void IsValidDateRange();
