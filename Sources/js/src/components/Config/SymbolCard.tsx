@@ -1094,7 +1094,7 @@ const SymbolCard = memo(({
                         transition: 'transform 0.3s ease',
                     }}
                     onError={(e) => {
-                        (e.target as HTMLImageElement).src = "/BackBoard/Icons/USDT.png";
+                        (e.target as HTMLImageElement).src = "/Logos/USDT.png";
                     }}
                 />
             </div>

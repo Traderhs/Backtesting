@@ -6,38 +6,20 @@ const express = require("express");
 const {Server: WebSocketServer} = require("ws");
 const net = require("net");
 const {
-    handleLoadChartData,
-    initializeFallbackImage,
-    findLogoUrl,
-    downloadAndSaveImage,
-    USDT_FALLBACK_ICON_PATH
+    handleLoadChartData, initializeFallbackImage, findLogoUrl, downloadAndSaveImage
 } = require("./chartDataHandler");
 const {startBacktestingEngine, runSingleBacktesting, stopBacktestingEngine} = require("./backtestingEngine");
+
 
 // =====================================================================================================================
 // 전역 변수
 // =====================================================================================================================
 const app = express();
-const requestedPort = Number(process.env.BACKBOARD_PORT);
-const isFixedPort = Number.isFinite(requestedPort) && requestedPort > 0;
-let port = isFixedPort ? requestedPort : 7777;
+let port = Number(process.env.BACKBOARD_PORT);
 
 // 연결된 WebSocket 클라이언트
 const activeClients = new Set();
 let pendingProjectDirectoryResolvers = [];
-
-// 베이스 디렉터리
-const processWithPkg = process;
-const isDevelopment = !processWithPkg.pkg;
-const baseDir = isDevelopment ? process.cwd() : (path.dirname(process.execPath) || process.cwd());
-
-function toPosix(p) {
-    if (!p || typeof p !== 'string') {
-        return p;
-    }
-
-    return p.replace(/\\/g, '/');
-}
 
 // 디버그 로그 설정
 const DEBUG_LOGS = process.env.LAUNCH_DEBUG_LOGS === '0';
@@ -51,9 +33,9 @@ if (!DEBUG_LOGS) {
 // =====================================================================================================================
 // 유틸리티 함수
 // =====================================================================================================================
-
 function requestProjectDirectoryFromClients() {
     const pollInterval = 200;
+
     return new Promise((resolve) => {
         const trySend = () => {
             if (activeClients && activeClients.size > 0) {
@@ -67,8 +49,10 @@ function requestProjectDirectoryFromClients() {
                 pendingProjectDirectoryResolvers.push((val) => resolve(val));
                 return;
             }
+
             setTimeout(trySend, pollInterval);
         };
+
         trySend();
     });
 }
@@ -98,12 +82,17 @@ function getCallerFileInfo() {
             }
         }
     } catch (e) {
+        // 무시
     }
+
     return null;
 }
 
 function broadcastLog(level, message, timestamp = null, fileInfo = null) {
-    if (message === undefined || message === null) message = '';
+    if (message === undefined || message === null) {
+        message = '';
+    }
+
     if (typeof message !== 'string') {
         try {
             message = String(message);
@@ -114,7 +103,10 @@ function broadcastLog(level, message, timestamp = null, fileInfo = null) {
 
     if (!fileInfo) {
         const inferred = getCallerFileInfo();
-        if (inferred) fileInfo = inferred;
+
+        if (inferred) {
+            fileInfo = inferred;
+        }
     }
 
     if (level !== 'SEPARATOR') {
@@ -127,15 +119,12 @@ function broadcastLog(level, message, timestamp = null, fileInfo = null) {
         activeClients.forEach(client => {
             if (client.readyState === 1) {
                 client.send(JSON.stringify({
-                    action: "backtestingLog",
-                    level: level,
-                    message: message,
-                    timestamp: timestamp,
-                    fileInfo: fileInfo
+                    action: "backtestingLog", level: level, message: message, timestamp: timestamp, fileInfo: fileInfo
                 }));
             }
         });
     } catch (e) {
+        // 무시
     }
 }
 
@@ -156,25 +145,119 @@ async function findAvailablePort(startPort) {
     let currentPort = startPort;
 
     while (!(await isPortAvailable(currentPort))) {
-        broadcastLog("INFO", `포트 ${currentPort}가 이미 사용 중입니다., 포트 ${currentPort + 1} 사용을 시도합니다.`, null, null);
         currentPort++;
     }
+
     return currentPort;
+}
+
+function toPosix(p) {
+    if (!p || typeof p !== 'string') {
+        return p;
+    }
+
+    return p.replace(/\\/g, '/');
 }
 
 // =====================================================================================================================
 // 정적 파일 제공
 // =====================================================================================================================
-const iconDir = path.join(baseDir, "BackBoard", "Icons");
-app.use("/BackBoard", express.static(path.join(baseDir, "BackBoard")));
+/*
+ DEV vs EXE 규칙
 
-const distPath = path.join(baseDir, "BackBoard");
-app.use(express.static(distPath));
+ ○ 공통
+  - 프로젝트 폴더: 사용자가 선택한 폴더
+  - 동적 폴더: '프로젝트 폴더/Backboard'
+  - 아이콘: '프로젝트 폴더/BackBoard/Icons'
+  - 로고: '프로젝트 폴더/BackBoard/Logos'
+
+ ○ DEV (개발)
+  - Assets | index.html: '프로젝트 폴더/BackBoard/Assets' | '프로젝트 폴더/BackBoard/index.html'
+
+ ○ EXE (배포)
+  - Assets | index.html: 'resources/Assets' / 'resources/index.html'
+*/
+
+let projectDir = process.env.PROJECT_DIR
+
+let dynamicDir;
+let iconDir;
+let logoDir;
+let staticDir;
+
+// ○ 공통 설정
+dynamicDir = path.join(projectDir, 'BackBoard');
+app.use('/BackBoard', express.static(dynamicDir));
+
+iconDir = path.join(dynamicDir, 'Icons');
+app.use('/Icons', express.static(iconDir));
+
+logoDir = path.join(dynamicDir, 'Logos');
+app.use('/Logos', express.static(logoDir));
+
+// ○ 개별 설정
+const isDev = process.env.NODE_ENV === 'development';
+
+if (isDev) {
+    // DEV: 정적 파일 경로 설정
+    staticDir = path.join(projectDir, 'BackBoard');
+    app.use(express.static(staticDir));
+} else {
+    // EXE: 정적 파일 경로 설정
+    staticDir = process.resourcesPath;
+    app.use(express.static(staticDir));
+}
+
+// EXE일 때 번들된 Icons/Logos를 project BackBoard로 복사
+async function copyDirIfEmpty(srcDir, dstDir) {
+    try {
+        const srcStat = await fsPromises.stat(srcDir);
+
+        if (!srcStat.isDirectory()) {
+            return;
+        }
+    } catch (e) {
+        return;
+    }
+
+    await fsPromises.mkdir(dstDir, {recursive: true});
+
+    try {
+        const dstFiles = await fsPromises.readdir(dstDir);
+
+        // 이미 파일이 있으면 복사하지 않음
+        if (dstFiles.length > 0) {
+            return;
+        }
+    } catch (e) {
+        // 무시
+    }
+
+    const entries = await fsPromises.readdir(srcDir, {withFileTypes: true});
+    for (const entry of entries) {
+        if (entry.isFile()) {
+            await fsPromises.copyFile(path.join(srcDir, entry.name), path.join(dstDir, entry.name));
+        }
+    }
+}
+
+async function ensureBundledIconsLogosCopied() {
+    if (!projectDir || !staticDir) {
+        return;
+    }
+
+    try {
+        await copyDirIfEmpty(path.join(staticDir, 'Icons'), iconDir);
+        await copyDirIfEmpty(path.join(staticDir, 'Logos'), logoDir);
+    } catch (e) {
+        broadcastLog('WARN', `아이콘/로고 복사 중 오류: ${e.message}`);
+    }
+}
 
 // =====================================================================================================================
 // API: config 가져오기
 // =====================================================================================================================
-// 서버에서 미리 로드한 BackBoard/config.json을 클라이언트가 요청할 수 있도록 전역 변수와 API 제공
+// 서버에서 미리 로드한 config.json을 클라이언트가 요청할 수 있도록 전역 변수와 API 제공
 let config = null;
 
 app.get('/api/config', (req, res) => {
@@ -190,9 +273,9 @@ app.get('/api/config', (req, res) => {
 // API: 거래 내역 가져오기
 // =====================================================================================================================
 app.get('/api/trade-list', async (req, res) => {
-    try {
-        const tradeListPath = path.join(baseDir, 'BackBoard', 'trade_list.json');
+    const tradeListPath = path.join(dynamicDir, 'trade_list.json');
 
+    try {
         // 파일 존재 확인
         await fsPromises.access(tradeListPath, fs.constants.F_OK);
 
@@ -207,17 +290,15 @@ app.get('/api/trade-list', async (req, res) => {
         const tradeData = JSON.parse(fileContent);
 
         res.set({
-            'Cache-Control': 'no-cache, no-store, must-revalidate',
-            'Pragma': 'no-cache',
-            'Expires': '0'
+            'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0'
         });
 
         res.json(tradeData);
     } catch (error) {
         res.status(404).json({
             error: 'trade_list.json 파일을 찾을 수 없습니다.',
-            attemptedPath: toPosix(path.join(baseDir, 'BackBoard', 'trade_list.json')),
-            baseDir: toPosix(baseDir),
+            attemptedPath: toPosix(tradeListPath),
+            projectDir: toPosix(projectDir),
             cwd: toPosix(process.cwd()),
             details: error.message
         });
@@ -233,77 +314,70 @@ app.get('/api/icon', async (req, res) => {
         return res.status(400).send('name query parameter is required');
     }
 
-    // 경로 조작 방지: basename만 사용
     const safeName = path.basename(name);
+
+    if (!iconDir) {
+        return res.status(404).send('icon not found');
+    }
+
     const filePath = path.join(iconDir, safeName);
 
     try {
-        await fsPromises.access(filePath, require('fs').constants.F_OK);
+        await fsPromises.access(filePath, fs.constants.F_OK);
+
         return res.sendFile(filePath);
-    } catch (err) {
-        // 파일이 없으면 404로 응답 (클라이언트가 CSS 기반 폴백을 처리하도록 함)
+    } catch (e) {
         return res.status(404).send('icon not found');
     }
+
 });
 
 // =====================================================================================================================
 // API: 로고 가져오기
 // =====================================================================================================================
-app.get("/api/get-logo", async (req, res) => {
+app.get('/api/get-logo', async (req, res) => {
     const {symbol} = req.query;
     if (!symbol) {
-        return res.status(400).send("Symbol query parameter is required.");
+        return res.status(400).send('Symbol query parameter is required.');
     }
 
     const safeSymbolName = symbol.replace(/[^a-zA-Z0-9]/g, '_');
-    const localFilePath = path.join(iconDir, `${safeSymbolName}.png`);
-    const localFileUrl = `/BackBoard/Icons/${safeSymbolName}.png`;
 
-    try {
-        await fsPromises.access(localFilePath, fs.constants.F_OK);
-
-        return res.json({logoUrl: localFileUrl});
-    } catch (error) {
-        // 무시
+    if (!logoDir) {
+        return res.status(404).send('icon not found');
     }
 
+    const filePath = path.join(logoDir, `${safeSymbolName}.png`);
+
     try {
-        const imageUrl = await findLogoUrl(symbol);
-        if (!imageUrl) {
-            return res.json({logoUrl: USDT_FALLBACK_ICON_PATH});
-        }
+        await fsPromises.access(filePath, fs.constants.F_OK);
 
+        const origin = (req.protocol && req.get('host')) ? `${req.protocol}://${req.get('host')}` : `http://localhost:${port}`;
+        return res.json({logoUrl: `${origin}${isDev ? '/Logos' : '/BackBoard/Logos'}/${safeSymbolName}.png`});
+    } catch (e) {
+        // 파일이 없으면 다운로드 시도
         try {
-            await fsPromises.mkdir(path.dirname(localFilePath), {recursive: true});
-        } catch (dirError) {
-            broadcastLog("ERROR", `디렉토리 생성 실패: ${dirError.message}`, null, null);
-        }
-
-        try {
-            await downloadAndSaveImage(imageUrl, localFilePath);
-        } catch (downloadError) {
-            broadcastLog("ERROR", `이미지 다운로드 실패 (${symbol}): ${downloadError.message}`, null, null);
-            return res.json({logoUrl: USDT_FALLBACK_ICON_PATH});
-        }
-
-        try {
-            const stats = await fsPromises.stat(localFilePath);
-            if (stats.size === 0) {
-                broadcastLog("ERROR", `다운로드된 파일 크기가 0입니다: ${toPosix(localFilePath)}`, null, null);
-
-                return res.json({logoUrl: USDT_FALLBACK_ICON_PATH});
+            const imageUrl = await findLogoUrl(symbol);
+            if (!imageUrl) {
+                const origin = (req.protocol && req.get('host')) ? `${req.protocol}://${req.get('host')}` : `http://localhost:${port}`;
+                return res.json({logoUrl: `${origin}${isDev ? '/Logos' : '/BackBoard/Logos'}/USDT.png`});
             }
-        } catch (statError) {
-            broadcastLog("ERROR", `파일 상태 확인 실패: ${statError.message}`, null, null);
 
-            return res.json({logoUrl: USDT_FALLBACK_ICON_PATH});
+            await fsPromises.mkdir(path.dirname(filePath), {recursive: true});
+            await downloadAndSaveImage(imageUrl, filePath);
+
+            // 다운로드 후 존재 확인
+            await fsPromises.access(filePath, fs.constants.F_OK);
+
+            const origin = (req.protocol && req.get('host')) ? `${req.protocol}://${req.get('host')}` : `http://localhost:${port}`;
+            return res.json({logoUrl: `${origin}${isDev ? '/Logos' : '/BackBoard/Logos'}/${safeSymbolName}.png`});
+        } catch (err) {
+            // 실패 시 폴백 반환
+            broadcastLog('ERROR', `로고 다운로드 실패 (${symbol}): ${err.message}`, null, null);
+
+            const origin = (req.protocol && req.get('host')) ? `${req.protocol}://${req.get('host')}` : `http://localhost:${port}`;
+            return res.json({logoUrl: `${origin}${isDev ? '/Logos' : '/BackBoard/Logos'}/USDT.png`});
         }
-
-        return res.json({logoUrl: localFileUrl});
-    } catch (fetchError) {
-        broadcastLog("ERROR", `전체 로고 처리 실패 (${symbol}): ${fetchError.message}`, null, null);
-
-        return res.json({logoUrl: USDT_FALLBACK_ICON_PATH});
     }
 });
 
@@ -313,7 +387,7 @@ app.get("/api/get-logo", async (req, res) => {
 app.get('/api/symbols', async (req, res) => {
     try {
         // 디렉터리에 있는 데이터로 심볼 목록 추출
-        const continuousPath = path.join(baseDir, 'Data', 'Continuous Klines');
+        const continuousPath = path.join(projectDir, 'Data', 'Continuous Klines');
         let symbols = [];
 
         try {
@@ -326,15 +400,12 @@ app.get('/api/symbols', async (req, res) => {
 
         // config에 명시된 심볼도 합침
         if (config && Array.isArray(config['심볼'])) {
-            const cfg = config['심볼'].map((s) => (s['심볼 이름'] || s['심볼'] || s['symbol'] || '')).filter(Boolean).map(String).map(s => s.toUpperCase());
+            const cfg = config['심볼'].map((s) => (s['심볼 이름'])).filter(Boolean).map(String).map(s => s.toUpperCase());
             symbols = Array.from(new Set([...symbols, ...cfg]));
         }
 
         // 기본으로 포함할 인기 심볼 (빠른 검색용)
-        const popularSymbols = [
-            'BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE',
-            'DOT', 'LTC', 'LINK', 'TRX', 'NEAR', 'AVAX', 'ATOM'
-        ];
+        const popularSymbols = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'DOT', 'LTC', 'LINK', 'TRX', 'NEAR', 'AVAX', 'ATOM'];
 
         // 쿼리 파라미터로 추가 소스 지정 가능: include=popular,web
         const includes = (req.query.include || '').toString().split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -459,14 +530,12 @@ app.get("/api/get-source-code", async (req, res) => {
             res.json({content: fileContent});
         } catch (error) {
             res.status(404).json({
-                error: `파일을 찾을 수 없거나 읽을 수 없습니다: ${toPosix(filePath)}`,
-                details: error.message
+                error: `파일을 찾을 수 없거나 읽을 수 없습니다: ${toPosix(filePath)}`, details: error.message
             });
         }
     } catch (error) {
         res.status(500).json({
-            error: "서버 오류가 발생했습니다.",
-            details: error.message
+            error: "서버 오류가 발생했습니다.", details: error.message
         });
     }
 });
@@ -476,13 +545,13 @@ app.get("/api/get-source-code", async (req, res) => {
 // =====================================================================================================================
 app.head('/api/log', async (req, res) => {
     try {
-        const p = path.join(baseDir, 'BackBoard', 'backtesting.log');
+        const logPath = path.join(dynamicDir, 'backtesting.log');
 
         let filePath = null;
         try {
-            await fsPromises.access(p, fs.constants.F_OK);
+            await fsPromises.access(logPath, fs.constants.F_OK);
 
-            filePath = p;
+            filePath = logPath;
         } catch (e) {
             // continue
         }
@@ -494,9 +563,7 @@ app.head('/api/log', async (req, res) => {
         const stat = await fsPromises.stat(filePath);
 
         res.set({
-            'Content-Length': stat.size,
-            'Accept-Ranges': 'bytes',
-            'Cache-Control': 'no-cache'
+            'Content-Length': stat.size, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-cache'
         });
 
         return res.status(200).end();
@@ -508,13 +575,13 @@ app.head('/api/log', async (req, res) => {
 
 app.get('/api/log', async (req, res) => {
     try {
-        const p = path.join(baseDir, 'BackBoard', 'backtesting.log');
+        const logPath = path.join(dynamicDir, 'backtesting.log');
 
         let filePath = null;
         try {
-            await fsPromises.access(p, fs.constants.F_OK);
+            await fsPromises.access(logPath, fs.constants.F_OK);
 
-            filePath = p;
+            filePath = logPath;
         } catch (e) {
             // continue
         }
@@ -584,29 +651,33 @@ app.get("/force-shutdown", (req, res) => {
 // =====================================================================================================================
 // 모든 라우트 핸들러
 // =====================================================================================================================
-app.get("*", (req, res) => {
-    res.sendFile(path.join(distPath, "index.html"));
+app.get("*", async (req, res) => {
+    const indexPath = path.join(staticDir, "index.html");
+
+    try {
+        await fsPromises.access(indexPath, fs.constants.F_OK);
+        return res.sendFile(indexPath);
+    } catch (e) {
+        return res.status(404).send('index.html not found');
+    }
 });
 
 // =====================================================================================================================
 // 서버 시작
 // =====================================================================================================================
 async function startServer() {
-    if (isFixedPort) {
-        const available = await isPortAvailable(port);
-        if (!available) {
-            throw new Error(`BACKBOARD_PORT=${port} 가 이미 사용 중입니다.`);
-        }
-    } else {
+    const available = await isPortAvailable(port);
+    if (!available) {
         port = await findAvailablePort(port);
     }
+
     broadcastLog("INFO", `포트 ${port}에서 서버를 실행합니다.`, null, null);
 
     return app.listen(port, () => {
         broadcastLog("INFO", `http://localhost:${port}에서 서버가 실행 중입니다.`, null, null);
 
-        // 백엔드가 직접 브라우저를 여는 동작은 DEV 실행 시 Vite가 대신 열도록 제어
-        if (process.env.BACKBOARD_OPEN_BROWSER !== 'none') {
+        // Electron 환경에서는 브라우저를 열지 않음
+        if (!(process.env.ELECTRON_RUN === 'true') && process.env.BACKBOARD_OPEN_BROWSER !== 'none') {
             exec(`start http://localhost:${port}`, (err) => {
                 if (err) {
                     broadcastLog("ERROR", `브라우저를 여는 데 실패했습니다.: ${err.message}`, null, null);
@@ -681,7 +752,7 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
             if (!getEditorConfig() && !isEditorConfigLoading()) {
                 setEditorConfigLoading(true);
                 try {
-                    const config = await loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFromClients, broadcastLog, baseDir);
+                    const config = await loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFromClients, broadcastLog, projectDir);
                     if (config && !(await validateProjectDirectoryConfig(config, broadcastLog))) {
                         setEditorConfig(null);
                     } else {
@@ -689,7 +760,7 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
 
                         // 프로젝트 폴더가 설정되어 있으면 백테스팅 엔진을 그 프로젝트 디렉터리에서 실행합니다.
                         try {
-                            const startDir = config && config.projectDirectory ? config.projectDirectory : baseDir;
+                            const startDir = config && config.projectDirectory ? config.projectDirectory : projectDir;
                             startBacktestingEngine(activeClients, broadcastLog, startDir);
                         } catch (e) {
                             broadcastLog("ERROR", `백테스팅 엔진 시작 실패: ${e.message}`, null, null);
@@ -698,6 +769,7 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
                 } catch (e) {
                     broadcastLog("ERROR", `editor.json 로드 실패: ${e.message}`, null, null);
                 }
+
                 setEditorConfigLoading(false);
             }
         })();
@@ -721,7 +793,7 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
                             setEditorConfigLoading(true);
 
                             try {
-                                const config = await loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFromClients, broadcastLog, baseDir);
+                                const config = await loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFromClients, broadcastLog, projectDir);
                                 if (config && !(await validateProjectDirectoryConfig(config, broadcastLog))) {
                                     setEditorConfig(null);
                                 } else {
@@ -735,8 +807,7 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
                         }
 
                         ws.send(JSON.stringify({
-                            action: "editorConfigLoaded",
-                            config: configToWs(getEditorConfig() || {
+                            action: "editorConfigLoaded", config: configToWs(getEditorConfig() || {
                                 logPanelOpen: false,
                                 logPanelHeight: 400,
                                 projectDirectory: '',
@@ -749,11 +820,10 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
 
                     case "saveEditorConfig":
                         const nextConfig = wsToConfig(msg.config);
-                        const success = saveEditorConfig(nextConfig, broadcastLog, baseDir);
+                        const success = saveEditorConfig(nextConfig, broadcastLog, projectDir);
 
                         ws.send(JSON.stringify({
-                            action: "editorConfigSaved",
-                            success: success
+                            action: "editorConfigSaved", success: success
                         }));
 
                         if (success) {
@@ -763,7 +833,7 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
                         break;
 
                     case "provideProjectDirectory":
-                        await handleProvideProjectDirectory(ws, msg.projectDirectory, activeClients, broadcastLog, baseDir);
+                        await handleProvideProjectDirectory(ws, msg.projectDirectory, activeClients, broadcastLog);
                         break;
 
                     default:
@@ -785,13 +855,28 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
 async function main() {
     try {
         // 폴백 이미지 초기화
-        await initializeFallbackImage(iconDir);
+        await (async () => {
+            try {
+                // EXE일 경우 번들된 아이콘/로고를 프로젝트 폴더로 복사 (초기 실행, 파일 누락 등)
+                if (!isDev) {
+                    await ensureBundledIconsLogosCopied();
+                }
+
+                const fallbackPath = path.join(logoDir, 'USDT.png');
+                await fsPromises.access(fallbackPath, fs.constants.F_OK);
+                // 존재하면 아무것도 안함
+            } catch (e) {
+                // 존재하지 않으면 생성
+                initializeFallbackImage(logoDir).catch(() => {
+                });
+            }
+        })();
 
         // 서버 시작
         const server = await startServer();
 
         // config.json에서 데이터 경로 파싱
-        const configPath = path.join(baseDir, "BackBoard", "config.json");
+        const configPath = path.join(dynamicDir, "config.json");
 
         try {
             // 전역 `config` 변수에 파일 내용을 로드
@@ -808,9 +893,9 @@ async function main() {
         if (config && config["심볼"]) {
             config["심볼"].forEach((symbol) => {
                 if (symbol["트레이딩 바 데이터"] && symbol["트레이딩 바 데이터"]["데이터 경로"]) {
-                    const symbolName = symbol["심볼 이름"] || "default";
+                    const symbolName = symbol["심볼 이름"];
 
-                    const rawPath = String(symbol["트레이딩 바 데이터"]["데이터 경로"] || '');
+                    const rawPath = String(symbol["트레이딩 바 데이터"]["데이터 경로"]);
                     const posixPath = rawPath.replace(/\\/g, '/');
                     dataPaths[symbolName] = posixPath.replace(/\/[^\/]*$/, "");
                 }
@@ -821,9 +906,9 @@ async function main() {
         const indicatorPaths = {};
         if (config && config["지표"]) {
             config["지표"].forEach((indicatorObj) => {
-                const indicatorName = indicatorObj["지표 이름"] || "unknown_indicator";
-                const indicatorPath = indicatorObj["데이터 경로"] || "";
-                const posIndicatorPath = String(indicatorPath || '').replace(/\\/g, '/');
+                const indicatorName = indicatorObj["지표 이름"];
+                const indicatorPath = indicatorObj["데이터 경로"];
+                const posIndicatorPath = String(indicatorPath).replace(/\\/g, '/');
 
                 indicatorPaths[indicatorName] = posIndicatorPath.replace(/\/[^\/]*$/, "");
             });

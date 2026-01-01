@@ -28,9 +28,9 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({children}) 
 
     useEffect(() => {
         const wsProtocol = window.location.protocol === "https:" ? "wss" : "ws";
-        // 개발 환경에서는 Vite가 프론트엔드를 서빙하므로 백엔드는 별도 포트에서 동작
+        // 개발 환경에서는 Vite가 프론트를 서빙하므로 백엔드는 별도 포트에서 동작
         // Vite용 환경변수 VITE_BACKBOARD_PORT가 설정되어 있으면 사용하고, 없으면 기본 포트 7777을 사용
-        const isDev = !!(import.meta && (import.meta as any).env && (import.meta as any).env.DEV);
+        const isDev = window?.electronAPI?.isDev;
         const devPort = isDev ? ((import.meta as any).env.VITE_BACKBOARD_PORT || '7777') : null;
         const host = devPort ? `${window.location.hostname}:${devPort}` : window.location.host;
         const socketUrl = `${wsProtocol}://${host}`;
@@ -53,12 +53,28 @@ export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({children}) 
             };
 
             // 전역 메시지 수신 (전략 에디터가 아직 마운트 되기 전에 도착할 수 있는 요청을 보관)
-            const handleMessage = (event: MessageEvent) => {
+            const handleMessage = async (event: MessageEvent) => {
                 try {
                     const data = JSON.parse(event.data);
                     if (data && data.action === 'requestProjectDirectory') {
-                        // 서버가 프로젝트 폴더를 요청했음을 플래그로 표시
-                        setProjectDirectoryRequested(true);
+                        // Electron 환경에서는 자동으로 프로젝트 디렉토리 전송
+                        if ((window as any).electronAPI?.isElectron) {
+                            try {
+                                const projectDir = await (window as any).electronAPI.getProjectDirectory();
+                                if (socket && socket.readyState === WebSocket.OPEN) {
+                                    socket.send(JSON.stringify({
+                                        action: 'setProjectDirectory',
+                                        directory: projectDir
+                                    }));
+                                }
+                            } catch (e) {
+                                // Electron API 실패 시 수동 선택으로 폴더 요청
+                                setProjectDirectoryRequested(true);
+                            }
+                        } else {
+                            // 서버가 프로젝트 폴더를 요청했음을 플래그로 표시
+                            setProjectDirectoryRequested(true);
+                        }
                     }
                 } catch (e) {
                     // 무시

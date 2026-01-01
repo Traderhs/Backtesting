@@ -1,25 +1,48 @@
 {
-  "name": "backboard",
+  "name": "BackBoard",
   "private": true,
-  "version": "1.0.0",
-  "bin": "launch.js",
-  "pkg": {
-    "outputPath": "BackBoard Package",
-    "targets": [
-      "node18-win-x64"
-    ],
-    "assets": [
-      "node_modules/axios/dist/node/**/*"
-    ]
+  "version": "1.5.0",
+  "description": "Dashboard for Backtesting Execution and Analysis",
+  "author": "Haseung Ryu <dice000908@gmail.com>",
+  "license": "SEE LICENSE IN LICENSE",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Traderhs/Backtesting.git"
   },
+  "homepage": "https://github.com/Traderhs/Backtesting#readme",
+  "keywords": [
+    "backtesting",
+    "trading",
+    "quantitative",
+    "binance",
+    "crypto",
+    "visualization",
+    "electron",
+    "react"
+  ],
+  "bugs": {
+    "url": "https://github.com/Traderhs/Backtesting/issues"
+  },
+  "contributors": [
+    {
+      "name": "Haseung Ryu",
+      "email": "dice000908@gmail.com"
+    }
+  ],
+  "engines": {
+    "node": ">=18",
+    "npm": ">=9"
+  },
+  "main": "electron/main.js",
   "scripts": {
-    "dev": "concurrently \"cross-env BACKBOARD_PORT=7777 BACKBOARD_OPEN_BROWSER=none node ./server/launch.js\" \"cross-env BACKBOARD_PORT=7777 vite --config config/vite.config.ts --open\"",
+    "start:electron": "cross-env NODE_ENV=development electron .",
+    "start:web": "wait-on tcp:7777 && vite --config config/vite.config.ts",
+    "dev": "run-p start:electron start:web",
     "build": "tsc -b config/tsconfig.json && vite build --config config/vite.config.ts",
+    "build:electron": "npm run build && electron-builder --config config/electron-builder.json",
     "lint": "eslint --config config/eslint.config.js .",
     "lint:css": "stylelint --config ./config/stylelint.config.js 'src/**/*.{css,js,jsx,ts,tsx}'",
-    "preview": "vite preview --config config/vite.config.ts",
-    "pkg:build": "pkg . --target node18-win-x64 --output BackBoard Package/BackBoard.exe",
-    "postinstall": "node ./scripts/patch-deprecations.js"
+    "preview": "vite preview --config config/vite.config.ts"
   },
   "type": "commonjs",
   "dependencies": {
@@ -46,6 +69,7 @@
     "date-fns": "^4.1.0",
     "echarts": "^5.6.0",
     "echarts-for-react": "^3.0.2",
+    "electron-updater": "^6.6.2",
     "express": "^4.21.2",
     "framer-motion": "^12.7.3",
     "lightweight-charts": "^5.0.5",
@@ -56,7 +80,6 @@
     "overlayscrollbars-react": "^0.5.6",
     "pako": "^2.1.0",
     "parquetjs": "^0.11.2",
-    "pkg": "^5.8.1",
     "react": "^19.0.0",
     "react-chartjs-2": "^5.3.0",
     "react-datepicker": "^8.2.1",
@@ -97,12 +120,14 @@
     "@types/react-window": "^1.8.8",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.21",
-    "concurrently": "^8.0.1",
     "cross-env": "^7.0.3",
+    "electron": "38.0.0-beta.6",
+    "electron-builder": "^24.13.3",
     "eslint": "^9.21.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^15.15.0",
+    "npm-run-all": "^4.1.5",
     "postcss": "^8.5.3",
     "postcss-styled-syntax": "^0.7.1",
     "rcedit": "^4.0.1",
@@ -113,6 +138,7 @@
     "terser": "^5.41.0",
     "typescript": "~5.7.2",
     "typescript-eslint": "^8.24.1",
-    "vite": "7.1.11"
+    "vite": "6.4.1",
+    "wait-on": "^7.2.0"
   }
 }

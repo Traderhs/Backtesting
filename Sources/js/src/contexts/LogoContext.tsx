@@ -10,7 +10,7 @@ interface LogoContextType {
 }
 
 // 초기 Fallback 로고 URL (이 값은 백엔드 API 실패 시 최종 fallback으로 사용)
-const FINAL_FALLBACK_URL = "/BackBoard/Icons/USDT.png"; // 서버의 폴백 이미지 경로
+const FINAL_FALLBACK_URL = "/Logos/USDT.png"; // 서버의 폴백 이미지 경로
 
 // Context 생성 (기본값 설정)
 const LogoContext = createContext<LogoContextType>({

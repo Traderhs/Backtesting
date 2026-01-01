@@ -19,7 +19,7 @@ function toPosix(p) {
 let backtestingEngine = null;
 let backtestingEngineReady = false;
 
-function startBacktestingEngine(activeClients, broadcastLog, baseDir) {
+function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
     if (backtestingEngine) {
         return;
     }
@@ -45,7 +45,7 @@ function startBacktestingEngine(activeClients, broadcastLog, baseDir) {
 
     try {
         backtestingEngine = spawn(exePath, ["--server"], {
-            cwd: baseDir, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: false
+            cwd: projectDir, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: false
         });
 
         backtestingEngine.stdout.on('data', (data) => {
@@ -158,12 +158,12 @@ let editorConfig = null;
 let editorConfigLoading = false;
 let hmacKey = null;
 
-function getKeyPath(baseDir) {
-    return path.join(baseDir, 'BackBoard', '.editorkey');
+function getKeyPath(projectDir) {
+    return path.join(projectDir, 'BackBoard', '.editorkey');
 }
 
-function loadOrCreateKey(baseDir, broadcastLog) {
-    const keyPath = getKeyPath(baseDir);
+function loadOrCreateKey(projectDir, broadcastLog) {
+    const keyPath = getKeyPath(projectDir);
 
     try {
         if (fs.existsSync(keyPath)) {
@@ -243,9 +243,9 @@ function canonicalizeConfigV1(obj) {
     return JSON.stringify(cleanObj, Object.keys(cleanObj).sort());
 }
 
-function computeHmacHex(canonical, baseDir, broadcastLog) {
+function computeHmacHex(canonical, projectDir, broadcastLog) {
     if (!hmacKey) {
-        loadOrCreateKey(baseDir, broadcastLog);
+        loadOrCreateKey(projectDir, broadcastLog);
     }
 
     const hmac = crypto.createHmac('sha256', hmacKey);
@@ -254,11 +254,11 @@ function computeHmacHex(canonical, baseDir, broadcastLog) {
     return hmac.digest('hex');
 }
 
-function signConfig(obj, baseDir, broadcastLog) {
-    return computeHmacHex(canonicalizeConfigV2(obj), baseDir, broadcastLog);
+function signConfig(obj, projectDir, broadcastLog) {
+    return computeHmacHex(canonicalizeConfigV2(obj), projectDir, broadcastLog);
 }
 
-function verifyConfig(obj, baseDir, broadcastLog) {
+function verifyConfig(obj, projectDir, broadcastLog) {
     if (!obj || typeof obj !== 'object') {
         return 0;
     }
@@ -270,7 +270,7 @@ function verifyConfig(obj, baseDir, broadcastLog) {
     }
 
     if (!hmacKey) {
-        loadOrCreateKey(baseDir, broadcastLog);
+        loadOrCreateKey(projectDir, broadcastLog);
     }
 
     const providedSig = String(providedSigRaw).trim();
@@ -280,14 +280,14 @@ function verifyConfig(obj, baseDir, broadcastLog) {
 
     try {
         const providedBuf = Buffer.from(providedSig, 'hex');
-        const expectedV2 = computeHmacHex(canonicalizeConfigV2(obj), baseDir, broadcastLog);
+        const expectedV2 = computeHmacHex(canonicalizeConfigV2(obj), projectDir, broadcastLog);
         const expectedV2Buf = Buffer.from(expectedV2, 'hex');
 
         if (crypto.timingSafeEqual(providedBuf, expectedV2Buf)) {
             return 2;
         }
 
-        const expectedV1 = computeHmacHex(canonicalizeConfigV1(obj), baseDir, broadcastLog);
+        const expectedV1 = computeHmacHex(canonicalizeConfigV1(obj), projectDir, broadcastLog);
         const expectedV1Buf = Buffer.from(expectedV1, 'hex');
 
         if (crypto.timingSafeEqual(providedBuf, expectedV1Buf)) {
@@ -320,7 +320,7 @@ function deleteConfigAndBak(editorConfigPath) {
     }
 }
 
-function writeSignedFileAtomic(editorConfigPath, obj, baseDir, broadcastLog) {
+function writeSignedFileAtomic(editorConfigPath, obj, projectDir, broadcastLog) {
     try {
         fs.mkdirSync(path.dirname(editorConfigPath), {recursive: true});
         const cleanObj = JSON.parse(JSON.stringify(obj || {}));
@@ -331,7 +331,7 @@ function writeSignedFileAtomic(editorConfigPath, obj, baseDir, broadcastLog) {
         }
         delete cleanObj['에디터 설정']['서명'];
 
-        const sig = signConfig(cleanObj, baseDir, broadcastLog);
+        const sig = signConfig(cleanObj, projectDir, broadcastLog);
         const editorSettings = (cleanObj['에디터 설정'] && typeof cleanObj['에디터 설정'] === 'object') ? cleanObj['에디터 설정'] : {};
 
         const remaining = {...editorSettings};
@@ -384,7 +384,7 @@ function writeSignedFileAtomic(editorConfigPath, obj, baseDir, broadcastLog) {
     }
 }
 
-function readSignedConfigWithRecovery(editorConfigPath, baseDir, broadcastLog) {
+function readSignedConfigWithRecovery(editorConfigPath, projectDir, broadcastLog) {
     const tryRead = (p, allowMigrate) => {
         try {
             if (!fs.existsSync(p)) {
@@ -393,11 +393,11 @@ function readSignedConfigWithRecovery(editorConfigPath, baseDir, broadcastLog) {
 
             const raw = fs.readFileSync(p, {encoding: 'utf8'});
             const parsed = JSON.parse(raw);
-            const v = verifyConfig(parsed, baseDir, broadcastLog);
+            const v = verifyConfig(parsed, projectDir, broadcastLog);
 
             if (v > 0) {
                 if (allowMigrate && v === 1) {
-                    writeSignedFileAtomic(p, parsed, baseDir, broadcastLog);
+                    writeSignedFileAtomic(p, parsed, projectDir, broadcastLog);
                 }
 
                 return {obj: parsed, verify: v};
@@ -455,6 +455,10 @@ function configToObj(config) {
     };
 }
 
+function isOn(value) {
+    return value === "켜짐";
+}
+
 function objToConfig(obj) {
     const cfg = {};
 
@@ -464,7 +468,7 @@ function objToConfig(obj) {
 
     const engine = obj && typeof obj === 'object' ? obj["엔진 설정"] : null;
     cfg.projectDirectory = engine && (engine["프로젝트 폴더"] !== undefined) ? engine["프로젝트 폴더"] : "";
-    cfg.useBarMagnifier = engine && (engine["바 돋보기 기능"] === "활성화");
+    cfg.useBarMagnifier = engine && isOn(engine?.["바 돋보기 기능"]);
 
     const symSection = obj && typeof obj === 'object' ? obj["심볼 설정"] : null;
 
@@ -672,13 +676,13 @@ async function validateProjectDirectoryConfig(cfg, broadcastLog) {
     return true;
 }
 
-async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFromClients, broadcastLog, baseDir) {
+async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFromClients, broadcastLog, projectDir) {
     try {
-        const defaultEditorPath = getEditorConfigPath(baseDir);
+        const defaultEditorPath = getEditorConfigPath(projectDir);
 
         try {
             await fsPromises.access(defaultEditorPath, fs.constants.F_OK);
-            const loaded = readSignedConfigWithRecovery(defaultEditorPath, baseDir, broadcastLog);
+            const loaded = readSignedConfigWithRecovery(defaultEditorPath, projectDir, broadcastLog);
 
             if (loaded) {
                 const config = objToConfig(loaded.obj);
@@ -739,7 +743,7 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
 
                     try {
                         const obj = configToObj(defaultConfig);
-                        if (!writeSignedFileAtomic(editorConfigPath, obj, baseDir, broadcastLog)) {
+                        if (!writeSignedFileAtomic(editorConfigPath, obj, projectDir, broadcastLog)) {
                             broadcastLog("ERROR", '서명 파일 저장 실패');
 
                             return;
@@ -773,25 +777,25 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
     }
 }
 
-function saveEditorConfig(config, broadcastLog, baseDir) {
-    const projectDir = config && config.projectDirectory;
-    if (!projectDir) {
+function saveEditorConfig(config, broadcastLog) {
+    const projectDirResolved = config && config.projectDirectory;
+    if (!projectDirResolved) {
         return false;
     }
 
     try {
-        const editorConfigPath = getEditorConfigPath(projectDir);
+        const editorConfigPath = getEditorConfigPath(projectDirResolved);
         fs.mkdirSync(path.dirname(editorConfigPath), {recursive: true});
         const obj = configToObj(config);
 
-        return writeSignedFileAtomic(editorConfigPath, obj, baseDir, broadcastLog);
+        return writeSignedFileAtomic(editorConfigPath, obj, projectDirResolved, broadcastLog);
     } catch (err) {
         broadcastLog("ERROR", `editor.json 저장 실패: ${err}`, null, null);
         return false;
     }
 }
 
-async function handleProvideProjectDirectory(ws, projectDir, activeClients, broadcastLog, baseDir) {
+async function handleProvideProjectDirectory(ws, projectDir, activeClients, broadcastLog) {
     if (projectDir && typeof projectDir === 'string') {
         const resolvedRoot = path.resolve(projectDir);
         const backboardExe = await validateBackBoardExe(resolvedRoot);
@@ -807,14 +811,14 @@ async function handleProvideProjectDirectory(ws, projectDir, activeClients, broa
 
                 if (await fileExists(editorConfigPath)) {
                     try {
-                        const loaded = readSignedConfigWithRecovery(editorConfigPath, baseDir, broadcastLog);
+                        const loaded = readSignedConfigWithRecovery(editorConfigPath, resolvedRoot, broadcastLog);
 
                         if (loaded) {
                             editorConfig = objToConfig(loaded.obj);
                         } else {
                             deleteConfigAndBak(editorConfigPath);
                             const obj = configToObj(defaultConfig);
-                            writeSignedFileAtomic(editorConfigPath, obj, baseDir, broadcastLog);
+                            writeSignedFileAtomic(editorConfigPath, obj, resolvedRoot, broadcastLog);
 
                             editorConfig = defaultConfig;
                         }
@@ -823,13 +827,13 @@ async function handleProvideProjectDirectory(ws, projectDir, activeClients, broa
 
                         deleteConfigAndBak(editorConfigPath);
                         const obj = configToObj(defaultConfig);
-                        writeSignedFileAtomic(editorConfigPath, obj, baseDir, broadcastLog);
+                        writeSignedFileAtomic(editorConfigPath, obj, resolvedRoot, broadcastLog);
 
                         editorConfig = defaultConfig;
                     }
                 } else {
                     const obj = configToObj(defaultConfig);
-                    writeSignedFileAtomic(editorConfigPath, obj, baseDir, broadcastLog);
+                    writeSignedFileAtomic(editorConfigPath, obj, resolvedRoot, broadcastLog);
                     editorConfig = defaultConfig;
                 }
 

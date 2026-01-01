@@ -89,7 +89,7 @@ const SymbolLogoImage = memo(({
                 alt={symbolName}
                 onError={(e) => {
                     // 이미지 로드 실패 시 fallback 이미지로 대체
-                    (e.target as HTMLImageElement).src = "/BackBoard/Icons/USDT.png";
+                    (e.target as HTMLImageElement).src = "/Logos/USDT.png";
                 }}
             />
         </div>
