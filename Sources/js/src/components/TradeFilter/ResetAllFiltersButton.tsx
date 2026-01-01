@@ -3,30 +3,34 @@ import {TradeFilterContext} from "./TradeFilterContext";
 import './ResetAllFiltersButton.css';
 import {resetAllFilters} from "./FilterResetEvent";
 import {Button} from "../ui/button.tsx";
-import {motion} from "framer-motion";
+import {motion, Variants} from "framer-motion";
 
 // Sidebar와 동일한 애니메이션 변형 정의
-const itemVariants = {
+const itemVariants: Variants = {
     hidden: {opacity: 0, x: 0},
+
     visible: {
         opacity: 1,
         x: 0,
         transition: {
-            all: '0.25s ease',
+            duration: 0.25,
+            ease: 'easeInOut'
         }
     },
+
     hover: {
         scale: 1.03,
         borderColor: 'rgba(255, 215, 0, 0.7)',
         boxShadow: '0 0 5px rgba(255, 215, 0, 0.5)',
         transition: {duration: 0.2}
     },
+
     tap: (custom: { isActive: boolean }) => ({
         scale: 0.98,
         backgroundColor: 'rgba(52, 46, 14, 1)',
         boxShadow: custom.isActive
-            ? 'inset 0 0 0 1000px rgba(255, 215, 0, 0.2), 0 0 5px rgba(255, 215, 0, 0.3)' // 활성 탭 클릭 시 노란색 오버레이 + 기존 그림자
-            : 'inset 0 0 0 1000px rgba(255, 215, 0, 0.15), 0 0 5px rgba(255, 215, 0, 0.3)', // 비활성 탭 클릭 시 살짝 연한 오버레이 + 기존 그림자
+            ? 'inset 0 0 0 1000px rgba(255, 215, 0, 0.2), 0 0 5px rgba(255, 215, 0, 0.3)'
+            : 'inset 0 0 0 1000px rgba(255, 215, 0, 0.15), 0 0 5px rgba(255, 215, 0, 0.3)',
         transition: {duration: 0.1}
     })
 };

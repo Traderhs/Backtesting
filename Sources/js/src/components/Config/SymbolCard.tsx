@@ -221,13 +221,15 @@ const SymbolCard = memo(({
     // 애니메이션 변형 객체
     const pageTransition = {
         duration: 0.5, // 500ms
-        ease: [0.16, 1, 0.3, 1]
+        ease: [0.16, 1, 0.3, 1] as const
     };
 
     const renderBar = (title: string, data?: BarData | BarData[]) => {
         if (!data ||
             (Array.isArray(data) && data.length === 0) ||
-            (!Array.isArray(data) && Object.keys(data).length === 0)) return null
+            (!Array.isArray(data) && Object.keys(data).length === 0)) {
+            return null
+        }
 
         const bars = Array.isArray(data) ? data : [data]
 
@@ -343,7 +345,9 @@ const SymbolCard = memo(({
 
     // 거래소 정보 렌더링 함수
     const renderExchangeInfo = (data?: ExchangeInfo) => {
-        if (!data) return null;
+        if (!data) {
+            return null;
+        }
 
         // 스크롤 동기화를 위한 ref들
         const exchangeLeftRef = useRef<HTMLDivElement>(null);
@@ -385,7 +389,9 @@ const SymbolCard = memo(({
 
         // 왼쪽 영역 너비 자동 조정 함수
         const adjustExchangeLeftWidth = useCallback(() => {
-            if (!exchangeLeftRef.current) return;
+            if (!exchangeLeftRef.current) {
+                return;
+            }
 
             // 왼쪽 영역의 모든 라벨 요소 가져오기
             const labels = exchangeLeftRef.current.querySelectorAll('.exchange-info-label');

@@ -180,41 +180,39 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
         },
         hover: {
             scale: 1.05,
-            // 호버 시 테두리 색상 변경 및 발광 효과 추가 (기존 그림자 유지, 강도 약화)
-            borderColor: 'rgba(255, 215, 0, 0.6)', // 투명도 감소
-            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3), 0 0 8px rgba(255, 215, 0, 0.4)', // 그림자 크기 및 투명도 감소
+            borderColor: 'rgba(255, 215, 0, 0.6)',
+            boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3), 0 0 8px rgba(255, 215, 0, 0.4)',
             transition: {duration: 0.15, ease: 'easeInOut'}
         },
         exit: {
             scale: 1,
-            // 나갈 때 테두리 색상과 그림자 원래대로 복구 (animate 상태 또는 style의 기본값으로 돌아감)
             borderColor: 'rgba(255, 215, 0, 0.4)',
             boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)',
-            transition: {duration: 0.03, ease: 'easeIn'} // 마우스를 뗐을 때 더 빠른 복귀
+            transition: {duration: 0.03, ease: 'easeIn'}
         }
-    };
+    } as const;
 
     const borderVariants = {
         initial: {opacity: 0},
         hover: {
-            opacity: 1, // 투명도만 조절 (그림자는 cardVariants에서 처리)
+            opacity: 1,
             scale: 1.05,
-            boxShadow: 'none', // 그림자 효과 제거
+            boxShadow: 'none',
             transition: {duration: 0.15, ease: 'easeInOut'}
         },
         exit: {
             opacity: 0,
             scale: 1,
-            transition: {duration: 0.03, ease: 'easeIn'} // 마우스를 뗐을 때 더 빠른 복귀
+            transition: {duration: 0.03, ease: 'easeIn'}
         }
-    };
+    } as const;
 
     return (
         <div style={{
             position: 'relative',
-            padding: '5px', // 패딩 추가하여 카드 주변에 여유 공간 확보
-            overflow: 'visible', // 부모 요소에도 overflow visible 적용
-            width: '200px', // 카드 컨테이너 너비 고정
+            padding: '5px',
+            overflow: 'visible',
+            width: '200px',
             minWidth: '200px',
             maxWidth: '200px'
         }}>

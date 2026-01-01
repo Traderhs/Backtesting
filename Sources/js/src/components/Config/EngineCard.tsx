@@ -156,7 +156,7 @@ const EngineCard = memo(({
     // 애니메이션 변형 객체
     const pageTransition = {
         duration: 0.5, // 500ms
-        ease: [0.16, 1, 0.3, 1]
+        ease: [0.16, 1, 0.3, 1] as const
     };
 
 // 엔진 설정 렌더링
