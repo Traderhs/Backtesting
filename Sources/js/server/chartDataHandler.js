@@ -1,24 +1,7 @@
 const fsPromises = require("fs").promises;
 const path = require("path");
-
-// PKG 환경에서 axios 로드
-const processWithPkg = process;
-let axios;
-try {
-    if (processWithPkg.pkg) {
-        axios = require('axios/dist/node/axios.cjs');
-    } else {
-        axios = require('axios');
-    }
-} catch (e) {
-    try {
-        axios = require('axios');
-    } catch (e2) {
-        axios = null;
-    }
-}
-
 const parquet = require("@dsnp/parquetjs");
+const axios = require('axios');
 
 // =====================================================================================================================
 // 로고 관련
@@ -63,7 +46,6 @@ const COINGECKO_RATE_LIMIT_MS = 2000;
 
 const BINANCE_24HR_TICKER_URL = "https://api.binance.com/api/v3/ticker/24hr";
 const COINGECKO_LIST_URL = "https://api.coingecko.com/api/v3/coins/list";
-const USDT_FALLBACK_ICON_PATH = "/BackBoard/Icons/USDT.png";
 const USDT_LOGO_URLS = [
     "https://coin-images.coingecko.com/coins/images/325/small/Tether.png",
     "https://s2.coinmarketcap.com/static/img/coins/64x64/825.png",
@@ -540,6 +522,5 @@ module.exports = {
     initializeFallbackImage,
     findLogoUrl,
     downloadAndSaveImage,
-    handleLoadChartData,
-    USDT_FALLBACK_ICON_PATH
+    handleLoadChartData
 };

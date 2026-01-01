@@ -1128,6 +1128,25 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
     // 심볼 아이콘 URL 캐시
     const [logoMap, setLogoMap] = useState<Map<string, string>>(new Map());
 
+    // 최신 logoMap을 참조할 ref
+    const logoMapRef = useRef<Map<string, string>>(logoMap);
+
+    // 마지막으로 들어온 크로스헤어 파라미터를 저장하여, 로고가 로드된 후 툴팁을 갱신할 때 사용
+    const lastCrosshairParamRef = useRef<any | null>(null);
+
+    useEffect(() => {
+        logoMapRef.current = logoMap;
+
+        // 툴팁이 이미 열려 있는 상태에서 logoMap이 업데이트되면 툴팁을 갱신해서 로고가 반영되게 함
+        if (tooltipRef.current && lastCrosshairParamRef.current) {
+            try {
+                handleCrosshairMove(lastCrosshairParamRef.current);
+            } catch (e) {
+                // 무시
+            }
+        }
+    }, [logoMap]);
+
     // configSymbols가 바뀔 때 서버에서 로고 URL을 가져와 캐시
     useEffect(() => {
         let mounted = true;
@@ -1149,10 +1168,10 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                     }
 
                     // 폴백: 로컬 아이콘 파일 경로를 기본으로 설정
-                    map.set(sym, `/BackBoard/Icons/${sym.replace(/[^a-zA-Z0-9]/g, '_')}.png`);
+                    map.set(sym, `/Logos/${sym.replace(/[^a-zA-Z0-9]/g, '_')}.png`);
                 } catch (e) {
                     // 실패 시 USDT 폴백 사용
-                    map.set(sym, '/BackBoard/Icons/USDT.png');
+                    map.set(sym, '/Logos/USDT.png');
                 }
             }));
 
@@ -1287,9 +1306,14 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
         }
     }, []);
 
-    // 크로스헤어 이동 핸들러 추가 (EquityCurve와 동일)
+    // 크로스헤어 이동 핸들러
     const handleCrosshairMove = useCallback((param: any) => {
-        if (!isComponentMounted.current || !chartRef.current || !timeAxisLabelRef.current || !priceAxisLabelRef.current || !tooltipRef.current) return;
+        // 마지막 파라미터 저장 (로고 로딩 후 툴팁 갱신에 사용)
+        lastCrosshairParamRef.current = param;
+
+        if (!isComponentMounted.current || !chartRef.current || !timeAxisLabelRef.current || !priceAxisLabelRef.current || !tooltipRef.current) {
+            return;
+        }
 
         const timeAxisLabel = timeAxisLabelRef.current;
         const priceAxisLabel = priceAxisLabelRef.current;
@@ -1640,12 +1664,12 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                             valueColor = value > 0 ? '#4caf50' : value == 0 ? '#ffffff' : '#f23645';
                         }
 
-                        const logoUrl = (logoMap && logoMap.get && logoMap.get(symbol)) || `/BackBoard/Icons/${symbol.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
+                        const logoUrl = (logoMapRef.current && logoMapRef.current.get && logoMapRef.current.get(symbol)) || `/Logos/${symbol.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
 
                         return `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 6px;">
               <div style="display:flex; align-items:center; min-width:100px; max-width:200px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
-                <img src="${logoUrl}" style="width:16px;height:16px;border-radius:50%;margin-right:6px;object-fit:cover;flex:0 0 auto;" onerror="this.style.display='none'" alt=""/>
+                <img src="${logoUrl}" style="width:16px;height:16px;border-radius:50%;margin-right:6px;object-fit:cover;flex:0 0 auto;" alt=""/>
                 <span style="color: ${color}; font-size: 13px; overflow:hidden; text-overflow:ellipsis;">${symbol}</span>
               </div>
               

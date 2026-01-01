@@ -1,0 +1,96 @@
+{
+  "appId": "com.backtesting.backboard",
+  "productName": "BackBoard",
+  "directories": {
+    "output": "dist-electron",
+    "buildResources": "public"
+  },
+  "files": [
+    "electron/**/*",
+    "server/**/*",
+    "BackBoard/**/*",
+    "node_modules/**/*",
+    "package.json"
+  ],
+  "asar": true,
+  "asarUnpack": [
+    "node_modules/@dsnp/parquetjs/**/*",
+    "node_modules/parquetjs/**/*",
+    "node_modules/apache-arrow/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "BackBoard/index.html",
+      "to": "index.html"
+    },
+    {
+      "from": "BackBoard/Assets",
+      "to": "Assets"
+    },
+    {
+      "from": "icons/strategy_editor.ico",
+      "to": "Icons/strategy_editor.ico"
+    },
+    {
+      "from": "icons/overview.ico",
+      "to": "Icons/overview.ico"
+    },
+    {
+      "from": "icons/performance.ico",
+      "to": "Icons/performance.ico"
+    },
+    {
+      "from": "icons/plot.ico",
+      "to": "Icons/plot.ico"
+    },
+    {
+      "from": "icons/chart.ico",
+      "to": "Icons/chart.ico"
+    },
+    {
+      "from": "icons/trade_list.ico",
+      "to": "Icons/trade_list.ico"
+    },
+    {
+      "from": "icons/filter.ico",
+      "to": "Icons/filter.ico"
+    },
+    {
+      "from": "icons/config.ico",
+      "to": "Icons/config.ico"
+    },
+    {
+      "from": "icons/log.ico",
+      "to": "Icons/log.ico"
+    },
+    {
+      "from": "logos/USDT.png",
+      "to": "Logos/USDT.png"
+    }
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "icon": "icons/backboard.ico"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "BackBoard"
+  },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "Traderhs",
+      "repo": "Backtesting"
+    }
+  ]
+}
