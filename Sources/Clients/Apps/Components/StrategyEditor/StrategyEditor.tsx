@@ -161,14 +161,14 @@ function StrategyEditorContent() {
 
         ws.send(JSON.stringify({
             action: 'runSingleBacktesting',
-            useBarMagnifier: engineConfig.useBarMagnifier,
-            clearAndAddBarData: needsClearAndAdd,
             symbolConfigs: symbolConfigs,
             barDataConfigs: configsToSend.map(config => ({
                 timeframe: timeframeToString(config.timeframe),
                 klinesDirectory: (config.klinesDirectory || '').replace(/\\/g, '/'),
                 barDataType: config.barDataType
-            }))
+            })),
+            useBarMagnifier: engineConfig.useBarMagnifier,
+            clearAndAddBarData: needsClearAndAdd,
         }));
 
         // 현재 해시값 저장
@@ -211,7 +211,7 @@ function StrategyEditorContent() {
                 <ConfigSection/>
             </div>
 
-            {/* 에디터 설정 (로그 패널 포함) */}
+            {/* 에디터 설정 */}
             <EditorSection
                 isLogPanelOpen={isLogPanelOpen}
                 setIsLogPanelOpen={setIsLogPanelOpen}

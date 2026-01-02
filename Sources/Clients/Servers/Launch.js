@@ -19,7 +19,6 @@ let port = Number(process.env.BACKBOARD_PORT);
 
 // 연결된 WebSocket 클라이언트
 const activeClients = new Set();
-let pendingProjectDirectoryResolvers = [];
 
 // 디버그 로그 설정
 const DEBUG_LOGS = process.env.LAUNCH_DEBUG_LOGS === '0';
@@ -33,30 +32,6 @@ if (!DEBUG_LOGS) {
 // =====================================================================================================================
 // 유틸리티 함수
 // =====================================================================================================================
-function requestProjectDirectoryFromClients() {
-    const pollInterval = 200;
-
-    return new Promise((resolve) => {
-        const trySend = () => {
-            if (activeClients && activeClients.size > 0) {
-                activeClients.forEach(c => {
-                    try {
-                        c.send(JSON.stringify({action: 'requestProjectDirectory'}));
-                    } catch (e) {
-                    }
-                });
-
-                pendingProjectDirectoryResolvers.push((val) => resolve(val));
-                return;
-            }
-
-            setTimeout(trySend, pollInterval);
-        };
-
-        trySend();
-    });
-}
-
 function getCallerFileInfo() {
     try {
         const err = new Error();
@@ -701,23 +676,22 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
         setEditorConfig,
         isEditorConfigLoading,
         setEditorConfigLoading,
-        validateProjectDirectoryConfig,
-        handleProvideProjectDirectory
+        validateProjectDirectoryConfig
     } = require("./BacktestingEngine");
 
     let shutdownTimer = null;
     const SHUTDOWN_DELAY = 500;
 
-    function scheduleShutdown() {
-        if (!shutdownTimer) {
-            shutdownTimer = setTimeout(() => process.exit(), SHUTDOWN_DELAY);
-        }
-    }
-
     function cancelShutdown() {
         if (shutdownTimer) {
             clearTimeout(shutdownTimer);
             shutdownTimer = null;
+        }
+    }
+
+    function scheduleShutdown() {
+        if (!shutdownTimer) {
+            shutdownTimer = setTimeout(() => process.exit(), SHUTDOWN_DELAY);
         }
     }
 
@@ -732,27 +706,14 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
             }
         });
 
-        ws.on('message', (m) => {
-            try {
-                const msg = JSON.parse(m);
-                if (msg && msg.action === 'provideProjectDirectory') {
-                    if (pendingProjectDirectoryResolvers.length > 0) {
-                        const resolver = pendingProjectDirectoryResolvers.shift();
-
-                        resolver(msg.projectDirectory || null);
-                    }
-                }
-            } catch (e) {
-                // 무시
-            }
-        });
-
         // 클라이언트 연결 시 editor.json 로드
         (async () => {
             if (!getEditorConfig() && !isEditorConfigLoading()) {
                 setEditorConfigLoading(true);
+
                 try {
-                    const config = await loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFromClients, broadcastLog, projectDir);
+                    const config = await loadOrCreateEditorConfig(activeClients, broadcastLog, projectDir);
+
                     if (config && !(await validateProjectDirectoryConfig(config, broadcastLog))) {
                         setEditorConfig(null);
                     } else {
@@ -780,20 +741,23 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
                 const msg = JSON.parse(message);
 
                 switch (msg.action) {
-                    case "loadChartData":
+                    case "loadChartData": {
                         await handleLoadChartData(ws, msg, dataPaths, indicatorPaths);
                         break;
+                    }
 
-                    case "runSingleBacktesting":
+                    case "runSingleBacktesting": {
                         runSingleBacktesting(ws, msg.symbolConfigs, msg.barDataConfigs, msg.useBarMagnifier, msg.clearAndAddBarData, getEditorConfig(), broadcastLog);
                         break;
+                    }
 
-                    case "loadEditorConfig":
+                    case "loadEditorConfig": {
                         if (!getEditorConfig() && !isEditorConfigLoading()) {
                             setEditorConfigLoading(true);
 
                             try {
-                                const config = await loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFromClients, broadcastLog, projectDir);
+                                const config = await loadOrCreateEditorConfig(activeClients, broadcastLog, projectDir);
+
                                 if (config && !(await validateProjectDirectoryConfig(config, broadcastLog))) {
                                     setEditorConfig(null);
                                 } else {
@@ -816,9 +780,11 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
                                 barDataConfigs: []
                             })
                         }));
-                        break;
 
-                    case "saveEditorConfig":
+                        break;
+                    }
+
+                    case "saveEditorConfig": {
                         const nextConfig = wsToConfig(msg.config);
 
                         // 클라이언트가 빈 문자열을 보냈는데 서버에는 값이 있다면 서버 값을 유지
@@ -838,14 +804,12 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
                         }
 
                         break;
+                    }
 
-                    case "provideProjectDirectory":
-                        await handleProvideProjectDirectory(ws, msg.projectDirectory, activeClients, broadcastLog);
-                        break;
-
-                    default:
+                    default: {
                         ws.send(JSON.stringify({error: "알 수 없는 action"}));
                         break;
+                    }
                 }
             } catch (err) {
                 ws.send(JSON.stringify({error: "메시지 처리 오류"}));

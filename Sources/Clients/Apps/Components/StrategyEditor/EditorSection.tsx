@@ -1,7 +1,5 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {useWebSocket} from '../Server/WebSocketContext';
-import {Button} from '@/Components/UI/Button';
-import {Input} from '@/Components/UI/Input';
 import {parseTimeframeString, timeframeToString} from '@/Types/BarData.ts';
 import {useStrategy} from './StrategyContext';
 
@@ -34,18 +32,16 @@ export default function EditorSection({
         configLoaded, setConfigLoaded
     } = useStrategy();
 
-    const {ws, clearProjectDirectoryRequest, projectDirectoryRequested} = useWebSocket();
-
-    // 서버 요청에 의한 입력 다이얼로그만 처리
-    const [showProjectDialog, setShowProjectDialog] = useState(false);
-    const [projectDirectoryInput, setProjectDirectoryInput] = useState('');
+    const {ws} = useWebSocket();
 
     const [isResizing, setIsResizing] = useState(false);
     const logContainerRef = useRef<HTMLDivElement | null>(null);
 
     // 컴포넌트 마운트 시 editor.json 로드
     useEffect(() => {
-        if (!ws) return;
+        if (!ws) {
+            return;
+        }
 
         const trySendLoad = () => {
             if (ws.readyState === WebSocket.OPEN && !configLoaded) {
@@ -79,13 +75,7 @@ export default function EditorSection({
                 // Log 처리
                 if (data.action === 'backtestingLog') {
                     addLog(data.level, data.message, data.timestamp, data.fileInfo);
-                }
-                // Config 처리
-                else if (data.action === 'requestProjectDirectory') {
-                    setShowProjectDialog(true);
-                } else if (data.action === 'projectDirectoryInvalid') {
-                    setShowProjectDialog(true);
-                } else if (data.action === 'editorConfigLoaded') {
+                } else if (data.action === 'editorConfigLoaded') {  // Config 처리
                     const config = data.config;
 
                     if (config && typeof config === 'object') {
@@ -196,6 +186,7 @@ export default function EditorSection({
 
                         setEngineConfig(newEngineConfig);
                     }
+
                     setConfigLoaded(true);
                 }
             } catch (err) {
@@ -204,19 +195,16 @@ export default function EditorSection({
         };
 
         ws.addEventListener('message', handleMessage);
+
         return () => ws.removeEventListener('message', handleMessage);
     }, [ws, addLog, setIsLogPanelOpen, setLogPanelHeight, setExchangeConfig, setLastDataUpdates, setSymbolConfigs, setSelectedPair, setCustomPairs, setBarDataConfigs, setEngineConfig, setConfigLoaded, configLoaded, engineConfig, exchangeConfig]);
 
-    // 서버가 프로젝트 폴더 입력을 요청한 경우
-    useEffect(() => {
-        if (projectDirectoryRequested && !showProjectDialog) {
-            setShowProjectDialog(true);
-        }
-    }, [projectDirectoryRequested, showProjectDialog, setShowProjectDialog]);
 
     // editor.json 저장 함수
     const saveConfig = () => {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            return;
+        }
 
         ws.send(JSON.stringify({
             action: 'saveEditorConfig',
@@ -284,10 +272,14 @@ export default function EditorSection({
 
     // 설정이 변경될 때마다 자동 저장 (초기 로드 제외)
     useEffect(() => {
-        if (!configLoaded) return;
+        if (!configLoaded) {
+            return;
+        }
+
         const timer = setTimeout(() => {
             saveConfig();
         }, 300);
+
         return () => clearTimeout(timer);
     }, [
         isLogPanelOpen,
@@ -301,23 +293,6 @@ export default function EditorSection({
         engineConfig,
         configLoaded
     ]);
-
-    // 프로젝트 디렉토리 제공
-    const handleProvideProjectDirectory = () => {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return;
-        if (!projectDirectoryInput || projectDirectoryInput.trim() === '') {
-            addLog('ERROR', '프로젝트 폴더 경로를 입력해주세요.');
-            return;
-        }
-        const normalizedProjectDir = projectDirectoryInput.replace(/\\/g, '/');
-        ws.send(JSON.stringify({action: 'provideProjectDirectory', projectDirectory: normalizedProjectDir}));
-        setEngineConfig(prev => ({...prev, projectDirectory: normalizedProjectDir}));
-        setShowProjectDialog(false);
-        try {
-            clearProjectDirectoryRequest();
-        } catch (e) { /* 무시 */
-        }
-    };
 
     const getLogColor = (level: string) => {
         switch (level) {
@@ -350,7 +325,10 @@ export default function EditorSection({
     };
 
     useEffect(() => {
-        if (!isResizing) return;
+        if (!isResizing) {
+            return;
+        }
+
         let rafId: number | null = null;
         let lastY = 0;
 
@@ -359,9 +337,11 @@ export default function EditorSection({
             if (rafId === null) {
                 rafId = requestAnimationFrame(() => {
                     const newHeight = window.innerHeight - lastY;
+
                     if (newHeight >= 200 && newHeight <= window.innerHeight * 0.8) {
                         setLogPanelHeight(newHeight);
                     }
+
                     rafId = null;
                 });
             }
@@ -369,15 +349,22 @@ export default function EditorSection({
 
         const handleMouseUp = () => {
             setIsResizing(false);
-            if (rafId !== null) cancelAnimationFrame(rafId);
+
+            if (rafId !== null) {
+                cancelAnimationFrame(rafId);
+            }
         };
 
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
+
         return () => {
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
-            if (rafId !== null) cancelAnimationFrame(rafId);
+
+            if (rafId !== null) {
+                cancelAnimationFrame(rafId);
+            }
         };
     }, [isResizing, setLogPanelHeight]);
 
@@ -389,23 +376,6 @@ export default function EditorSection({
 
     return (
         <>
-            {/* 프로젝트 디렉토리 다이얼로그 */}
-            {showProjectDialog && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center">
-                    <div className="absolute inset-0 bg-black/60"/>
-                    <div className="relative bg-[#0f1724] rounded-lg p-6 w-[520px] border border-gray-600 z-10">
-                        <h3 className="text-lg font-semibold text-white mb-3">프로젝트 폴더 입력</h3>
-                        <p className="text-sm text-gray-300 mb-3">프로젝트 폴더를 입력하세요. 해당 폴더에 BackBoard.exe가 존재해야 합니다.</p>
-                        <Input type="text" value={projectDirectoryInput}
-                               onChange={(e) => setProjectDirectoryInput(e.currentTarget.value)}
-                               placeholder="프로젝트 폴더 경로"
-                               className="mb-4 bg-[#0b1220] border-gray-600"/>
-                        <div className="flex justify-end gap-2">
-                            <Button onClick={handleProvideProjectDirectory} className="bg-blue-600">입력</Button>
-                        </div>
-                    </div>
-                </div>
-            )}
 
             {/* 로그 패널 */}
             {isLogPanelOpen && (
