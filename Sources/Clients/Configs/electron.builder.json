@@ -1,0 +1,70 @@
+{
+  "appId": "com.backtesting.backboard",
+  "productName": "BackBoard",
+  "directories": {
+    "output": "Builds/Electron",
+    "buildResources": "public"
+  },
+  "files": [
+    "Electron/**/*",
+    "Servers/**/*",
+    "node_modules/**/*",
+    "package.json"
+  ],
+  "asar": true,
+  "asarUnpack": [
+    "node_modules/@dsnp/parquetjs/**/*",
+    "node_modules/parquetjs/**/*",
+    "node_modules/apache-arrow/**/*"
+  ],
+  "extraResources": [
+    {
+      "from": "Builds/Assets",
+      "to": "Assets"
+    },
+    {
+      "from": "Builds/index.html",
+      "to": "index.html"
+    },
+    {
+      "from": "Icons",
+      "to": "Icons",
+      "filter": [
+        "**/*.ico",
+        "!**/backboard.ico"
+      ]
+    },
+    {
+      "from": "Logos",
+      "to": "Logos",
+      "filter": [
+        "**/*.png"
+      ]
+    }
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "icon": "Icons/backboard.ico"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "BackBoard"
+  },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "Traderhs",
+      "repo": "Backtesting"
+    }
+  ]
+}

@@ -965,7 +965,7 @@ void Analyzer::SaveBackBoard() const {
   try {
     // BackBoard Package 경로 설정
     const string backboard_package_path =
-        Config::GetProjectDirectory() + "/Sources/js/BackBoard Package";
+        Config::GetProjectDirectory() + "/Sources/Clients/BackBoard Package";
 
     // BackBoard Package가 존재하는지 확인
     if (fs::exists(backboard_package_path) &&
