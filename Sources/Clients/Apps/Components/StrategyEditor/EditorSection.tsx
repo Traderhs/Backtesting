@@ -1,8 +1,8 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {useWebSocket} from '../Server/WebSocketContext';
-import {Button} from '../ui/button';
-import {Input} from '@/components/ui/input';
-import {parseTimeframeString, timeframeToString} from '@/types/barData.ts';
+import {Button} from '@/Components/UI/Button';
+import {Input} from '@/Components/UI/Input';
+import {parseTimeframeString, timeframeToString} from '@/Types/BarData.ts';
 import {useStrategy} from './StrategyContext';
 
 interface Props {

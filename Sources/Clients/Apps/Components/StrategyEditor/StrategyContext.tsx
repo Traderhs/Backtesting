@@ -1,5 +1,5 @@
 import React, {createContext, ReactNode, useContext, useState} from 'react';
-import {BarDataConfig, BarDataType, TimeframeUnit} from '@/types/barData';
+import {BarDataConfig, BarDataType, TimeframeUnit} from '@/Types/BarData';
 
 // 타입 정의
 export interface LogEntry {

@@ -1,4 +1,4 @@
-import {Input} from '@/components/ui/input';
+import {Input} from '@/Components/UI/Input';
 import {useStrategy} from './StrategyContext';
 
 export default function ExchangeSection() {

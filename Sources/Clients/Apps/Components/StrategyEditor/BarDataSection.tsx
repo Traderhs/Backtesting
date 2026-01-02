@@ -2,7 +2,7 @@ import React, {useEffect, useState} from 'react';
 import {Button} from '@/Components/UI/Button.tsx';
 import {BarDataConfig, BarDataType, TimeframeUnit} from '@/Types/BarData.ts';
 import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/Components/UI/Select';
-import {Input} from '@/Components/UI/Input.tsx';
+import {Input} from '@/Components/UI/Input';
 import {useStrategy} from './StrategyContext';
 
 /**

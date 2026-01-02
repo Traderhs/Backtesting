@@ -87,7 +87,7 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
                         if (editorConfig && editorConfig.projectDirectory) {
                             editorConfig.lastDataUpdates = ts;
                             (async () => {
-                                await saveEditorConfig(editorConfig, broadcastLog, baseDir);
+                                await saveEditorConfig(editorConfig, broadcastLog, projectDir);
                             })();
 
                             // 클라이언트에게 설정 업데이트 전파
