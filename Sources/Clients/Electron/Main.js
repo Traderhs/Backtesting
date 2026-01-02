@@ -84,7 +84,7 @@ function startServer() {
 // 메인 윈도우 생성
 function createWindow() {
     const iconPath = isDev
-        ? path.join(__dirname, '../Icons/backboard.ico') :
+        ? path.join(__dirname, '../Bundles/Icons/backboard.ico') :
         path.join(process.resourcesPath, 'Icons/backboard.ico');
 
     mainWindow = new BrowserWindow({

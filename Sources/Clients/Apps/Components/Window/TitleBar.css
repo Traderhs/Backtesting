@@ -25,7 +25,7 @@
     flex-shrink: 0;
     width: 24px;
     height: 24px;
-    background: url("/Icons/backboard.ico") center/contain no-repeat;
+    background: url("/Bundles/Icons/backboard.ico") center/contain no-repeat;
 }
 
 .titlebar-controls {
