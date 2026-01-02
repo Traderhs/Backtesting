@@ -1,6 +1,6 @@
 import {useState} from 'react';
-import {Button} from '@/Components/UI/Button.tsx';
-import {Input} from '@/Components/UI/Input.tsx';
+import {Button} from '@/Components/UI/Button';
+import {Input} from '@/Components/UI/Input';
 import {useStrategy} from './StrategyContext';
 
 export default function ConfigSection() {
