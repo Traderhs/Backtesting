@@ -4,6 +4,7 @@ import ServerAlert from "@/components/Server/ServerAlert.tsx";
 import {TradeFilterProvider} from "@/components/TradeFilter/TradeFilterProvider.tsx";
 import {LogoProvider, useLogo} from "@/contexts/LogoContext";
 import Sidebar from "@/components/Sidebar/Sidebar";
+import TitleBar from "@/components/Window/TitleBar";
 import LoadingSpinner from '@/components/Common/LoadingSpinner';
 
 // Plotly 미리 로딩 (앱 시작 시)
@@ -498,7 +499,16 @@ function AppContent() {
     };
 
     return (
-        <div className="flex h-full w-full overflow-hidden bg-[#111111]" style={{position: "relative"}}>
+        // 타이틀바 높이 40px를 기준으로 앱 위치 조정
+        <div
+            className="flex h-full w-full overflow-hidden bg-[#111111]"
+            style={{
+                position: "relative",
+                marginTop: "40px",
+                height: "calc(100% - 40px)",
+                boxSizing: "border-box"
+            }}
+        >
             {/* 이미지 로딩 중일 때 전체 화면 로딩 스피너 표시 */}
             {isGlobalLoading && <LoadingSpinner/>}
 
@@ -523,6 +533,9 @@ function AppContent() {
 
             {/* 서버 오류 발생 시 경고 팝업 표시 */}
             {serverError && <ServerAlert serverError={serverError}/>}
+
+            {/* 커스텀 타이틀바 */}
+            <TitleBar/>
 
             <Sidebar
                 onSelectTab={handleSelectTab}

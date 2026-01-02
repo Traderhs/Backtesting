@@ -1,4 +1,4 @@
-const {app, BrowserWindow, ipcMain, dialog} = require('electron');
+const {app, BrowserWindow, ipcMain, dialog, Menu} = require('electron');
 const path = require('path');
 const net = require('net');
 const {autoUpdater} = require('electron-updater');
@@ -88,14 +88,10 @@ function createWindow() {
         path.join(process.resourcesPath, 'Icons/backboard.ico');
 
     mainWindow = new BrowserWindow({
-        width: 1400,
-        height: 900,
-        minWidth: 800,
-        minHeight: 600,
-
         fullscreenable: false, // 진짜 fullscreen 금지
-        maximizable: false,    // 버튼으로 최대화 금지
-        resizable: false,
+        maximizable: true,     // 최대화 허용(프레임리스에서 토글 가능)
+        resizable: true,
+        frame: false,          // 프레임리스 창으로 커스텀 타이틀바 사용
 
         webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
@@ -114,6 +110,23 @@ function createWindow() {
 
         // 창 뜨면 무조건 최대화
         mainWindow.maximize();
+    });
+
+    // 프레임리스 창의 경우 최대화/복원 이벤트를 렌더러에 전달
+    mainWindow.on('maximize', () => {
+        try {
+            mainWindow.webContents.send('window-maximized');
+        } catch (e) {
+            // 무시
+        }
+    });
+
+    mainWindow.on('unmaximize', () => {
+        try {
+            mainWindow.webContents.send('window-unmaximized');
+        } catch (e) {
+            // 무시
+        }
     });
 
     // 즉시 앱 로드
@@ -143,6 +156,13 @@ app.whenReady().then(async () => {
         await autoUpdater.checkForUpdatesAndNotify();
     } catch (e) {
         console.warn('Update check failed:', e);
+    }
+
+    // 기본 메뉴 제거 (Windows 기본 'File Edit View...' 제거)
+    try {
+        Menu.setApplicationMenu(null);
+    } catch (e) {
+        console.warn('Failed to hide application menu:', e);
     }
 
     // 프로젝트 폴더 선택
@@ -192,4 +212,31 @@ app.on('window-all-closed', () => {
 
 ipcMain.handle('get-project-directory', () => {
     return projectDirectory;
+});
+
+// 윈도우 제어용 IPC
+ipcMain.on('window-minimize', () => {
+    if (mainWindow) mainWindow.minimize();
+});
+
+ipcMain.on('window-maximize', () => {
+    if (!mainWindow) {
+        return;
+    }
+
+    if (mainWindow.isMaximized()) {
+        mainWindow.unmaximize();
+    } else {
+        mainWindow.maximize();
+    }
+});
+
+ipcMain.on('window-close', () => {
+    if (mainWindow) {
+        mainWindow.close();
+    }
+});
+
+ipcMain.handle('window-is-maximized', () => {
+    return mainWindow ? mainWindow.isMaximized() : false;
 });

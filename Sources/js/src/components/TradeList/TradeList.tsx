@@ -1389,7 +1389,7 @@ export default function TradeList({config}: TradeListProps) {
                 transition={{delay: 0.5, duration: 0.5}}
                 style={{
                     width: 'calc(100% - 35px)',
-                    maxHeight: '765px',
+                    maxHeight: '830px',
                     height: 'auto',
                     marginLeft: '17px',
                     marginTop: '17px',
@@ -1437,7 +1437,7 @@ export default function TradeList({config}: TradeListProps) {
                         style={{
                             width: '100%',
                             boxSizing: 'border-box',
-                            maxHeight: '765px',
+                            maxHeight: '830px',
                             height: 'auto',
                             overflowY: 'auto',
                             overflowX: 'auto',
