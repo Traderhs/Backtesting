@@ -24,7 +24,11 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
         return;
     }
 
-    const possiblePaths = [path.join(path.dirname(process.execPath), 'Backtesting.exe'), path.join(path.dirname(process.execPath), 'BackBoard', 'Backtesting.exe'), path.join('d:', 'Programming', 'Backtesting', 'Builds', 'Release', 'Release', 'Backtesting.exe')];
+    const possiblePaths = [
+        path.join(path.dirname(process.execPath), 'Backtesting.exe'),
+        path.join(path.dirname(process.execPath), 'BackBoard', 'Backtesting.exe'),
+        path.join('d:', 'Programming', 'Backtesting', 'Builds', 'Release', 'Release', 'Backtesting.exe')
+    ];
 
     // 세 후보 경로 중에서 매칭 시도
     let exePath = null;
@@ -918,15 +922,6 @@ function getEditorConfigPath(projectDir) {
     return path.join(projectDir, 'BackBoard', 'editor.json');
 }
 
-async function validateBackBoardExe(projectDir) {
-    const backboardExePath = path.join(projectDir, 'BackBoard.exe');
-
-    if (await fileExists(backboardExePath)) {
-        return backboardExePath;
-    }
-
-    return null;
-}
 
 async function validateProjectDirectoryConfig(cfg, broadcastLog) {
     let projectDirectory = cfg.projectDirectory || null;
@@ -947,11 +942,6 @@ async function validateProjectDirectoryConfig(cfg, broadcastLog) {
 
     projectDirectory = path.resolve(projectDirectory);
 
-    if (!(await validateBackBoardExe(projectDirectory))) {
-        broadcastLog("ERROR", `필수 파일이 없습니다: ${toPosix(path.join(projectDirectory, 'BackBoard.exe'))}`, null, null);
-
-        return false;
-    }
 
     if (!(await createProjectStructure(projectDirectory))) {
         return false;
@@ -975,7 +965,7 @@ async function validateProjectDirectoryConfig(cfg, broadcastLog) {
     return true;
 }
 
-async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFromClients, broadcastLog, projectDir) {
+async function loadOrCreateEditorConfig(activeClients, broadcastLog, projectDir) {
     try {
         const defaultEditorPath = getEditorConfigPath(projectDir);
 
@@ -1001,75 +991,39 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
             // 무시
         }
 
-        if (activeClients && activeClients.size > 0) {
-            while (true) {
-                broadcastLog("INFO", `BackBoard/editor.json이 없습니다. 프로젝트 폴더 입력을 요청합니다.`, null, null);
-
-                const provided = await requestProjectDirectoryFromClients();
-                if (!provided || typeof provided !== 'string' || provided.trim() === '') {
-                    broadcastLog("WARN", `프로젝트 폴더가 입력되지 않았습니다.`, null, null);
-
-                    try {
-                        activeClients.forEach(c => c.send(JSON.stringify({
-                            action: 'projectDirectoryInvalid', reason: '프로젝트 폴더를 입력해주세요.'
-                        })));
-                    } catch (e) {
-                        // 무시
-                    }
-
-                    continue;
-                }
-
-                const resolvedRoot = path.resolve(provided);
-                const backboardExe = await validateBackBoardExe(resolvedRoot);
-
-                if (!backboardExe) {
-                    broadcastLog("WARN", `BackBoard.exe 파일을 찾을 수 없습니다: ${toPosix(resolvedRoot)}`, null, null);
-
-                    try {
-                        activeClients.forEach(c => c.send(JSON.stringify({
-                            action: 'projectDirectoryInvalid', reason: 'BackBoard.exe 파일을 찾을 수 없습니다.'
-                        })));
-                    } catch (e) {
-                        // 무시
-                    }
-                    continue;
-                }
-
-                if (await createProjectStructure(resolvedRoot)) {
-                    const defaultConfig = createDefaultConfig(resolvedRoot);
-                    const editorConfigPath = getEditorConfigPath(resolvedRoot);
-
-                    try {
-                        const obj = configToObj(defaultConfig);
-                        if (!writeSignedFileAtomic(editorConfigPath, obj, projectDir, broadcastLog)) {
-                            broadcastLog("ERROR", '서명 파일 저장 실패');
-
-                            return;
-                        }
-
-                        return defaultConfig;
-                    } catch (err) {
-                        broadcastLog("ERROR", `editor.json 생성 실패: ${err.message}`, null, null);
-
-                        try {
-                            activeClients.forEach(c => c.send(JSON.stringify({
-                                action: 'projectDirectoryInvalid', reason: `설정 파일 생성 실패: ${err.message}`
-                            })));
-                        } catch (e) {
-                            // 무시
-                        }
-                    }
-                } else {
-                    try {
-                        activeClients.forEach(c => c.send(JSON.stringify({
-                            action: 'projectDirectoryInvalid', reason: '프로젝트 폴더 구조 생성 실패'
-                        })));
-                    } catch (e) {
-                        // 무시
-                    }
-                }
+        // 서버를 시작할 때 전달된 프로젝트 폴더를 기본으로 사용하여 설정 파일을 자동 생성
+        try {
+            const resolvedRoot = projectDir ? path.resolve(projectDir) : null;
+            if (!resolvedRoot) {
+                broadcastLog("ERROR", `프로젝트 폴더 정보가 없습니다.`, null, null);
+                return;
             }
+
+            if (await createProjectStructure(resolvedRoot)) {
+                const defaultConfig = createDefaultConfig(resolvedRoot);
+                const editorConfigPath = getEditorConfigPath(resolvedRoot);
+
+                try {
+                    const obj = configToObj(defaultConfig);
+                    // HMAC 키/파일 작업은 프로젝트 루트를 기준으로 수행
+                    if (!writeSignedFileAtomic(editorConfigPath, obj, resolvedRoot, broadcastLog)) {
+                        broadcastLog("ERROR", '서명 파일 저장 실패', null, null);
+                        return;
+                    }
+
+
+                    broadcastLog("INFO", `기본 editor.json을 생성했습니다: ${toPosix(editorConfigPath)}`, null, null);
+                    return defaultConfig;
+                } catch (err) {
+                    broadcastLog("ERROR", `editor.json 생성 실패: ${err.message}`, null, null);
+
+                }
+            } else {
+                broadcastLog("ERROR", `프로젝트 폴더 구조 생성에 실패했습니다: ${toPosix(resolvedRoot)}`, null, null);
+
+            }
+        } catch (e) {
+            // 무시
         }
     } catch (e) {
         // 무시
@@ -1094,70 +1048,6 @@ function saveEditorConfig(config, broadcastLog) {
     }
 }
 
-async function handleProvideProjectDirectory(ws, projectDir, activeClients, broadcastLog) {
-    if (projectDir && typeof projectDir === 'string') {
-        const resolvedRoot = path.resolve(projectDir);
-        const backboardExe = await validateBackBoardExe(resolvedRoot);
-        const editorConfigPath = getEditorConfigPath(resolvedRoot);
-
-        if (!backboardExe) {
-            ws.send(JSON.stringify({
-                action: "projectDirectoryInvalid", reason: `BackBoard.exe 파일을 찾을 수 없습니다.`
-            }));
-        } else if (await createProjectStructure(resolvedRoot)) {
-            try {
-                const defaultConfig = createDefaultConfig(resolvedRoot);
-
-                if (await fileExists(editorConfigPath)) {
-                    try {
-                        const loaded = readSignedConfigWithRecovery(editorConfigPath, resolvedRoot, broadcastLog);
-
-                        if (loaded) {
-                            editorConfig = objToConfig(loaded.obj);
-                        } else {
-                            deleteConfigAndBak(editorConfigPath);
-                            const obj = configToObj(defaultConfig);
-                            writeSignedFileAtomic(editorConfigPath, obj, resolvedRoot, broadcastLog);
-
-                            editorConfig = defaultConfig;
-                        }
-                    } catch (e) {
-                        broadcastLog("WARN", `editor.json 파싱 실패: ${e.message}`, null, null);
-
-                        deleteConfigAndBak(editorConfigPath);
-                        const obj = configToObj(defaultConfig);
-                        writeSignedFileAtomic(editorConfigPath, obj, resolvedRoot, broadcastLog);
-
-                        editorConfig = defaultConfig;
-                    }
-                } else {
-                    const obj = configToObj(defaultConfig);
-                    writeSignedFileAtomic(editorConfigPath, obj, resolvedRoot, broadcastLog);
-                    editorConfig = defaultConfig;
-                }
-
-                // 프로젝트 디렉터리 설정 후 백테스팅 엔진이 아직 시작되지 않았으면 시작
-                try {
-                    startBacktestingEngine(activeClients, broadcastLog, resolvedRoot);
-                } catch (e) {
-                    broadcastLog("ERROR", `백테스팅 엔진 시작 실패: ${e.message}`, null, null);
-                }
-
-                ws.send(JSON.stringify({
-                    action: "editorConfigLoaded", config: configToWs(editorConfig)
-                }));
-            } catch (err) {
-                ws.send(JSON.stringify({
-                    action: "projectDirectoryInvalid", reason: `설정 파일 생성 실패: ${err.message}`
-                }));
-            }
-        } else {
-            ws.send(JSON.stringify({
-                action: "projectDirectoryInvalid", reason: `프로젝트 폴더 구조 생성 실패`
-            }));
-        }
-    }
-}
 
 function getEditorConfig() {
     return editorConfig;
@@ -1187,6 +1077,5 @@ module.exports = {
     setEditorConfig,
     isEditorConfigLoading,
     setEditorConfigLoading,
-    validateProjectDirectoryConfig,
-    handleProvideProjectDirectory
+    validateProjectDirectoryConfig
 };
