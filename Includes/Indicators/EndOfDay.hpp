@@ -7,7 +7,7 @@
 #include "Engines/Indicator.hpp"
 
 /// 해당 봉이 당일 마지막 봉인지 판단하는 지표
-class EndOfDay final : public Indicator {
+class BACKTESTING_API EndOfDay final : public Indicator {
  public:
   /// @param name 지표의 이름
   /// @param timeframe 지표의 타임프레임

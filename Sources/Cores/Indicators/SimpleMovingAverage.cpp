@@ -13,6 +13,8 @@ SimpleMovingAverage::SimpleMovingAverage(const string& name,
                                          const double period)
     : Indicator(name, timeframe, plot),
       source_(source),
+      sizet_period_(static_cast<size_t>(period)),
+      double_period_(period),
       count_(0),
       sum_(0),
       can_calculate_(false),
@@ -25,13 +27,6 @@ SimpleMovingAverage::SimpleMovingAverage(const string& name,
             period),
         __FILE__, __LINE__);
   }
-
-  // 타입 안정성과 속도를 위해 미리 변환
-  double_period_ = period;
-  sizet_period_ = static_cast<size_t>(period);
-
-  buffer_.assign(sizet_period_, 0.0);
-  buffer_idx_ = 0;
 }
 
 void SimpleMovingAverage::Initialize() {

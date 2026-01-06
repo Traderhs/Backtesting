@@ -4,7 +4,7 @@
 #include "Engines/Indicator.hpp"
 
 /// Swing Point High
-class SwingHigh final : public Indicator {
+class BACKTESTING_API SwingHigh final : public Indicator {
  public:
   explicit SwingHigh(const string& name, const string& timeframe,
                      const Plot& plot, double period);

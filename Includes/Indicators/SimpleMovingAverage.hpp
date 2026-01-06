@@ -7,7 +7,7 @@
 #include "Engines/Indicator.hpp"
 
 /// 단순 이동평균 (SMA)
-class SimpleMovingAverage final : public Indicator {
+class BACKTESTING_API SimpleMovingAverage final : public Indicator {
  public:
   explicit SimpleMovingAverage(const string& name, const string& timeframe,
                                const Plot& plot, Indicator& source,
@@ -15,8 +15,8 @@ class SimpleMovingAverage final : public Indicator {
 
  private:
   Indicator& source_;
-  double double_period_;
   size_t sizet_period_;
+  double double_period_;
 
   int count_;
   double sum_;
