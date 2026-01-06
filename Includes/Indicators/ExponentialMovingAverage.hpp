@@ -4,7 +4,7 @@
 #include "Engines/Indicator.hpp"
 
 /// 지수 이동평균 (EMA)
-class ExponentialMovingAverage final : public Indicator {
+class BACKTESTING_API ExponentialMovingAverage final : public Indicator {
  public:
   explicit ExponentialMovingAverage(const string& name, const string& timeframe,
                                     const Plot& plot, Indicator& source,
@@ -12,8 +12,8 @@ class ExponentialMovingAverage final : public Indicator {
 
  private:
   Indicator& source_;
-  double double_period_;  // period를 double로 저장 (계산 편의)
   size_t sizet_period_;   // period를 size_t로 저장 (인덱스 접근)
+  double double_period_;  // period를 double로 저장 (계산 편의)
 
   // SMA 시드용 상태
   size_t count_;        // 누적된 샘플 수 카운터
