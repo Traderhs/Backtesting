@@ -750,114 +750,119 @@ app.post('/api/strategy/build', express.json(), async (req, res) => {
         const buildDir = path.join(projectDir, 'Builds', strategyName);
         const dllPath = path.join(buildDir, `${strategyName}.dll`);
 
-        // 증분 빌드 확인: 소스 코드가 변경되지 않았다면 빌드 건너뛰기
+        // 증분 빌드 확인
+        // 헤더/라이브러리 변경 시 전체 컴파일, 소스만 변경 시 해당 소스만 컴파일
+        let fullRebuildRequired = false;
         try {
-            let needRebuild = false;
+            let isUpToDate = true;
 
             // 1. DLL 존재 여부 확인
             let dllStats;
             try {
                 dllStats = await fsPromises.stat(dllPath);
             } catch (e) {
-                needRebuild = true; // DLL이 없으면 무조건 빌드
+                isUpToDate = false;
+                fullRebuildRequired = true; // DLL 없으면 전체 리빌드
             }
 
-            if (!needRebuild) {
+            if (isUpToDate) {
                 const dllMtime = dllStats.mtimeMs;
-                const filesToCheck = [strategySourcePath];
 
-                if (strategyHeaderPath) {
-                    filesToCheck.push(strategyHeaderPath);
-                }
-
-                // 라이브러리 파일도 체크
+                // (1) 라이브러리 체크 -> 변경 시 Full Rebuild
                 if (staticDir) {
-                    filesToCheck.push(path.join(staticDir, 'Cores', 'BacktestingCore.lib'));
-                }
-
-                const checkTime = async (filePath) => {
+                    const libPath = path.join(staticDir, 'Cores', 'BacktestingCore.lib');
                     try {
-                        const s = await fsPromises.stat(filePath);
+                        const s = await fsPromises.stat(libPath);
 
-                        // 파일이 DLL보다 나중에 수정되었으면 재빌드 필요
                         if (s.mtimeMs > dllMtime) {
-                            return true;
+                            isUpToDate = false;
+                            fullRebuildRequired = true;
                         }
                     } catch (e) {
-                        // 파일이 없으면 재빌드
-                        return true;
-                    }
-                    return false;
-                };
-
-                // 메인 소스 및 헤더 체크
-                for (const f of filesToCheck) {
-                    if (await checkTime(f)) {
-                        needRebuild = true;
-                        break;
                     }
                 }
 
-                // 지표 헤더 폴더 체크
-                if (!needRebuild && Array.isArray(indicatorHeaderDirs)) {
-                    for (const indicatorHeaderDir of indicatorHeaderDirs) {
-                        if (indicatorHeaderDir && typeof indicatorHeaderDir === 'string') {
-                            const absDir = path.isAbsolute(indicatorHeaderDir) ? indicatorHeaderDir : path.join(projectDir, indicatorHeaderDir);
+                // (2) 전략 헤더 체크 -> 변경 시 Full Rebuild (CPP 파일들이 해당 헤더를 포함할 수 있으므로 안전성을 위함)
+                if (isUpToDate && strategyHeaderPath) {
+                    try {
+                        const s = await fsPromises.stat(strategyHeaderPath);
+
+                        if (s.mtimeMs > dllMtime) {
+                            isUpToDate = false;
+                            fullRebuildRequired = true;
+                        }
+                    } catch (e) {
+                    }
+                }
+
+                // (3) 지표 헤더들 체크 -> 변경 시 Full Rebuild
+                if (isUpToDate && Array.isArray(indicatorHeaderDirs)) {
+                    for (const dir of indicatorHeaderDirs) {
+                        if (!dir || typeof dir !== 'string') {
+                            continue;
+                        }
+
+                        const absDir = path.isAbsolute(dir) ? dir : path.join(projectDir, dir);
+
+                        try {
+                            const files = await fsPromises.readdir(absDir);
+
+                            for (const f of files) {
+                                if (/\.(hpp|h)$/i.test(f)) {
+                                    const s = await fsPromises.stat(path.join(absDir, f));
+
+                                    if (s.mtimeMs > dllMtime) {
+                                        isUpToDate = false;
+                                        fullRebuildRequired = true;
+
+                                        break;
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                        }
+                        if (!isUpToDate) break;
+                    }
+                }
+
+                // (4) 소스 코드들 체크 -> 변경되어도 Full Rebuild 아님 (개별 컴파일 가능)
+                if (isUpToDate) {
+                    // 소스 파일 리스트
+                    const sourcesToCheck = [strategySourcePath];
+                    if (Array.isArray(indicatorSourceDirs)) {
+                        for (const dir of indicatorSourceDirs) {
+                            if (!dir || typeof dir !== 'string') {
+                                continue;
+                            }
+
+                            const absDir = path.isAbsolute(dir) ? dir : path.join(projectDir, dir);
 
                             try {
                                 const files = await fsPromises.readdir(absDir);
 
-                                for (const file of files) {
-                                    if (/\.(hpp|h)$/i.test(file)) {
-                                        if (await checkTime(path.join(absDir, file))) {
-                                            needRebuild = true;
-                                            break;
-                                        }
-                                    }
+                                for (const f of files) {
+                                    if (/\.(cpp|cxx|c)$/i.test(f)) sourcesToCheck.push(path.join(absDir, f));
                                 }
                             } catch (e) {
-                                // 무시
                             }
-                        }
-
-                        if (needRebuild) {
-                            break;
                         }
                     }
-                }
 
-                // 지표 소스 폴더 체크
-                if (!needRebuild && Array.isArray(indicatorSourceDirs)) {
-                    for (const indicatorSourceDir of indicatorSourceDirs) {
-                        if (indicatorSourceDir && typeof indicatorSourceDir === 'string') {
-                            const absDir = path.isAbsolute(indicatorSourceDir) ? indicatorSourceDir : path.join(projectDir, indicatorSourceDir);
-
-                            try {
-                                const files = await fsPromises.readdir(absDir);
-
-                                for (const file of files) {
-                                    if (/\.(cpp|cxx|c)$/i.test(file)) {
-                                        if (await checkTime(path.join(absDir, file))) {
-                                            needRebuild = true;
-                                            break;
-                                        }
-                                    }
-                                }
-                            } catch (e) {
-                                // 무시
+                    for (const src of sourcesToCheck) {
+                        try {
+                            const s = await fsPromises.stat(src);
+                            if (s.mtimeMs > dllMtime) {
+                                isUpToDate = false;  // fullRebuildRequired는 false로 유지 -> 소스만 증분 컴파일
+                                break;
                             }
-                        }
-
-                        if (needRebuild) {
-                            break;
+                        } catch (e) {
                         }
                     }
                 }
             }
 
-            if (!needRebuild) {
+            if (isUpToDate) {
                 broadcastLog('INFO', `변경된 소스 코드가 없어 빌드를 건너뜁니다.`);
-
                 return res.json({
                     success: true, dll: dllPath, stdout: "Build skipped (Up-to-date)", stderr: ""
                 });
@@ -1091,9 +1096,21 @@ extern "C" {
     }
 }`;
 
-        // 래퍼 파일 생성
+        // 래퍼 파일 생성 (내용이 변경된 경우에만 쓰기)
         const wrapperPath = path.join(buildDir, `${strategyName}_wrapper.cpp`);
-        await fsPromises.writeFile(wrapperPath, wrapperCode, 'utf8');
+        let writeWrapper = true;
+        try {
+            const currentWrapper = await fsPromises.readFile(wrapperPath, 'utf8');
+
+            if (currentWrapper === wrapperCode) {
+                writeWrapper = false;
+            }
+        } catch (e) {
+        }
+
+        if (writeWrapper) {
+            await fsPromises.writeFile(wrapperPath, wrapperCode, 'utf8');
+        }
 
         // 컴파일 명령 구성
         const mainIncludeDir = path.join(projectDir, 'Includes');
@@ -1202,17 +1219,22 @@ extern "C" {
 
             // 재컴파일 조건 체크
             let needsCompile = false;
-            try {
-                const srcStat = await fsPromises.stat(src);
-                const objStat = await fsPromises.stat(objPath);
 
-                // 소스가 OBJ보다 최신이면 재컴파일
-                if (srcStat.mtimeMs > objStat.mtimeMs) {
+            if (fullRebuildRequired) {
+                needsCompile = true;
+            } else {
+                try {
+                    const srcStat = await fsPromises.stat(src);
+                    const objStat = await fsPromises.stat(objPath);
+
+                    // 소스가 OBJ보다 최신이면 재컴파일
+                    if (srcStat.mtimeMs > objStat.mtimeMs) {
+                        needsCompile = true;
+                    }
+                } catch (e) {
+                    // OBJ가 없으면 재컴파일
                     needsCompile = true;
                 }
-            } catch (e) {
-                // OBJ가 없으면 재컴파일
-                needsCompile = true;
             }
 
             if (needsCompile) {
@@ -1222,7 +1244,7 @@ extern "C" {
 
         // 컴파일/링크 공통 플래그
         // (주의: 컴파일 시 /LD나 /link 옵션은 사용하지 않음 -> 링크 단계에서 수행)
-        const commonFlags = `/O2 /Oi /Ot /GL /arch:AVX2 /fp:strict /DNDEBUG /GS- /Gy /favor:AMD64 /MD /EHsc /std:c++20 /DSTRATEGY_BUILD /DINDICATOR_BUILD /nologo`;
+        const commonFlags = `/O2 /Oi /Ot /GL /arch:AVX2 /fp:strict /DNDEBUG /GS- /Gy /favor:AMD64 /MD /EHsc /std:c++20 /DSTRATEGY_BUILD /DINDICATOR_BUILD /nologo /MP /bigobj /Zc:inline`;
 
         let compileCmd = "";
 
@@ -1245,7 +1267,7 @@ extern "C" {
         }
 
         // 3. 모든 OBJ 파일 링크 명령
-        compileCmd += `link /nologo /DLL /LTCG /OUT:"${dllPath}" /LIBPATH:"${libDir}" BacktestingCore.lib ${allObjFiles.join(" ")}`;
+        compileCmd += `link /nologo /DLL /LTCG:INCREMENTAL /OPT:REF /OPT:ICF /OUT:"${dllPath}" /LIBPATH:"${libDir}" BacktestingCore.lib ${allObjFiles.join(" ")}`;
 
         // 빌드 실행
         const buildResult = await new Promise((resolve) => {
