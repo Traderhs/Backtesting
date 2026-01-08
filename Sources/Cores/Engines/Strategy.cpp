@@ -40,20 +40,21 @@ Strategy::Strategy(const string& name)
 }
 Strategy::~Strategy() = default;
 
-shared_ptr<Strategy> Strategy::strategy_;
-bool Strategy::used_creation_function_ = false;
+BACKTESTING_API shared_ptr<Strategy> Strategy::strategy_;
+BACKTESTING_API bool Strategy::used_creation_function_ = false;
 
 // ReSharper disable once CppInconsistentNaming
-shared_ptr<BarHandler>& Strategy::bar = BarHandler::GetBarHandler();
+BACKTESTING_API shared_ptr<BarHandler>& Strategy::bar =
+    BarHandler::GetBarHandler();
 
 // ReSharper disable once CppInconsistentNaming
-shared_ptr<Engine>& Strategy::engine = Engine::GetEngine();
+BACKTESTING_API shared_ptr<Engine>& Strategy::engine = Engine::GetEngine();
 
 // ReSharper disable once CppInconsistentNaming
-shared_ptr<Logger>& Strategy::logger = Logger::GetLogger();
+BACKTESTING_API shared_ptr<Logger>& Strategy::logger = Logger::GetLogger();
 
 // ReSharper disable once CppInconsistentNaming
-string Strategy::trading_timeframe = "TRADING_TIMEFRAME";
+BACKTESTING_API string Strategy::trading_timeframe = "TRADING_TIMEFRAME";
 
 // =============================================================================
 void Strategy::SetTradingTimeframe(const string& trading_tf) {
@@ -158,6 +159,12 @@ string Strategy::FindFileInParent(const string& filename) {
   }
 
   return {};
+}
+
+void Strategy::ResetStrategy() {
+  strategy_.reset();
+  used_creation_function_ = false;
+  trading_timeframe = "TRADING_TIMEFRAME";
 }
 
 }  // namespace backtesting::strategy

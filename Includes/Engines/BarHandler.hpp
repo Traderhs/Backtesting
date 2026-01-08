@@ -5,6 +5,7 @@
 
 // 내부 헤더
 #include "Engines/BaseBarHandler.hpp"
+#include "Engines/Export.hpp"
 
 // 전방 선언
 namespace backtesting::main {
@@ -23,7 +24,7 @@ using namespace main;
 namespace backtesting::bar {
 
 /// 바 데이터를 추가하고 세부 관리 및 처리를 하는 클래스
-class BarHandler final : public BaseBarHandler {
+class BACKTESTING_API BarHandler final : public BaseBarHandler {
   friend class Backtesting;
 
  public:
@@ -115,6 +116,12 @@ class BarHandler final : public BaseBarHandler {
   /// 참조 바 데이터 사용 시 사용 중인 타임프레임
   string current_reference_timeframe_;
 
+  /// 바 데이터는 유지하되 BarHandler의 실행 관련 상태를 초기화하는 함수
+  void ResetBarHandlerState();
+
+  /// BarHandler의 싱글톤 인스턴스를 초기화하는 함수
+  void ResetBarHandler();
+
   /**
    * 주어진 데이터에서 Open Time과 다음 Open Time의 시간 차이를 계산하여
    * 타임프레임을 문자열로 반환하는 함수.
@@ -135,9 +142,6 @@ class BarHandler final : public BaseBarHandler {
 
   /// 지정된 타임프레임이 레퍼런스 바에 존재하는지 검증하는 함수
   void IsValidReferenceBarTimeframe(const string& timeframe);
-
-  /// 모든 바 데이터를 초기화하는 함수
-  void ClearBarData();
 };
 
 }  // namespace backtesting::bar

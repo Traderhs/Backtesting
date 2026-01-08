@@ -8,6 +8,7 @@
 
 // 내부 헤더
 #include "Engines/BaseEngine.hpp"
+#include "Engines/Export.hpp"
 
 // 전방 선언
 namespace backtesting::bar {
@@ -42,7 +43,7 @@ enum class PriceType { OPEN, HIGH, LOW, CLOSE };
 using enum PriceType;
 
 // 각 가격의 정보를 담고 있는 구조체
-struct PriceData {
+struct BACKTESTING_API PriceData {
   double price;          // 가격
   PriceType price_type;  // OHLC
   int symbol_idx;        // 심볼 인덱스
@@ -59,9 +60,12 @@ using enum StrategyType;
 /**
  * 백테스팅 프로세스를 진행하는 클래스
  */
-class Engine final : public BaseEngine {
+class BACKTESTING_API Engine final : public BaseEngine {
   // 전략, TimeDiff 등 접근용
   friend class Analyzer;
+
+  // ResetEngine 접근용
+  friend class Backtesting;
 
   // ExecuteStrategy 접근용
   friend class OrderHandler;
@@ -160,6 +164,9 @@ class Engine final : public BaseEngine {
 
   // 심볼 이름들
   vector<string> symbol_names_;
+
+  /// Engine의 싱글톤 인스턴스를 초기화하는 함수
+  void ResetEngine();
 
   /// 백테스팅의 메인 로직 시작 전 엔진의 유효성 검사와 초기화를 하는 함수
   void Initialize();

@@ -63,16 +63,18 @@ Indicator::Indicator(const string& name, const string& timeframe,
 }
 Indicator::~Indicator() = default;
 
-shared_ptr<Analyzer>& Indicator::analyzer_ = Analyzer::GetAnalyzer();
-shared_ptr<BarHandler>& Indicator::bar_ = BarHandler::GetBarHandler();
-shared_ptr<Engine>& Indicator::engine_ = Engine::GetEngine();
-shared_ptr<Logger>& Indicator::logger_ = Logger::GetLogger();
-size_t Indicator::creation_counter_;
-size_t Indicator::pre_creation_counter_;
-bool Indicator::is_calculating_ = false;
-string Indicator::calculating_name_;
-string Indicator::calculating_timeframe_;
-vector<string> Indicator::saved_indicator_classes_;
+BACKTESTING_API shared_ptr<Analyzer>& Indicator::analyzer_ =
+    Analyzer::GetAnalyzer();
+BACKTESTING_API shared_ptr<BarHandler>& Indicator::bar_ =
+    BarHandler::GetBarHandler();
+BACKTESTING_API shared_ptr<Engine>& Indicator::engine_ = Engine::GetEngine();
+BACKTESTING_API shared_ptr<Logger>& Indicator::logger_ = Logger::GetLogger();
+BACKTESTING_API size_t Indicator::creation_counter_ = 0;
+BACKTESTING_API size_t Indicator::pre_creation_counter_ = 0;
+BACKTESTING_API bool Indicator::is_calculating_ = false;
+BACKTESTING_API string Indicator::calculating_name_;
+BACKTESTING_API string Indicator::calculating_timeframe_;
+BACKTESTING_API vector<string> Indicator::saved_indicator_classes_;
 
 Numeric<double> Indicator::operator[](const size_t index) {
   // =========================================================================
@@ -425,6 +427,17 @@ void Indicator::AddSavedIndicatorClass(const string& class_name) {
   if (!IsIndicatorClassSaved(class_name)) {
     saved_indicator_classes_.push_back(class_name);
   }
+}
+
+void Indicator::ResetIndicator() {
+  creation_counter_ = 0;
+  pre_creation_counter_ = 0;
+
+  saved_indicator_classes_.clear();
+
+  is_calculating_ = false;
+  calculating_name_.clear();
+  calculating_timeframe_.clear();
 }
 
 void Indicator::IncreaseCreationCounter() { creation_counter_++; }

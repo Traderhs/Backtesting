@@ -28,10 +28,10 @@ Config::Config()
 }
 Config::~Config() = default;
 
-shared_ptr<Logger>& Config::logger_ = Logger::GetLogger();
-size_t Config::creation_counter_;
-size_t Config::pre_creation_counter_;
-string Config::project_directory_;
+BACKTESTING_API shared_ptr<Logger>& Config::logger_ = Logger::GetLogger();
+BACKTESTING_API size_t Config::creation_counter_;
+BACKTESTING_API size_t Config::pre_creation_counter_;
+BACKTESTING_API string Config::project_directory_;
 
 Config& Config::SetProjectDirectory(const string& project_directory) {
   project_directory_ = project_directory;

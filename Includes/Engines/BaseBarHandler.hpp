@@ -6,6 +6,9 @@
 #include <unordered_map>
 #include <vector>
 
+// 내부 헤더
+#include "Engines/Export.hpp"
+
 // 전방 선언
 namespace backtesting::bar {
 class BarData;
@@ -36,7 +39,7 @@ enum class BarDataType {
 using enum BarDataType;
 
 /// 유형별 바 데이터를 저장하고 기본적인 관리를 하는 클래스
-class BaseBarHandler {
+class BACKTESTING_API BaseBarHandler {
  public:
   /// 지정된 바 데이터 유형의 바 데이터를 반환하는 함수
   [[nodiscard]] shared_ptr<BarData>& GetBarData(BarDataType bar_data_type,
@@ -80,6 +83,12 @@ class BaseBarHandler {
   shared_ptr<BarData> mark_price_bar_data_;
   vector<size_t>
       mark_price_index_;  // 마크 가격 바 데이터의 각 심볼별 진행 인덱스
+
+  /// 바 데이터는 유지하되 BaseBarHandler의 실행 관련 상태를 초기화하는 함수
+  void ResetBaseBarHandlerState();
+
+  /// BaseBarHandler를 초기화하는 함수
+  void ResetBaseBarHandler();
 };
 
 }  // namespace backtesting::bar

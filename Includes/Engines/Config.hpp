@@ -7,6 +7,7 @@
 
 // 내부 헤더
 #include "Engines/BaseEngine.hpp"
+#include "Engines/Export.hpp"
 #include "Engines/Slippage.hpp"
 
 // 전방 선언
@@ -32,7 +33,7 @@ namespace backtesting::engine {
 
 /// 백테스팅 기간을 지정하는 구조체.\n
 /// Start와 End 시간을 지정하지 않으면 캔들 범위 전체로 백테스팅 진행
-struct Period {
+struct BACKTESTING_API Period {
   Period() = default;
   explicit Period(const string& start_time, const string& end_time,
                   const string& format) {
@@ -52,7 +53,7 @@ struct Period {
 };
 
 /// 엔진의 사전 설정값을 담당하는 빌더 클래스
-class Config final {
+class BACKTESTING_API Config final {
  public:
   Config();
   ~Config();
@@ -152,6 +153,7 @@ class Config final {
   // 설정값 생성 시 SetConfig 함수 사용을 강제하기 위한 목적
   // 생성 카운터
   static size_t creation_counter_;
+
   // 전 생성 카운터
   static size_t pre_creation_counter_;
 

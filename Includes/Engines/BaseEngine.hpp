@@ -11,6 +11,8 @@
 // 내부 헤더
 #include "Engines/Analyzer.hpp"
 #include "Engines/DataUtils.hpp"
+#include "Engines/Export.hpp"
+#include "Engines/SymbolInfo.hpp"
 
 // 전방 선언
 namespace backtesting::analyzer {
@@ -35,8 +37,9 @@ using namespace utils;
 }  // namespace backtesting
 
 namespace backtesting::engine {
+
 /// 엔진의 기본적인 설정, 초기화를 담당하는 클래스
-class BaseEngine {
+class BACKTESTING_API BaseEngine {
   // config_ 접근용
   friend class Config;
 
@@ -131,6 +134,7 @@ class BaseEngine {
 
   static shared_ptr<Analyzer>& analyzer_;
   static shared_ptr<BarHandler>& bar_;
+  static shared_ptr<Config> config_;
   static shared_ptr<Logger>& logger_;
 
   /// 엔진이 초기화 되었는지 여부를 결정하는 플래그
@@ -151,15 +155,12 @@ class BaseEngine {
   static json leverage_bracket_;
   static string leverage_bracket_path_;
 
-  // 심볼별 거래소 정보
-  vector<SymbolInfo> symbol_info_;
-
   /// 펀딩 비율 (벡터는 심볼 순서)
   static vector<json> funding_rates_;
   static vector<string> funding_rates_paths_;
 
-  /// 엔진의 사전 설정 항목
-  static shared_ptr<Config> config_;
+  // 심볼별 거래소 정보
+  vector<SymbolInfo> symbol_info_;
 
   /// 엔진에 추가된 전략
   shared_ptr<Strategy> strategy_;
@@ -184,6 +185,9 @@ class BaseEngine {
   double max_wallet_balance_;  // 최고 자금
   double drawdown_;            // 현재 드로우다운
   double max_drawdown_;        // 최고 드로우다운
+
+  /// BaseEngine을 초기화하는 함수
+  void ResetBaseEngine();
 };
 
 }  // namespace backtesting::engine

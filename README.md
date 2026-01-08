@@ -145,6 +145,8 @@ After a run completes, open the newest folder under `Results/` and point BackBoa
 - **Single-strategy constraint per run**
     - The engine runs **one** `Strategy` per backtest execution.
     - BackBoard can be used to compare/compose results across multiple independent runs.
+- **DLL-based Strategy/Indicator Loading**
+  - Strategies and indicators are compiled into separate DLLs and loaded by the backtesting engine at runtime.
 
 ---
 
@@ -231,7 +233,8 @@ SMA indicator code (based on the repository implementation):
 #include "Engines/Logger.hpp"
 
 /// Simple Moving Average (SMA)
-class SimpleMovingAverage final : public Indicator {
+// Note: If this indicator is built/loaded as a DLL, the build system automatically handles proper linkage
+class BACKTESTING_API SimpleMovingAverage final : public Indicator {
  public:
   explicit SimpleMovingAverage(const string& name, const string& timeframe,
                                const Plot& plot, Indicator& source,
@@ -333,7 +336,7 @@ Source path auto-detection (used for saving sources into `Results/<run>/BackBoar
 
 #include "Engines/Strategy.hpp"
 
-class SmaStrategy final : public Strategy {
+class BACKTESTING_API SmaStrategy final : public Strategy {
  public:
   explicit SmaStrategy(const string& name);
   ~SmaStrategy() override;
@@ -386,8 +389,36 @@ void SmaStrategy::ExecuteAfterExit() {}
 Important:
 
 - The engine allows **one** strategy per backtest run.
+- Constraint: Automatic source detection requires the **file name** and **class name** to match and be placed under
+  `Includes/Strategies/` + `Sources/cpp/Strategies/` or `Includes/Indicators/` + `Sources/cpp/Indicators/`.
 - This follows the principle of isolating strategies into separate accounts; aggregation of multi-strategy (
   multi-account) results will be supported in BackBoard in a future release.
+
+### DLL Export / BACKTESTING_API (Windows DLL requirement)
+
+- When compiling **Strategies** or **Indicators** as DLLs that the engine will load at runtime, the class declaration *
+  *must** be annotated with the `BACKTESTING_API` macro so symbols are exported/imported correctly on Windows (MSVC).
+  Example:
+
+```cpp
+// Includes/Strategies/MyStrategy.hpp
+class BACKTESTING_API MyStrategy final : public Strategy {
+  // ...
+};
+```
+
+- The same applies to indicators:
+
+```cpp
+// Includes/Indicators/MyIndicator.hpp
+class BACKTESTING_API MyIndicator final : public Indicator {
+  // ...
+};
+```
+
+- The `BACKTESTING_API` macro is defined in `Includes/Engines/Export.hpp` and resolves to `__declspec(dllexport)` when
+  `BACKTESTING_EXPORTS` is defined (building the DLL) and to `__declspec(dllimport)` when consuming it. Omitting the
+  macro can cause unresolved symbols or runtime DLL load failures.
 
 ---
 

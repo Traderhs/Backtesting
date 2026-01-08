@@ -7,6 +7,9 @@
 // 외부 라이브러리
 #include <nlohmann/json.hpp>
 
+// 내부 헤더
+#include "Engines/Export.hpp"
+
 // 네임 스페이스
 using namespace std;
 using namespace nlohmann;
@@ -14,7 +17,7 @@ using namespace nlohmann;
 namespace backtesting::order {
 
 /// 하나의 레버리지 브라켓을 나타내는 구조체
-struct LeverageBracket {
+struct BACKTESTING_API LeverageBracket {
   double min_notional_value;       // 해당 구간의 최소 명목 가치
   double max_notional_value;       // 해당 구간의 최대 명목 가치
   int max_leverage;                // 해당 구간의 최대 레버리지
@@ -23,14 +26,14 @@ struct LeverageBracket {
 };
 
 // 하나의 펀딩 정보를 나타내는 구조체
-struct FundingInfo {
+struct BACKTESTING_API FundingInfo {
   double funding_rate;   // 펀딩 비율
   int64_t funding_time;  // 펀딩 시간
   double mark_price;     // 펀딩 시 사용하는 마크 가격
 };
 
 /// 하나의 심볼의 정보를 포함하는 빌더 클래스
-class SymbolInfo final {
+class BACKTESTING_API SymbolInfo final {
  public:
   SymbolInfo();
   ~SymbolInfo();

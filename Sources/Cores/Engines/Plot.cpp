@@ -30,17 +30,17 @@ string Rgba::RgbaToHex() const {
   return oss.str();
 }
 
-const Rgba Rgba::red = Rgba(255, 82, 82, 1);       // 빨강
-const Rgba Rgba::orange = Rgba(255, 152, 0, 1);    // 주황
-const Rgba Rgba::yellow = Rgba(255, 245, 157, 1);  // 노랑
-const Rgba Rgba::green = Rgba(76, 175, 80, 1);     // 초록
-const Rgba Rgba::cyan = Rgba(0, 188, 212, 1);      // 청록
-const Rgba Rgba::blue = Rgba(41, 98, 255, 1);      // 파랑
-const Rgba Rgba::purple = Rgba(103, 58, 183, 1);   // 보라
-const Rgba Rgba::pink = Rgba(156, 39, 176, 1);     // 검정
-const Rgba Rgba::gray = Rgba(120, 123, 134, 1);    // 검정
-const Rgba Rgba::black = Rgba(0, 0, 0, 1);         // 검정
-const Rgba Rgba::white = Rgba(255, 255, 255, 1);   // 흰색
+BACKTESTING_API const Rgba Rgba::red = Rgba(255, 82, 82, 1);       // 빨강
+BACKTESTING_API const Rgba Rgba::orange = Rgba(255, 152, 0, 1);    // 주황
+BACKTESTING_API const Rgba Rgba::yellow = Rgba(255, 245, 157, 1);  // 노랑
+BACKTESTING_API const Rgba Rgba::green = Rgba(76, 175, 80, 1);     // 초록
+BACKTESTING_API const Rgba Rgba::cyan = Rgba(0, 188, 212, 1);      // 청록
+BACKTESTING_API const Rgba Rgba::blue = Rgba(41, 98, 255, 1);      // 파랑
+BACKTESTING_API const Rgba Rgba::purple = Rgba(103, 58, 183, 1);   // 보라
+BACKTESTING_API const Rgba Rgba::pink = Rgba(156, 39, 176, 1);     // 검정
+BACKTESTING_API const Rgba Rgba::gray = Rgba(120, 123, 134, 1);    // 검정
+BACKTESTING_API const Rgba Rgba::black = Rgba(0, 0, 0, 1);         // 검정
+BACKTESTING_API const Rgba Rgba::white = Rgba(255, 255, 255, 1);   // 흰색
 
 void Rgba::IsValidRgb(const string& color_name, const int value) {
   if (value < 0 || value > 255) {
@@ -108,7 +108,7 @@ Plot::Plot(const char line_width, const LineStyle line_style,
   }
 }
 
-shared_ptr<Logger>& Plot::logger_ = Logger::GetLogger();
+BACKTESTING_API shared_ptr<Logger>& Plot::logger_ = Logger::GetLogger();
 
 Area::Area(const Rgba& top_gradient_color, const Rgba& bottom_gradient_color,
            const Rgba& line_color, const char line_width,

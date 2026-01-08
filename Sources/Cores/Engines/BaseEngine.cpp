@@ -39,16 +39,18 @@ BaseEngine::BaseEngine()
       max_drawdown_(0) {}
 BaseEngine::~BaseEngine() = default;
 
-shared_ptr<Analyzer>& BaseEngine::analyzer_ = Analyzer::GetAnalyzer();
-shared_ptr<BarHandler>& BaseEngine::bar_ = BarHandler::GetBarHandler();
-shared_ptr<Logger>& BaseEngine::logger_ = Logger::GetLogger();
-vector<json> BaseEngine::funding_rates_;
-vector<string> BaseEngine::funding_rates_paths_;
-json BaseEngine::exchange_info_;
-string BaseEngine::exchange_info_path_;
-json BaseEngine::leverage_bracket_;
-string BaseEngine::leverage_bracket_path_;
-shared_ptr<Config> BaseEngine::config_;
+BACKTESTING_API shared_ptr<Analyzer>& BaseEngine::analyzer_ =
+    Analyzer::GetAnalyzer();
+BACKTESTING_API shared_ptr<BarHandler>& BaseEngine::bar_ =
+    BarHandler::GetBarHandler();
+BACKTESTING_API shared_ptr<Config> BaseEngine::config_;
+BACKTESTING_API shared_ptr<Logger>& BaseEngine::logger_ = Logger::GetLogger();
+BACKTESTING_API vector<json> BaseEngine::funding_rates_;
+BACKTESTING_API vector<string> BaseEngine::funding_rates_paths_;
+BACKTESTING_API json BaseEngine::exchange_info_;
+BACKTESTING_API string BaseEngine::exchange_info_path_;
+BACKTESTING_API json BaseEngine::leverage_bracket_;
+BACKTESTING_API string BaseEngine::leverage_bracket_path_;
 
 void BaseEngine::AddExchangeInfo(const string& exchange_info_path) {
   ifstream file(exchange_info_path);
@@ -289,6 +291,37 @@ void BaseEngine::UpdateStatistics() {
   drawdown_ = (1 - wallet_balance_ / max_wallet_balance_) * 100;
   max_drawdown_ =
       IsGreater(drawdown_, max_drawdown_) ? drawdown_ : max_drawdown_;
+}
+
+void BaseEngine::ResetBaseEngine() {
+  config_.reset();
+
+  engine_initialized_ = false;
+
+  trading_bar_num_symbols_ = 0;
+  trading_bar_timeframe_.clear();
+  trading_bar_time_diff_ = 0;
+  magnifier_bar_time_diff_ = 0;
+  reference_bar_time_diff_.clear();
+
+  exchange_info_.clear();
+  exchange_info_path_.clear();
+  leverage_bracket_.clear();
+  leverage_bracket_path_.clear();
+  funding_rates_.clear();
+  funding_rates_paths_.clear();
+
+  symbol_info_.clear();
+  strategy_.reset();
+  indicators_.clear();
+
+  wallet_balance_ = NAN;
+  used_margin_ = 0;
+  available_balance_ = NAN;
+  is_bankruptcy_ = false;
+  max_wallet_balance_ = NAN;
+  drawdown_ = 0;
+  max_drawdown_ = 0;
 }
 
 }  // namespace backtesting::engine

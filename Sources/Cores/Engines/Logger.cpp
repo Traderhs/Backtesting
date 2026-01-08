@@ -42,8 +42,8 @@ using namespace backtesting::utils;
 namespace backtesting::logger {
 
 // Thread-local 변수 정의
-thread_local char Logger::format_cache_[2048];
-thread_local char Logger::filename_cache_[256];
+thread_local char format_cache[2048];
+thread_local char filename_cache[256];
 
 // 파일별 전용 버퍼 - 전역 static 변수
 static FastLogBuffer debug_buffer;
@@ -57,9 +57,9 @@ static FastLogBuffer backtesting_buffer;
 static string temp_log_directory;
 
 // 정적 멤버 변수 정의
-mutex Logger::mutex_;
-shared_ptr<Logger> Logger::instance_;
-string Logger::log_directory_;
+BACKTESTING_API mutex Logger::mutex_;
+BACKTESTING_API shared_ptr<Logger> Logger::instance_;
+BACKTESTING_API string Logger::log_directory_;
 
 // 빠른 레벨 문자열 반환 - 브랜치 예측 최적화
 const char* Logger::GetLevelString(const LogLevel level) {
@@ -90,7 +90,6 @@ const char* Logger::GetLevelString(const LogLevel level) {
   }
 }
 
-// 빠른 파일명 추출 - 역방향 스캔
 const char* Logger::ExtractFilename(const char* filepath) {
   if (!filepath) {
     return "";
@@ -110,7 +109,6 @@ const char* Logger::ExtractFilename(const char* filepath) {
   return filename;
 }
 
-// 고성능 메시지 포맷팅 - sprintf 대신 수동 구현
 size_t Logger::FormatMessageFast(char* buffer, const LogLevel level,
                                  const char* file, const int line,
                                  const char* message) {
@@ -258,36 +256,13 @@ Logger::Logger(const string& debug_log_name, const string& info_log_name,
 
 Logger::~Logger() {
   stop_logging_ = true;
+
   FlushAllBuffers();
 }
 
 void Logger::Deleter::operator()(Logger* p) const {
   if (p) {
-    p->stop_logging_ = true;
-    if (p->logging_thread_.joinable()) {
-      p->logging_thread_.join();
-    }
-
-    p->FlushAllBuffers();
-    if (p->debug_log_.is_open()) {
-      p->debug_log_.close();
-    }
-
-    if (p->info_log_.is_open()) {
-      p->info_log_.close();
-    }
-
-    if (p->warn_log_.is_open()) {
-      p->warn_log_.close();
-    }
-
-    if (p->error_log_.is_open()) {
-      p->error_log_.close();
-    }
-
-    if (p->backtesting_log_.is_open()) {
-      p->backtesting_log_.close();
-    }
+    p->Shutdown();
 
     delete p;
   }
@@ -349,8 +324,11 @@ void Logger::SetLogDirectory(const string& log_directory) {
               filesystem::rename(src, format("{}/{}", log_directory, file));
 
               break;  // 성공하면 다음 파일로
-            } catch (...) {
-              // 이동 실패 시 기존 파일에 내용 추가 후 현재 파일 삭제
+            } catch (const filesystem::filesystem_error& ex) {
+              // 공유 위반은 무시하고 넘어감
+              if (ex.code().value() == ERROR_SHARING_VIOLATION) {
+                break;  // 처리 완료, 다음 파일로
+              }
 
               // 기존 파일이 있다면 현재 파일 내용을 끝에 추가
               if (const string& target_path =
@@ -427,7 +405,56 @@ shared_ptr<Logger>& Logger::GetLogger(const string& debug_log_name,
   return instance_;
 }
 
-// 하드웨어 레벨 최적화된 백그라운드 처리 스레드
+void Logger::Shutdown() {
+  stop_logging_ = true;
+
+  if (logging_thread_.joinable()) {
+    logging_thread_.join();
+  }
+
+  FlushAllBuffers();
+
+  if (debug_log_.is_open()) {
+    debug_log_.close();
+  }
+
+  if (info_log_.is_open()) {
+    info_log_.close();
+  }
+
+  if (warn_log_.is_open()) {
+    warn_log_.close();
+  }
+
+  if (error_log_.is_open()) {
+    error_log_.close();
+  }
+
+  if (backtesting_log_.is_open()) {
+    backtesting_log_.close();
+  }
+}
+
+void Logger::ResetLogger(const string& debug_log_name,
+                         const string& info_log_name,
+                         const string& warn_log_name,
+                         const string& error_log_name,
+                         const string& backtesting_log_name) {
+  lock_guard lock(mutex_);
+
+  if (instance_) {
+    // 명시적으로 리소스 정리
+    instance_->Shutdown();
+
+    // 인스턴스 초기화
+    instance_.reset();
+    instance_ = shared_ptr<Logger>(
+        new Logger(debug_log_name, info_log_name, warn_log_name, error_log_name,
+                   backtesting_log_name),
+        Deleter());
+  }
+}
+
 NO_INLINE void Logger::ProcessMultiBuffer() {
   int consecutive_idle_count = 0;
 
@@ -497,34 +524,10 @@ void Logger::FlushAllBuffers() {
   }
 }
 
-void Logger::ForceFlushAll() {
-  ForceFlushBuffer(debug_buffer, debug_log_);
-  ForceFlushBuffer(info_buffer, info_log_);
-  ForceFlushBuffer(warn_buffer, warn_log_);
-  ForceFlushBuffer(error_buffer, error_log_);
-  ForceFlushBuffer(backtesting_buffer, backtesting_log_);
-}
-
-void Logger::ForceFlushBuffer(FastLogBuffer& buffer, ofstream& file) {
-  size_t current_buf_idx = buffer.current_buffer.load(memory_order_acquire);
-  auto& buf = buffer.buffers[current_buf_idx];
-  if (const size_t data_size = buf.write_pos.load(memory_order_acquire);
-      data_size > 0) {
-    file.write(buf.data, static_cast<streamsize>(data_size));
-    file.flush();
-
-    if (const size_t next_buf =
-            (current_buf_idx + 1) % FastLogBuffer::max_buffers;
-        buffer.current_buffer.compare_exchange_strong(current_buf_idx, next_buf,
-                                                      memory_order_release)) {
-      buf.reset();
-    }
-  }
-}
-
 void Logger::FlushBuffer(FastLogBuffer& buffer, const size_t buffer_idx,
                          ofstream& file) {
   auto& buf = buffer.buffers[buffer_idx];
+
   if (const size_t data_size = buf.write_pos.load(memory_order_acquire);
       data_size > 0) {
     file.write(buf.data, static_cast<streamsize>(data_size));
@@ -537,10 +540,10 @@ FORCE_INLINE void Logger::Log(const LogLevel& log_level, const string& message,
                               const string& file, const int line,
                               const bool log_to_console) {
   // 프리페치로 format_cache 미리 로드
-  PREFETCH_WRITE(format_cache_);
+  PREFETCH_WRITE(format_cache);
 
   // 메시지 포맷팅 (thread-local 캐시 사용)
-  const size_t msg_len = FormatMessageFast(format_cache_, log_level,
+  const size_t msg_len = FormatMessageFast(format_cache, log_level,
                                            file.c_str(), line, message.c_str());
 
   // 콘솔 출력 (필요한 경우만)
@@ -579,13 +582,13 @@ FORCE_INLINE void Logger::Log(const LogLevel& log_level, const string& message,
       }
     }
 
-    format_cache_[msg_len - 1] = '\0';  // \n 제거
-    ConsoleLog(level_str, format_cache_);
-    format_cache_[msg_len - 1] = '\n';  // 복원
+    format_cache[msg_len - 1] = '\0';  // \n 제거
+    ConsoleLog(level_str, format_cache);
+    format_cache[msg_len - 1] = '\n';  // 복원
   }
 
   // 멀티 버퍼에 한 번만 쓰기 (로그 레벨 + 백테스팅 로그 동시 처리)
-  WriteToBuffersFast(log_level, format_cache_, msg_len);
+  WriteToBuffersFast(log_level, format_cache, msg_len);
 }
 
 void Logger::LogNoFormat(const LogLevel& log_level, const string& message,
@@ -636,7 +639,6 @@ void Logger::LogNoFormat(const LogLevel& log_level, const string& message,
                      formatted_message.length());
 }
 
-// 하드웨어 레벨 최적화된 극한 성능 쓰기 함수
 FORCE_INLINE void Logger::WriteToBuffersFast(const LogLevel log_level,
                                              const char* RESTRICT data,
                                              const size_t len) {

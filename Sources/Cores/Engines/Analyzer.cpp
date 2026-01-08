@@ -51,14 +51,15 @@ namespace backtesting::analyzer {
 Analyzer::Analyzer() : trade_num_(1) {}
 void Analyzer::Deleter::operator()(const Analyzer* p) const { delete p; }
 
-mutex Analyzer::mutex_;
-shared_ptr<Analyzer> Analyzer::instance_;
+BACKTESTING_API mutex Analyzer::mutex_;
+BACKTESTING_API shared_ptr<Analyzer> Analyzer::instance_;
 
-shared_ptr<BarHandler>& Analyzer::bar_ = BarHandler::GetBarHandler();
-shared_ptr<Config>& Analyzer::config_ = Engine::GetConfig();
-shared_ptr<Engine>& Analyzer::engine_ = Engine::GetEngine();
-shared_ptr<Logger>& Analyzer::logger_ = Logger::GetLogger();
-vector<SymbolInfo> Analyzer::symbol_info_;
+BACKTESTING_API shared_ptr<BarHandler>& Analyzer::bar_ =
+    BarHandler::GetBarHandler();
+BACKTESTING_API shared_ptr<Config>& Analyzer::config_ = Engine::GetConfig();
+BACKTESTING_API shared_ptr<Engine>& Analyzer::engine_ = Engine::GetEngine();
+BACKTESTING_API shared_ptr<Logger>& Analyzer::logger_ = Logger::GetLogger();
+BACKTESTING_API vector<SymbolInfo> Analyzer::symbol_info_;
 
 shared_ptr<Analyzer>& Analyzer::GetAnalyzer() {
   lock_guard lock(mutex_);  // 스레드에서 안전하게 접근하기 위해 mutex 사용
@@ -103,6 +104,11 @@ void Analyzer::SetSymbolInfo(const vector<SymbolInfo>& symbol_info) {
   if (symbol_info_.empty()) {
     symbol_info_ = symbol_info;
   } else [[unlikely]] {
+    if (engine_->server_mode_) {
+      throw runtime_error(
+          "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.");
+    }
+
     Logger::LogAndThrowError(
         "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.", __FILE__,
         __LINE__);
@@ -1005,6 +1011,18 @@ void Analyzer::SaveBacktestingLog() const {
         "백테스팅 로그 파일을 저장하는 데 오류가 발생했습니다.: " +
             string(e.what()),
         __FILE__, __LINE__);
+  }
+}
+
+void Analyzer::ResetAnalyzer() {
+  lock_guard lock(mutex_);
+
+  config_.reset();
+  symbol_info_.clear();
+
+  if (instance_) {
+    instance_.reset();
+    instance_ = shared_ptr<Analyzer>(new Analyzer(), Deleter());
   }
 }
 

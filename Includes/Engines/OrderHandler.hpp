@@ -6,6 +6,7 @@
 
 // 내부 헤더
 #include "Engines/BaseOrderHandler.hpp"
+#include "Engines/Export.hpp"
 
 // 전방 선언
 namespace backtesting::bar {
@@ -47,7 +48,10 @@ namespace backtesting::order {
  *    → 기존 진입과 반대 방향의 주문이 사용 가능 자금이 부족하여 취소되더라도
  *      기존 진입은 무조건 리버스 청산되므로 주의가 필요
  */
-class OrderHandler final : public BaseOrderHandler {
+class BACKTESTING_API OrderHandler final : public BaseOrderHandler {
+  // ResetOrderHandler 접근용
+  friend class Backtesting;
+
   // 체결 확인, 주문 실행 용도
   friend class Engine;
 
@@ -216,6 +220,9 @@ class OrderHandler final : public BaseOrderHandler {
 
   static mutex mutex_;
   static shared_ptr<OrderHandler> instance_;
+
+  /// OrderHandler를 초기화하는 함수
+  void ResetOrderHandler();
 
   // ===========================================================================
   // 체결 확인 및 실행 함수

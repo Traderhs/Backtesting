@@ -6,8 +6,10 @@
 // 내부 헤더
 #include "Engines/BaseBarHandler.hpp"
 #include "Engines/BinanceFetcher.hpp"
+#include "Engines/Export.hpp"
 #include "Engines/Logger.hpp"
 #include "Engines/Strategy.hpp"
+#include "Engines/StrategyLoader.hpp"
 
 // 네임 스페이스
 using namespace backtesting;
@@ -15,21 +17,21 @@ using namespace fetcher;
 
 namespace backtesting::main {
 
-class Backtesting {
+class BACKTESTING_API Backtesting {
  public:
   Backtesting() = delete;
   ~Backtesting() = delete;
 
+  /// 서버 모드로 설정하는 함수
+  static void SetServerMode(bool server_mode);
+
   /// 백테스팅을 실행하는 함수
   static void RunBacktesting();
 
-  // 로컬용 메인 실행
-  static void RunLocal();
-
-  // 서버용 메인 실행
+  /// 서버용 메인 실행
   static void RunServer();
 
-  // 서버용 단일 백테스팅 실행
+  /// 서버용 단일 백테스팅 실행
   static void RunSingleBacktesting(const string& json_str);
 
   /// 엔진에 설정값을 추가하는 함수.
@@ -182,9 +184,18 @@ class Backtesting {
   static shared_ptr<BarHandler>& bar_;
   static shared_ptr<Logger>& logger_;
 
+  // 서버 모드 플래그
+  static bool server_mode_;
+
+  // DLL 로더 저장소
+  static vector<shared_ptr<StrategyLoader>> dll_loaders_;
+
   static string market_data_directory_;
   static string api_key_env_var_;
   static string api_secret_env_var_;
+
+  /// 엔진 코어를 초기화하는 함수
+  static void ResetCores();
 };
 
 }  // namespace backtesting::main

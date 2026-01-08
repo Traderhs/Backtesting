@@ -61,8 +61,8 @@ void OrderHandler::Deleter::operator()(const OrderHandler* p) const {
   delete p;
 }
 
-mutex OrderHandler::mutex_;
-shared_ptr<OrderHandler> OrderHandler::instance_;
+BACKTESTING_API mutex OrderHandler::mutex_;
+BACKTESTING_API shared_ptr<OrderHandler> OrderHandler::instance_;
 
 shared_ptr<OrderHandler>& OrderHandler::GetOrderHandler() {
   lock_guard lock(mutex_);  // 스레드에서 안전하게 접근하기 위해 mutex 사용
@@ -74,6 +74,17 @@ shared_ptr<OrderHandler>& OrderHandler::GetOrderHandler() {
   }
 
   return instance_;
+}
+
+void OrderHandler::ResetOrderHandler() {
+  lock_guard lock(mutex_);
+
+  ResetBaseOrderHandler();
+
+  if (instance_) {
+    instance_.reset();
+    instance_ = shared_ptr<OrderHandler>(new OrderHandler(), Deleter());
+  }
 }
 
 bool OrderHandler::MarketEntry(const string& entry_name,

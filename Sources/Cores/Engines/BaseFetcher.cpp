@@ -26,7 +26,7 @@ namespace backtesting::fetcher {
 BaseFetcher::BaseFetcher() = default;
 BaseFetcher::~BaseFetcher() = default;
 
-shared_ptr<Logger>& BaseFetcher::logger_ = Logger::GetLogger();
+BACKTESTING_API shared_ptr<Logger>& BaseFetcher::logger_ = Logger::GetLogger();
 
 future<json> BaseFetcher::Fetch(
     const string& url, const unordered_map<string, string>& params,

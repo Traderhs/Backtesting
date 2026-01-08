@@ -5,6 +5,7 @@
 
 // 내부 헤더
 #include "Engines/BaseFetcher.hpp"
+#include "Engines/Export.hpp"
 
 // 전방 선언
 namespace arrow {
@@ -22,7 +23,7 @@ using namespace backtesting::logger;
 namespace backtesting::fetcher {
 
 /// Binance 바 데이터의 Fetch와 Update를 담당하는 클래스
-class BinanceFetcher final : public BaseFetcher {
+class BACKTESTING_API BinanceFetcher final : public BaseFetcher {
  public:
   BinanceFetcher() = delete;
   explicit BinanceFetcher(string api_key_env_var, string api_secret_env_var);
