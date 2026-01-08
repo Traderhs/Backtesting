@@ -5,6 +5,9 @@
 #include <optional>
 #include <string>
 
+// 내부 헤더
+#include "Engines/Export.hpp"
+
 // 전방 선언
 namespace backtesting::analyzer {
 class Analyzer;
@@ -36,7 +39,7 @@ namespace backtesting::plot {
 /// 플롯 RGBA 값을 나타내는 색 구조체
 ///
 /// RGBA 값으로 저장된 기본 색도 제공
-struct Rgba {
+struct BACKTESTING_API Rgba {
   Rgba() = delete;
   Rgba(const int rgba_red, const int rgba_green, const int rgba_blue,
        const float rgba_alpha) {
@@ -110,7 +113,7 @@ enum class Format {
 using enum Format;
 
 /// 지표의 플롯 스타일을 설정하는 가상 클래스
-class Plot {
+class BACKTESTING_API Plot {
   // 차트 작성 정보 참조 시 사용
   friend class Analyzer;
 
@@ -158,7 +161,7 @@ class Plot {
 };
 
 /// 영역으로 플롯하는 설정을 생성하는 클래스
-class Area final : public Plot {
+class BACKTESTING_API Area final : public Plot {
   // 차트 작성 정보 참조 시 사용
   friend class Analyzer;
 
@@ -200,7 +203,7 @@ class Area final : public Plot {
 };
 
 /// 기준선으로 플롯하는 설정을 생성하는 클래스
-class Baseline final : public Plot {
+class BACKTESTING_API Baseline final : public Plot {
   // 차트 작성 정보 참조 시 사용
   friend class Analyzer;
 
@@ -271,7 +274,7 @@ class Baseline final : public Plot {
 };
 
 /// 히스토그램으로 플롯하는 설정을 생성하는 클래스
-class Histogram final : public Plot {
+class BACKTESTING_API Histogram final : public Plot {
   // 차트 작성 정보 참조 시 사용
   friend class Analyzer;
 
@@ -306,7 +309,7 @@ class Histogram final : public Plot {
 };
 
 /// 선으로 플롯하는 설정을 생성하는 클래스
-class Line final : public Plot {
+class BACKTESTING_API Line final : public Plot {
   // 차트 작성 정보 참조 시 사용
   friend class Analyzer;
 
@@ -343,7 +346,7 @@ class Line final : public Plot {
 };
 
 /// 플롯하지 않을 때 사용하는 클래스
-class Null final : public Plot {
+class BACKTESTING_API Null final : public Plot {
   friend class BaseAnalyzer;
 
  public:

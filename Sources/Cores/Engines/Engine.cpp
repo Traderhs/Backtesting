@@ -52,11 +52,11 @@ Engine::Engine()
 
 void Engine::Deleter::operator()(const Engine* p) const { delete p; }
 
-chrono::steady_clock::time_point Engine::backtesting_start_time_ =
-    chrono::high_resolution_clock::now();
+BACKTESTING_API chrono::steady_clock::time_point
+    Engine::backtesting_start_time_ = chrono::high_resolution_clock::now();
 
-mutex Engine::mutex_;
-shared_ptr<Engine> Engine::instance_;
+BACKTESTING_API mutex Engine::mutex_;
+BACKTESTING_API shared_ptr<Engine> Engine::instance_;
 
 shared_ptr<Engine>& Engine::GetEngine() {
   lock_guard lock(mutex_);  // 다중 스레드에서 안전하게 접근하기 위해 mutex 사용
@@ -147,8 +147,21 @@ int64_t Engine::GetCurrentCloseTime() const { return current_close_time_; }
 
 bool Engine::IsAllTradingEnded() const { return all_trading_ended_; }
 
-bool Engine::IsTradingEnded(int symbol_idx) const {
+bool Engine::IsTradingEnded(const int symbol_idx) const {
   return trading_ended_[symbol_idx];
+}
+
+void Engine::ResetEngine() {
+  lock_guard lock(mutex_);
+
+  ResetBaseEngine();
+
+  backtesting_start_time_ = chrono::high_resolution_clock::now();
+
+  if (instance_) {
+    instance_.reset();
+    instance_ = shared_ptr<Engine>(new Engine(), Deleter());
+  }
 }
 
 void Engine::Initialize() {

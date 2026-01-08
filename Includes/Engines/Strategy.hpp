@@ -9,6 +9,7 @@
 // 내부 헤더
 #include "Engines/DataUtils.hpp"
 #include "Engines/Engine.hpp"
+#include "Engines/Export.hpp"
 #include "Engines/Logger.hpp"
 // ReSharper disable once CppUnusedIncludeDirective
 #include "Engines/Order.hpp"  // 커스텀 전략에서 사용 편의성을 위해 직접 포함
@@ -16,9 +17,21 @@
 #include "Engines/Plot.hpp"
 #include "Indicators/Indicators.hpp"  // 커스텀 전략에서 사용 편의성을 위해 직접 포함
 
+// 내부 include에서 BACKTESTING_API가 #undef 되어 빈 값으로 변경되었을 수 있고,
+// Strategy 클래스 정의에는 dllimport/dllexport 속성이 필요하므로
+// 여기서 상태를 복구
+#if defined(STRATEGY_BUILD) && !defined(BACKTESTING_EXPORTS)
+#undef BACKTESTING_API
+#define BACKTESTING_API __declspec(dllimport)
+#endif
+
 // 전방 선언
-namespace engine {
+namespace backtesting::engine {
 class Engine;
+}
+
+namespace backtesting::main {
+class Backtesting;
 }
 
 // 네임 스페이스
@@ -26,6 +39,7 @@ using namespace std;
 namespace fs = filesystem;
 namespace backtesting {
 using namespace engine;
+using namespace main;
 using namespace order;
 using namespace plot;
 using namespace utils;
@@ -37,6 +51,10 @@ namespace backtesting::strategy {
  * 백테스팅 전략을 생성하기 위한 팩토리 클래스
  *
  * ※ 커스텀 전략 생성 시 유의 사항 ※\n
+ * 0. 커스텀 전략 클래스가 DLL로 로드될 가능성이 있다면
+*     클래스 선언에 BACKTESTING_API 매크로를 반드시 명시.
+ *    이는 런타임에 심볼을 올바르게 노출하기 위하여 필수적
+ *
  * 1. Strategy 클래스를 Public 상속 후
  *    Initialize, ExecuteOnClose, ExecuteAfterEntry, ExecuteAfterExit
  *    함수들을 오버라이드해서 제작\n
@@ -80,9 +98,12 @@ namespace backtesting::strategy {
  * 10. 부가 기능으로, 진입 잔량을 전량 청산하고 싶으면 left_size 변수를
  *     청산 수량에 사용하면 됨.\n
  */
-class Strategy {
+class BACKTESTING_API Strategy {
   // config.json 저장 시 OHLCV 지표 이름 접근용
   friend class Analyzer;
+
+  // ResetStrategy 접근용
+  friend class Backtesting;
 
  public:
   // 전략을 팩토리로 우회하여 생성하고 strategy_에 추가하고 반환하는 함수
@@ -403,7 +424,19 @@ class Strategy {
   /// 엔진 내부적으로 청산 수량은 진입 잔량의 최대값으로 변환되기 때문에
   /// double 최대값으로 사용
   const double left_size = DBL_MAX;
+
+ private:
+  /// Strategy를 초기화하는 함수
+  static void ResetStrategy();
 };
 
 }  // namespace backtesting::strategy
 using namespace strategy;
+
+// 이 헤더를 include한 후 선언되는 커스텀 전략 클래스는 일반 클래스로 정의되도록
+// 매크로를 빈 값으로 재정의
+// (베이스 클래스인 Strategy는 이미 dllimport로 정의되었으므로 영향 없음)
+#if defined(STRATEGY_BUILD) && !defined(BACKTESTING_EXPORTS)
+#undef BACKTESTING_API
+#define BACKTESTING_API
+#endif

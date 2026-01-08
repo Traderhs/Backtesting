@@ -13,9 +13,18 @@
 #include "Engines/Config.hpp"
 #include "Engines/DataUtils.hpp"
 #include "Engines/Engine.hpp"
+#include "Engines/Export.hpp"
 #include "Engines/Logger.hpp"
 #include "Engines/Numeric.hpp"
 #include "Engines/Plot.hpp"
+
+// 내부 include에서 BACKTESTING_API가 #undef 되어 빈 값으로 변경되었을 수 있고,
+// Indicator 클래스 정의에는 dllimport/dllexport 속성이 필요하므로
+// 여기서 상태를 복구
+#if defined(INDICATOR_BUILD) && !defined(BACKTESTING_EXPORTS)
+#undef BACKTESTING_API
+#define BACKTESTING_API __declspec(dllimport)
+#endif
 
 // 전방 선언
 namespace backtesting::analyzer {
@@ -31,6 +40,10 @@ namespace backtesting::engine {
 class Engine;
 }  // namespace backtesting::engine
 
+namespace backtesting::main {
+class Backtesting;
+}
+
 namespace backtesting::strategy {
 class Strategy;
 }
@@ -42,10 +55,12 @@ class Logger;
 // 네임 스페이스
 using namespace std;
 namespace fs = filesystem;
+
 using namespace backtesting;  // 커스텀 지표에서 필요
 namespace backtesting {
 using namespace bar;
 using namespace engine;
+using namespace main;
 using namespace numeric;
 using namespace logger;
 using namespace numeric;
@@ -59,6 +74,10 @@ namespace backtesting::indicator {
  * 전략 구현 시 사용하는 커스텀 지표를 생성하기 위한 추상 클래스
  *
  * ※ 커스텀 지표 생성 시 유의 사항 ※\n
+ *  0. 커스텀 지표 클래스가 DLL로 로드될 가능성이 있다면
+ *    클래스 선언에 BACKTESTING_API 매크로를 반드시 명시.
+ *    이는 런타임에 심볼을 올바르게 노출하기 위하여 필수적
+ *
  * 1. Indicator 클래스를 Public 상속 후 Initialize, Calculate 함수들을
  *    오버라이드해서 제작\n
  *
@@ -80,15 +99,18 @@ namespace backtesting::indicator {
  *    (프로젝트 폴더/Includes/Indicators/클래스명.hpp 그리고
  *     프로젝트 폴더/Sources/cpp/Indicators/클래스명.cpp)\n
  */
-class Indicator {
-  // 생성자 및 IncreaseCreationCounter 함수 접근용
-  friend class Strategy;
+class BACKTESTING_API Indicator {
+  // 지표 및 설정 저장 시 output_ 및 plot_ 접근용
+  friend class Analyzer;
+
+  // ResetIndicator 접근용
+  friend class Backtesting;
 
   // Plot 유효성 검사 시 plot_ 접근용
   friend class Engine;
 
-  // 지표 및 설정 저장 시 output_ 및 plot_ 접근용
-  friend class Analyzer;
+  // 생성자 및 IncreaseCreationCounter 함수 접근용
+  friend class Strategy;
 
  public:
   // 지표 반환 시 참조 타입으로 받는 것을 강요하기 위하여
@@ -243,6 +265,7 @@ class Indicator {
   // 강제하기 위한 목적
   /// 생성 카운터
   static size_t creation_counter_;
+
   /// 전 생성 카운터
   static size_t pre_creation_counter_;
 
@@ -286,6 +309,9 @@ class Indicator {
   string plot_type_;       // 플롯 클래스명
   shared_ptr<Plot> plot_;  // 플롯 정보
 
+  /// Indicator를 초기화하는 함수
+  static void ResetIndicator();
+
   /// 지표 생성 카운터를 증가시키는 함수
   static void IncreaseCreationCounter();
 
@@ -300,3 +326,11 @@ class Indicator {
 
 }  // namespace backtesting::indicator
 using namespace backtesting::indicator;
+
+// 이 헤더를 include한 후 선언되는 커스텀 지표 클래스는 일반 클래스로 정의되도록
+// 매크로를 빈 값으로 재정의
+// (베이스 클래스인 Indicator는 이미 dllimport로 정의되었으므로 영향 없음)
+#if defined(INDICATOR_BUILD) && !defined(BACKTESTING_EXPORTS)
+#undef BACKTESTING_API
+#define BACKTESTING_API
+#endif

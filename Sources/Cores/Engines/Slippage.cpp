@@ -8,7 +8,6 @@
 // 내부 헤더
 #include "Engines/BarData.hpp"
 #include "Engines/BarHandler.hpp"
-#include "Engines/Config.hpp"
 #include "Engines/DataUtils.hpp"
 #include "Engines/Engine.hpp"
 #include "Engines/Numeric.hpp"
@@ -23,10 +22,9 @@ using namespace engine;
 using namespace numeric;
 using namespace utils;
 
-vector<SymbolInfo> Slippage::symbol_info_;
-shared_ptr<BarHandler>& MarketImpactSlippage::bar_ =
+BACKTESTING_API shared_ptr<BarHandler>& Slippage::bar_ =
     BarHandler::GetBarHandler();
-shared_ptr<Config>& MarketImpactSlippage::config_ = Engine::GetConfig();
+BACKTESTING_API vector<SymbolInfo> Slippage::symbol_info_;
 
 void Slippage::SetSymbolInfo(const vector<SymbolInfo>& symbol_info) {
   if (symbol_info_.empty()) {
@@ -37,6 +35,8 @@ void Slippage::SetSymbolInfo(const vector<SymbolInfo>& symbol_info) {
         __LINE__);
   }
 }
+
+void Slippage::ResetSlippage() { symbol_info_.clear(); }
 
 // =============================================================================
 optional<string> PercentageSlippage::ValidateTakerSlippage() const {

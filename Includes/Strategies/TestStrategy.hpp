@@ -3,7 +3,7 @@
 // 내부 헤더
 #include "Engines/Strategy.hpp"
 
-class TestStrategy final : public Strategy {
+class BACKTESTING_API TestStrategy final : public Strategy {
  public:
   explicit TestStrategy(const string& name);
   ~TestStrategy() override;

@@ -4,6 +4,9 @@
 #include <cstdint>
 #include <string>
 
+// 내부 헤더
+#include "Engines/Export.hpp"
+
 // 네임 스페이스
 using namespace std;
 
@@ -18,7 +21,7 @@ enum class OrderType { ORDER_NONE, MARKET, LIMIT, MIT, LIT, TRAILING };
 using enum OrderType;
 
 /// 하나의 주문 정보를 담고 있는 빌더 클래스
-class Order {
+class BACKTESTING_API Order {
  public:
   Order();
   ~Order();

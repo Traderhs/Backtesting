@@ -13,14 +13,15 @@ set(CMAKE_TOOLCHAIN_FILE "D:/vcpkg/scripts/buildsystems/vcpkg.cmake" CACHE STRIN
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Build types" FORCE)
 
 # 디버그 빌드 설정 (MSVC)
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Zi /W4")
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /Od /Zi /W4 /MDd")
 
 # 릴리즈 빌드 설정 (MSVC)
 # /O2: 속도 최적화, /Oi: 내장 함수 사용, /Ot: 빠른 코드 우선
 # /GL: 전체 프로그램 최적화, /arch:AVX2: AVX2 SIMD 명령어
 # /fp:strict: 부동소수점 정밀도, /GS-: 버퍼 보안 검사 비활성화
 # /Gy: 함수 수준 링킹, /favor:AMD64: x64 최적화
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Oi /Ot /GL /arch:AVX2 /fp:strict /DNDEBUG /GS- /Gy /favor:AMD64")
+# /MD: 멀티스레드 DLL 런타임
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /O2 /Oi /Ot /GL /arch:AVX2 /fp:strict /DNDEBUG /GS- /Gy /favor:AMD64 /MD")
 
 # /LTCG: 링크 타임 코드 생성, /OPT:REF: 미사용 함수 제거, /OPT:ICF: 동일 함수 병합
 set(CMAKE_EXE_LINKER_FLAGS_RELEASE "${CMAKE_EXE_LINKER_FLAGS_RELEASE} /LTCG /OPT:REF /OPT:ICF /RELEASE")
@@ -50,17 +51,22 @@ file(GLOB SOURCES  # 해당 경로에서 cpp 파일들을 GLOB (엔진, 전략, 
         "Sources/Cores/**/*.cpp"
         "${PRIVATE_STRATEGY_SOURCES}/Strategies/*.cpp")
 
-add_executable(Backtesting ${SOURCES})
+# 실행 파일 용 Main.cpp 제외
+list(FILTER SOURCES EXCLUDE REGEX "Main.cpp$")
 
-target_include_directories(Backtesting PRIVATE # Backtesting 타겟에 포함 디렉터리 경로 추가
+add_library(BacktestingCore SHARED ${SOURCES})
+
+target_compile_definitions(BacktestingCore PRIVATE BACKTESTING_EXPORTS)
+
+target_include_directories(BacktestingCore PRIVATE # Backtesting 타겟에 포함 디렉터리 경로 추가
         ${CMAKE_SOURCE_DIR}/Includes
         ${PRIVATE_STRATEGY_INCLUDES}
         D:/vcpkg/installed/x64-windows/include)
 
-target_link_directories(Backtesting PRIVATE
+target_link_directories(BacktestingCore PRIVATE
         D:/vcpkg/installed/x64-windows/lib)
 
-target_link_libraries(Backtesting PRIVATE # Backtesting 타겟에 외부 라이브러리 링크
+target_link_libraries(BacktestingCore PRIVATE # Backtesting 타겟에 외부 라이브러리 링크
         arrow_shared
         CURL::libcurl
         nlohmann_json::nlohmann_json
@@ -68,6 +74,17 @@ target_link_libraries(Backtesting PRIVATE # Backtesting 타겟에 외부 라이�
         OpenSSL::SSL
         OpenSSL::Crypto
         ZLIB::ZLIB)
+
+# 실행 파일 생성
+add_executable(Backtesting "Sources/Cores/Engines/Main.cpp")
+
+target_include_directories(Backtesting PRIVATE
+        ${CMAKE_SOURCE_DIR}/Includes
+        ${PRIVATE_STRATEGY_INCLUDES}
+        D:/vcpkg/installed/x64-windows/include)
+
+target_link_libraries(Backtesting PRIVATE
+        BacktestingCore)
 
 # 프로파일링을 위한 컴파일 옵션
 #target_compile_options(Backtesting PRIVATE
@@ -80,3 +97,12 @@ target_link_libraries(Backtesting PRIVATE # Backtesting 타겟에 외부 라이�
 #        /PROFILE     # 프로파일링 활성화
 #        /DEBUG:FULL  # 전체 디버그 정보
 #)
+
+# BacktestingCore.lib를 BackBoard/Cores 폴더로 복사 (개발 중 전략 빌드용)
+add_custom_command(TARGET BacktestingCore POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/BackBoard/Cores"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        $<TARGET_LINKER_FILE:BacktestingCore>
+        "${CMAKE_SOURCE_DIR}/BackBoard/Cores/BacktestingCore.lib"
+        COMMENT "Copying BacktestingCore.lib to BackBoard/Cores directory"
+)

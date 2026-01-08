@@ -33,8 +33,8 @@ BarHandler::BarHandler()
     : current_bar_data_type_(TRADING), current_symbol_index_(-1) {}
 void BarHandler::Deleter::operator()(const BarHandler* p) const { delete p; }
 
-mutex BarHandler::mutex_;
-shared_ptr<BarHandler> BarHandler::instance_;
+BACKTESTING_API mutex BarHandler::mutex_;
+BACKTESTING_API shared_ptr<BarHandler> BarHandler::instance_;
 
 shared_ptr<BarHandler>& BarHandler::GetBarHandler() {
   lock_guard lock(mutex_);  // 스레드에서 안전하게 접근하기 위해 mutex 사용
@@ -363,6 +363,27 @@ size_t BarHandler::GetCurrentBarIndex() {
   return SIZE_MAX;
 }
 
+void BarHandler::ResetBarHandlerState() {
+  lock_guard lock(mutex_);
+
+  ResetBaseBarHandlerState();
+
+  current_bar_data_type_ = TRADING;
+  current_symbol_index_ = -1;
+  current_reference_timeframe_.clear();
+}
+
+void BarHandler::ResetBarHandler() {
+  lock_guard lock(mutex_);
+
+  ResetBaseBarHandler();
+
+  if (instance_) {
+    instance_.reset();
+    instance_ = shared_ptr<BarHandler>(new BarHandler(), Deleter());
+  }
+}
+
 string BarHandler::CalculateTimeframe(const shared_ptr<arrow::Table>& bar_data,
                                       const int open_time_column) {
   const auto num_bars = bar_data->num_rows();
@@ -545,32 +566,6 @@ void BarHandler::IsValidReferenceBarTimeframe(const string& timeframe) {
                timeframe),
         __FILE__, __LINE__);
   }
-}
-
-void BarHandler::ClearBarData() {
-  // 트레이딩 바 데이터 초기화 및 재생성
-  trading_bar_data_.reset();
-  trading_bar_data_ = make_shared<BarData>("트레이딩");
-  trading_index_.clear();
-
-  // 돋보기 바 데이터 초기화 및 재생성
-  magnifier_bar_data_.reset();
-  magnifier_bar_data_ = make_shared<BarData>("돋보기");
-  magnifier_index_.clear();
-
-  // 참조 바 데이터 초기화
-  reference_bar_data_.clear();
-  reference_index_.clear();
-
-  // 마크 가격 바 데이터 초기화 및 재생성
-  mark_price_bar_data_.reset();
-  mark_price_bar_data_ = make_shared<BarData>("마크 가격");
-  mark_price_index_.clear();
-
-  // 현재 상태 초기화
-  current_bar_data_type_ = TRADING;
-  current_symbol_index_ = -1;
-  current_reference_timeframe_.clear();
 }
 
 }  // namespace backtesting::bar

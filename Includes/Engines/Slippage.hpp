@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 
+// 내부 헤더
+#include "Engines/Export.hpp"
+
 // 전방 선언
 namespace backtesting::bar {
 class BarData;
@@ -16,6 +19,10 @@ struct Bar;
 
 namespace backtesting::engine {
 class Config;
+}
+
+namespace backtesting::main {
+class Backtesting;
 }
 
 namespace backtesting::order {
@@ -29,16 +36,19 @@ using namespace std;
 namespace backtesting {
 using namespace bar;
 using namespace engine;
+using namespace main;
 }  // namespace backtesting
 
 namespace backtesting::order {
 
 /// 슬리피지 계산을 담당하는 추상 클래스
-class Slippage {
+class BACKTESTING_API Slippage {
+  friend class Backtesting;
+
  public:
   virtual ~Slippage() = default;
 
-  // 심볼 정보
+  static shared_ptr<BarHandler>& bar_;
   static vector<SymbolInfo> symbol_info_;
 
   /// 슬리피지 객체를 복제하는 순수 가상 함수
@@ -73,10 +83,14 @@ class Slippage {
 
   /// 심볼 정보를 초기화하는 함수
   static void SetSymbolInfo(const vector<SymbolInfo>& symbol_info);
+
+ private:
+  /// Slippage를 초기화하는 함수
+  static void ResetSlippage();
 };
 
 /// 퍼센트 기반 슬리피지 계산 클래스
-class PercentageSlippage final : public Slippage {
+class BACKTESTING_API PercentageSlippage final : public Slippage {
  public:
   /// 테이커 및 메이커 슬리피지를 고정 퍼센트로 계산하는 클래스
   ///
@@ -145,7 +159,7 @@ class PercentageSlippage final : public Slippage {
 /// - k = 시장 충격 계수
 ///
 /// 모든 타임프레임 지원: 1분봉부터 일봉, 주봉까지 동일하게 작동
-class MarketImpactSlippage final : public Slippage {
+class BACKTESTING_API MarketImpactSlippage final : public Slippage {
  public:
   /// @param stress_multiplier 스트레스 테스트 용도 슬리피지 틱 계수
   ///
@@ -203,9 +217,6 @@ class MarketImpactSlippage final : public Slippage {
   // 각 타임프레임이 15분보다 이하인지 여부
   bool is_trading_low_tf_;
   bool is_magnifier_low_tf_;
-
-  static shared_ptr<BarHandler>& bar_;
-  static shared_ptr<Config>& config_;
 
   // 심볼별 이전 스프레드 (EMA용)
   mutable vector<double> previous_spread_bps_;

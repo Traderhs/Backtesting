@@ -33,7 +33,7 @@ BaseOrderHandler::BaseOrderHandler()
       check_limit_max_qty_(true),
       check_limit_min_qty_(true),
       check_min_notional_value_(true),
-      current_position_size_(0),
+      current_position_size_(0.0),
       just_entered_(false),
       just_exited_(false),
       is_reverse_exit_(false),
@@ -41,12 +41,17 @@ BaseOrderHandler::BaseOrderHandler()
       is_initialized_(false) {}
 BaseOrderHandler::~BaseOrderHandler() = default;
 
-shared_ptr<Analyzer>& BaseOrderHandler::analyzer_ = Analyzer::GetAnalyzer();
-shared_ptr<BarHandler>& BaseOrderHandler::bar_ = BarHandler::GetBarHandler();
-shared_ptr<Config>& BaseOrderHandler::config_ = Engine::GetConfig();
-shared_ptr<Engine>& BaseOrderHandler::engine_ = Engine::GetEngine();
-shared_ptr<Logger>& BaseOrderHandler::logger_ = Logger::GetLogger();
-vector<SymbolInfo> BaseOrderHandler::symbol_info_;
+BACKTESTING_API shared_ptr<Analyzer>& BaseOrderHandler::analyzer_ =
+    Analyzer::GetAnalyzer();
+BACKTESTING_API shared_ptr<BarHandler>& BaseOrderHandler::bar_ =
+    BarHandler::GetBarHandler();
+BACKTESTING_API shared_ptr<Config>& BaseOrderHandler::config_ =
+    Engine::GetConfig();
+BACKTESTING_API shared_ptr<Engine>& BaseOrderHandler::engine_ =
+    Engine::GetEngine();
+BACKTESTING_API shared_ptr<Logger>& BaseOrderHandler::logger_ =
+    Logger::GetLogger();
+BACKTESTING_API vector<SymbolInfo> BaseOrderHandler::symbol_info_;
 
 void BaseOrderHandler::Cancel(const string& order_name,
                               const CancelType cancel_type,
@@ -271,6 +276,47 @@ double BaseOrderHandler::CalculateLiquidationPrice(
   } else {
     return RoundToStep(result, symbol_info_[symbol_idx].GetPriceStep());
   }
+}
+
+void BaseOrderHandler::ResetBaseOrderHandler() {
+  config_.reset();
+  symbol_info_.clear();
+
+  initial_balance_ = NAN;
+  slippage_.reset();
+  taker_fee_percentage_ = NAN;
+  maker_fee_percentage_ = NAN;
+  check_market_max_qty_ = true;
+  check_market_min_qty_ = true;
+  check_limit_max_qty_ = true;
+  check_limit_min_qty_ = true;
+  check_min_notional_value_ = true;
+
+  symbol_names_.clear();
+
+  pending_entries_.clear();
+  filled_entries_.clear();
+  pending_exits_.clear();
+
+  should_fill_orders_.clear();
+
+  current_position_size_ = 0.0;
+
+  just_entered_ = false;
+  just_exited_ = false;
+
+  last_entry_bar_indices_.clear();
+  last_exit_bar_indices_.clear();
+
+  last_entry_prices_.clear();
+  last_exit_prices_.clear();
+
+  is_reverse_exit_ = false;
+  reverse_exit_price_ = NAN;
+
+  is_initialized_ = false;
+
+  leverages_.clear();
 }
 
 optional<string> BaseOrderHandler::AdjustLeverage(const int leverage,

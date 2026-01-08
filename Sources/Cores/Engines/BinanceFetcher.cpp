@@ -83,21 +83,24 @@ BinanceFetcher::BinanceFetcher(string api_key_env_var,
   }
 }
 
-shared_ptr<Logger>& BinanceFetcher::logger_ = Logger::GetLogger();
+BACKTESTING_API shared_ptr<Logger>& BinanceFetcher::logger_ =
+    Logger::GetLogger();
 
-string BinanceFetcher::header_ = "X-MBX-APIKEY: ";
-string BinanceFetcher::futures_endpoint_ = "https://fapi.binance.com";
+BACKTESTING_API string BinanceFetcher::header_ = "X-MBX-APIKEY: ";
+BACKTESTING_API string BinanceFetcher::futures_endpoint_ =
+    "https://fapi.binance.com";
 
-string BinanceFetcher::server_time_url_ = futures_endpoint_ + "/fapi/v1/time";
-string BinanceFetcher::continuous_klines_url_ =
+BACKTESTING_API string BinanceFetcher::server_time_url_ =
+    futures_endpoint_ + "/fapi/v1/time";
+BACKTESTING_API string BinanceFetcher::continuous_klines_url_ =
     futures_endpoint_ + "/fapi/v1/continuousKlines";
-string BinanceFetcher::mark_price_klines_url_ =
+BACKTESTING_API string BinanceFetcher::mark_price_klines_url_ =
     futures_endpoint_ + "/fapi/v1/markPriceKlines";
-string BinanceFetcher::funding_rates_url_ =
+BACKTESTING_API string BinanceFetcher::funding_rates_url_ =
     futures_endpoint_ + "/fapi/v1/fundingRate";
-string BinanceFetcher::exchange_info_url_ =
+BACKTESTING_API string BinanceFetcher::exchange_info_url_ =
     futures_endpoint_ + "/fapi/v1/exchangeInfo";
-string BinanceFetcher::leverage_bracket_url_ =
+BACKTESTING_API string BinanceFetcher::leverage_bracket_url_ =
     futures_endpoint_ + "/fapi/v1/leverageBracket";
 
 void BinanceFetcher::FetchContinuousKlines(const string& symbol,

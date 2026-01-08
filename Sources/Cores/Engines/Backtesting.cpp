@@ -67,91 +67,39 @@
 
 // 내부 헤더
 #include "Engines/Exception.hpp"
+#include "Engines/StrategyLoader.hpp"
 #include "Engines/TimeUtils.hpp"
-#include "Strategies/DiceSystem.hpp"
 
 // 네임스페이스
 using namespace backtesting::main;
 
 namespace backtesting::main {
 
-shared_ptr<BarHandler>& Backtesting::bar_ = BarHandler::GetBarHandler();
-shared_ptr<Logger>& Backtesting::logger_ = Logger::GetLogger();
+BACKTESTING_API shared_ptr<BarHandler>& Backtesting::bar_ =
+    BarHandler::GetBarHandler();
+BACKTESTING_API shared_ptr<Logger>& Backtesting::logger_ = Logger::GetLogger();
 
-string Backtesting::market_data_directory_;
-string Backtesting::api_key_env_var_;
-string Backtesting::api_secret_env_var_;
+BACKTESTING_API bool Backtesting::server_mode_ = false;
+BACKTESTING_API vector<shared_ptr<StrategyLoader>> Backtesting::dll_loaders_;
+BACKTESTING_API string Backtesting::market_data_directory_;
+BACKTESTING_API string Backtesting::api_key_env_var_;
+BACKTESTING_API string Backtesting::api_secret_env_var_;
 
-// 서버 모드 플래그
-static bool server_mode = false;
+void Backtesting::SetServerMode(const bool server_mode) {
+  server_mode_ = server_mode;
+}
 
 void Backtesting::RunBacktesting() {
   try {
-    Engine::GetEngine()->Backtesting(server_mode);
+    Engine::GetEngine()->Backtesting(server_mode_);
   } catch (...) {
+    if (server_mode_) {
+      throw;
+    }
+
     Logger::LogAndThrowError("백테스팅 실행 중 오류가 발생했습니다.", __FILE__,
                              __LINE__);
   }
-}
-
-void Backtesting::RunLocal() {
-  // TODO 이 함수는 서버에서 실행해달라는 메시지만 로그. 그 외 fetch 코드만 주석
-
-  // 거래소 설정
-  SetMarketDataDirectory("D:/Programming/Backtesting/Data");
-  SetApiEnvVars("BINANCE_API_KEY", "BINANCE_API_SECRET");
-
-  const auto& exchange_info_path =
-      "D:/Programming/Backtesting/Data/exchange_info.json";
-  const auto& leverage_bracket_path =
-      "D:/Programming/Backtesting/Data/leverage_bracket.json";
-
-  FetchExchangeInfo(exchange_info_path);
-  FetchLeverageBracket(leverage_bracket_path);
-
-  AddExchangeInfo(exchange_info_path);
-  AddLeverageBracket(leverage_bracket_path);
-
-  // 심볼 설정
-  const vector<string>& symbol_names = {
-      "BTCUSDT",  "APTUSDT", "ETHUSDT",  "BNBUSDT", "SOLUSDT",
-      "DOGEUSDT", "ADAUSDT", "AVAXUSDT", "DOTUSDT", "XRPUSDT"};
-
-  // 바 데이터 설정
-  AddBarData(symbol_names, "1h",
-             "D:/Programming/Backtesting/Data/Continuous Klines", TRADING);
-
-  AddBarData(symbol_names, "1m",
-             "D:/Programming/Backtesting/Data/Continuous Klines", MAGNIFIER);
-
-  AddBarData(symbol_names, "1d",
-             "D:/Programming/Backtesting/Data/Continuous Klines", REFERENCE);
-
-  AddBarData(symbol_names, "1m",
-             "D:/Programming/Backtesting/Data/Mark Price Klines", MARK_PRICE);
-
-  AddFundingRates(symbol_names,
-                  "D:/Programming/Backtesting/Data/Funding Rates");
-
-  // 엔진 설정
-  SetConfig()
-      .SetProjectDirectory("D:/Programming/Backtesting")
-      .SetBacktestPeriod()
-      .SetUseBarMagnifier(true)
-      .SetInitialBalance(10000)
-      .SetTakerFeePercentage(0.045)
-      .SetMakerFeePercentage(0.018)
-      .SetSlippage(MarketImpactSlippage(2))
-      .SetCheckMarketMaxQty(false)
-      .SetCheckMarketMinQty(false)
-      .SetCheckLimitMaxQty(false)
-      .SetCheckLimitMinQty(false)
-      .SetCheckMinNotionalValue(true);
-
-  // 전략 설정
-  AddStrategy<DiceSystem>("Dice System");
-
-  RunBacktesting();
 }
 
 void Backtesting::RunServer() {
@@ -191,7 +139,7 @@ void Backtesting::RunServer() {
 
 void Backtesting::RunSingleBacktesting(const string& json_str) {
   try {
-    if (!server_mode) {
+    if (!server_mode_) {
       throw runtime_error(
           "RunSingleBacktesting 함수는 서버 모드에서만 실행 가능합니다.");
     }
@@ -201,6 +149,12 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     }
 
     const json& json_config = json::parse(json_str);
+
+    // 백테스팅 시작 시간 설정
+    // TODO 시작 버튼 누른 시점을 시작 시간으로 간주하고 json으로 받아와서
+    // chrono::high_resolution_clock::now() 대신 설정
+
+    Engine::backtesting_start_time_ = chrono::high_resolution_clock::now();
 
     // =======================================================================
     // 거래소 설정
@@ -326,6 +280,21 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     // 바 데이터를 추가할 때 오류 발생 시 바 데이터를 초기화하기 위한 플래그
     static bool bar_data_adding_error_occurred = false;
 
+    // 심볼 이름들 파싱
+    vector<string> symbol_names;
+
+    // symbolConfigs는 Js 서버에서 더 다양한 정보를 가지고 있지만,
+    // CPP 서버로는 심볼 이름만 전달됨
+    const auto& symbol_configs = json_config.at("symbolConfigs");
+    if (!symbol_configs.is_array()) {
+      throw runtime_error(
+          "서버 오류: C++ 서버로 전달된 심볼 설정이 배열이 아닙니다.");
+    }
+
+    for (const auto& symbol_name : symbol_configs) {
+      symbol_names.push_back(symbol_name.get<string>());
+    }
+
     // 서버에서 바 데이터 초기화 및 추가를 요청하거나,
     // 이전 바 데이터 추가 중 오류 발생 시 바 데이터를 초기화하고 다시 추가
     // 초기 추가는 무조건 바 데이터 추가
@@ -347,25 +316,12 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
           bar_data_adding_error_occurred = false;
         }
 
-        bar_->ClearBarData();
+        bar_->ResetBarHandler();
       } else {
         // 초기 추가일 때는 바 데이터 미초기화
         // 첫 추가는 이전 추가가 없으므로, 추가 중 오류는 발생하지 않았기 때문에
         // 따로 처리하지 않음
         is_first_adding = false;
-      }
-
-      // 심볼 이름들 파싱
-      vector<string> symbol_names;
-
-      const auto& symbol_configs = json_config.at("symbolConfigs");
-      if (!symbol_configs.is_array()) {
-        throw runtime_error(
-            "서버 오류: C++ 서버로 전달된 심볼 설정이 배열이 아닙니다.");
-      }
-
-      for (const auto& symbol_name : symbol_configs) {
-        symbol_names.push_back(symbol_name.get<string>());
       }
 
       // 바 데이터 파싱
@@ -488,13 +444,67 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
       config_builder.DisableSameBarDataCheck(MARK_PRICE);
     }
 
-    return;  // TODO 테스트용 임시 리턴
+    // =======================================================================
+    // 전략 설정
+    // =======================================================================
+    // JSON 설정에서 전략 정보 확인
+    if (json_config.contains("strategyConfig")) {
+      // DLL 경로가 있으면 로드
+      if (const auto& strategy_config = json_config["strategyConfig"];
+          strategy_config.contains("dllPath")) {
+        const auto& dll_path = strategy_config["dllPath"].get<string>();
+        const auto& strategy_name = strategy_config["name"].get<string>();
 
+        logger_->Log(
+            INFO_L, format("[{}] 전략의 DLL 로딩을 시작합니다.", strategy_name),
+            __FILE__, __LINE__, true);
+
+        // 새 로더 생성
+        const auto loader = make_shared<StrategyLoader>();
+        string error;
+
+        // DLL 로드
+        if (!loader->Load(dll_path, error)) {
+          throw runtime_error(error);
+        }
+
+        logger_->Log(
+            INFO_L,
+            format("[{}] 전략의 DLL 로딩이 완료되었습니다.", strategy_name),
+            __FILE__, __LINE__, true);
+
+        // DLL에서 AddStrategy 호출 (DLL 내부에서 AddStrategy<T> 실행)
+        if (!loader->AddStrategyFromDll(strategy_name, error)) {
+          throw runtime_error(error);
+        }
+
+        // DLL 언로드 방지를 위해 로더 저장
+        dll_loaders_.push_back(loader);
+      } else {
+        throw runtime_error("서버로부터 전략 DLL 경로가 전달되지 않았습니다.");
+      }
+    } else {
+      throw runtime_error("서버로부터 전략 설정이 전달되지 않았습니다.");
+    }
+
+    // TODO 임시
+    AddFundingRates(symbol_names,
+                    "D:/Programming/Backtesting/Data/Funding Rates");
+
+    // 백테스팅 실행
     RunBacktesting();
+
+    // 엔진 코어 초기화
+    ResetCores();
   } catch (const std::exception& e) {
     logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
-    Logger::LogAndThrowError("단일 백테스팅 실행 중 오류가 발생했습니다.",
-                             __FILE__, __LINE__);
+    logger_->Log(ERROR_L, "단일 백테스팅 실행 중 오류가 발생했습니다.",
+                 __FILE__, __LINE__, true);
+
+    // 엔진 코어 초기화
+    ResetCores();
+
+    throw;
   }
 }
 
@@ -508,6 +518,10 @@ void Backtesting::SetApiEnvVars(const string& api_key_env_var,
 
 void Backtesting::SetMarketDataDirectory(const string& market_data_directory) {
   if (!filesystem::exists(market_data_directory)) {
+    if (server_mode_) {
+      throw;
+    }
+
     Logger::LogAndThrowError(
         format("지정된 시장 데이터 폴더 [{}]이(가) 존재하지 않습니다: ",
                market_data_directory),
@@ -561,7 +575,7 @@ void Backtesting::FetchExchangeInfo(const string& exchange_info_path) {
     ValidateSettings();
     BinanceFetcher::FetchExchangeInfo(exchange_info_path);
   } catch (const std::exception& e) {
-    if (server_mode) {
+    if (server_mode_) {
       throw;
     }
 
@@ -576,7 +590,7 @@ void Backtesting::FetchLeverageBracket(const string& leverage_bracket_path) {
                    market_data_directory_)
         .FetchLeverageBracket(leverage_bracket_path);
   } catch (const std::exception& e) {
-    if (server_mode) {
+    if (server_mode_) {
       throw;
     }
 
@@ -633,7 +647,7 @@ void Backtesting::AddFundingRates(const vector<string>& symbol_names,
 
 void Backtesting::ValidateSettings() {
   if (market_data_directory_.empty()) {
-    if (server_mode) {
+    if (server_mode_) {
       throw exception::InvalidValue(
           "시장 데이터 경로가 설정되지 않았습니다. "
           "Backboard 폴더 내 editor.json 및 editor.json.bak 파일 삭제 후 "
@@ -646,7 +660,7 @@ void Backtesting::ValidateSettings() {
   }
 
   if (api_key_env_var_.empty() || api_secret_env_var_.empty()) {
-    if (server_mode) {
+    if (server_mode_) {
       throw exception::InvalidValue("API 환경 변수가 설정되지 않았습니다.");
     }
 
@@ -656,22 +670,18 @@ void Backtesting::ValidateSettings() {
   }
 }
 
-}  // namespace backtesting::main
+void Backtesting::ResetCores() {
+  Analyzer::ResetAnalyzer();
+  BarHandler::GetBarHandler()->ResetBarHandlerState();
+  Engine::GetEngine()->ResetEngine();
+  Indicator::ResetIndicator();
+  Logger::ResetLogger();
+  OrderHandler::GetOrderHandler()->ResetOrderHandler();
+  Slippage::ResetSlippage();
+  Strategy::ResetStrategy();
 
-int main(const int argc, char** argv) {
-  // 서버 모드 플래그 확인
-  for (int i = 1; i < argc; i++) {
-    if (string(argv[i]) == "--server") {
-      server_mode = true;
-
-      break;
-    }
-  }
-
-  // 서버 모드에 따라 실행
-  if (server_mode) {
-    Backtesting::RunServer();
-  } else {
-    Backtesting::RunLocal();
-  }
+  // 마지막에 DLL을 언로드해야 위쪽에서 리셋 가능
+  dll_loaders_.clear();
 }
+
+}  // namespace backtesting::main
