@@ -221,7 +221,8 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
                 INFO_L,
                 format(
                     "현재 시간 [{}]이 마지막 데이터 업데이트 시간 [{}]으로부터 "
-                    "24시간이 경과하여 데이터를 업데이트합니다.",
+                    "24시간이 경과하여 거래소 정보 및 레버리지 구간 데이터를 "
+                    "업데이트합니다.",
                     UtcTimestampToUtcDatetime(now), last_data_update_datetime),
                 __FILE__, __LINE__, true);
 
@@ -229,8 +230,8 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
           }
         } else {
           logger_->Log(INFO_L,
-                       "마지막 데이터 업데이트 시간이 존재하지 않아 데이터를 "
-                       "업데이트합니다.",
+                       "마지막 데이터 업데이트 시간이 존재하지 않아 "
+                       "거래소 정보 및 레버리지 구간 데이터를 업데이트합니다.",
                        __FILE__, __LINE__, true);
 
           need_update = true;
@@ -238,8 +239,8 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
       } else {
         // "마지막 데이터 업데이트" 항목 자체가 없는 경우 무조건 업데이트
         logger_->Log(INFO_L,
-                     "마지막 데이터 업데이트 항목이 존재하지 않아 데이터를 "
-                     "업데이트합니다.",
+                     "마지막 데이터 업데이트 항목이 존재하지 않아 "
+                     "거래소 정보 및 레버리지 구간 데이터를 업데이트합니다.",
                      __FILE__, __LINE__, true);
 
         need_update = true;
@@ -254,7 +255,8 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
         logger_->Log(
             INFO_L,
             format("현재 시간 [{}]이 마지막 데이터 업데이트 시간 [{}]으로부터 "
-                   "24시간이 경과하지 않아 데이터 업데이트를 건너뜁니다.",
+                   "24시간이 경과하지 않아 거래소 정보 및 레버리지 구간 데이터 "
+                   "업데이트를 건너뜁니다.",
                    UtcTimestampToUtcDatetime(now), last_data_update_datetime),
             __FILE__, __LINE__, true);
       }

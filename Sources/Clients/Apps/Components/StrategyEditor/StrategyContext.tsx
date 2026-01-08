@@ -1,4 +1,4 @@
-import React, {createContext, ReactNode, useContext, useState} from 'react';
+import React, {createContext, ReactNode, useContext, useRef, useState} from 'react';
 import {BarDataConfig, BarDataType, TimeframeUnit} from '@/Types/BarData';
 
 // 타입 정의
@@ -58,6 +58,20 @@ export interface EngineConfig {
     checkSameBarDataMarkPrice: boolean;
 }
 
+export interface StrategyConfig {
+    // 전략 섹션에서 관리되는 폴더 목록
+    strategyHeaderDirs?: string[];
+    strategySourceDirs?: string[];
+    indicatorHeaderDirs?: string[];
+    indicatorSourceDirs?: string[];
+
+    // 선택된 전략 정보
+    name: string;
+    dllPath?: string | null;
+    strategyHeaderPath?: string | null;
+    strategySourcePath?: string | null;
+}
+
 interface StrategyContextType {
     // 에디터 설정
     configLoaded: boolean;
@@ -66,6 +80,10 @@ interface StrategyContextType {
     logs: LogEntry[];
     addLog: (level: string, message: string, timestamp?: string | null, fileInfo?: string | null) => void;
     clearLogs: () => void;
+
+    // 실행 시작/종료 알림 (구분선 삽입 제어용)
+    startRun: () => void;
+    finishRun: () => void;
 
     // 거래소 설정
     exchangeConfig: ExchangeConfig;
@@ -91,6 +109,10 @@ interface StrategyContextType {
     // 엔진 설정
     engineConfig: EngineConfig;
     setEngineConfig: React.Dispatch<React.SetStateAction<EngineConfig>>;
+
+    // 전략 설정
+    strategyConfig: StrategyConfig | null;
+    setStrategyConfig: React.Dispatch<React.SetStateAction<StrategyConfig | null>>;
 }
 
 const StrategyContext = createContext<StrategyContextType | undefined>(undefined);
@@ -174,7 +196,10 @@ export function StrategyProvider({children}: { children: ReactNode }) {
         checkSameBarDataMarkPrice: true
     });
 
-    // 호출자 파일명을 간단히 추출
+    // 전략 설정
+    const [strategyConfig, setStrategyConfig] = useState<StrategyConfig | null>(null);
+
+    // 호출자 파일명을 간단히 추출 (Launch.js 스타일과 일치하도록 개선)
     const getCallerFileInfo = (): string | null => {
         try {
             const err = new Error();
@@ -183,34 +208,30 @@ export function StrategyProvider({children}: { children: ReactNode }) {
 
             for (let i = 1; i < lines.length; i++) {
                 const line = lines[i];
-                if (!line || line.includes('getCallerFileInfo') || line.includes('addLog')) {
+                // 내부 함수/유틸 호출 라인은 건너뜀
+                if (!line || line.includes('getCallerFileInfo') || line.includes('addLog') || line.includes('StrategyContext')) {
                     continue;
                 }
 
-                const m = line.match(/([^\s)]+?\.(tsx|ts|js|jsx|mjs))(?:\?[^:\s]*)?(?::\d+:\d+)?$/i);
+                // 파일:라인:컬럼 형식 캡처
+                const m = line.match(/\(?([^\s)]+):(\d+):(\d+)\)?$/);
                 if (!m) {
                     continue;
                 }
 
-                let fp = m[1].split('?')[0];
+                let fp = m[1];
+                const ln = m[2];
+
+                // 쿼리스트링 제거
+                fp = fp.split('?')[0];
+
+                // 번들 해시 같은 접미사 제거 (예: main-abc123.js -> main.js)
+                fp = fp.replace(/-([A-Za-z0-9]+)(?=\.(js|ts|tsx|jsx|mjs)$)/, '');
+
                 const parts = fp.split(/[\\/]/);
-                let filename = parts[parts.length - 1];
+                const filename = parts[parts.length - 1];
 
-                const extMatch = filename.match(/\.(tsx|ts|js|jsx|mjs)$/i);
-                if (!extMatch) {
-                    continue;
-                }
-
-                const ext = extMatch[0];
-                let base = filename.slice(0, -ext.length);
-                base = base.replace(/-[A-Za-z0-9]+$/, '');
-
-                let finalExt = ext;
-                if (finalExt === '.js') {
-                    finalExt = '.tsx';
-                }
-
-                return base + finalExt;
+                return `${filename}:${ln}`;
             }
         } catch {
             // 무시
@@ -218,11 +239,55 @@ export function StrategyProvider({children}: { children: ReactNode }) {
         return null;
     };
 
-    const addLog = (level: string, message: string, timestamp?: string | null, fileInfo?: string | null) => {
-        if (level !== 'SEPARATOR' && !message.startsWith(' |')) {
+    // 실행 상태 제어: 실행이 시작될 때 플래그 리셋, 종료될 때 구분선 한 번만 삽입
+    const runIdRef = useRef<number>(0);
+
+    const startRun = () => {
+        // 실행 시작 시 runId 증가하여 동일 실행의 중복 finish 호출을 방지
+        runIdRef.current += 1;
+    };
+
+    const finishRun = () => {
+        const idToUse = runIdRef.current;
+
+        setLogs(prev => {
+            const last = prev[prev.length - 1];
+            // 동일 실행의 중복 finish 호출 시 구분선 중복 삽입 방지
+            if (last && last.level === 'SEPARATOR' && last.fileInfo === `RUN_SEP:${idToUse}`) {
+                return prev;
+            }
+
+            return [...prev, {level: 'SEPARATOR', message: '', timestamp: null, fileInfo: `RUN_SEP:${idToUse}`}];
+        });
+    };
+
+
+    const addLog = (level: string, message: any, timestamp?: string | null, fileInfo?: string | null) => {
+        // message를 안전하게 문자열로 정규화
+        if (message === undefined || message === null) {
+            message = '';
+        }
+
+        if (typeof message !== 'string') {
+            try {
+                message = String(message);
+            } catch (e) {
+                message = '';
+            }
+        }
+
+        // 서버에서 구분선을 보냈다면 실행이 끝났음을 처리 (최우선)
+        if (level === 'SEPARATOR') {
+            finishRun();
+            return;
+        }
+
+        // 일반 로그는 앞에 구분자 프리픽스가 없으면 추가
+        if (!message.startsWith(' |')) {
             message = ' | ' + message;
         }
 
+        // 호출자 정보가 없는 경우 스택에서 추출
         if (!fileInfo) {
             const caller = getCallerFileInfo();
             if (caller) {
@@ -236,26 +301,13 @@ export function StrategyProvider({children}: { children: ReactNode }) {
             return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
         })();
 
-        if (level === 'SEPARATOR') {
-            setLogs(prev => [...prev, {level, message, timestamp: finalTimestamp, fileInfo: fileInfo || null}]);
-            return;
-        }
-
-        const isCppLog = !!(fileInfo && /\.cpp\b/i.test(fileInfo));
-
-        if (isCppLog) {
-            setLogs(prev => [...prev, {level, message, timestamp: finalTimestamp, fileInfo: fileInfo || null}]);
-        } else {
-            setLogs(prev => [
-                ...prev,
-                {level, message, timestamp: finalTimestamp, fileInfo: fileInfo || null},
-                {level: 'SEPARATOR', message: '', timestamp: null, fileInfo: null}
-            ]);
-        }
+        // 일반 로그는 그대로 추가 (구분선은 finishRun()에서 한 번만 추가됨)
+        setLogs(prev => [...prev, {level, message, timestamp: finalTimestamp, fileInfo: fileInfo || null}]);
     };
 
     const clearLogs = () => {
         setLogs([]);
+        runIdRef.current = 0;
     };
 
     const value = {
@@ -265,6 +317,8 @@ export function StrategyProvider({children}: { children: ReactNode }) {
         logs,
         addLog,
         clearLogs,
+        startRun,
+        finishRun,
 
         exchangeConfig,
         setExchangeConfig,
@@ -285,7 +339,10 @@ export function StrategyProvider({children}: { children: ReactNode }) {
         setBarDataConfigs,
 
         engineConfig,
-        setEngineConfig
+        setEngineConfig,
+
+        strategyConfig,
+        setStrategyConfig
     };
 
     return (

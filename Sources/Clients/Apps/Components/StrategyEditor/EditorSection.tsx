@@ -28,6 +28,7 @@ export default function EditorSection({
         exchangeConfig, setExchangeConfig,
         lastDataUpdates, setLastDataUpdates,
         engineConfig, setEngineConfig,
+        strategyConfig, setStrategyConfig,
         logs, addLog,
         configLoaded, setConfigLoaded
     } = useStrategy();
@@ -185,6 +186,29 @@ export default function EditorSection({
                         };
 
                         setEngineConfig(newEngineConfig);
+
+                        // 전략 설정
+                        const strategySection = config['전략 설정'];
+                        if (strategySection && typeof strategySection === 'object') {
+                            const selected = strategySection['선택된 전략'];
+                            if (selected && typeof selected === 'object') {
+                                setStrategyConfig({
+                                    strategyHeaderDirs: Array.isArray(strategySection['전략 헤더 폴더']) ? strategySection['전략 헤더 폴더'] : [],
+                                    strategySourceDirs: Array.isArray(strategySection['전략 소스 폴더']) ? strategySection['전략 소스 폴더'] : [],
+                                    indicatorHeaderDirs: Array.isArray(strategySection['지표 헤더 폴더']) ? strategySection['지표 헤더 폴더'] : [],
+                                    indicatorSourceDirs: Array.isArray(strategySection['지표 소스 폴더']) ? strategySection['지표 소스 폴더'] : [],
+
+                                    name: selected['이름'],
+                                    dllPath: selected['DLL 파일 경로'] || null,
+                                    strategyHeaderPath: selected['헤더 파일 경로'] || null,
+                                    strategySourcePath: selected['소스 파일 경로'] || null
+                                });
+                            } else {
+                                setStrategyConfig(null);
+                            }
+                        } else {
+                            setStrategyConfig(null);
+                        }
                     }
 
                     setConfigLoaded(true);
@@ -197,7 +221,7 @@ export default function EditorSection({
         ws.addEventListener('message', handleMessage);
 
         return () => ws.removeEventListener('message', handleMessage);
-    }, [ws, addLog, setIsLogPanelOpen, setLogPanelHeight, setExchangeConfig, setLastDataUpdates, setSymbolConfigs, setSelectedPair, setCustomPairs, setBarDataConfigs, setEngineConfig, setConfigLoaded, configLoaded, engineConfig, exchangeConfig]);
+    }, [ws, addLog, setIsLogPanelOpen, setLogPanelHeight, setExchangeConfig, setLastDataUpdates, setSymbolConfigs, setSelectedPair, setCustomPairs, setBarDataConfigs, setEngineConfig, setStrategyConfig, setConfigLoaded, configLoaded, engineConfig, exchangeConfig]);
 
 
     // editor.json 저장 함수
@@ -266,6 +290,19 @@ export default function EditorSection({
                     '심볼 간 참조 바 데이터 중복 검사': engineConfig.checkSameBarDataReference ? "활성화" : "비활성화",
                     '심볼 간 마크 가격 바 데이터 중복 검사': engineConfig.checkSameBarDataMarkPrice ? "활성화" : "비활성화",
                 },
+                '전략 설정': {
+                    '전략 헤더 폴더': strategyConfig?.strategyHeaderDirs || [],
+                    '전략 소스 폴더': strategyConfig?.strategySourceDirs || [],
+                    '지표 헤더 폴더': strategyConfig?.indicatorHeaderDirs || [],
+                    '지표 소스 폴더': strategyConfig?.indicatorSourceDirs || [],
+
+                    '선택된 전략': strategyConfig ? {
+                        '이름': strategyConfig.name,
+                        'DLL 파일 경로': strategyConfig.dllPath,
+                        '헤더 파일 경로': strategyConfig.strategyHeaderPath,
+                        '소스 파일 경로': strategyConfig.strategySourcePath
+                    } : null
+                },
             }
         }));
     };
@@ -291,6 +328,7 @@ export default function EditorSection({
         customPairs,
         barDataConfigs,
         engineConfig,
+        strategyConfig,
         configLoaded
     ]);
 
