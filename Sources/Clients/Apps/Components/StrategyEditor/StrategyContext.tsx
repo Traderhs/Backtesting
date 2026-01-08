@@ -199,7 +199,7 @@ export function StrategyProvider({children}: { children: ReactNode }) {
     // 전략 설정
     const [strategyConfig, setStrategyConfig] = useState<StrategyConfig | null>(null);
 
-    // 호출자 파일명을 간단히 추출 (Launch.js 스타일과 일치하도록 개선)
+    // 호출자 파일명을 간단히 추출
     const getCallerFileInfo = (): string | null => {
         try {
             const err = new Error();
