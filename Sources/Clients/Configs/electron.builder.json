@@ -27,8 +27,12 @@
       "to": "index.html"
     },
     {
-      "from": "Bundles/Cmake",
-      "to": "Cmake"
+      "from": "Bundles/Cores",
+      "to": "Cores"
+    },
+    {
+      "from": "Bundles/nlohmann",
+      "to": "nlohmann"
     },
     {
       "from": "Bundles/Icons",

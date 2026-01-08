@@ -161,7 +161,7 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
     }
 }
 
-function runSingleBacktesting(ws, symbolConfigs, barDataConfigs, useBarMagnifier, clearAndAddBarData, editorConfig, broadcastLog) {
+function runSingleBacktesting(ws, symbolConfigs, barDataConfigs, useBarMagnifier, clearAndAddBarData, strategyConfig, editorConfig, broadcastLog) {
     if (!backtestingEngine || !backtestingEngineReady) {
         broadcastLog("ERROR", "백테스팅 엔진이 준비되지 않았습니다. 잠시 후 다시 시도해주세요.", null, null);
         return;
@@ -211,7 +211,9 @@ function runSingleBacktesting(ws, symbolConfigs, barDataConfigs, useBarMagnifier
         checkSameBarDataTrading: (editorConfig && typeof editorConfig.checkSameBarDataTrading === 'boolean') ? editorConfig.checkSameBarDataTrading : true,
         checkSameBarDataMagnifier: (editorConfig && typeof editorConfig.checkSameBarDataMagnifier === 'boolean') ? editorConfig.checkSameBarDataMagnifier : true,
         checkSameBarDataReference: (editorConfig && typeof editorConfig.checkSameBarDataReference === 'boolean') ? editorConfig.checkSameBarDataReference : true,
-        checkSameBarDataMarkPrice: (editorConfig && typeof editorConfig.checkSameBarDataMarkPrice === 'boolean') ? editorConfig.checkSameBarDataMarkPrice : true
+        checkSameBarDataMarkPrice: (editorConfig && typeof editorConfig.checkSameBarDataMarkPrice === 'boolean') ? editorConfig.checkSameBarDataMarkPrice : true,
+
+        strategyConfig: strategyConfig || null
     };
 
     const command = `runSingleBacktesting ${JSON.stringify(config)}\n`;
@@ -568,6 +570,19 @@ function configToObj(config) {
             "심볼 간 참조 바 데이터 중복 검사": config?.checkSameBarDataReference ? "활성화" : "비활성화",
             "심볼 간 마크 가격 바 데이터 중복 검사": config?.checkSameBarDataMarkPrice ? "활성화" : "비활성화"
         },
+        "전략 설정": {
+            "전략 헤더 폴더": config?.strategyConfig?.strategyHeaderDirs,
+            "전략 소스 폴더": config?.strategyConfig?.strategySourceDirs,
+            "지표 헤더 폴더": config?.strategyConfig?.indicatorHeaderDirs,
+            "지표 소스 폴더": config?.strategyConfig?.indicatorSourceFolders,
+
+            "선택된 전략": config?.strategyConfig ? {
+                "이름": config.strategyConfig.name,
+                "DLL 파일 경로": config.strategyConfig.dllPath,
+                "헤더 파일 경로": config.strategyConfig.strategyHeaderPath,
+                "소스 파일 경로": config.strategyConfig.strategySourcePath,
+            } : null
+        }
     };
 }
 
@@ -577,6 +592,8 @@ function objToConfig(obj) {
     const exchange = obj?.['거래소 설정'];
     const symSection = obj?.['심볼 설정'];
     const engine = obj?.['엔진 설정'];
+    const strategySection = obj?.['전략 설정'];
+    const selectedStrategy = strategySection?.['선택된 전략'];
 
     return {
         // 에디터 설정
@@ -634,7 +651,20 @@ function objToConfig(obj) {
         checkSameBarDataTrading: engine?.['심볼 간 트레이딩 바 데이터 중복 검사'] === '활성화',
         checkSameBarDataMagnifier: engine?.['심볼 간 돋보기 바 데이터 중복 검사'] === '활성화',
         checkSameBarDataReference: engine?.['심볼 간 참조 바 데이터 중복 검사'] === '활성화',
-        checkSameBarDataMarkPrice: engine?.['심볼 간 마크 가격 바 데이터 중복 검사'] === '활성화'
+        checkSameBarDataMarkPrice: engine?.['심볼 간 마크 가격 바 데이터 중복 검사'] === '활성화',
+
+        // 전략 설정
+        strategyConfig: selectedStrategy ? {
+            strategyHeaderDirs: strategySection?.['전략 헤더 폴더'],
+            strategySourceDirs: strategySection?.['전략 소스 폴더'],
+            indicatorHeaderDirs: strategySection?.['지표 헤더 폴더'],
+            indicatorSourceFolders: strategySection?.['지표 소스 폴더'],
+
+            name: selectedStrategy['이름'],
+            dllPath: selectedStrategy['DLL 파일 경로'],
+            strategyHeaderPath: selectedStrategy['헤더 파일 경로'],
+            strategySourcePath: selectedStrategy['소스 파일 경로']
+        } : null
     };
 }
 
@@ -702,7 +732,9 @@ function createDefaultConfig(projectDirectory) {
         checkSameBarDataTrading: true,
         checkSameBarDataMagnifier: true,
         checkSameBarDataReference: true,
-        checkSameBarDataMarkPrice: true
+        checkSameBarDataMarkPrice: true,
+
+        strategyConfig: null
     };
 }
 
@@ -762,6 +794,19 @@ function configToWs(config) {
             "심볼 간 돋보기 바 데이터 중복 검사": config?.checkSameBarDataMagnifier ? "활성화" : "비활성화",
             "심볼 간 참조 바 데이터 중복 검사": config?.checkSameBarDataReference ? "활성화" : "비활성화",
             "심볼 간 마크 가격 바 데이터 중복 검사": config?.checkSameBarDataMarkPrice ? "활성화" : "비활성화"
+        },
+        "전략 설정": {
+            "전략 헤더 폴더": config?.strategyConfig?.strategyHeaderDirs,
+            "전략 소스 폴더": config?.strategyConfig?.strategySourceDirs,
+            "지표 헤더 폴더": config?.strategyConfig?.indicatorHeaderDirs,
+            "지표 소스 폴더": config?.strategyConfig?.indicatorSourceFolders,
+
+            "선택된 전략": config?.strategyConfig ? {
+                "이름": config.strategyConfig.name,
+                "DLL 파일 경로": config.strategyConfig.dllPath,
+                "헤더 파일 경로": config.strategyConfig.strategyHeaderPath,
+                "소스 파일 경로": config.strategyConfig.strategySourcePath
+            } : null
         }
     }
 }
@@ -777,11 +822,12 @@ function wsToConfig(wsConfig) {
         };
     }
 
-    // 한국어 키 형식인지 확인
     const editor = wsConfig["에디터 설정"];
     const exchange = wsConfig["거래소 설정"];
     const symSection = wsConfig["심볼 설정"];
     const engine = wsConfig["엔진 설정"];
+    const strategySection = wsConfig["전략 설정"];
+    const selectedStrategy = strategySection?.["선택된 전략"];
 
     if (editor || exchange || symSection || engine) {
         return {
@@ -831,7 +877,19 @@ function wsToConfig(wsConfig) {
             checkSameBarDataTrading: engine?.["심볼 간 트레이딩 바 데이터 중복 검사"] === "활성화",
             checkSameBarDataMagnifier: engine?.["심볼 간 돋보기 바 데이터 중복 검사"] === "활성화",
             checkSameBarDataReference: engine?.["심볼 간 참조 바 데이터 중복 검사"] === "활성화",
-            checkSameBarDataMarkPrice: engine?.["심볼 간 마크 가격 바 데이터 중복 검사"] === "활성화"
+            checkSameBarDataMarkPrice: engine?.["심볼 간 마크 가격 바 데이터 중복 검사"] === "활성화",
+
+            strategyConfig: selectedStrategy ? {
+                strategyHeaderDirs: strategySection?.["전략 헤더 폴더"],
+                strategySourceDirs: strategySection?.["전략 소스 폴더"],
+                indicatorHeaderDirs: strategySection?.["지표 헤더 폴더"],
+                indicatorSourceFolders: strategySection?.["지표 소스 폴더"],
+
+                name: selectedStrategy["이름"],
+                dllPath: selectedStrategy["DLL 파일 경로"],
+                strategyHeaderPath: selectedStrategy["헤더 파일 경로"],
+                strategySourcePath: selectedStrategy["소스 파일 경로"]
+            } : null
         };
     }
 
@@ -883,7 +941,9 @@ function wsToConfig(wsConfig) {
         checkSameBarDataTrading: wsConfig.checkSameBarDataTrading ?? true,
         checkSameBarDataMagnifier: wsConfig.checkSameBarDataMagnifier ?? true,
         checkSameBarDataReference: wsConfig.checkSameBarDataReference ?? true,
-        checkSameBarDataMarkPrice: wsConfig.checkSameBarDataMarkPrice ?? true
+        checkSameBarDataMarkPrice: wsConfig.checkSameBarDataMarkPrice ?? true,
+
+        strategyConfig: wsConfig.strategyConfig || null
     };
 }
 
