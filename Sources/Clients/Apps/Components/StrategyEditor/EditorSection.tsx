@@ -523,13 +523,16 @@ export default function EditorSection({
                                 logs.map((log, index) => {
                                     if (log.level === 'SEPARATOR') {
                                         return (
-                                            <div key={index} className="my-2">
+                                            <div key={index} className="my-0">
                                                 <div style={{
                                                     whiteSpace: 'pre',
                                                     fontFamily: "'Inter', 'Pretendard', monospace",
                                                     fontSize: '14px',
                                                     lineHeight: '1.4',
                                                     color: 'rgba(255, 215, 0, 0.4)',
+                                                    marginTop: '-6px',
+                                                    marginBottom: '1px',
+                                                    padding: 0,
                                                 }}>{'─'.repeat(150)}</div>
                                             </div>
                                         );
@@ -585,7 +588,7 @@ export default function EditorSection({
                                     };
 
                                     return (
-                                        <div key={index} className="mb-1">
+                                        <div key={index} className="mb-2">
                                             {log.timestamp &&
                                                 <span style={{color: 'rgb(106, 153, 85)'}}>[{log.timestamp}]</span>}
                                             {' '}
