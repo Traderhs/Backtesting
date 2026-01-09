@@ -1,4 +1,5 @@
-﻿// =============================================================================
+﻿
+// =============================================================================
 // Copyright (c) 2024-2026 Traderhs
 //
 // software is provided for personal, educational, and non-commercial use only.
@@ -447,41 +448,66 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     // =======================================================================
     // 전략 설정
     // =======================================================================
-    // JSON 설정에서 전략 정보 확인
-    if (json_config.contains("strategyConfig")) {
-      // DLL 경로가 있으면 로드
-      if (const auto& strategy_config = json_config["strategyConfig"];
-          strategy_config.contains("dllPath")) {
-        const auto& dll_path = strategy_config["dllPath"].get<string>();
-        const auto& strategy_name = strategy_config["name"].get<string>();
+    const auto& strategy_config = json_config.at("strategyConfig");
 
-        // 새 로더 생성
-        const auto loader = make_shared<StrategyLoader>();
-        string error;
-
-        // DLL 로드
-        if (!loader->Load(dll_path, error)) {
-          throw runtime_error(error);
-        }
-
-        logger_->Log(
-            INFO_L,
-            format("[{}] 전략의 DLL 로딩이 완료되었습니다.", strategy_name),
-            __FILE__, __LINE__, true);
-
-        // DLL에서 AddStrategy 호출 (DLL 내부에서 AddStrategy<T> 실행)
-        if (!loader->AddStrategyFromDll(strategy_name, error)) {
-          throw runtime_error(error);
-        }
-
-        // DLL 언로드 방지를 위해 로더 저장
-        dll_loaders_.push_back(loader);
-      } else {
-        throw runtime_error("서버로부터 전략 DLL 경로가 전달되지 않았습니다.");
-      }
-    } else {
-      throw runtime_error("서버로부터 전략 설정이 전달되지 않았습니다.");
+    // 전략 헤더 및 소스 폴더 설정
+    vector<string> strategy_header_dirs;
+    for (const auto& strategy_header_dir :
+         strategy_config.at("strategyHeaderDirs")) {
+      strategy_header_dirs.push_back(strategy_header_dir.get<string>());
     }
+
+    config_builder.SetStrategyHeaderDirs(strategy_header_dirs);
+
+    vector<string> strategy_source_dirs;
+    for (const auto& strategy_source_dir :
+         strategy_config.at("strategySourceDirs")) {
+      strategy_source_dirs.push_back(strategy_source_dir.get<string>());
+    }
+
+    config_builder.SetStrategySourceDirs(strategy_source_dirs);
+
+    // 지표 헤더 및 소스 폴더 설정
+    vector<string> indicator_header_dirs;
+    for (const auto& indicator_header_dir :
+         strategy_config.at("indicatorHeaderDirs")) {
+      indicator_header_dirs.push_back(indicator_header_dir.get<string>());
+    }
+
+    config_builder.SetIndicatorHeaderDirs(indicator_header_dirs);
+
+    vector<string> indicator_source_dirs;
+    for (const auto& indicator_source_dir :
+         strategy_config.at("indicatorSourceDirs")) {
+      indicator_source_dirs.push_back(indicator_source_dir.get<string>());
+    }
+
+    config_builder.SetIndicatorSourceDirs(indicator_source_dirs);
+
+    // 전략 헤더 및 소스 파일 경로 설정
+    config_builder.SetStrategyHeaderPath(
+        strategy_config.at("strategyHeaderPath").get<string>());
+
+    config_builder.SetStrategySourcePath(
+        strategy_config.at("strategySourcePath").get<string>());
+
+    // 새 로더 생성
+    const auto loader = make_shared<StrategyLoader>();
+    string error;
+
+    // DLL 로드
+    if (!loader->Load(strategy_config.at("dllPath").get<string>(), error)) {
+      throw runtime_error(error);
+    }
+
+    // DLL에서 AddStrategy 호출
+    if (!loader->AddStrategyFromDll(strategy_config.at("name").get<string>(),
+                                    error)) {
+      throw runtime_error(error);
+    }
+
+    // DLL 언로드 방지를 위해 로더 저장
+    dll_loaders_.push_back(loader);
 
     // TODO 임시
     AddFundingRates(symbol_names, "D:/Dev/Backtesting/Data/Funding Rates");

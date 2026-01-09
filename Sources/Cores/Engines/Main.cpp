@@ -48,6 +48,10 @@ void RunLocal() {
   // 엔진 설정
   Backtesting::SetConfig()
       .SetProjectDirectory("D:/Dev/Backtesting")
+      .SetStrategyHeaderPath(
+          "D:/Dev/Backtesting-Strategies/Includes/Strategies/DiceSystem.hpp")
+      .SetStrategySourcePath(
+          "D:/Dev/Backtesting-Strategies/Sources/Strategies/DiceSystem.cpp")
       .SetBacktestPeriod()
       .SetUseBarMagnifier(true)
       .SetInitialBalance(10000)
