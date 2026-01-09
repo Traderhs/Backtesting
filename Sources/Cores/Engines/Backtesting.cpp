@@ -132,8 +132,6 @@ void Backtesting::RunServer() {
     } catch (...) {
       // 무시하고 다음 루프 진행
     }
-
-    Engine::LogSeparator(true);
   }
 }
 
@@ -456,10 +454,6 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
           strategy_config.contains("dllPath")) {
         const auto& dll_path = strategy_config["dllPath"].get<string>();
         const auto& strategy_name = strategy_config["name"].get<string>();
-
-        logger_->Log(
-            INFO_L, format("[{}] 전략의 DLL 로딩을 시작합니다.", strategy_name),
-            __FILE__, __LINE__, true);
 
         // 새 로더 생성
         const auto loader = make_shared<StrategyLoader>();
