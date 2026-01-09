@@ -14,8 +14,7 @@ import '../Common/LoadingSpinner.css';
 function StrategyEditorContent() {
     const {
         addLog,
-        startRun,
-        finishRun,
+        clearLogs,
         symbolConfigs,
         barDataConfigs,
         exchangeConfig,
@@ -48,12 +47,11 @@ function StrategyEditorContent() {
 
     // 백테스팅 실행
     const handleRunSingleBacktesting = async () => {
-        // 클라이언트 레벨 에러도 실행 종료로 처리할 수 있도록 실행 시작 플래그 설정
-        startRun();
+        // 로그 초기화
+        clearLogs();
 
         if (!ws || ws.readyState !== WebSocket.OPEN) {
             addLog('ERROR', 'WebSocket 연결이 없습니다.');
-            finishRun();
             return;
         }
 
@@ -64,31 +62,26 @@ function StrategyEditorContent() {
 
         if (!exchangeConfig.apiKeyEnvVar.trim()) {
             addLog('ERROR', 'API 키의 환경 변수 이름을 입력해 주세요.');
-            finishRun();
             return;
         }
 
         if (!exchangeConfig.apiSecretEnvVar.trim()) {
             addLog('ERROR', 'API 시크릿의 환경 변수 이름을 입력해 주세요.');
-            finishRun();
             return;
         }
 
         if (!exchangeConfig.exchangeInfoPath.trim()) {
             addLog('ERROR', '거래소 정보 파일 경로를 입력해 주세요.');
-            finishRun();
             return;
         }
 
         if (!exchangeConfig.leverageBracketPath.trim()) {
             addLog('ERROR', '레버리지 구간 파일 경로를 입력해 주세요.');
-            finishRun();
             return;
         }
 
         if (symbolConfigs.length === 0) {
             addLog('ERROR', '백테스팅을 실행하려면 최소 1개의 심볼이 필요합니다. 심볼을 추가해 주세요.');
-            finishRun();
             return;
         }
 
@@ -99,7 +92,6 @@ function StrategyEditorContent() {
         for (const config of configsToValidate) {
             if (!config.klinesDirectory.trim()) {
                 addLog('ERROR', `${config.barDataType} 바 데이터의 폴더를 입력해 주세요.`);
-                finishRun();
                 return;
             }
         }
@@ -109,13 +101,11 @@ function StrategyEditorContent() {
             const tf = config.timeframe;
             if (!tf || tf.value === null) {
                 addLog('ERROR', `${config.barDataType} 바 데이터의 타임프레임 값을 입력해 주세요.`);
-                finishRun();
                 return;
             }
 
             if (!tf || tf.unit === TimeframeUnit.NULL) {
                 addLog('ERROR', `${config.barDataType} 바 데이터의 타임프레임 단위를 입력해 주세요.`);
-                finishRun();
                 return;
             }
         }
@@ -124,50 +114,42 @@ function StrategyEditorContent() {
         // 백테스팅 기간 체크 박스 검증: 체크 안되어있는데 칸이 비워져 있는 경우
         if (!engineConfig.useBacktestPeriodStart && !engineConfig.backtestPeriodStart.trim()) {
             addLog('ERROR', '백테스팅 기간의 시작을 입력하거나 [처음부터] 체크 박스를 선택해 주세요.');
-            finishRun();
             return;
         }
 
         if (!engineConfig.useBacktestPeriodEnd && !engineConfig.backtestPeriodEnd.trim()) {
             addLog('ERROR', '백테스팅 기간의 종료를 입력하거나 [끝까지] 체크 박스를 선택해 주세요.');
-            finishRun();
             return;
         }
 
         if (!engineConfig.initialBalance) {
             addLog('ERROR', '초기 자금을 입력해 주세요.');
-            finishRun();
             return;
         }
 
         if (!engineConfig.takerFeePercentage) {
             addLog('ERROR', '테이커 수수료율을 입력해 주세요.');
-            finishRun();
             return;
         }
 
         if (!engineConfig.makerFeePercentage) {
             addLog('ERROR', '메이커 수수료율을 입력해 주세요.');
-            finishRun();
             return;
         }
 
         if (engineConfig.slippageModel == 'PercentageSlippage') {
             if (!engineConfig.slippageTakerPercentage) {
                 addLog('ERROR', '테이커 슬리피지율을 입력해 주세요.');
-                finishRun();
                 return;
             }
 
             if (!engineConfig.slippageMakerPercentage) {
                 addLog('ERROR', '메이커 슬리피지율을 입력해 주세요.');
-                finishRun();
                 return;
             }
         } else if (engineConfig.slippageModel == 'MarketImpactSlippage') {
             if (!engineConfig.slippageStressMultiplier) {
                 addLog('ERROR', '슬리피지 스트레스 계수를 입력해 주세요.');
-                finishRun();
                 return;
             }
         }
@@ -180,7 +162,6 @@ function StrategyEditorContent() {
             // strategyHeaderPath 검증
             if (!strategyConfig.strategyHeaderPath) {
                 addLog('ERROR', '전략 헤더 파일이 선택되지 않았습니다. 전략을 다시 선택해 주세요.');
-                finishRun();
                 return;
             }
 
@@ -200,19 +181,18 @@ function StrategyEditorContent() {
 
                 if (buildResult.success) {
                     builtDllPath = buildResult.dll;
+
+                    addLog("SEPARATOR", "");
                 } else {
                     // 오류 로그는 서버에서 기록
-                    finishRun();
                     return;
                 }
             } catch (err: any) {
                 addLog('ERROR', `빌드 요청 실패: ${err.message}`);
-                finishRun();
                 return;
             }
         } else {
             addLog('ERROR', '전략을 추가해 주세요.');
-            finishRun();
             return;
         }
 

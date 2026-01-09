@@ -1,4 +1,4 @@
-import React, {createContext, ReactNode, useContext, useRef, useState} from 'react';
+import React, {createContext, ReactNode, useContext, useState} from 'react';
 import {BarDataConfig, BarDataType, TimeframeUnit} from '@/Types/BarData';
 
 // 타입 정의
@@ -80,10 +80,6 @@ interface StrategyContextType {
     logs: LogEntry[];
     addLog: (level: string, message: string, timestamp?: string | null, fileInfo?: string | null) => void;
     clearLogs: () => void;
-
-    // 실행 시작/종료 알림 (구분선 삽입 제어용)
-    startRun: () => void;
-    finishRun: () => void;
 
     // 거래소 설정
     exchangeConfig: ExchangeConfig;
@@ -239,29 +235,6 @@ export function StrategyProvider({children}: { children: ReactNode }) {
         return null;
     };
 
-    // 실행 상태 제어: 실행이 시작될 때 플래그 리셋, 종료될 때 구분선 한 번만 삽입
-    const runIdRef = useRef<number>(0);
-
-    const startRun = () => {
-        // 실행 시작 시 runId 증가하여 동일 실행의 중복 finish 호출을 방지
-        runIdRef.current += 1;
-    };
-
-    const finishRun = () => {
-        const idToUse = runIdRef.current;
-
-        setLogs(prev => {
-            const last = prev[prev.length - 1];
-            // 동일 실행의 중복 finish 호출 시 구분선 중복 삽입 방지
-            if (last && last.level === 'SEPARATOR' && last.fileInfo === `RUN_SEP:${idToUse}`) {
-                return prev;
-            }
-
-            return [...prev, {level: 'SEPARATOR', message: '', timestamp: null, fileInfo: `RUN_SEP:${idToUse}`}];
-        });
-    };
-
-
     const addLog = (level: string, message: any, timestamp?: string | null, fileInfo?: string | null) => {
         // message를 안전하게 문자열로 정규화
         if (message === undefined || message === null) {
@@ -274,12 +247,6 @@ export function StrategyProvider({children}: { children: ReactNode }) {
             } catch (e) {
                 message = '';
             }
-        }
-
-        // 서버에서 구분선을 보냈다면 실행이 끝났음을 처리 (최우선)
-        if (level === 'SEPARATOR') {
-            finishRun();
-            return;
         }
 
         // 일반 로그는 앞에 구분자 프리픽스가 없으면 추가
@@ -301,13 +268,12 @@ export function StrategyProvider({children}: { children: ReactNode }) {
             return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
         })();
 
-        // 일반 로그는 그대로 추가 (구분선은 finishRun()에서 한 번만 추가됨)
+        // 일반 로그는 그대로 추가
         setLogs(prev => [...prev, {level, message, timestamp: finalTimestamp, fileInfo: fileInfo || null}]);
     };
 
     const clearLogs = () => {
         setLogs([]);
-        runIdRef.current = 0;
     };
 
     const value = {
@@ -317,8 +283,6 @@ export function StrategyProvider({children}: { children: ReactNode }) {
         logs,
         addLog,
         clearLogs,
-        startRun,
-        finishRun,
 
         exchangeConfig,
         setExchangeConfig,
