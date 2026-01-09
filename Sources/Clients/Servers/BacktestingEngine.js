@@ -27,7 +27,7 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
     const possiblePaths = [
         path.join(path.dirname(process.execPath), 'Backtesting.exe'),
         path.join(path.dirname(process.execPath), 'BackBoard', 'Backtesting.exe'),
-        path.join('d:', 'Programming', 'Backtesting', 'Builds', 'Release', 'Release', 'Backtesting.exe')
+        path.join('d:', 'Dev', 'Backtesting', 'Builds', 'Release', 'Release', 'Backtesting.exe')
     ];
 
     // 세 후보 경로 중에서 매칭 시도

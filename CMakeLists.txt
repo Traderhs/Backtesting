@@ -40,8 +40,8 @@ find_package(ZLIB REQUIRED)
 
 # ======================================================================================================================
 # 절대 경로 변수
-set(PRIVATE_STRATEGY_INCLUDES "D:/Programming/Backtesting-Strategies/Includes")
-set(PRIVATE_STRATEGY_SOURCES "D:/Programming/Backtesting-Strategies/Sources")
+set(PRIVATE_STRATEGY_INCLUDES "D:/Dev/Backtesting-Strategies/Includes")
+set(PRIVATE_STRATEGY_SOURCES "D:/Dev/Backtesting-Strategies/Sources")
 
 # Backtesting 설정
 file(GLOB HEADERS   # 해당 경로에서 hpp 파일들을 GLOB (엔진, 전략, 지표 헤더 파일들)

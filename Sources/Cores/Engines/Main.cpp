@@ -8,13 +8,12 @@ using namespace backtesting;
 
 void RunLocal() {
   // 거래소 설정
-  Backtesting::SetMarketDataDirectory("D:/Programming/Backtesting/Data");
+  Backtesting::SetMarketDataDirectory("D:/Dev/Backtesting/Data");
   Backtesting::SetApiEnvVars("BINANCE_API_KEY", "BINANCE_API_SECRET");
 
-  const auto& exchange_info_path =
-      "D:/Programming/Backtesting/Data/exchange_info.json";
+  const auto& exchange_info_path = "D:/Dev/Backtesting/Data/exchange_info.json";
   const auto& leverage_bracket_path =
-      "D:/Programming/Backtesting/Data/leverage_bracket.json";
+      "D:/Dev/Backtesting/Data/leverage_bracket.json";
 
   Backtesting::FetchExchangeInfo(exchange_info_path);
   Backtesting::FetchLeverageBracket(leverage_bracket_path);
@@ -29,27 +28,26 @@ void RunLocal() {
 
   // 바 데이터 설정
   Backtesting::AddBarData(symbol_names, "1h",
-                          "D:/Programming/Backtesting/Data/Continuous Klines",
-                          TRADING);
+                          "D:/Dev/Backtesting/Data/Continuous Klines", TRADING);
 
   Backtesting::AddBarData(symbol_names, "1m",
-                          "D:/Programming/Backtesting/Data/Continuous Klines",
+                          "D:/Dev/Backtesting/Data/Continuous Klines",
                           MAGNIFIER);
 
   Backtesting::AddBarData(symbol_names, "1d",
-                          "D:/Programming/Backtesting/Data/Continuous Klines",
+                          "D:/Dev/Backtesting/Data/Continuous Klines",
                           REFERENCE);
 
   Backtesting::AddBarData(symbol_names, "1m",
-                          "D:/Programming/Backtesting/Data/Mark Price Klines",
+                          "D:/Dev/Backtesting/Data/Mark Price Klines",
                           MARK_PRICE);
 
   Backtesting::AddFundingRates(symbol_names,
-                               "D:/Programming/Backtesting/Data/Funding Rates");
+                               "D:/Dev/Backtesting/Data/Funding Rates");
 
   // 엔진 설정
   Backtesting::SetConfig()
-      .SetProjectDirectory("D:/Programming/Backtesting")
+      .SetProjectDirectory("D:/Dev/Backtesting")
       .SetBacktestPeriod()
       .SetUseBarMagnifier(true)
       .SetInitialBalance(10000)

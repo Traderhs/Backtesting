@@ -277,7 +277,6 @@ export default function StrategySection() {
                                     type="text"
                                     value={folder}
                                     onChange={(e) => handleHeaderFolderChange(index, e.target.value)}
-                                    placeholder="예: D:/Programming/Backtesting/Includes/Strategies"
                                     className="bg-[#050a12] border-gray-600 flex-1 text-sm"
                                     readOnly={isDefaultDir(folder, default_strategy_header_dir)}
                                 />
@@ -317,7 +316,6 @@ export default function StrategySection() {
                                     type="text"
                                     value={folder}
                                     onChange={(e) => handleSourceFolderChange(index, e.target.value)}
-                                    placeholder="예: D:/Programming/Backtesting/Sources/Cores/Strategies"
                                     className="bg-[#050a12] border-gray-600 flex-1 text-sm"
                                     readOnly={isDefaultDir(folder, default_strategy_source_dir)}
                                 />
@@ -357,7 +355,6 @@ export default function StrategySection() {
                                     type="text"
                                     value={folder}
                                     onChange={(e) => handleIndicatorHeaderFolderChange(index, e.target.value)}
-                                    placeholder="예: D:/Programming/Backtesting/Includes/Indicators"
                                     className="bg-[#050a12] border-gray-600 flex-1 text-sm"
                                     readOnly={isDefaultDir(folder, default_indicator_header_dir)}
                                 />
@@ -397,7 +394,6 @@ export default function StrategySection() {
                                     type="text"
                                     value={folder}
                                     onChange={(e) => handleIndicatorSourceFolderChange(index, e.target.value)}
-                                    placeholder="예: D:/Programming/Backtesting/Sources/Cores/Indicators"
                                     className="bg-[#050a12] border-gray-600 flex-1 text-sm"
                                     readOnly={isDefaultDir(folder, default_indicator_source_dir)}
                                 />

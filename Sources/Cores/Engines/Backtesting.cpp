@@ -484,8 +484,7 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     }
 
     // TODO 임시
-    AddFundingRates(symbol_names,
-                    "D:/Programming/Backtesting/Data/Funding Rates");
+    AddFundingRates(symbol_names, "D:/Dev/Backtesting/Data/Funding Rates");
 
     // 백테스팅 실행
     RunBacktesting();
