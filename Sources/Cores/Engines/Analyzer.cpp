@@ -985,7 +985,8 @@ void Analyzer::SaveBackBoard() const {
       // 패키지가 없으면 GitHub 릴리즈에서 다운로드
       logger_->Log(
           WARN_L,
-          "로컬 저장소에서 백보드를 찾을 수 없어 GitHub에서 다운로드합니다.",
+          format("[{}]에서 BackBoard를 찾을 수 없어 GitHub에서 다운로드합니다.",
+                 backboard_package_path),
           __FILE__, __LINE__, true);
 
       DownloadBackBoardFromGitHub();
