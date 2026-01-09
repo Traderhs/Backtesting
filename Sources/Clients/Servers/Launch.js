@@ -8,7 +8,12 @@ const net = require("net");
 const {
     handleLoadChartData, initializeFallbackImage, findLogoUrl, downloadAndSaveImage
 } = require("./ChartDataHandler");
-const {startBacktestingEngine, runSingleBacktesting, stopBacktestingEngine} = require("./BacktestingEngine");
+const {
+    startBacktestingEngine,
+    runSingleBacktesting,
+    stopBacktestingEngine,
+    getEditorConfig
+} = require("./BacktestingEngine");
 
 
 // =====================================================================================================================
@@ -1492,7 +1497,7 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
                     }
 
                     case "runSingleBacktesting": {
-                        runSingleBacktesting(ws, msg.symbolConfigs, msg.barDataConfigs, msg.useBarMagnifier, msg.clearAndAddBarData, msg.strategyConfig, getEditorConfig(), broadcastLog);
+                        runSingleBacktesting(ws, msg.backtestingStartTime, getEditorConfig(), msg.symbolConfigs, msg.barDataConfigs, msg.useBarMagnifier, msg.clearAndAddBarData, msg.strategyConfig, broadcastLog);
                         break;
                     }
 

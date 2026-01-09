@@ -160,13 +160,15 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
     }
 }
 
-function runSingleBacktesting(ws, symbolConfigs, barDataConfigs, useBarMagnifier, clearAndAddBarData, strategyConfig, editorConfig, broadcastLog) {
+function runSingleBacktesting(ws, backtestingStartTime, editorConfig, symbolConfigs, barDataConfigs, useBarMagnifier, clearAndAddBarData, strategyConfig, broadcastLog) {
     if (!backtestingEngine || !backtestingEngineReady) {
         broadcastLog("ERROR", "백테스팅 엔진이 준비되지 않았습니다. 잠시 후 다시 시도해주세요.", null, null);
         return;
     }
 
     const config = {
+        backtestingStartTime: backtestingStartTime,
+
         apiKeyEnvVar: (editorConfig && editorConfig.apiKeyEnvVar) ? editorConfig.apiKeyEnvVar : "",
         apiSecretEnvVar: (editorConfig && editorConfig.apiSecretEnvVar) ? editorConfig.apiSecretEnvVar : "",
 
