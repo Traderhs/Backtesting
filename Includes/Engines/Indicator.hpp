@@ -132,12 +132,6 @@ class BACKTESTING_API Indicator {
   /// 지표 참조 시 빠른 방법 판단을 위하여 설정
   void SetHigherTimeframeIndicator();
 
-  /// 해당 지표의 소스 파일 경로를 설정하는 함수
-  void SetSourcePath(const string& source_path);
-
-  /// 해당 지표의 헤더 파일 경로를 설정하는 함수
-  void SetHeaderPath(const string& header_path);
-
   /// 해당 지표의 이름을 반환하는 함수
   [[nodiscard]] string GetIndicatorName() const;
 
@@ -182,64 +176,119 @@ class BACKTESTING_API Indicator {
     class_name_ = class_name;
 
     // 헤더 파일 경로 후보들
-    const vector<string>& header_paths = {
-        format("{}/Includes/Indicators/{}.hpp", project_directory, class_name),
-        format("{}/Includes/Indicators/{}.hpp", project_directory, name_)};
+    vector<string> header_paths;
+
+    // 설정된 헤더 폴더가 있다면 해당 폴더들의 하위 경로들을 후보 경로로 설정
+    if (const auto& configured_dirs = Config::GetIndicatorHeaderDirs();
+        !configured_dirs.empty()) {
+      for (const auto& configured_dir : configured_dirs) {
+        try {
+          if (fs::exists(configured_dir)) {
+            for (const auto& entry :
+                 fs::recursive_directory_iterator(configured_dir)) {
+              if (entry.is_regular_file()) {
+                if (const auto& path = entry.path();
+                    path.extension() == ".hpp") {
+                  if (const auto& stem = path.stem().string();
+                      stem == class_name || stem == name_) {
+                    header_paths.push_back(path.string());
+                  }
+                }
+              }
+            }
+          }
+        } catch (...) {
+          // 접근 권한이 없는 폴더 등은 무시
+        }
+      }
+    } else {
+      // 설정된 헤더 폴더가 없다면 기본 헤더 경로 사용
+      header_paths = {
+          format("{}/Includes/Indicators/{}.hpp", project_directory,
+                 class_name),
+          format("{}/Includes/Indicators/{}.hpp", project_directory, name_)};
+    }
 
     // 후보 경로에서 헤더 파일 탐색
     bool header_found = false;
-    for (const auto& path : header_paths) {
-      if (fs::exists(path)) {
-        SetFilePath(path, false);
+    for (const auto& header_path : header_paths) {
+      if (fs::exists(header_path)) {
         header_found = true;
+        header_path_ = header_path;
 
         break;
       }
     }
 
-    // 후보 경로에서 찾지 못하면 부모 폴더에서 재귀 탐색
     if (!header_found) {
-      const vector<string>& file_names = {format("{}.hpp", class_name),
-                                          format("{}.hpp", name_)};
+      logger_->Log(
+          ERROR_L,
+          format("[{}] 지표의 헤더 파일 경로 감지가 실패했습니다.", name_),
+          __FILE__, __LINE__, true);
 
-      for (const auto& file_name : file_names) {
-        if (const string& found = FindFileInParent(file_name); !found.empty()) {
-          SetFilePath(found, false);
-
-          break;
-        }
-      }
+      Logger::LogAndThrowError(
+          format("지표의 클래스명과 헤더 파일명은 동일해야 하며, "
+                 "[{}/Includes/Indicators/{}.hpp] 경로에 존재해야 합니다.",
+                 project_directory, class_name_),
+          __FILE__, __LINE__);
     }
 
     // 소스 파일 경로 후보들
-    const vector<string>& source_paths = {
-        format("{}/Sources/cpp/Indicators/{}.cpp", project_directory,
-               class_name),
-        format("{}/Sources/cpp/Indicators/{}.cpp", project_directory, name_)};
+    vector<string> source_paths;
+
+    // 설정된 소스 폴더가 있다면 해당 폴더들의 하위 경로들을 후보 경로로 설정
+    if (const auto& configured_dirs = Config::GetIndicatorSourceDirs();
+        !configured_dirs.empty()) {
+      for (const auto& configured_dir : configured_dirs) {
+        try {
+          if (fs::exists(configured_dir)) {
+            for (const auto& entry :
+                 fs::recursive_directory_iterator(configured_dir)) {
+              if (entry.is_regular_file()) {
+                if (const auto& path = entry.path();
+                    path.extension() == ".cpp") {
+                  if (const auto& stem = path.stem().string();
+                      stem == class_name || stem == name_) {
+                    source_paths.push_back(path.string());
+                  }
+                }
+              }
+            }
+          }
+        } catch (...) {
+          // 접근 권한이 없는 폴더 등은 무시
+        }
+      }
+    } else {
+      // 설정된 소스 폴더가 없다면 기본 소스 경로 사용
+      source_paths = {format("{}/Sources/Cores/Indicators/{}.cpp",
+                             project_directory, class_name),
+                      format("{}/Sources/Cores/Indicators/{}.cpp",
+                             project_directory, name_)};
+    }
 
     // 후보 경로에서 소스 파일 탐색
     bool source_found = false;
-    for (const auto& path : source_paths) {
-      if (fs::exists(path)) {
-        SetFilePath(path, true);
+    for (const auto& source_path : source_paths) {
+      if (fs::exists(source_path)) {
         source_found = true;
+        source_path_ = source_path;
 
         break;
       }
     }
 
-    // 후보 경로에서 찾지 못하면 부모 폴더에서 재귀 탐색
     if (!source_found) {
-      const vector<string>& file_names = {format("{}.cpp", class_name),
-                                          format("{}.cpp", name_)};
+      logger_->Log(
+          ERROR_L,
+          format("[{}] 지표의 소스 파일 경로 감지가 실패했습니다.", name_),
+          __FILE__, __LINE__, true);
 
-      for (const auto& file_name : file_names) {
-        if (const string& found = FindFileInParent(file_name); !found.empty()) {
-          SetFilePath(found, true);
-
-          break;
-        }
-      }
+      Logger::LogAndThrowError(
+          format("지표의 클래스명과 소스 파일명은 동일해야 하며, "
+                 "[{}/Sources/Cores/Indicators/{}.cpp] 경로에 존재해야 합니다.",
+                 project_directory, class_name_),
+          __FILE__, __LINE__);
     }
   }
 
@@ -281,10 +330,10 @@ class BACKTESTING_API Indicator {
   vector<size_t> reference_num_bars_;  /// 지표의 타임프레임에 해당되는
                                        /// 참조 바 데이터의 심볼별 바 개수
 
-  string cpp_file_path_;     /// 커스텀 지표의 소스 파일 경로
-                             /// → 백테스팅 종료 후 소스 코드 저장 목적
-  string header_file_path_;  /// 커스텀 지표의 헤더 파일 경로
-                             /// → 백테스팅 종료 후 소스 코드 저장 목적
+  string header_path_;  /// 커스텀 지표의 헤더 파일 경로
+                        /// → 백테스팅 종료 후 소스 코드 저장 목적
+  string source_path_;  /// 커스텀 지표의 소스 파일 경로
+                        /// → 백테스팅 종료 후 소스 코드 저장 목적
 
   // 지표가 현재 계산 중인지 확인하는 플래그.
   // 지표 계산 시 사용하는 다른 지표가 계산하는 지표와 다른 타임프레임을 가질 수
@@ -314,14 +363,6 @@ class BACKTESTING_API Indicator {
 
   /// 지표 생성 카운터를 증가시키는 함수
   static void IncreaseCreationCounter();
-
-  /// 파일이 존재하는지 확인하고 존재하면 경로로 설정하는 함수
-  bool SetFilePath(const string& path, bool is_cpp);
-
-  /// 프로젝트 상위 폴더를 대상으로 파일을 재귀 탐색하여 경로를 반환하는 헬퍼
-  /// @param filename 찾고자 하는 파일명 (예: "MyIndicator.cpp")
-  /// @return 발견된 파일의 절대 경로 또는 빈 문자열
-  static string FindFileInParent(const string& filename);
 };
 
 }  // namespace backtesting::indicator

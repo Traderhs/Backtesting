@@ -155,7 +155,6 @@ function StrategyEditorContent() {
         }
 
         // 전략 빌드 먼저 수행
-        let builtDllPath = null;
         if (strategyConfig && strategyConfig.strategySourcePath) {
             addLog('INFO', `[${strategyConfig.name}] 전략의 빌드를 시작합니다.`);
 
@@ -180,8 +179,6 @@ function StrategyEditorContent() {
                 const buildResult = await buildResponse.json();
 
                 if (buildResult.success) {
-                    builtDllPath = buildResult.dll;
-
                     addLog("SEPARATOR", "");
                 } else {
                     // 오류 로그는 서버에서 기록
@@ -195,14 +192,6 @@ function StrategyEditorContent() {
             addLog('ERROR', '전략을 추가해 주세요.');
             return;
         }
-
-        // 전략 설정 준비
-        const strategyConfigPayload = (strategyConfig && builtDllPath) ? {
-            name: strategyConfig.name,
-            dllPath: builtDllPath,
-            strategySourcePath: strategyConfig.strategySourcePath,
-            strategyHeaderPath: strategyConfig.strategyHeaderPath
-        } : null;
 
         // =============================================================================================================
         const configsToSend = barDataConfigs.filter(config =>
@@ -226,7 +215,7 @@ function StrategyEditorContent() {
             })),
             useBarMagnifier: engineConfig.useBarMagnifier,
             clearAndAddBarData: needsClearAndAdd,
-            strategyConfig: strategyConfigPayload,
+            strategyConfig: strategyConfig,
         }));
 
         // 현재 해시값 저장

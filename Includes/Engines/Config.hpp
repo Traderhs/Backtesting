@@ -76,6 +76,24 @@ class BACKTESTING_API Config final {
   // 프로젝트 폴더를 설정하는 함수
   Config& SetProjectDirectory(const string& project_directory);
 
+  // 전략 헤더 폴더를 설정하는 함수
+  Config& SetStrategyHeaderDirs(const vector<string>& strategy_header_dirs);
+
+  // 전략 소스 폴더를 설정하는 함수
+  Config& SetStrategySourceDirs(const vector<string>& strategy_source_dirs);
+
+  // 지표 헤더 폴더를 설정하는 함수
+  Config& SetIndicatorHeaderDirs(const vector<string>& indicator_header_dirs);
+
+  // 지표 소스 폴더를 설정하는 함수
+  Config& SetIndicatorSourceDirs(const vector<string>& indicator_source_dirs);
+
+  // 전략 헤더 파일 경로를 설정하는 함수
+  Config& SetStrategyHeaderPath(const string& strategy_header_path);
+
+  // 전략 소스 파일 경로를 설정하는 함수
+  Config& SetStrategySourcePath(const string& strategy_source_path);
+
   /// 백테스팅 기간을 설정하는 함수.\n
   /// Start와 End 시간을 지정하지 않으면 캔들 범위 전체로 백테스팅을 진행
   /// @param start_time 트레이딩 바 데이터의 타임프레임을 기준으로,
@@ -133,6 +151,12 @@ class BACKTESTING_API Config final {
   Config& DisableSameBarDataCheck(BarDataType bar_data_type);
 
   [[nodiscard]] static string GetProjectDirectory();
+  [[nodiscard]] static vector<string> GetStrategyHeaderDirs();
+  [[nodiscard]] static vector<string> GetStrategySourceDirs();
+  [[nodiscard]] static vector<string> GetIndicatorHeaderDirs();
+  [[nodiscard]] static vector<string> GetIndicatorSourceDirs();
+  [[nodiscard]] static string GetStrategyHeaderPath();
+  [[nodiscard]] static string GetStrategySourcePath();
   [[nodiscard]] optional<Period> GetBacktestPeriod() const;
   [[nodiscard]] optional<bool> GetUseBarMagnifier() const;
   [[nodiscard]] double GetInitialBalance() const;
@@ -159,6 +183,24 @@ class BACKTESTING_API Config final {
 
   /// 프로젝트 폴더
   static string project_directory_;
+
+  /// 전략 헤더 폴더
+  static vector<string> strategy_header_dirs_;
+
+  /// 전략 소스 폴더
+  static vector<string> strategy_source_dirs_;
+
+  /// 지표 헤더 폴더
+  static vector<string> indicator_header_dirs_;
+
+  /// 지표 소스 폴더
+  static vector<string> indicator_source_dirs_;
+
+  /// 전략 헤더 파일 경로
+  static string strategy_header_path_;
+
+  /// 전략 소스 파일 경로
+  static string strategy_source_path_;
 
   /// 백테스팅 기간
   optional<Period> backtest_period_;

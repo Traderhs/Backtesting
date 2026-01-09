@@ -386,37 +386,15 @@ void Indicator::SetHigherTimeframeIndicator() {
   is_higher_timeframe_indicator_ = true;
 }
 
-void Indicator::SetSourcePath(const string& source_path) {
-  if (!fs::exists(source_path)) {
-    Logger::LogAndThrowError(
-        format("[{}] 지표의 소스 파일 경로 [{}]이(가) 존재하지 않습니다.",
-               name_, source_path),
-        __FILE__, __LINE__);
-  }
-
-  cpp_file_path_ = source_path;
-}
-
-void Indicator::SetHeaderPath(const string& header_path) {
-  if (!fs::exists(header_path)) {
-    Logger::LogAndThrowError(
-        format("[{}] 지표의 헤더 파일 경로 [{}]이(가) 존재하지 않습니다.",
-               name_, header_path),
-        __FILE__, __LINE__);
-  }
-
-  header_file_path_ = header_path;
-}
-
 string Indicator::GetIndicatorName() const { return name_; }
 
 string Indicator::GetIndicatorClassName() const { return class_name_; }
 
 string Indicator::GetTimeframe() const { return timeframe_; }
 
-string Indicator::GetSourcePath() { return cpp_file_path_; }
+string Indicator::GetSourcePath() { return source_path_; }
 
-string Indicator::GetHeaderPath() { return header_file_path_; }
+string Indicator::GetHeaderPath() { return header_path_; }
 
 bool Indicator::IsIndicatorClassSaved(const string& class_name) {
   return ranges::find(saved_indicator_classes_, class_name) !=
@@ -441,61 +419,5 @@ void Indicator::ResetIndicator() {
 }
 
 void Indicator::IncreaseCreationCounter() { creation_counter_++; }
-
-bool Indicator::SetFilePath(const string& path, const bool is_cpp) {
-  if (fs::exists(path)) {
-    if (is_cpp) {
-      cpp_file_path_ = path;
-    } else {
-      header_file_path_ = path;
-    }
-
-    return true;
-  }
-
-  // 파일 경로 감지 실패
-  if (is_cpp) {
-    logger_->Log(
-        ERROR_L,
-        format("[{}] 지표의 소스 파일 경로 감지가 실패했습니다.", name_),
-        __FILE__, __LINE__, true);
-    Logger::LogAndThrowError(
-        format("지표의 클래스명과 소스 파일명은 동일해야 하며, "
-               "[프로젝트 폴더//Sources/cpp/Indicators/{}.cpp] 경로에 "
-               "존재해야 합니다.",
-               class_name_),
-        __FILE__, __LINE__);
-  } else {
-    logger_->Log(
-        ERROR_L,
-        format("[{}] 지표의 헤더 파일 경로 감지가 실패했습니다.", name_),
-        __FILE__, __LINE__, true);
-    Logger::LogAndThrowError(
-        format("지표의 클래스명과 헤더 파일명은 동일해야 하며, "
-               "[프로젝트 폴더/Includes/Indicators/{}.hpp] 경로에 "
-               "존재해야 합니다.",
-               class_name_),
-        __FILE__, __LINE__);
-  }
-
-  return false;
-}
-
-string Indicator::FindFileInParent(const string& filename) {
-  try {
-    const fs::path parent =
-        fs::path(Config::GetProjectDirectory()).parent_path();
-
-    for (const auto& entry : fs::recursive_directory_iterator(parent)) {
-      if (entry.is_regular_file() && entry.path().filename() == filename) {
-        return entry.path().string();
-      }
-    }
-  } catch (...) {
-    // 검색 중 오류 발생 시 빈 문자열 반환
-  }
-
-  return {};
-}
 
 }  // namespace backtesting::indicator

@@ -32,6 +32,12 @@ BACKTESTING_API shared_ptr<Logger>& Config::logger_ = Logger::GetLogger();
 BACKTESTING_API size_t Config::creation_counter_;
 BACKTESTING_API size_t Config::pre_creation_counter_;
 BACKTESTING_API string Config::project_directory_;
+BACKTESTING_API vector<string> Config::strategy_header_dirs_;
+BACKTESTING_API vector<string> Config::strategy_source_dirs_;
+BACKTESTING_API vector<string> Config::indicator_header_dirs_;
+BACKTESTING_API vector<string> Config::indicator_source_dirs_;
+BACKTESTING_API string Config::strategy_header_path_;
+BACKTESTING_API string Config::strategy_source_path_;
 
 Config& Config::SetProjectDirectory(const string& project_directory) {
   project_directory_ = project_directory;
@@ -39,6 +45,40 @@ Config& Config::SetProjectDirectory(const string& project_directory) {
   // 프로젝트 폴더 설정 시 로그 폴더도 함께 설정
   Logger::SetLogDirectory(project_directory + "/Logs");
 
+  return *this;
+}
+
+Config& Config::SetStrategyHeaderDirs(
+    const vector<string>& strategy_header_dirs) {
+  strategy_header_dirs_ = strategy_header_dirs;
+  return *this;
+}
+
+Config& Config::SetStrategySourceDirs(
+    const vector<string>& strategy_source_dirs) {
+  strategy_source_dirs_ = strategy_source_dirs;
+  return *this;
+}
+
+Config& Config::SetIndicatorHeaderDirs(
+    const vector<string>& indicator_header_dirs) {
+  indicator_header_dirs_ = indicator_header_dirs;
+  return *this;
+}
+
+Config& Config::SetIndicatorSourceDirs(
+    const vector<string>& indicator_source_dirs) {
+  indicator_source_dirs_ = indicator_source_dirs;
+  return *this;
+}
+
+Config& Config::SetStrategyHeaderPath(const string& strategy_header_path) {
+  strategy_header_path_ = strategy_header_path;
+  return *this;
+}
+
+Config& Config::SetStrategySourcePath(const string& strategy_source_path) {
+  strategy_source_path_ = strategy_source_path;
   return *this;
 }
 
@@ -105,6 +145,16 @@ Config& Config::DisableSameBarDataCheck(BarDataType bar_data_type) {
 }
 
 string Config::GetProjectDirectory() { return project_directory_; }
+vector<string> Config::GetStrategyHeaderDirs() { return strategy_header_dirs_; }
+vector<string> Config::GetStrategySourceDirs() { return strategy_source_dirs_; }
+vector<string> Config::GetIndicatorHeaderDirs() {
+  return indicator_header_dirs_;
+}
+vector<string> Config::GetIndicatorSourceDirs() {
+  return indicator_source_dirs_;
+}
+string Config::GetStrategyHeaderPath() { return strategy_header_path_; }
+string Config::GetStrategySourcePath() { return strategy_source_path_; }
 optional<Period> Config::GetBacktestPeriod() const { return backtest_period_; }
 optional<bool> Config::GetUseBarMagnifier() const { return use_bar_magnifier_; }
 double Config::GetInitialBalance() const { return initial_balance_; }
