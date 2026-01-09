@@ -714,6 +714,36 @@ app.get('/api/strategies', async (req, res) => {
 // =====================================================================================================================
 // API: 전략 빌드
 // =====================================================================================================================
+// 재귀적으로 가장 최신의 수정 시간을 찾는 함수
+const getLatestMtimeRecursive = async (targetDir, pattern) => {
+    let maxTime = 0;
+    try {
+        const entries = await fsPromises.readdir(targetDir, {withFileTypes: true});
+
+        for (const entry of entries) {
+            const fullPath = path.join(targetDir, entry.name);
+
+            if (entry.isDirectory()) {
+                const subMax = await getLatestMtimeRecursive(fullPath, pattern);
+
+                if (subMax > maxTime) {
+                    maxTime = subMax;
+                }
+            } else if (entry.isFile() && pattern.test(entry.name)) {
+                const s = await fsPromises.stat(fullPath);
+
+                if (s.mtimeMs > maxTime) {
+                    maxTime = s.mtimeMs;
+                }
+            }
+        }
+    } catch (e) {
+        // 무시
+    }
+
+    return maxTime;
+};
+
 app.post('/api/strategy/build', express.json(), async (req, res) => {
     try {
         const {strategySourcePath, strategyHeaderPath, indicatorHeaderDirs, indicatorSourceDirs} = req.body;
@@ -804,32 +834,30 @@ app.post('/api/strategy/build', express.json(), async (req, res) => {
 
                         const absDir = path.isAbsolute(dir) ? dir : path.join(projectDir, dir);
 
-                        try {
-                            const files = await fsPromises.readdir(absDir);
+                        const latestTime = await getLatestMtimeRecursive(absDir, /\.(hpp|h)$/i);
+                        if (latestTime > dllMtime) {
+                            isUpToDate = false;
+                            fullRebuildRequired = true;
 
-                            for (const f of files) {
-                                if (/\.(hpp|h)$/i.test(f)) {
-                                    const s = await fsPromises.stat(path.join(absDir, f));
-
-                                    if (s.mtimeMs > dllMtime) {
-                                        isUpToDate = false;
-                                        fullRebuildRequired = true;
-
-                                        break;
-                                    }
-                                }
-                            }
-                        } catch (e) {
+                            break;
                         }
-                        if (!isUpToDate) break;
                     }
                 }
 
                 // (4) 소스 코드들 체크 -> 변경되어도 Full Rebuild 아님 (개별 컴파일 가능)
                 if (isUpToDate) {
-                    // 소스 파일 리스트
-                    const sourcesToCheck = [strategySourcePath];
-                    if (Array.isArray(indicatorSourceDirs)) {
+                    // 4-1. 전략 소스 파일 체크
+                    try {
+                        const ss = await fsPromises.stat(strategySourcePath);
+
+                        if (ss.mtimeMs > dllMtime) {
+                            isUpToDate = false;
+                        }
+                    } catch (e) {
+                    }
+
+                    // 4-2. 지표 소스 파일 체크
+                    if (isUpToDate && Array.isArray(indicatorSourceDirs)) {
                         for (const dir of indicatorSourceDirs) {
                             if (!dir || typeof dir !== 'string') {
                                 continue;
@@ -837,25 +865,12 @@ app.post('/api/strategy/build', express.json(), async (req, res) => {
 
                             const absDir = path.isAbsolute(dir) ? dir : path.join(projectDir, dir);
 
-                            try {
-                                const files = await fsPromises.readdir(absDir);
+                            const latestTime = await getLatestMtimeRecursive(absDir, /\.(cpp|cxx|c)$/i);
+                            if (latestTime > dllMtime) {
+                                isUpToDate = false;
 
-                                for (const f of files) {
-                                    if (/\.(cpp|cxx|c)$/i.test(f)) sourcesToCheck.push(path.join(absDir, f));
-                                }
-                            } catch (e) {
-                            }
-                        }
-                    }
-
-                    for (const src of sourcesToCheck) {
-                        try {
-                            const s = await fsPromises.stat(src);
-                            if (s.mtimeMs > dllMtime) {
-                                isUpToDate = false;  // fullRebuildRequired는 false로 유지 -> 소스만 증분 컴파일
                                 break;
                             }
-                        } catch (e) {
                         }
                     }
                 }
@@ -1125,22 +1140,29 @@ extern "C" {
         allSourceFiles.push(wrapperPath);
 
         // [3] 지표 소스들
+        const collectSourcesRecursive = async (dir, list) => {
+            try {
+                const entries = await fsPromises.readdir(dir, {withFileTypes: true});
+
+                for (const entry of entries) {
+                    const fullPath = path.join(dir, entry.name);
+
+                    if (entry.isDirectory()) {
+                        await collectSourcesRecursive(fullPath, list);
+                    } else if (entry.isFile() && fullPath.toLowerCase().endsWith('.cpp')) {
+                        list.push(fullPath);
+                    }
+                }
+            } catch (e) {
+                // 무시
+            }
+        };
+
         if (Array.isArray(indicatorSourceDirs)) {
             for (const indicatorSourceDir of indicatorSourceDirs) {
                 if (indicatorSourceDir && typeof indicatorSourceDir === 'string') {
                     const absDir = path.isAbsolute(indicatorSourceDir) ? indicatorSourceDir : path.join(projectDir, indicatorSourceDir);
-
-                    try {
-                        const files = await fsPromises.readdir(absDir);
-
-                        for (const file of files) {
-                            if (file.toLowerCase().endsWith('.cpp')) {
-                                allSourceFiles.push(path.join(absDir, file));
-                            }
-                        }
-                    } catch (e) {
-                        // 무시
-                    }
+                    await collectSourcesRecursive(absDir, allSourceFiles);
                 }
             }
         }
