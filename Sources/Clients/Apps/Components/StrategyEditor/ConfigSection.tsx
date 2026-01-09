@@ -33,7 +33,7 @@ export default function ConfigSection() {
                     </div>
 
                     <p className="text-xs text-gray-400 mt-1">
-                        데이터 파일 경로의 기준이 되는 디렉토리입니다. (예: D:/Programming/Backtesting)
+                        데이터 파일 경로의 기준이 되는 디렉토리입니다.
                     </p>
                 </div>
 

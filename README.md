@@ -83,23 +83,23 @@ using namespace backtesting::main;
 int main() {
   const vector<string> symbols = {"BTCUSDT", "ETHUSDT", "SOLUSDT"};
 
-  Backtesting::SetMarketDataDirectory("D:/Programming/Backtesting/Data");
+  Backtesting::SetMarketDataDirectory("D:/Dev/Backtesting/Data");
 
   // Core engine settings (project directory is used for outputs and source auto-detection)
   Backtesting::SetConfig()
-      .SetProjectDirectory("D:/Programming/Backtesting")
+      .SetProjectDirectory("D:/Dev/Backtesting")
       .SetBacktestPeriod()  // empty = full available range
       .SetUseBarMagnifier(true);
 
   // Bar streams
-  Backtesting::AddBarData(symbols, "1h", "D:/Programming/Backtesting/Data/Continuous Klines", TRADING);
-  Backtesting::AddBarData(symbols, "1m", "D:/Programming/Backtesting/Data/Continuous Klines", MAGNIFIER);
-  Backtesting::AddBarData(symbols, "1m", "D:/Programming/Backtesting/Data/Mark Price Klines", MARK_PRICE);
+  Backtesting::AddBarData(symbols, "1h", "D:/Dev/Backtesting/Data/Continuous Klines", TRADING);
+  Backtesting::AddBarData(symbols, "1m", "D:/Dev/Backtesting/Data/Continuous Klines", MAGNIFIER);
+  Backtesting::AddBarData(symbols, "1m", "D:/Dev/Backtesting/Data/Mark Price Klines", MARK_PRICE);
 
   // Exchange metadata (optional but recommended)
-  Backtesting::AddExchangeInfo("D:/Programming/Backtesting/Data/exchange_info.json");
-  Backtesting::AddLeverageBracket("D:/Programming/Backtesting/Data/leverage_bracket.json");
-  Backtesting::AddFundingRates(symbols, "D:/Programming/Backtesting/Data/Funding Rates");
+  Backtesting::AddExchangeInfo("D:/Dev/Backtesting/Data/exchange_info.json");
+  Backtesting::AddLeverageBracket("D:/Dev/Backtesting/Data/leverage_bracket.json");
+  Backtesting::AddFundingRates(symbols, "D:/Dev/Backtesting/Data/Funding Rates");
 
   // Strategy (one per run)
   // Backtesting::AddStrategy<MyStrategy>("My Strategy");
