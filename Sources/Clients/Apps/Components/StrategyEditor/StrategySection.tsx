@@ -3,6 +3,27 @@ import {Button} from '@/Components/UI/Button.tsx';
 import {Input} from '@/Components/UI/Input.tsx';
 import {useStrategy} from './StrategyContext';
 
+const toPosix = (p: string) => (p || '').replace(/\\/g, '/');
+
+const joinPosix = (basePath: string, childPath: string) => {
+    const base = toPosix(basePath).replace(/\/+$/, '');
+    const child = toPosix(childPath).replace(/^\/+/, '');
+
+    if (!base) {
+        return child;
+    }
+
+    return `${base}/${child}`;
+};
+
+const isDefaultDir = (path: string, defaultPath: string) => {
+    if (!path) {
+        return false;
+    }
+
+    return toPosix(path) === toPosix(defaultPath);
+};
+
 interface StrategyInfo {
     name: string;
     strategyHeaderPath?: string;
@@ -14,9 +35,50 @@ interface StrategyInfo {
  * 전략 폴더 관리 및 전략 선택 기능 제공
  */
 export default function StrategySection() {
-    const {strategyConfig, setStrategyConfig, addLog} = useStrategy();
+    const {engineConfig, strategyConfig, setStrategyConfig, addLog} = useStrategy();
     const [availableStrategies, setAvailableStrategies] = useState<StrategyInfo[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+
+    const project_dir = toPosix(engineConfig?.projectDirectory || '').replace(/\/+$/, '');
+    const default_strategy_header_dir = joinPosix(project_dir, 'Includes/Strategies');
+    const default_strategy_source_dir = joinPosix(project_dir, 'Sources/Cores/Strategies');
+    const default_indicator_header_dir = joinPosix(project_dir, 'Includes/Indicators');
+    const default_indicator_source_dir = joinPosix(project_dir, 'Sources/Cores/Indicators');
+
+    // 기본 폴더가 설정에 포함되어 있는지 확인하고 없으면 추가
+    useEffect(() => {
+        if (!project_dir || !strategyConfig) {
+            return;
+        }
+
+        let changed = false;
+
+        // 객체 복사
+        const newConfig = {...strategyConfig};
+
+        const ensureDefault = (dirs: string[] | undefined, defaultPath: string): string[] => {
+            const currentDirs = dirs || [];
+
+            // 이미 존재하는지 확인
+            const exists = currentDirs.some(dir => isDefaultDir(dir, defaultPath));
+            if (!exists) {
+                changed = true;
+
+                return [defaultPath, ...currentDirs];
+            }
+
+            return currentDirs;
+        };
+
+        newConfig.strategyHeaderDirs = ensureDefault(newConfig.strategyHeaderDirs, default_strategy_header_dir);
+        newConfig.strategySourceDirs = ensureDefault(newConfig.strategySourceDirs, default_strategy_source_dir);
+        newConfig.indicatorHeaderDirs = ensureDefault(newConfig.indicatorHeaderDirs, default_indicator_header_dir);
+        newConfig.indicatorSourceDirs = ensureDefault(newConfig.indicatorSourceDirs, default_indicator_source_dir);
+
+        if (changed) {
+            setStrategyConfig(newConfig);
+        }
+    }, [strategyConfig, setStrategyConfig, project_dir, default_strategy_header_dir, default_strategy_source_dir, default_indicator_header_dir, default_indicator_source_dir]);
 
     // 전략 헤더 폴더 추가
     const handleAddHeaderFolder = () => {
@@ -165,10 +227,18 @@ export default function StrategySection() {
 
     // 전략 선택
     const handleSelectStrategy = (strategy: StrategyInfo) => {
+        if (!project_dir) {
+            addLog('ERROR', '프로젝트 폴더가 설정되지 않아 DLL 경로를 만들 수 없습니다.');
+            return;
+        }
+
+        // DLL 경로를 프로젝트 구조에 맞게 생성: {프로젝트 폴더}/Builds/Strategies/{전략명}/{전략명}.dll
+        const dllPath = joinPosix(project_dir, `Builds/Strategies/${strategy.name}/${strategy.name}.dll`);
+
         setStrategyConfig(prev => ({
             ...(prev || {name: ''}),
             name: strategy.name,
-            dllPath: null,
+            dllPath: dllPath,
             strategySourcePath: strategy.strategySourcePath,
             strategyHeaderPath: strategy.strategyHeaderPath || null,
         }));
@@ -209,13 +279,16 @@ export default function StrategySection() {
                                     onChange={(e) => handleHeaderFolderChange(index, e.target.value)}
                                     placeholder="예: D:/Programming/Backtesting/Includes/Strategies"
                                     className="bg-[#050a12] border-gray-600 flex-1 text-sm"
+                                    readOnly={isDefaultDir(folder, default_strategy_header_dir)}
                                 />
-                                <Button
-                                    onClick={() => handleRemoveHeaderFolder(index)}
-                                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                                >
-                                    제거
-                                </Button>
+                                {!isDefaultDir(folder, default_strategy_header_dir) && (
+                                    <Button
+                                        onClick={() => handleRemoveHeaderFolder(index)}
+                                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                                    >
+                                        제거
+                                    </Button>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -246,13 +319,16 @@ export default function StrategySection() {
                                     onChange={(e) => handleSourceFolderChange(index, e.target.value)}
                                     placeholder="예: D:/Programming/Backtesting/Sources/Cores/Strategies"
                                     className="bg-[#050a12] border-gray-600 flex-1 text-sm"
+                                    readOnly={isDefaultDir(folder, default_strategy_source_dir)}
                                 />
-                                <Button
-                                    onClick={() => handleRemoveSourceFolder(index)}
-                                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                                >
-                                    제거
-                                </Button>
+                                {!isDefaultDir(folder, default_strategy_source_dir) && (
+                                    <Button
+                                        onClick={() => handleRemoveSourceFolder(index)}
+                                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                                    >
+                                        제거
+                                    </Button>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -283,13 +359,16 @@ export default function StrategySection() {
                                     onChange={(e) => handleIndicatorHeaderFolderChange(index, e.target.value)}
                                     placeholder="예: D:/Programming/Backtesting/Includes/Indicators"
                                     className="bg-[#050a12] border-gray-600 flex-1 text-sm"
+                                    readOnly={isDefaultDir(folder, default_indicator_header_dir)}
                                 />
-                                <Button
-                                    onClick={() => handleRemoveIndicatorHeaderFolder(index)}
-                                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                                >
-                                    제거
-                                </Button>
+                                {!isDefaultDir(folder, default_indicator_header_dir) && (
+                                    <Button
+                                        onClick={() => handleRemoveIndicatorHeaderFolder(index)}
+                                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                                    >
+                                        제거
+                                    </Button>
+                                )}
                             </div>
                         ))}
                     </div>
@@ -320,13 +399,16 @@ export default function StrategySection() {
                                     onChange={(e) => handleIndicatorSourceFolderChange(index, e.target.value)}
                                     placeholder="예: D:/Programming/Backtesting/Sources/Cores/Indicators"
                                     className="bg-[#050a12] border-gray-600 flex-1 text-sm"
+                                    readOnly={isDefaultDir(folder, default_indicator_source_dir)}
                                 />
-                                <Button
-                                    onClick={() => handleRemoveIndicatorSourceFolder(index)}
-                                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                                >
-                                    제거
-                                </Button>
+                                {!isDefaultDir(folder, default_indicator_source_dir) && (
+                                    <Button
+                                        onClick={() => handleRemoveIndicatorSourceFolder(index)}
+                                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
+                                    >
+                                        제거
+                                    </Button>
+                                )}
                             </div>
                         ))}
                     </div>

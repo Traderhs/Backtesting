@@ -511,6 +511,8 @@ function readSignedConfigWithRecovery(editorConfigPath, projectDir, broadcastLog
 }
 
 function configToObj(config) {
+    const hasSelectedStrategy = !!(config?.strategyConfig && config.strategyConfig.name);
+
     return {
         "에디터 설정": {
             "서명": "",
@@ -574,9 +576,9 @@ function configToObj(config) {
             "전략 헤더 폴더": config?.strategyConfig?.strategyHeaderDirs,
             "전략 소스 폴더": config?.strategyConfig?.strategySourceDirs,
             "지표 헤더 폴더": config?.strategyConfig?.indicatorHeaderDirs,
-            "지표 소스 폴더": config?.strategyConfig?.indicatorSourceFolders,
+            "지표 소스 폴더": config?.strategyConfig?.indicatorSourceDirs,
 
-            "선택된 전략": config?.strategyConfig ? {
+            "선택된 전략": hasSelectedStrategy ? {
                 "이름": config.strategyConfig.name,
                 "DLL 파일 경로": config.strategyConfig.dllPath,
                 "헤더 파일 경로": config.strategyConfig.strategyHeaderPath,
@@ -594,6 +596,11 @@ function objToConfig(obj) {
     const engine = obj?.['엔진 설정'];
     const strategySection = obj?.['전략 설정'];
     const selectedStrategy = strategySection?.['선택된 전략'];
+
+    const strategyHeaderDirs = strategySection?.['전략 헤더 폴더'] ?? [];
+    const strategySourceDirs = strategySection?.['전략 소스 폴더'] ?? [];
+    const indicatorHeaderDirs = strategySection?.['지표 헤더 폴더'] ?? [];
+    const indicatorSourceDirs = strategySection?.['지표 소스 폴더'] ?? [];
 
     return {
         // 에디터 설정
@@ -654,17 +661,17 @@ function objToConfig(obj) {
         checkSameBarDataMarkPrice: engine?.['심볼 간 마크 가격 바 데이터 중복 검사'] === '활성화',
 
         // 전략 설정
-        strategyConfig: selectedStrategy ? {
-            strategyHeaderDirs: strategySection?.['전략 헤더 폴더'],
-            strategySourceDirs: strategySection?.['전략 소스 폴더'],
-            indicatorHeaderDirs: strategySection?.['지표 헤더 폴더'],
-            indicatorSourceFolders: strategySection?.['지표 소스 폴더'],
+        strategyConfig: {
+            strategyHeaderDirs: Array.isArray(strategyHeaderDirs) ? strategyHeaderDirs : [],
+            strategySourceDirs: Array.isArray(strategySourceDirs) ? strategySourceDirs : [],
+            indicatorHeaderDirs: Array.isArray(indicatorHeaderDirs) ? indicatorHeaderDirs : [],
+            indicatorSourceDirs: Array.isArray(indicatorSourceDirs) ? indicatorSourceDirs : [],
 
-            name: selectedStrategy['이름'],
-            dllPath: selectedStrategy['DLL 파일 경로'],
-            strategyHeaderPath: selectedStrategy['헤더 파일 경로'],
-            strategySourcePath: selectedStrategy['소스 파일 경로']
-        } : null
+            name: selectedStrategy?.['이름'] ?? '',
+            dllPath: selectedStrategy?.['DLL 파일 경로'] ?? null,
+            strategyHeaderPath: selectedStrategy?.['헤더 파일 경로'] ?? null,
+            strategySourcePath: selectedStrategy?.['소스 파일 경로'] ?? null
+        }
     };
 }
 
@@ -734,11 +741,24 @@ function createDefaultConfig(projectDirectory) {
         checkSameBarDataReference: true,
         checkSameBarDataMarkPrice: true,
 
-        strategyConfig: null
+        // 전략 설정 기본값은 절대 경로로 생성
+        strategyConfig: {
+            strategyHeaderDirs: [toPosix(path.join(projectDirectory, 'Includes', 'Strategies'))],
+            strategySourceDirs: [toPosix(path.join(projectDirectory, 'Sources', 'Cores', 'Strategies'))],
+            indicatorHeaderDirs: [toPosix(path.join(projectDirectory, 'Includes', 'Indicators'))],
+            indicatorSourceDirs: [toPosix(path.join(projectDirectory, 'Sources', 'Cores', 'Indicators'))],
+
+            name: '',
+            dllPath: null,
+            strategyHeaderPath: null,
+            strategySourcePath: null
+        }
     };
 }
 
 function configToWs(config) {
+    const hasSelectedStrategy = !!(config?.strategyConfig && config.strategyConfig.name);
+
     return {
         "에디터 설정": {
             "로그 패널 열림": config?.logPanelOpen ? "열림" : "닫힘",
@@ -799,9 +819,9 @@ function configToWs(config) {
             "전략 헤더 폴더": config?.strategyConfig?.strategyHeaderDirs,
             "전략 소스 폴더": config?.strategyConfig?.strategySourceDirs,
             "지표 헤더 폴더": config?.strategyConfig?.indicatorHeaderDirs,
-            "지표 소스 폴더": config?.strategyConfig?.indicatorSourceFolders,
+            "지표 소스 폴더": config?.strategyConfig?.indicatorSourceDirs,
 
-            "선택된 전략": config?.strategyConfig ? {
+            "선택된 전략": hasSelectedStrategy ? {
                 "이름": config.strategyConfig.name,
                 "DLL 파일 경로": config.strategyConfig.dllPath,
                 "헤더 파일 경로": config.strategyConfig.strategyHeaderPath,
@@ -879,17 +899,17 @@ function wsToConfig(wsConfig) {
             checkSameBarDataReference: engine?.["심볼 간 참조 바 데이터 중복 검사"] === "활성화",
             checkSameBarDataMarkPrice: engine?.["심볼 간 마크 가격 바 데이터 중복 검사"] === "활성화",
 
-            strategyConfig: selectedStrategy ? {
-                strategyHeaderDirs: strategySection?.["전략 헤더 폴더"],
-                strategySourceDirs: strategySection?.["전략 소스 폴더"],
-                indicatorHeaderDirs: strategySection?.["지표 헤더 폴더"],
-                indicatorSourceFolders: strategySection?.["지표 소스 폴더"],
+            strategyConfig: {
+                strategyHeaderDirs: strategySection?.["전략 헤더 폴더"] ?? [],
+                strategySourceDirs: strategySection?.["전략 소스 폴더"] ?? [],
+                indicatorHeaderDirs: strategySection?.["지표 헤더 폴더"] ?? [],
+                indicatorSourceDirs: strategySection?.["지표 소스 폴더"] ?? [],
 
-                name: selectedStrategy["이름"],
-                dllPath: selectedStrategy["DLL 파일 경로"],
-                strategyHeaderPath: selectedStrategy["헤더 파일 경로"],
-                strategySourcePath: selectedStrategy["소스 파일 경로"]
-            } : null
+                name: selectedStrategy?.["이름"] ?? '',
+                dllPath: selectedStrategy?.["DLL 파일 경로"] ?? null,
+                strategyHeaderPath: selectedStrategy?.["헤더 파일 경로"] ?? null,
+                strategySourcePath: selectedStrategy?.["소스 파일 경로"] ?? null
+            }
         };
     }
 
