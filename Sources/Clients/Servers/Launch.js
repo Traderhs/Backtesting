@@ -747,7 +747,7 @@ app.post('/api/strategy/build', express.json(), async (req, res) => {
         const strategyName = path.basename(strategySourcePath, path.extname(strategySourcePath));
 
         // 빌드 출력 경로
-        const buildDir = path.join(projectDir, 'Builds', strategyName);
+        const buildDir = path.join(projectDir, 'Builds', 'Strategies', strategyName);
         const dllPath = path.join(buildDir, `${strategyName}.dll`);
 
         // 증분 빌드 확인

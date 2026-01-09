@@ -189,25 +189,106 @@ export default function EditorSection({
 
                         // 전략 설정
                         const strategySection = config['전략 설정'];
+
+                        const projectDir = (newEngineConfig.projectDirectory || '').replace(/\\/g, '/').replace(/\/+$/, '');
+                        const joinPosix = (basePath: string, childPath: string) => {
+                            const base = (basePath || '').replace(/\\/g, '/').replace(/\/+$/, '');
+                            const child = (childPath || '').replace(/\\/g, '/').replace(/^\/+/, '');
+
+                            if (!base) {
+                                return child;
+                            }
+
+                            return `${base}/${child}`;
+                        };
+
+                        const toAbs = (p: any) => {
+                            if (!p) {
+                                return null;
+                            }
+
+                            const posix = String(p).replace(/\\/g, '/');
+                            if (/^[A-Za-z]:\//.test(posix) || posix.startsWith('//') || posix.startsWith('/')) {
+                                return posix;
+                            }
+
+                            if (!projectDir) {
+                                return posix;
+                            }
+
+                            return joinPosix(projectDir, posix);
+                        };
+
+                        const DEFAULT_STRATEGY_HEADER_DIR = projectDir ? joinPosix(projectDir, 'Includes/Strategies') : 'Includes/Strategies';
+                        const DEFAULT_STRATEGY_SOURCE_DIR = projectDir ? joinPosix(projectDir, 'Sources/Cores/Strategies') : 'Sources/Cores/Strategies';
+                        const DEFAULT_INDICATOR_HEADER_DIR = projectDir ? joinPosix(projectDir, 'Includes/Indicators') : 'Includes/Indicators';
+                        const DEFAULT_INDICATOR_SOURCE_DIR = projectDir ? joinPosix(projectDir, 'Sources/Cores/Indicators') : 'Sources/Cores/Indicators';
+
+                        const normalizeDirs = (p: any[]) => {
+                            if (!Array.isArray(p)) {
+                                return [];
+                            }
+
+                            return p
+                                .map((s: any) => String(s).replace(/\\/g, '/'))
+                                .map((s: string) => toAbs(s) || '')
+                                .filter((s: string) => !!s);
+                        };
+                        const ensureDefaultPresent = (arr: string[], def: string) => {
+                            if (!arr.some(a => a.replace(/\\/g, '/') === def)) {
+                                return [def, ...arr];
+                            }
+
+                            return arr;
+                        };
+
                         if (strategySection && typeof strategySection === 'object') {
                             const selected = strategySection['선택된 전략'];
+
+                            const strategyHeaderDirs = ensureDefaultPresent(normalizeDirs(strategySection['전략 헤더 폴더']), DEFAULT_STRATEGY_HEADER_DIR);
+                            const strategySourceDirs = ensureDefaultPresent(normalizeDirs(strategySection['전략 소스 폴더']), DEFAULT_STRATEGY_SOURCE_DIR);
+                            const indicatorHeaderDirs = ensureDefaultPresent(normalizeDirs(strategySection['지표 헤더 폴더']), DEFAULT_INDICATOR_HEADER_DIR);
+                            const indicatorSourceDirs = ensureDefaultPresent(normalizeDirs(strategySection['지표 소스 폴더']), DEFAULT_INDICATOR_SOURCE_DIR);
+
                             if (selected && typeof selected === 'object') {
                                 setStrategyConfig({
-                                    strategyHeaderDirs: Array.isArray(strategySection['전략 헤더 폴더']) ? strategySection['전략 헤더 폴더'] : [],
-                                    strategySourceDirs: Array.isArray(strategySection['전략 소스 폴더']) ? strategySection['전략 소스 폴더'] : [],
-                                    indicatorHeaderDirs: Array.isArray(strategySection['지표 헤더 폴더']) ? strategySection['지표 헤더 폴더'] : [],
-                                    indicatorSourceDirs: Array.isArray(strategySection['지표 소스 폴더']) ? strategySection['지표 소스 폴더'] : [],
+                                    strategyHeaderDirs: strategyHeaderDirs,
+                                    strategySourceDirs: strategySourceDirs,
+                                    indicatorHeaderDirs: indicatorHeaderDirs,
+                                    indicatorSourceDirs: indicatorSourceDirs,
 
-                                    name: selected['이름'],
-                                    dllPath: selected['DLL 파일 경로'] || null,
+                                    name: selected['이름'] || '',
+                                    dllPath: toAbs(selected['DLL 파일 경로']) || null,
                                     strategyHeaderPath: selected['헤더 파일 경로'] || null,
                                     strategySourcePath: selected['소스 파일 경로'] || null
                                 });
                             } else {
-                                setStrategyConfig(null);
+                                // 선택된 전략 정보가 없더라도 기본 폴더는 유지
+                                setStrategyConfig({
+                                    strategyHeaderDirs: strategyHeaderDirs,
+                                    strategySourceDirs: strategySourceDirs,
+                                    indicatorHeaderDirs: indicatorHeaderDirs,
+                                    indicatorSourceDirs: indicatorSourceDirs,
+
+                                    name: '',
+                                    dllPath: null,
+                                    strategyHeaderPath: null,
+                                    strategySourcePath: null
+                                });
                             }
                         } else {
-                            setStrategyConfig(null);
+                            // 설정에 전략 섹션이 없으면 기본값을 사용
+                            setStrategyConfig({
+                                strategyHeaderDirs: [DEFAULT_STRATEGY_HEADER_DIR],
+                                strategySourceDirs: [DEFAULT_STRATEGY_SOURCE_DIR],
+                                indicatorHeaderDirs: [DEFAULT_INDICATOR_HEADER_DIR],
+                                indicatorSourceDirs: [DEFAULT_INDICATOR_SOURCE_DIR],
+
+                                name: '',
+                                dllPath: null,
+                                strategyHeaderPath: null,
+                                strategySourcePath: null
+                            });
                         }
                     }
 
