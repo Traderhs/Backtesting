@@ -160,7 +160,7 @@ function StrategyEditorContent() {
 
             // strategyHeaderPath 검증
             if (!strategyConfig.strategyHeaderPath) {
-                addLog('ERROR', '전략 헤더 파일이 선택되지 않았습니다. 전략을 다시 선택해 주세요.');
+                addLog('ERROR', '전략 헤더 파일 경로가 존재하지 않습니다.');
                 return;
             }
 
