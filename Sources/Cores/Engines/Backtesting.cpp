@@ -150,10 +150,26 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     const json& json_config = json::parse(json_str);
 
     // 백테스팅 시작 시간 설정
-    // TODO 시작 버튼 누른 시점을 시작 시간으로 간주하고 json으로 받아와서
-    // chrono::high_resolution_clock::now() 대신 설정
+    const int64_t start_ms =
+        json_config.at("backtestingStartTime").get<int64_t>();
 
-    Engine::backtesting_start_time_ = chrono::high_resolution_clock::now();
+    const auto now_system = chrono::time_point_cast<chrono::milliseconds>(
+        chrono::system_clock::now());
+
+    const auto system_tp =
+        chrono::time_point<chrono::system_clock, chrono::milliseconds>(
+            chrono::milliseconds(start_ms));
+
+    auto delta = now_system - system_tp;
+
+    // 미래 시간 방어
+    if (delta < chrono::milliseconds(0)) {
+      delta = chrono::milliseconds(0);
+    }
+
+    Engine::backtesting_start_time_ =
+        chrono::steady_clock::now() -
+        chrono::duration_cast<chrono::steady_clock::duration>(delta);
 
     // =======================================================================
     // 거래소 설정

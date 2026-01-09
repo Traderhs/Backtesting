@@ -47,6 +47,9 @@ function StrategyEditorContent() {
 
     // 백테스팅 실행
     const handleRunSingleBacktesting = async () => {
+        // 백테스팅 시작 시간
+        const backtestingStartTime = Date.now();
+
         // 로그 초기화
         clearLogs();
 
@@ -207,6 +210,7 @@ function StrategyEditorContent() {
 
         ws.send(JSON.stringify({
             action: 'runSingleBacktesting',
+            backtestingStartTime: backtestingStartTime,
             symbolConfigs: symbolConfigs,
             barDataConfigs: configsToSend.map(config => ({
                 timeframe: timeframeToString(config.timeframe),
@@ -215,7 +219,7 @@ function StrategyEditorContent() {
             })),
             useBarMagnifier: engineConfig.useBarMagnifier,
             clearAndAddBarData: needsClearAndAdd,
-            strategyConfig: strategyConfig,
+            strategyConfig: strategyConfig
         }));
 
         // 현재 해시값 저장
