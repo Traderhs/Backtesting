@@ -353,8 +353,8 @@ export default function SymbolSection() {
                                     const chosen = suggs[selectedSuggestionIndex];
 
                                     if (chosen) {
-                                        if (symbolInput === chosen && justAutocompleted) {
-                                            // 두 번째 Enter: 페어 결합하여 실제 추가
+                                        // 입력값이 추천값과 정확히 같은 경우 자동완성 대신 즉시 추가
+                                        if (symbolInput === chosen) {
                                             const finalSymbol = selectedPair === '없음'
                                                 ? chosen
                                                 : chosen + selectedPair;
@@ -365,6 +365,7 @@ export default function SymbolSection() {
                                             setSelectedSuggestionIndex(-1);
                                             setJustAutocompleted(false);
                                             setAutocompletedBase(null);
+                                            setSuggestionNavigated(false);
                                         } else {
                                             // 첫 번째 Enter: 베이스 심볼만 자동완성
                                             setSymbolInput(chosen);
@@ -375,6 +376,7 @@ export default function SymbolSection() {
 
                                             const newIndex = suggs.indexOf(chosen);
                                             setSelectedSuggestionIndex(newIndex >= 0 ? newIndex : 0);
+                                            setSuggestionNavigated(false);
 
                                             requestAnimationFrame(() => {
                                                 const inputEl = document.getElementById('strategy-symbol-input') as HTMLInputElement | null;
