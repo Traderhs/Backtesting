@@ -22,7 +22,7 @@ class BACKTESTING_API Backtesting {
   Backtesting() = delete;
   ~Backtesting() = delete;
 
-  /// 서버 모드로 설정하는 함수
+  /// 서버 모드를 설정하는 함수
   static void SetServerMode(bool server_mode);
 
   /// 백테스팅을 실행하는 함수

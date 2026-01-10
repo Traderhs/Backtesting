@@ -102,6 +102,10 @@ interface StrategyContextType {
     barDataConfigs: BarDataConfig[];
     setBarDataConfigs: React.Dispatch<React.SetStateAction<BarDataConfig[]>>;
 
+    // 펀딩 비율 설정
+    fundingRatesDirectory: string;
+    setFundingRatesDirectory: React.Dispatch<React.SetStateAction<string>>;
+
     // 엔진 설정
     engineConfig: EngineConfig;
     setEngineConfig: React.Dispatch<React.SetStateAction<EngineConfig>>;
@@ -156,6 +160,9 @@ export function StrategyProvider({children}: { children: ReactNode }) {
             barDataType: BarDataType.MARK_PRICE
         }
     ]);
+
+    // 펀딩 비율 설정
+    const [fundingRatesDirectory, setFundingRatesDirectory] = useState<string>('');
 
     // 엔진 설정
     const [engineConfig, setEngineConfig] = useState<EngineConfig>({
@@ -312,6 +319,9 @@ export function StrategyProvider({children}: { children: ReactNode }) {
 
         barDataConfigs,
         setBarDataConfigs,
+
+        fundingRatesDirectory,
+        setFundingRatesDirectory,
 
         engineConfig,
         setEngineConfig,

@@ -21,16 +21,17 @@ export default function EditorSection({
                                           setLogPanelHeight,
                                       }: Props) {
     const {
+        logs, addLog,
+        configLoaded, setConfigLoaded,
+        exchangeConfig, setExchangeConfig,
+        lastDataUpdates, setLastDataUpdates,
         symbolConfigs, setSymbolConfigs,
         selectedPair, setSelectedPair,
         customPairs, setCustomPairs,
         barDataConfigs, setBarDataConfigs,
-        exchangeConfig, setExchangeConfig,
-        lastDataUpdates, setLastDataUpdates,
+        fundingRatesDirectory, setFundingRatesDirectory,
         engineConfig, setEngineConfig,
         strategyConfig, setStrategyConfig,
-        logs, addLog,
-        configLoaded, setConfigLoaded
     } = useStrategy();
 
     const {ws} = useWebSocket();
@@ -149,6 +150,52 @@ export default function EditorSection({
                             setBarDataConfigs(loadedConfigs);
                         }
 
+                        // 펀딩 비율 설정
+                        const fundingSection = config['펀딩 비율 설정'] || {};
+                        const projectDir = (engineConfig.projectDirectory || '').replace(/\\/g, '/').replace(/\/+$/, '');
+
+                        const joinPosix = (basePath: string, childPath: string) => {
+                            const base = (basePath || '').replace(/\\/g, '/').replace(/\/\/+$/, '');
+                            const child = (childPath || '').replace(/\\/g, '/').replace(/^\/\+/, '');
+
+                            if (!base) {
+                                return child;
+                            }
+
+                            return `${base}/${child}`;
+                        };
+
+                        const toAbs = (p: any) => {
+                            if (!p) {
+                                return null;
+                            }
+
+                            const posix = String(p).replace(/\\/g, '/');
+                            if (/^[A-Za-z]:\//.test(posix) || posix.startsWith('//') || posix.startsWith('/')) {
+                                return posix;
+                            }
+
+                            if (!projectDir) {
+                                return posix;
+                            }
+
+                            return joinPosix(projectDir, posix);
+                        };
+
+                        // 펀딩 비율 폴더 우선순위:
+                        // 1) 설정 파일에 값이 있으면 그것을 절대경로로 변환하여 사용
+                        // 2) 없으면 프로젝트 디렉토리를 기준으로 Data/Funding Rates 를 기본값으로 사용
+                        let fundingDir = '';
+                        if (typeof fundingSection['펀딩 비율 폴더'] === 'string' && fundingSection['펀딩 비율 폴더'].trim()) {
+                            fundingDir = toAbs(fundingSection['펀딩 비율 폴더']) || '';
+                        }
+
+                        if (!fundingDir) {
+                            fundingDir = projectDir ? joinPosix(projectDir, 'Data/Funding Rates') : '';
+                        }
+
+                        setFundingRatesDirectory(fundingDir);
+
                         // 엔진 설정
                         const engine = config['엔진 설정'] || {};
                         const newEngineConfig = {
@@ -189,35 +236,6 @@ export default function EditorSection({
 
                         // 전략 설정
                         const strategySection = config['전략 설정'];
-
-                        const projectDir = (newEngineConfig.projectDirectory || '').replace(/\\/g, '/').replace(/\/+$/, '');
-                        const joinPosix = (basePath: string, childPath: string) => {
-                            const base = (basePath || '').replace(/\\/g, '/').replace(/\/+$/, '');
-                            const child = (childPath || '').replace(/\\/g, '/').replace(/^\/+/, '');
-
-                            if (!base) {
-                                return child;
-                            }
-
-                            return `${base}/${child}`;
-                        };
-
-                        const toAbs = (p: any) => {
-                            if (!p) {
-                                return null;
-                            }
-
-                            const posix = String(p).replace(/\\/g, '/');
-                            if (/^[A-Za-z]:\//.test(posix) || posix.startsWith('//') || posix.startsWith('/')) {
-                                return posix;
-                            }
-
-                            if (!projectDir) {
-                                return posix;
-                            }
-
-                            return joinPosix(projectDir, posix);
-                        };
 
                         const DEFAULT_STRATEGY_HEADER_DIR = projectDir ? joinPosix(projectDir, 'Includes/Strategies') : 'Includes/Strategies';
                         const DEFAULT_STRATEGY_SOURCE_DIR = projectDir ? joinPosix(projectDir, 'Sources/Cores/Strategies') : 'Sources/Cores/Strategies';
@@ -338,6 +356,9 @@ export default function EditorSection({
                     klinesDirectory: (config.klinesDirectory || '').replace(/\\/g, '/'),
                     barDataType: config.barDataType
                 })),
+                '펀딩 비율 설정': {
+                    '펀딩 비율 폴더': fundingRatesDirectory ? fundingRatesDirectory.replace(/\\/g, '/') : ''
+                },
                 '엔진 설정': {
                     '프로젝트 폴더': engineConfig.projectDirectory ? engineConfig.projectDirectory.replace(/\\/g, '/') : engineConfig.projectDirectory,
 
@@ -402,15 +423,16 @@ export default function EditorSection({
     }, [
         isLogPanelOpen,
         logPanelHeight,
+        configLoaded,
         exchangeConfig,
         lastDataUpdates,
         symbolConfigs,
         selectedPair,
         customPairs,
         barDataConfigs,
+        fundingRatesDirectory,
         engineConfig,
-        strategyConfig,
-        configLoaded
+        strategyConfig
     ]);
 
     const getLogColor = (level: string) => {

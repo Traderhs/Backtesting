@@ -160,7 +160,7 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
     }
 }
 
-function runSingleBacktesting(ws, backtestingStartTime, editorConfig, symbolConfigs, barDataConfigs, useBarMagnifier, clearAndAddBarData, strategyConfig, broadcastLog) {
+function runSingleBacktesting(ws, backtestingStartTime, editorConfig, symbolConfigs, barDataConfigs, useBarMagnifier, clearAndAddBarData, fundingRatesDirectory, strategyConfig, broadcastLog) {
     if (!backtestingEngine || !backtestingEngineReady) {
         broadcastLog("ERROR", "백테스팅 엔진이 준비되지 않았습니다. 잠시 후 다시 시도해주세요.", null, null);
         return;
@@ -181,6 +181,8 @@ function runSingleBacktesting(ws, backtestingStartTime, editorConfig, symbolConf
         symbolConfigs: symbolConfigs || [],
 
         barDataConfigs: barDataConfigs || [],
+
+        fundingRatesDirectory: fundingRatesDirectory,
 
         projectDirectory: (editorConfig && editorConfig.projectDirectory) ? editorConfig.projectDirectory : "",
 
@@ -540,6 +542,9 @@ function configToObj(config) {
             "바 데이터 폴더": bar_cfg.klinesDirectory,
             "바 데이터 유형": bar_cfg.barDataType,
         })),
+        "펀딩 비율 설정": {
+            "펀딩 비율 폴더": config?.fundingRatesDirectory ?? "",
+        },
         "엔진 설정": {
             "프로젝트 폴더": config?.projectDirectory ?? "",
 
@@ -594,6 +599,7 @@ function objToConfig(obj) {
     const editor = obj?.['에디터 설정'];
     const exchange = obj?.['거래소 설정'];
     const symSection = obj?.['심볼 설정'];
+    const fundingRatesSection = obj?.['펀딩 비율 설정'];
     const engine = obj?.['엔진 설정'];
     const strategySection = obj?.['전략 설정'];
     const selectedStrategy = strategySection?.['선택된 전략'];
@@ -627,6 +633,9 @@ function objToConfig(obj) {
             klinesDirectory: bar_data_config['바 데이터 폴더'],
             barDataType: bar_data_config['바 데이터 유형'],
         })),
+
+        // 펀딩 비율 설정
+        fundingRatesDirectory: fundingRatesSection?.['펀딩 비율 폴더'] ?? '',
 
         // 엔진 설정
         projectDirectory: engine?.['프로젝트 폴더'] ?? '',
@@ -710,6 +719,8 @@ function createDefaultConfig(projectDirectory) {
             barDataType: '마크 가격'
         }],
 
+        fundingRatesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Funding Rates')),
+
         projectDirectory: projectDirectory,
 
         useBacktestPeriodStart: true,
@@ -783,6 +794,9 @@ function configToWs(config) {
         "바 데이터 설정": (config?.barDataConfigs ?? []).map((b) => ({
             ...b, klinesDirectory: b.klinesDirectory ? toPosix(b.klinesDirectory) : b.klinesDirectory
         })),
+        "펀딩 비율 설정": {
+            "펀딩 비율 폴더": config?.fundingRatesDirectory ? toPosix(config.fundingRatesDirectory) : "",
+        },
         "엔진 설정": {
             "프로젝트 폴더": config?.projectDirectory ? toPosix(config.projectDirectory) : "",
 
@@ -846,6 +860,7 @@ function wsToConfig(wsConfig) {
     const editor = wsConfig["에디터 설정"];
     const exchange = wsConfig["거래소 설정"];
     const symSection = wsConfig["심볼 설정"];
+    const fundingRateSection = wsConfig["펀딩 비율 설정"];
     const engine = wsConfig["엔진 설정"];
     const strategySection = wsConfig["전략 설정"];
     const selectedStrategy = strategySection?.["선택된 전략"];
@@ -867,6 +882,8 @@ function wsToConfig(wsConfig) {
             customPairs: symSection?.["페어"]?.["커스텀 페어"] ?? [],
 
             barDataConfigs: wsConfig["바 데이터 설정"] ?? [],
+
+            fundingRatesDirectory: fundingRateSection?.['펀딩 비율 폴더'] ?? '',
 
             projectDirectory: engine?.["프로젝트 폴더"] ?? "",
 
@@ -931,6 +948,8 @@ function wsToConfig(wsConfig) {
         customPairs: wsConfig.customPairs ?? [],
 
         barDataConfigs: wsConfig.barDataConfigs ?? [],
+
+        fundingRatesDirectory: wsConfig.fundingRatesDirectory ?? '',
 
         projectDirectory: wsConfig.projectDirectory ?? "",
 
