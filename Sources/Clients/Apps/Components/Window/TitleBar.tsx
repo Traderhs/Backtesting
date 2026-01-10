@@ -49,6 +49,7 @@ export default function TitleBar() {
             </div>
 
             <div className="titlebar-controls">
+                <div id="titlebar-actions-portal" className="flex items-center gap-2 mr-3"/>
                 <button className="tb-btn tb-min" onClick={handleMin} title="최소화" aria-label="최소화">
                     <svg
                         xmlns="http://www.w3.org/2000/svg"
