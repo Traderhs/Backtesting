@@ -391,6 +391,12 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     }
 
     // =======================================================================
+    // 펀딩 비율 설정
+    // =======================================================================
+    AddFundingRates(symbol_names,
+                    json_config.at("fundingRatesDirectory").get<string>());
+
+    // =======================================================================
     // 엔진 설정
     // =======================================================================
     // "처음부터" 사용 시 무조건 처음부터 사용
@@ -524,9 +530,6 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
 
     // DLL 언로드 방지를 위해 로더 저장
     dll_loaders_.push_back(loader);
-
-    // TODO 임시
-    AddFundingRates(symbol_names, "D:/Dev/Backtesting/Data/Funding Rates");
 
     // 백테스팅 실행
     RunBacktesting();

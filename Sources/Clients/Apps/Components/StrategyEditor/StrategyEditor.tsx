@@ -5,6 +5,7 @@ import {BarDataType, timeframeToString, TimeframeUnit} from '@/Types/BarData.ts'
 import EditorSection from './EditorSection';
 import SymbolSection from './SymbolSection';
 import BarDataSection from './BarDataSection';
+import FundingRateSection from './FundingRateSection';
 import ConfigSection from './ConfigSection';
 import ExchangeSection from './ExchangeSection';
 import StrategySection from './StrategySection';
@@ -15,9 +16,10 @@ function StrategyEditorContent() {
     const {
         addLog,
         clearLogs,
+        exchangeConfig,
         symbolConfigs,
         barDataConfigs,
-        exchangeConfig,
+        fundingRatesDirectory,
         engineConfig,
         strategyConfig
     } = useStrategy();
@@ -113,15 +115,20 @@ function StrategyEditorContent() {
             }
         }
 
+        if (!fundingRatesDirectory.trim()) {
+            addLog('ERROR', '펀딩 비율 폴더를 입력해 주세요.');
+            return;
+        }
+
         // 엔진 설정 검사
         // 백테스팅 기간 체크 박스 검증: 체크 안되어있는데 칸이 비워져 있는 경우
         if (!engineConfig.useBacktestPeriodStart && !engineConfig.backtestPeriodStart.trim()) {
-            addLog('ERROR', '백테스팅 기간의 시작을 입력하거나 [처음부터] 체크 박스를 선택해 주세요.');
+            addLog('ERROR', '백테스팅 시작 시간을 입력하거나 [처음부터] 체크 박스를 선택해 주세요.');
             return;
         }
 
         if (!engineConfig.useBacktestPeriodEnd && !engineConfig.backtestPeriodEnd.trim()) {
-            addLog('ERROR', '백테스팅 기간의 종료를 입력하거나 [끝까지] 체크 박스를 선택해 주세요.');
+            addLog('ERROR', '백테스팅 종료 시간을 입력하거나 [끝까지] 체크 박스를 선택해 주세요.');
             return;
         }
 
@@ -217,6 +224,7 @@ function StrategyEditorContent() {
                 klinesDirectory: (config.klinesDirectory || '').replace(/\\/g, '/'),
                 barDataType: config.barDataType
             })),
+            fundingRatesDirectory: (fundingRatesDirectory || '').replace(/\\/g, '/'),
             useBarMagnifier: engineConfig.useBarMagnifier,
             clearAndAddBarData: needsClearAndAdd,
             strategyConfig: strategyConfig
@@ -257,6 +265,9 @@ function StrategyEditorContent() {
 
                 {/* 바 데이터 설정 */}
                 <BarDataSection/>
+
+                {/* 펀딩 비율 설정 */}
+                <FundingRateSection/>
 
                 {/* 엔진 설정 */}
                 <ConfigSection/>
