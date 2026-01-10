@@ -565,7 +565,7 @@ function AppContent() {
                         {/* StrategyEditor는 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
                         {visitedTabs["StrategyEditor"] && (
                             <Suspense fallback={<div/>}>
-                                <StrategyEditor/>
+                                <StrategyEditor isActive={tab === "StrategyEditor"}/>
                             </Suspense>
                         )}
                     </div>

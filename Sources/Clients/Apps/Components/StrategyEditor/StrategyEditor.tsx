@@ -1,4 +1,6 @@
-import {useRef, useState} from 'react';
+import {useEffect, useRef, useState} from 'react';
+import {createPortal} from 'react-dom';
+import {motion} from 'framer-motion';
 import {Button} from '@/Components/UI/Button.tsx';
 import {useWebSocket} from '../Server/WebSocketContext';
 import {BarDataType, timeframeToString, TimeframeUnit} from '@/Types/BarData.ts';
@@ -12,7 +14,13 @@ import StrategySection from './StrategySection';
 import {StrategyProvider, useStrategy} from './StrategyContext';
 import '../Common/LoadingSpinner.css';
 
-function StrategyEditorContent() {
+function StrategyEditorContent({isActive}: { isActive: boolean }) {
+    const [titleBarPortal, setTitleBarPortal] = useState<HTMLElement | null>(null);
+
+    useEffect(() => {
+        setTitleBarPortal(document.getElementById('titlebar-actions-portal'));
+    }, []);
+
     const {
         addLog,
         clearLogs,
@@ -237,11 +245,52 @@ function StrategyEditorContent() {
     return (
         <div className="flex flex-col h-full w-full">
             {/* 메인 콘텐츠 영역 */}
-            <div className="flex-1 overflow-y-auto p-6 pb-2"
-                 style={{height: isLogPanelOpen ? `calc(100% - ${logPanelHeight}px)` : '100%'}}>
-                <div className="flex items-center justify-between mb-4">
-                    <h1 className="text-2xl font-bold text-white">전략 에디터</h1>
-                    <div className="flex items-center gap-2">
+            <div className="h-full w-full flex flex-col p-4 overflow-y-auto"
+                 style={{
+                     height: isLogPanelOpen ? `calc(100% - ${logPanelHeight}px)` : '100%'
+                 }}>
+                {/* 제목 영역 */}
+                <div style={{
+                    position: 'relative',
+                    marginBottom: '25px',
+                    zIndex: 100
+                }}>
+                    <motion.h2
+                        initial={{opacity: 0, x: -20}}
+                        animate={{opacity: 1, x: 0}}
+                        transition={{delay: 0.1, duration: 0.5}}
+                        style={{
+                            color: 'white',
+                            fontSize: '2.5rem',
+                            fontWeight: 700,
+                            textAlign: 'left',
+                            marginLeft: '35px',
+                            marginTop: '10px',
+                            paddingBottom: '8px',
+                            display: 'inline-block',
+                            position: 'relative',
+                        }}
+                    >
+                        전략 에디터
+                        {/* 밑줄 */}
+                        <motion.span
+                            initial={{width: 0}}
+                            animate={{width: '100%'}}
+                            transition={{delay: 0.3, duration: 0.5}}
+                            style={{
+                                position: 'absolute',
+                                bottom: 0,
+                                left: 0,
+                                right: 0,
+                                height: '2px',
+                                background: 'rgba(255, 215, 0, 0.4)',
+                            }}
+                        />
+                    </motion.h2>
+                </div>
+
+                {isActive && titleBarPortal && createPortal(
+                    <div className="flex items-center gap-2" style={{WebkitAppRegion: 'no-drag'} as any}>
                         <Button
                             onClick={() => setIsLogPanelOpen(!isLogPanelOpen)}
                             className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
@@ -254,8 +303,9 @@ function StrategyEditorContent() {
                         >
                             백테스팅 실행
                         </Button>
-                    </div>
-                </div>
+                    </div>,
+                    titleBarPortal
+                )}
 
                 {/* 거래소 설정 */}
                 <ExchangeSection/>
@@ -291,10 +341,10 @@ function StrategyEditorContent() {
  * 전략 에디터 컴포넌트
  * 백테스팅 전략을 편집하고 실행할 수 있는 UI 제공
  */
-export default function StrategyEditor() {
+export default function StrategyEditor({isActive}: { isActive?: boolean }) {
     return (
         <StrategyProvider>
-            <StrategyEditorContent/>
+            <StrategyEditorContent isActive={isActive ?? true}/>
         </StrategyProvider>
     );
 }
