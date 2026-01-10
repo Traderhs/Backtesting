@@ -509,11 +509,35 @@ export default function EditorSection({
         };
     }, [isResizing, setLogPanelHeight]);
 
+    // 사용자가 직접 스크롤하면 자동으로 맨 아래로 내리는 동작을 중지
+    const isAutoScrollRef = React.useRef(true);
+    const AUTO_SCROLL_THRESHOLD = 40; // 바닥에서 이 픽셀 이하이면 자동 스크롤 허용
+
+    // 로그 컨테이너 스크롤 이벤트 처리 (사용자 조작 판단)
+    const handleLogScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        const el = e.currentTarget as HTMLDivElement;
+        const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight);
+        isAutoScrollRef.current = distanceFromBottom < AUTO_SCROLL_THRESHOLD;
+    };
+
+    // 로그가 추가될 때, 사용자가 자동 스크롤을 허용한 경우에만 맨 아래로 스크롤
     useEffect(() => {
-        if (logContainerRef.current) {
+        if (!logContainerRef.current) {
+            return;
+        }
+
+        if (isAutoScrollRef.current) {
             logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
         }
     }, [logs]);
+
+    // 로그 패널을 열 때는 자동 스크롤을 재활성화하고 맨 아래로 이동
+    useEffect(() => {
+        if (isLogPanelOpen && logContainerRef.current) {
+            isAutoScrollRef.current = true;
+            logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+        }
+    }, [isLogPanelOpen]);
 
     return (
         <>
@@ -537,7 +561,8 @@ export default function EditorSection({
                                 ×
                             </button>
                         </div>
-                        <div ref={logContainerRef} className="overflow-y-auto p-4 font-mono text-sm flex-1"
+                        <div ref={logContainerRef} onScroll={handleLogScroll}
+                             className="overflow-y-auto p-4 font-mono text-sm flex-1"
                              style={{fontFamily: "'Inter', 'Pretendard', monospace"}}>
                             {logs.length === 0 ? (
                                 <div className="text-gray-500 text-center mt-8">백테스팅을 실행하면 로그가 여기에 표시됩니다.</div>
