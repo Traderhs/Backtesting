@@ -11,6 +11,9 @@ export interface ElectronAPI {
     isMaximized: () => Promise<boolean>;
     onWindowMaximized: (cb: () => void) => void;
     onWindowUnmaximized: (cb: () => void) => void;
+
+    // 파일/폴더 선택
+    selectPath: (mode: 'file' | 'folder') => Promise<{ canceled: boolean; filePaths: string[] }>;
 }
 
 declare global {

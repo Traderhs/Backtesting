@@ -1,0 +1,615 @@
+/* StrategyEditor 전역 스타일 */
+
+/* 공통 섹션 컨테이너 */
+.strategy-editor-section-container {
+    margin: 5px 0 0 20px;
+    padding: 1.5rem;
+    border: 1.2px solid rgb(255 215 0 / 40%);
+    border-radius: 8px;
+    background-color: #111;
+    box-shadow: 0 4px 10px rgb(0 0 0 / 30%);
+    color: rgb(255 255 255 / 90%);
+    font-family: Inter, Pretendard, sans-serif;
+}
+
+/* 공통 섹션 헤더 */
+.strategy-editor-section-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgb(255 215 0 / 20%);
+    color: rgb(255 255 255 / 95%);
+    font-size: 22px;
+    font-weight: 700;
+}
+
+/* 공통 라벨 스타일 */
+.strategy-editor-label {
+    color: rgb(255 255 255 / 85%);
+    font-size: 15px;
+    font-weight: 500;
+}
+
+/* 좌우 분할 레이아웃용 세로 구분선 */
+.strategy-editor-vertical-divider {
+    align-self: stretch;
+    width: 1px;
+    margin: 0 22px 0 20px;
+    background: linear-gradient(to bottom,
+    transparent,
+    rgb(255 215 0 / 30%) 10%,
+    rgb(255 215 0 / 50%) 50%,
+    rgb(255 215 0 / 30%) 90%,
+    transparent
+    );
+}
+
+/* 공통 입력 필드 스타일 */
+.strategy-editor-input {
+    width: 100%;
+    padding: 8px 10px;
+    overflow: hidden;
+    border: 1px solid rgb(255 215 0 / 40%) !important;
+    border-radius: 6px !important;
+    background-color: rgb(17 17 17 / 80%) !important;
+    color: rgb(255 255 255 / 95%) !important;
+    font-size: 14px !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: all 0.2s ease !important;
+    appearance: none;
+    outline: none;
+}
+
+.strategy-editor-input:focus {
+    border-color: rgb(255 215 0 / 80%) !important;
+    background-color: rgb(17 17 17 / 90%) !important;
+    box-shadow: 0 0 8px rgb(255 215 0 / 40%) !important;
+    outline: none !important;
+}
+
+.strategy-editor-input:hover:not(:focus) {
+    border-color: rgb(255 215 0 / 80%) !important;
+}
+
+/* 파일/폴더 선택용 입력 필드 (아이콘 나타나도록 우측 패딩 추가) */
+.strategy-editor-input-with-icon {
+    padding-right: 76px !important;
+}
+
+/* 파일/폴더 선택 버튼 컨테이너 */
+.strategy-editor-file-selector {
+    position: relative;
+    width: 100%;
+}
+
+/* 파일/폴더 선택 버튼 그룹 (리셋 + 폴더 아이콘) */
+.strategy-editor-file-selector-buttons {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: visible;
+    transform: translateY(-50%);
+}
+
+/* 파일/폴더 선택 버튼 */
+.strategy-editor-file-selector-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 4px;
+    border: none;
+    border-radius: 4px;
+    background-color: transparent;
+    color: rgb(204 204 204);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.strategy-editor-file-selector-button:hover {
+    background-color: rgb(255 255 255 / 10%);
+    color: rgb(255 255 255);
+}
+
+/* 공통 정보 표시 영역 */
+.strategy-editor-info-display {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid rgb(255 215 0 / 40%) !important;
+    border-radius: 6px !important;
+    background-color: rgb(17 17 17 / 80%) !important;
+    color: rgb(255 255 255 / 95%);
+    font-size: 14px;
+}
+
+/* 좌우 분할 레이아웃 공통 높이 */
+.strategy-editor-row-item {
+    display: flex;
+    align-items: center;
+    height: 42px;
+}
+
+/* =================================================================
+   공통 버튼 스타일 (FilterSection에서 복사)
+   ================================================================= */
+
+/* 기본 버튼 스타일 */
+.strategy-editor-button {
+    position: relative !important;
+    z-index: 1 !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    min-height: 36px !important;
+    padding: 8px 16px;
+    overflow: visible !important;
+    border-width: 1px;
+    border-style: solid;
+    border-color: rgb(255 215 0 / 40%);
+    border-radius: 8px !important;
+    background-color: rgb(17 17 17 / 100%);
+    box-shadow: none !important;
+    color: white;
+    font-family: "'Inter', 'Pretendard'", sans-serif !important;
+    font-size: 14px;
+    font-weight: 400;
+    line-height: 1.2 !important;
+    letter-spacing: 0.3px;
+    text-align: center;
+    white-space: nowrap;
+    transform-origin: center center;
+    transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease !important;
+    cursor: pointer;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+    outline: none;
+    will-change: transform, box-shadow;
+}
+
+.strategy-editor-button:hover {
+    z-index: 3 !important;
+    border-color: rgb(255 215 0 / 70%) !important;
+    box-shadow: 0 0 3px rgb(255 215 0 / 50%) !important;
+    transform: scale(1.03) !important;
+    transition-duration: 0.2s !important;
+}
+
+.strategy-editor-button:active {
+    background-color: rgb(52 46 14) !important;
+    transform: scale(0.97) !important;
+    transition-duration: 0.2s !important;
+    outline: none;
+}
+
+.strategy-editor-button.active {
+    border-color: rgb(255 215 0 / 80%) !important;
+    background-color: rgb(255 215 0 / 40%) !important;
+    font-weight: 600 !important;
+}
+
+.strategy-editor-button.active:active {
+    background-color: rgb(76 67 20) !important;
+}
+
+/* =================================================================
+   드롭다운 스타일 (HoldingTimeFilter에서 복사 및 수정)
+   ================================================================= */
+
+/* 드롭다운 컨테이너 */
+.strategy-editor-dropdown-field {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s ease;
+}
+
+/* 드롭다운 선택 박스 */
+.strategy-editor-dropdown-select {
+    position: relative;
+    z-index: 100;
+    width: 100%;
+    padding: 8px 32px 8px 10px !important;
+    overflow: visible;
+    border: 1px solid rgb(255 215 0 / 30%) !important;
+    border-radius: 8px !important;
+    background-color: rgb(17 17 17 / 80%) !important;
+    background-image: none;
+    color: #fff !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    cursor: pointer !important;
+    appearance: none;
+}
+
+.strategy-editor-dropdown-select::after {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    width: 0;
+    height: 0;
+    border-top: 6px solid rgb(255 215 0 / 70%);
+    border-right: 4px solid transparent;
+    border-left: 4px solid transparent;
+    transform: translateY(-50%);
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    content: '';
+}
+
+.strategy-editor-dropdown-select:focus {
+    outline: none !important;
+}
+
+.strategy-editor-dropdown-select:hover {
+    border-color: rgb(255 215 0 / 80%) !important;
+    background-color: rgb(17 17 17 / 90%) !important;
+}
+
+/* 드롭다운이 열려있을 때 화살표 회전 및 테두리 효과 */
+.strategy-editor-dropdown-field:has(.strategy-editor-dropdown-options) .strategy-editor-dropdown-select {
+    border-color: rgb(255 215 0 / 80%) !important;
+    box-shadow: 0 0 8px rgb(255 215 0 / 40%) !important;
+}
+
+.strategy-editor-dropdown-field:has(.strategy-editor-dropdown-options) .strategy-editor-dropdown-select::after {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+/* 드롭다운 옵션 리스트 */
+.strategy-editor-dropdown-options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 500;
+    width: 100%;
+    max-height: 260px;
+    margin-top: 4px;
+    overflow-y: auto;
+    border: 1px solid rgb(255 215 0 / 40%) !important;
+    border-radius: 8px !important;
+    background-color: rgb(17 17 17 / 100%) !important;
+    box-shadow: 0 4px 20px rgb(0 0 0 / 80%) !important;
+    opacity: 0;
+    transform: translateY(-8px);
+    animation: dropdown-appear 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+@keyframes dropdown-appear {
+    0% {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 드롭다운 개별 옵션 */
+.strategy-editor-dropdown-option {
+    padding: 8px 10px;
+    color: white;
+    font-family: Inter, Pretendard, sans-serif;
+    font-size: 14px;
+    transition: background-color 0.2s, color 0.2s;
+    cursor: pointer;
+}
+
+.strategy-editor-dropdown-option:hover {
+    background-color: rgb(255 215 0 / 15%);
+}
+
+.strategy-editor-dropdown-option.selected {
+    background-color: rgb(255 215 0 / 20%);
+    color: rgb(255 215 0 / 90%);
+}
+
+.strategy-editor-dropdown-option.selected:hover {
+    background-color: rgb(255 215 0 / 25%);
+}
+
+/* 커스텀 페어 삭제 버튼 (드롭다운) */
+.strategy-editor-dropdown-option-remove {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    width: 22px;
+    height: 22px;
+    margin-left: 8px;
+    padding: 0;
+    border: none;
+    border-radius: 4px;
+    background: transparent;
+    color: rgb(255 100 100);
+    font-size: 13px;
+    transition: background 0.12s, transform 0.12s;
+    cursor: pointer;
+}
+
+.strategy-editor-dropdown-option-remove:hover {
+    background-color: rgb(255 100 100 / 12%);
+    color: rgb(255 120 120);
+    transform: scale(1.06);
+}
+
+.strategy-editor-dropdown-option-remove:active {
+    background-color: rgb(255 100 100 / 20%);
+    transform: scale(0.98);
+}
+
+/* 드롭다운 라벨 */
+.strategy-editor-dropdown-label {
+    display: block;
+    margin-top: 4px;
+    padding-left: 2px;
+    color: rgb(255 255 255 / 70%) !important;
+    font-size: 11px !important;
+    transition: color 0.2s ease;
+}
+
+.strategy-editor-dropdown-field:hover .strategy-editor-dropdown-label {
+    color: rgb(255 215 0 / 70%) !important;
+}
+
+/* =================================================================
+   모달 스타일 (TradeFilter Modal.css에서 복사)
+   ================================================================= */
+
+@keyframes modal-fade-in {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes modal-zoom-in {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.strategy-editor-modal-overlay {
+    position: fixed;
+    z-index: 10000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: rgb(0 0 0 / 50%);
+    animation: modal-fade-in 0.2s ease;
+    pointer-events: auto;
+    user-select: none;
+    inset: 0;
+}
+
+.strategy-editor-modal-container {
+    min-width: 400px;
+    max-height: 600px;
+    padding: 1.5rem;
+    overflow-y: auto;
+    border: 1.2px solid rgb(255 215 0 / 40%);
+    border-radius: 8px;
+    background-color: rgb(17 17 17 / 100%);
+    box-shadow: 0 8px 30px rgb(0 0 0 / 60%);
+    animation: modal-zoom-in 0.3s ease;
+}
+
+.strategy-editor-modal-header {
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid rgb(255 215 0 / 20%);
+    color: rgb(255 255 255 / 95%);
+    font-size: 18px;
+    font-weight: 700;
+}
+
+/* 모달 내부 버튼: transform을 유지하면서 텍스트 흔들림을 줄이기 위한 보정 */
+.strategy-editor-modal-container .strategy-editor-button {
+    transform-origin: center center;
+    backface-visibility: hidden;
+    -webkit-font-smoothing: antialiased;
+    will-change: transform, box-shadow;
+}
+
+/* =================================================================
+   심볼 섹션 전용 스타일
+   ================================================================= */
+
+/* 심볼 리스트 외부 컨테이너 - Absolute Fill로 부모 영역에 강제 맞춤 */
+.strategy-editor-symbol-list-container {
+    position: absolute !important;
+    padding: 2px 8px 8px; /* 상단 드롭 가이드선이 잘리지 않도록 공간 확보 */
+    overflow: hidden auto;
+    border: 1px solid rgb(255 215 0 / 30%);
+    border-radius: 6px;
+    background-color: rgb(15 15 15 / 80%);
+    inset: 0;
+    overflow-anchor: none;
+}
+
+/* 심볼 리스트 내부 컨테이너 */
+.strategy-editor-symbol-list {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-height: 100%; /* 빈 공간 드롭을 위해 */
+    padding: 12px 10px 6px;
+}
+
+/* 개별 심볼 아이템 */
+.strategy-editor-symbol-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid rgb(255 215 0 / 30%);
+    border-radius: 6px;
+    background-color: rgb(20 20 20 / 80%);
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.strategy-editor-symbol-item:hover {
+    border-color: rgb(255 215 0 / 50%);
+    background-color: rgb(25 25 25 / 90%);
+}
+
+/* 드래그 중인 심볼 아이템 */
+.strategy-editor-symbol-item.dragging {
+    border: 1px dashed rgb(255 215 0 / 40%);
+    background-color: rgb(255 215 0 / 5%);
+    opacity: 0.4;
+    cursor: grabbing !important;
+}
+
+/* 드래그 중에는 전체 페이지 커서를 move로 강제 (not-allowed 완전 차단) */
+body.symbol-dragging,
+body.symbol-dragging * {
+    cursor: move !important;
+}
+
+/* 드롭 인디케이터 (삽입 위치 표시선) */
+.strategy-editor-drop-indicator {
+    position: absolute;
+    right: 14px;
+    left: 14px;
+    z-index: 10;
+    height: 2px;
+    border-radius: 1px;
+    background-color: #FFD700;
+    box-shadow: 0 0 6px rgb(255 215 0 / 80%);
+    animation: indicator-pulse 1s infinite alternate;
+    pointer-events: none;
+}
+
+/* 커서 따라오는 드래그 프리뷰 (HTML5 드래그 고스트 대체) */
+.strategy-editor-symbol-drag-preview {
+    position: fixed;
+    z-index: 20000;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px dashed rgb(255 215 0 / 55%);
+    border-radius: 6px;
+    background-color: rgb(20 20 20 / 92%);
+    box-shadow: 0 10px 30px rgb(0 0 0 / 55%);
+    opacity: 0.6;
+    transform: translate3d(0, 0, 0);
+    pointer-events: none;
+    user-select: none;
+    backdrop-filter: blur(2px);
+}
+
+@keyframes indicator-pulse {
+    from {
+        box-shadow: 0 0 4px rgb(255 215 0 / 50%);
+        opacity: 0.7;
+    }
+
+    to {
+        box-shadow: 0 0 8px rgb(255 215 0 / 100%);
+        opacity: 1;
+    }
+}
+
+/* 심볼 순서 번호 */
+.strategy-editor-symbol-number {
+    display: flex;
+    flex-shrink: 0;
+    justify-content: center;
+    align-items: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: rgb(255 215 0 / 20%);
+    color: rgb(255 215 0 / 90%);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* 심볼 로고 */
+.strategy-editor-symbol-logo {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.strategy-editor-symbol-logo-placeholder {
+    flex-shrink: 0;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background-color: rgb(255 255 255 / 20%);
+}
+
+/* 심볼 이름 */
+.strategy-editor-symbol-name {
+    flex: 1;
+    color: rgb(255 255 255 / 90%);
+    font-size: 15px;
+    font-weight: 500;
+}
+
+/* 심볼 삭제 버튼 - 완벽한 정사각형 */
+.strategy-editor-symbol-remove {
+    display: inline-flex;
+    flex-shrink: 0;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    width: 24px;
+    min-width: 24px;
+    max-width: 24px;
+    height: 24px;
+    min-height: 24px;
+    max-height: 24px;
+    padding: 0;
+    border: 1px solid rgb(255 100 100 / 30%);
+    border-radius: 4px;
+    background-color: transparent;
+    color: rgb(255 100 100 / 70%);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 0;
+    text-align: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.strategy-editor-symbol-remove:hover {
+    border-color: rgb(255 100 100 / 80%);
+    background-color: rgb(255 100 100 / 15%);
+    color: rgb(255 120 120);
+    transform: scale(1.1);
+}
+
+.strategy-editor-symbol-remove:active {
+    background-color: rgb(255 100 100 / 25%);
+    transform: scale(0.95);
+}
+
+/* 드롭 대상 표시 */
+.strategy-editor-symbol-item.drag-over {
+    border-color: rgb(255 215 0 / 80%);
+    background-color: rgb(255 215 0 / 10%);
+}
