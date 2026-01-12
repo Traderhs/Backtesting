@@ -88,6 +88,7 @@ function createWindow() {
         path.join(process.resourcesPath, 'Icons/backboard.ico');
 
     mainWindow = new BrowserWindow({
+        title: 'BackBoard',
         fullscreenable: false, // 진짜 fullscreen 금지
         maximizable: true,     // 최대화 허용(프레임리스에서 토글 가능)
         resizable: true,
@@ -239,4 +240,32 @@ ipcMain.on('window-close', () => {
 
 ipcMain.handle('window-is-maximized', () => {
     return mainWindow ? mainWindow.isMaximized() : false;
+});
+
+// 파일/폴더 선택 다이얼로그
+ipcMain.handle('select-path', async (event, mode) => {
+    const properties = mode === 'folder' ? ['openDirectory'] : ['openFile'];
+
+    return await dialog.showOpenDialog(mainWindow, {
+        properties: properties
+    });
+});
+
+// 간단한 네이티브 확인(Yes/No) 다이얼로그
+ipcMain.handle('show-confirm', async (event, {title, message}) => {
+    console.log('[Main] show-confirm', {title, message});
+
+    const result = await dialog.showMessageBox(mainWindow, {
+        type: 'question',
+        buttons: ['확인', '취소'],
+        defaultId: 0,   // 확인이 기본 포커스
+        cancelId: 1,    // Esc 또는 취소 시 1번 인덱스 반환
+        noLink: true,   // Windows에서 버튼을 링크 스타일로 보이지 않게 함
+        normalizeAccessKeys: true,
+        title: title || 'BackBoard',
+        message: message || ''
+    });
+
+    // '확인' 버튼(인덱스 0)을 눌렀으면 true 반환
+    return result.response === 0;
 });

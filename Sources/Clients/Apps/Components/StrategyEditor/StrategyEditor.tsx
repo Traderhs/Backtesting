@@ -13,6 +13,7 @@ import ExchangeSection from './ExchangeSection';
 import StrategySection from './StrategySection';
 import {StrategyProvider, useStrategy} from './StrategyContext';
 import '../Common/LoadingSpinner.css';
+import './StrategyEditor.css';
 
 function StrategyEditorContent({isActive}: { isActive: boolean }) {
     const [titleBarPortal, setTitleBarPortal] = useState<HTMLElement | null>(null);
@@ -74,12 +75,12 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
         }
 
         if (!exchangeConfig.apiKeyEnvVar.trim()) {
-            addLog('ERROR', 'API 키의 환경 변수 이름을 입력해 주세요.');
+            addLog('ERROR', 'Binance API Key의 환경 변수 이름을 입력해 주세요.');
             return;
         }
 
         if (!exchangeConfig.apiSecretEnvVar.trim()) {
-            addLog('ERROR', 'API 시크릿의 환경 변수 이름을 입력해 주세요.');
+            addLog('ERROR', 'Binance API Secret의 환경 변수 이름을 입력해 주세요.');
             return;
         }
 
@@ -307,11 +308,17 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
                     titleBarPortal
                 )}
 
-                {/* 거래소 설정 */}
-                <ExchangeSection/>
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    {/* 거래소 설정 */}
+                    <div className="h-full">
+                        <ExchangeSection/>
+                    </div>
 
-                {/* 심볼 섹션 */}
-                <SymbolSection/>
+                    {/* 심볼 섹션 */}
+                    <div className="h-full">
+                        <SymbolSection/>
+                    </div>
+                </div>
 
                 {/* 바 데이터 설정 */}
                 <BarDataSection/>

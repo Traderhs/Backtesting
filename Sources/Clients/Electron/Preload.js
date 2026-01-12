@@ -16,5 +16,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
     // 창 상태 변경 이벤트 수신
     onWindowMaximized: (cb) => ipcRenderer.on('window-maximized', () => cb()),
-    onWindowUnmaximized: (cb) => ipcRenderer.on('window-unmaximized', () => cb())
+    onWindowUnmaximized: (cb) => ipcRenderer.on('window-unmaximized', () => cb()),
+
+    // 파일/폴더 선택 다이얼로그
+    selectPath: (mode) => ipcRenderer.invoke('select-path', mode),
+
+    // 네이티브 확인 다이얼로그
+    showConfirm: (opts) => ipcRenderer.invoke('show-confirm', opts)
 });
