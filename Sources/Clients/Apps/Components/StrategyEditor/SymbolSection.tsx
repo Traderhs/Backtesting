@@ -609,16 +609,32 @@ export default function SymbolSection() {
 
     // 새 심볼이 추가되었을 때 리스트가 자동으로 맨 아래로 스크롤되도록 함
     const prevSymbolCountRef = useRef<number>(symbolConfigs.length);
+
+    // 초기 로드 시(서버/컨텍스트로부터 심볼이 채워지는 경우) 자동 스크롤을 억제하기 위한 플래그
+    const initialLoadRef = useRef<boolean>(true);
+
     useEffect(() => {
         const prev = prevSymbolCountRef.current;
         const cur = symbolConfigs.length;
+
+        // 첫 렌더링 또는 초기 데이터 로드 시에는 자동으로 맨 아래로 스크롤하지 않음
+        if (initialLoadRef.current) {
+            initialLoadRef.current = false;
+            prevSymbolCountRef.current = cur;
+            return;
+        }
 
         // 갯수가 늘어난 경우에만 스크롤 (중복으로 추가되지 않았을 때)
         if (cur > prev) {
             const container = scrollContainerRef.current;
             if (container) {
-                // 즉시 맨 아래로 이동
-                container.scrollTop = container.scrollHeight;
+                // 초기 로드에서 다수 항목으로 한꺼번에 로드된 경우(이전 갯수 0이고 아직 사용자가 스크롤하지 않은 경우),
+                // 자동으로 맨 아래로 스크롤하지 않음. 이는 초기 로드에서 상단에 머무르도록 보장.
+                const isLikelyInitialPopulation = (prev === 0 && container.scrollTop === 0);
+                if (!isLikelyInitialPopulation) {
+                    // 즉시 맨 아래로 이동
+                    container.scrollTop = container.scrollHeight;
+                }
             }
         }
 
@@ -1065,7 +1081,7 @@ export default function SymbolSection() {
                         className="strategy-editor-button active"
                         title="심볼 추가"
                     >
-                        추가
+                        심볼 추가
                     </button>
                 </div>
 
