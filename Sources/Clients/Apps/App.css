@@ -12,7 +12,6 @@
 /* 탭 컨텐츠 기본 스타일 */
 .tab-content {
     transition: opacity 0.3s ease-out;
-    will-change: transform, opacity, visibility;
 }
 
 /* 비활성 탭에 적용되는 최적화 스타일 */
@@ -22,9 +21,6 @@
 
     /* 스크롤 성능 최적화 */
     overscroll-behavior: none;
-
-    /* GPU 렌더링 중지 */
-    will-change: auto;
 }
 
 /* 숨겨진 탭 스타일 */
@@ -34,15 +30,18 @@
     visibility: hidden;
 }
 
-/* 탭 진입 애니메이션 */
+/* 탭 진입/퇴장 애니메이션 - 애니메이션 중에만 GPU 가속 활성화 */
 .tab-content-enter {
+    transform: translateZ(0);
     animation: none;
+    backface-visibility: hidden;
     will-change: opacity, transform;
 }
 
-/* 탭 퇴장 애니메이션 */
 .tab-content-exit {
+    transform: translateZ(0);
     animation: none;
+    backface-visibility: hidden;
     will-change: opacity, transform;
 }
 

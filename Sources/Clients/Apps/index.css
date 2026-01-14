@@ -211,11 +211,6 @@ button:focus-visible {
 
 .main-content {
     overflow: auto;
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
-    contain: layout;
-    isolation: isolate;
-    will-change: transform;
 }
 
 /* 탭 컨테이너 및 애니메이션 */
@@ -233,17 +228,13 @@ button:focus-visible {
     height: 100%;
     overflow: auto;
     background-color: transparent !important;
-    transform: translateZ(0);
-    transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1);
     pointer-events: auto;
     inset: 0;
-    will-change: transform, opacity;
 }
 
 .tab-content-hidden {
     pointer-events: none;
     visibility: hidden;
-    contain: content;
 }
 
 /* 오른쪽에서 들어오는 애니메이션 */
@@ -301,31 +292,46 @@ button:focus-visible {
 /* 애니메이션 적용 - 뒤쪽 탭 선택 */
 .slide-in-right .tab-content-exit {
     z-index: 1;
+    transform: translateZ(0);
     animation: slide-out-to-left 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     pointer-events: none;
+    backface-visibility: hidden;
     will-change: transform, opacity;
 }
 
 .slide-in-right .tab-content-enter {
     z-index: 2;
+    transform: translateZ(0);
     animation: slide-in-from-right 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     pointer-events: auto;
+    backface-visibility: hidden;
     will-change: transform, opacity;
 }
 
 /* 애니메이션 적용 - 앞쪽 탭 선택 */
 .slide-in-left .tab-content-exit {
     z-index: 1;
+    transform: translateZ(0);
     animation: slide-out-to-right 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     pointer-events: none;
+    backface-visibility: hidden;
     will-change: transform, opacity;
 }
 
 .slide-in-left .tab-content-enter {
     z-index: 2;
+    transform: translateZ(0);
     animation: slide-in-from-left 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     pointer-events: auto;
+    backface-visibility: hidden;
     will-change: transform, opacity;
+}
+
+/* 애니메이션 완료 후 GPU 가속 속성 제거 - 텍스트 선명도 복원 */
+.tab-content:not(.tab-content-enter, .tab-content-exit) {
+    transform: none !important;
+    backface-visibility: visible !important;
+    will-change: auto !important;
 }
 
 /* ===== Global Overlay Scrollbar Styles ===== */
@@ -386,68 +392,14 @@ button:focus-visible {
     }
 }
 
-/* Log 탭 텍스트 렌더링 최적화 - 애니메이션 허용, 검색 네비게이터 제외 */
-.tab-content[data-tab="Log"] {
-    /* GPU 가속은 애니메이션 중이 아닐 때만 비활성화 */
-    backface-visibility: visible;
-}
-
-/* 애니메이션이 적용되지 않는 상태에서만 transform 비활성화, 검색 네비게이터 제외 */
-.tab-content[data-tab="Log"]:not(.tab-content-enter, .tab-content-exit) {
-    transform: none !important;
-    will-change: auto !important;
-}
-
+/* Log 탭 텍스트 렌더링 최적화 */
 .tab-content[data-tab="Log"] * {
-    font-feature-settings: "liga" 1, "kern" 1 !important;
-
-    /* 모든 하위 요소의 텍스트 렌더링 최적화 */
     -webkit-font-smoothing: antialiased !important;
     -moz-osx-font-smoothing: grayscale !important;
     text-rendering: optimizelegibility !important;
 }
 
-/* react-window 리스트 컨테이너 최적화 - 애니메이션 허용 */
-.tab-content[data-tab="Log"] [style*="position: relative"]:not([style*="right:"]) {
-    /* 가상화 컨테이너는 애니메이션 중이 아닐 때만 GPU 가속 비활성화 */
-
-    /* 검색 네비게이터(right 속성 포함)는 제외 */
-    backface-visibility: visible !important;
-}
-
-.tab-content[data-tab="Log"]:not(.tab-content-enter, .tab-content-exit) [style*="position: relative"]:not([style*="right:"]) {
-    transform: none !important;
-    will-change: auto !important;
-}
-
-/* 가상화된 로그 행 최적화 - 애니메이션 허용, 검색 네비게이터 제외 */
-.tab-content[data-tab="Log"] [style*="position: absolute"]:not([style*="right:"], [style*="transform: translateY"]) {
-    opacity: 1 !important;
-    filter: none !important;
-
-    /* 개별 로그 행의 렌더링 최적화 */
-
-    /* 검색 네비게이터(right 속성 또는 translateY 포함)는 제외 */
-    backface-visibility: visible !important;
-    -webkit-font-smoothing: antialiased !important;
-    -moz-osx-font-smoothing: grayscale !important;
-    text-rendering: optimizelegibility !important;
-}
-
-.tab-content[data-tab="Log"]:not(.tab-content-enter, .tab-content-exit) [style*="position: absolute"]:not([style*="right:"], [style*="transform: translateY"]) {
-    transform: none !important;
-    will-change: auto !important;
-}
-
-/* Log 탭이 비활성화될 때 GPU 가속 복원 */
-.tab-content[data-tab="Log"].tab-inactive {
-    transform: translate3d(0, 0, 0);
-    backface-visibility: hidden;
-    will-change: transform, opacity;
-}
-
-/* Log 컨테이너 클래스 추가 */
+/* Log 컨테이너 클래스 */
 .log-container {
-    /* 로그 컨테이너 식별을 위한 클래스 */
     isolation: isolate;
 }
