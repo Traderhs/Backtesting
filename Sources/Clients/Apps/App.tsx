@@ -60,7 +60,6 @@ function AppContent() {
     const [prevTab, setPrevTab] = useState("StrategyEditor");
     const [animationDirection, setAnimationDirection] = useState<"" | "slide-in-left" | "slide-in-right">("");
     const [isAnimating, setIsAnimating] = useState(false);
-    const [isLogTextOptimizing, setIsLogTextOptimizing] = useState(false); // Log 탭 텍스트 최적화 중 상태
 
     // 탭 순서 정의
     const tabOrder = ["StrategyEditor", "Overview", "Performance", "Plot", "Chart", "TradeList", "Config", "Log"];
@@ -216,16 +215,6 @@ function AppContent() {
 
             // 탭 변경 먼저 적용
             setTab(newTab);
-
-            // Log 탭으로 전환할 때 텍스트 최적화 로딩 시작
-            if (newTab === "Log") {
-                setIsLogTextOptimizing(true);
-
-                // 텍스트 최적화 완료까지 로딩 표시 (800ms 후 해제)
-                setTimeout(() => {
-                    setIsLogTextOptimizing(false);
-                }, 800);
-            }
 
             // 탭 방문 상태 업데이트
             if (isNewVisit) {
@@ -664,7 +653,7 @@ function AppContent() {
                         {/* Log 탭은 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
                         {visitedTabs["Log"] && (
                             <Suspense fallback={<div/>}>
-                                <Log isTextOptimizing={isLogTextOptimizing}/>
+                                <Log/>
                             </Suspense>
                         )}
                     </div>
