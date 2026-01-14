@@ -50,9 +50,7 @@ const LoadingSpinner: React.FC = () => {
                         left: 0,
                         right: 0,
                         bottom: 0,
-                        backgroundColor: 'rgba(17, 17, 17, 0.85)',
-                        backdropFilter: 'blur(4px)',
-                        WebkitBackdropFilter: 'blur(4px)'
+                        backgroundColor: 'rgba(17, 17, 17, 0.95)'
                     }}
                 />
 
