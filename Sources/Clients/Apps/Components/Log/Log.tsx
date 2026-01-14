@@ -24,7 +24,6 @@ const LogRow: React.FC<{
         searchResults: SearchResult[],
         currentChunkStart: number,
         allLogLinesLength: number,
-        forceRenderKey?: number,
         maxTextWidth?: number // 현재 청크의 최대 텍스트 너비
     }
 }> = React.memo(({index, style, data}) => {
@@ -280,13 +279,8 @@ const LogRow: React.FC<{
 // 컴포넌트 displayName 설정
 LogRow.displayName = 'LogRow';
 
-// Log 컴포넌트 Props 인터페이스
-interface LogProps {
-    isTextOptimizing?: boolean;
-}
-
 // Log 컴포넌트
-const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
+const Log: React.FC = () => {
     const [allLogLines, setAllLogLines] = useState<string[]>([]);
     const [loading, setLoading] = useState<boolean>(true);
     const [showContent, setShowContent] = useState<boolean>(false);
@@ -298,7 +292,6 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
     const listHeightRef = useRef(0);
     const animationFrameRef = useRef<number | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const [forceRenderKey, setForceRenderKey] = useState<number>(0);
 
     // 청킹 관련 상태 - 대용량 로그 처리를 위한 순차 로딩
     const CHUNK_SIZE = 300000; // 한 번에 렌더링할 최대 라인 수
@@ -307,99 +300,88 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
     const [totalLines, setTotalLines] = useState<number>(0);
     const [loadedLines, setLoadedLines] = useState<number>(0);
 
-    // 탭 변경 감지 및 뿌옇게 되는 문제 해결을 위한 useEffect
+    // 탭 전환 시 부드럽게 페이드 인/아웃
     useEffect(() => {
-        const handleTabActive = () => {
-            // 탭이 활성화될 때 텍스트 렌더링 강제 갱신
-            setTimeout(() => {
-                if (listRef.current) {
-                    listRef.current.resetAfterIndex(0, true);
-                    setForceRenderKey(prev => prev + 1);
-                }
-            }, 100);
+
+
+        // 탭 전환 시 부드럽게 페이드 인/아웃
+        const fadeDuration = 300; // ms
+        const listOuterSelector = '[style*=\"overflow\"]';
+
+        const fadeIn = () => {
+            if (!containerRef.current) {
+                return;
+            }
+
+            const listOuter = containerRef.current.querySelector(listOuterSelector) as HTMLElement;
+            if (!listOuter) {
+                return;
+            }
+
+            // 준비 상태: 보이게 하고 투명도 0으로 초기화
+            listOuter.style.transition = `opacity ${fadeDuration}ms ease-out`;
+            listOuter.style.visibility = 'visible';
+            listOuter.style.pointerEvents = 'auto';
+            listOuter.style.opacity = '0';
+
+            // 강제 리플로우 후 트리거해서 페이드 인
+            void listOuter.offsetHeight;
+            requestAnimationFrame(() => listOuter.style.opacity = '1');
         };
 
-        // 탭 활성화 이벤트 리스너 등록
-        if (containerRef.current) {
-            containerRef.current.addEventListener('tabActive', handleTabActive);
-        }
+        const fadeOut = () => {
+            if (!containerRef.current) {
+                return;
+            }
 
-        // 컴포넌트가 마운트되거나 다시 활성화될 때 CSS transform 강제 리셋
-        const resetStyles = () => {
-            if (containerRef.current) {
-                const container = containerRef.current;
+            const listOuter = containerRef.current.querySelector(listOuterSelector) as HTMLElement;
+            if (!listOuter) {
+                return;
+            }
 
-                // 1단계: 컨테이너 스타일 강제 리셋
-                container.style.transform = 'translate3d(0, 0, 0)';
-                container.style.opacity = '1';
-                container.style.filter = 'none';
-                container.style.backfaceVisibility = 'hidden';
-                container.style.webkitBackfaceVisibility = 'hidden';
+            listOuter.style.transition = `opacity ${fadeDuration}ms ease-out`;
+            listOuter.style.opacity = '0';
+            listOuter.style.pointerEvents = 'none';
 
-                // 2단계: react-window의 모든 가상화된 아이템 DOM 강제 제거 후 재생성
-                if (listRef.current) {
-                    // 기존 캐시 완전 삭제
-                    listRef.current.resetAfterIndex(0, true);
-
-                    // react-window 내부 DOM 구조 찾기
-                    const listElement = container.querySelector('[style*="position: relative"]');
-                    if (listElement) {
-                        // 모든 가상화된 아이템들을 찾아서 스타일 강제 적용
-                        const virtualItems = listElement.querySelectorAll('[style*="position: absolute"]');
-                        virtualItems.forEach((item: any) => {
-                            item.style.transform = 'translate3d(0px, ' + item.style.top + ', 0px)';
-                            item.style.opacity = '1';
-                            item.style.filter = 'none';
-                            item.style.backfaceVisibility = 'hidden';
-                            item.style.webkitBackfaceVisibility = 'hidden';
-                            item.style.webkitFontSmoothing = 'antialiased';
-                            item.style.mozOsxFontSmoothing = 'grayscale';
-                        });
-                    }
+            // 페이드 아웃이 끝나면 완전 숨김 처리
+            setTimeout(() => {
+                if (listOuter) {
+                    listOuter.style.visibility = 'hidden';
                 }
+            }, fadeDuration + 20);
+        };
 
-                // 3단계: 리플로우 강제 실행
-                container.offsetHeight;
+        const handleTabActive = () => {
+            // 탭 애니메이션 완료 후 페이드 인
+            setTimeout(() => {
+                fadeIn();
 
-                // 4단계: 약간의 지연 후 다시 한번 리셋 및 컴포넌트 강제 리렌더링
+                // 안전하게 선명하게 하기 위해 애니메이션 끝난 뒤에 가상화 리셋
                 setTimeout(() => {
                     if (listRef.current) {
                         listRef.current.resetAfterIndex(0, true);
                     }
-                    // 리스트 컴포넌트 완전히 새로 렌더링하도록 키 변경
-                    setForceRenderKey(prev => prev + 1);
-                }, 50);
-            }
+                }, fadeDuration + 30);
+            }, 550);
         };
 
-        // 즉시 실행
-        resetStyles();
+        const handleTabInactive = () => {
+            // 즉시 페이드 아웃
+            fadeOut();
+        };
 
-        // 탭 변경 후 지연된 실행들
-        const timeoutIds = [
-            setTimeout(() => {
-                resetStyles();
-                setForceRenderKey(prev => prev + 1);
-            }, 100),
-            setTimeout(() => {
-                resetStyles();
-                setForceRenderKey(prev => prev + 1);
-            }, 300),
-            setTimeout(() => {
-                if (listRef.current) {
-                    // 마지막으로 한번 더 강제 리렌더링
-                    listRef.current.resetAfterIndex(0, true);
-                }
-                setForceRenderKey(prev => prev + 1);
-            }, 600)
-        ];
+        // 상위 .tab-content 요소 찾기
+        const tabContentElement = containerRef.current?.closest('.tab-content');
+        if (tabContentElement) {
+            tabContentElement.addEventListener('tabActive', handleTabActive);
+            tabContentElement.addEventListener('tabInactive', handleTabInactive);
+        }
 
         return () => {
-            // 이벤트 리스너 제거
-            if (containerRef.current) {
-                containerRef.current.removeEventListener('tabActive', handleTabActive);
+            if (tabContentElement) {
+                tabContentElement.removeEventListener('tabActive', handleTabActive);
+                tabContentElement.removeEventListener('tabInactive', handleTabInactive);
             }
-            timeoutIds.forEach(id => clearTimeout(id));
         };
     }, []); // 컴포넌트 마운트 시에만 실행
 
@@ -1326,7 +1308,6 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                                         listHeightRef.current = height;
                                         return (
                                             <List
-                                                key={`log-list-${forceRenderKey}`}
                                                 ref={listRef}
                                                 height={height}
                                                 width={width}
@@ -1339,8 +1320,7 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                                                     searchResults,
                                                     currentChunkStart,
                                                     allLogLinesLength: allLogLines.length,
-                                                    forceRenderKey, // 강제 리렌더링을 위한 키 추가
-                                                    maxTextWidth // 최대 텍스트 너비 추가
+                                                    maxTextWidth
                                                 }}
                                                 estimatedItemSize={28}
                                                 onItemsRendered={handleItemsRendered}
@@ -1349,67 +1329,12 @@ const Log: React.FC<LogProps> = ({isTextOptimizing = false}) => {
                                                 useIsScrolling={false}
                                                 layout="vertical"
                                                 direction="ltr"
-                                                style={{
-                                                    // 뿌옇게 되는 문제 방지를 위한 명시적 스타일
-                                                    opacity: 1,
-                                                    filter: 'none',
-                                                    backfaceVisibility: 'hidden',
-                                                    WebkitBackfaceVisibility: 'hidden',
-                                                    transform: 'translate3d(0, 0, 0)',
-                                                    willChange: 'scroll-position',
-                                                    WebkitFontSmoothing: 'antialiased',
-                                                    MozOsxFontSmoothing: 'grayscale',
-                                                    textRendering: 'optimizeLegibility',
-                                                    // 강화된 안티엘리어싱 설정
-                                                    fontSmooth: 'always',
-                                                    fontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
-                                                    WebkitFontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
-                                                    textSizeAdjust: '100%',
-                                                    WebkitTextSizeAdjust: '100%',
-                                                }}
                                             >
                                                 {LogRow}
                                             </List>
                                         )
                                     }}
                                 </AutoSizer>
-
-                                {/* 텍스트 최적화 중 로딩 오버레이 */}
-                                {isTextOptimizing && (
-                                    <div style={{
-                                        position: 'absolute',
-                                        top: 0, left: 0, right: 0, bottom: 0,
-                                        backgroundColor: 'rgba(17, 17, 17, 0.8)',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        justifyContent: 'center',
-                                        zIndex: 1000,
-                                        backdropFilter: 'blur(2px)',
-                                        WebkitBackdropFilter: 'blur(2px)',
-                                        pointerEvents: 'all'
-                                    }}>
-                                        <div style={{
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            alignItems: 'center',
-                                            gap: '10px'
-                                        }}>
-                                            {/* 단순 CSS 애니메이션 스피너 */}
-                                            <div style={{
-                                                width: '42px',
-                                                height: '42px',
-                                                borderRadius: '50%',
-                                                border: '3px solid rgba(20, 20, 20, 0.15)',
-                                                borderTopColor: '#FFD700',
-                                                animation: 'spin 1s cubic-bezier(0.4, 0.1, 0.3, 1) infinite',
-                                                margin: '0 auto',
-                                                boxShadow: '0 0 20px rgba(255, 215, 0, 0.15)',
-                                                transform: 'translateZ(0)',
-                                                willChange: 'transform'
-                                            }}/>
-                                        </div>
-                                    </div>
-                                )}
                             </>
                         )}
 
