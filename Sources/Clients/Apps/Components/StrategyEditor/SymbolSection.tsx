@@ -35,9 +35,6 @@ export default function SymbolSection() {
     const [caretPos, setCaretPos] = useState<number | null>(null);
     const suggestionsContainerRef = useRef<HTMLDivElement | null>(null);
 
-    // 사용자가 화살표로 추천을 직접 이동했는지 추적 (기본값으로 자동 선택된 경우와 구분)
-    const [suggestionNavigated, setSuggestionNavigated] = useState<boolean>(false);
-
     // 페어 관련 상태
     const [isAddingCustomPair, setIsAddingCustomPair] = useState(false);
     const [customPairInput, setCustomPairInput] = useState('');
@@ -560,7 +557,7 @@ export default function SymbolSection() {
         });
     };
 
-    // 추가한 심볼들 초기화 핸들러
+    // 심볼 목록 초기화 핸들러
     const handleResetSymbols = async () => {
         // Electron 환경이면 네이티브 다이얼로그 사용, 아니면 브라우저 confirm으로 폴백
         let confirmed: boolean;
@@ -569,14 +566,14 @@ export default function SymbolSection() {
             if (window && (window as any).electronAPI && (window as any).electronAPI.showConfirm) {
                 confirmed = await (window as any).electronAPI.showConfirm({
                     title: 'BackBoard',
-                    message: '추가한 심볼을 초기화하시겠습니까?'
+                    message: '심볼 목록을 초기화하시겠습니까?'
                 });
             } else {
-                confirmed = confirm('추가한 심볼을 초기화하시겠습니까?');
+                confirmed = confirm('심볼 목록을 초기화하시겠습니까?');
             }
         } catch (e) {
             // 실패 시 안전하게 폴백
-            confirmed = confirm('추가한 심볼을 초기화하시겠습니까?');
+            confirmed = confirm('심볼 목록을 초기화하시겠습니까?');
         }
 
         if (!confirmed) {
@@ -593,7 +590,6 @@ export default function SymbolSection() {
         setSelectedSuggestionIndex(-1);
         setJustAutocompleted(false);
         setAutocompletedBase(null);
-        setSuggestionNavigated(false);
     };
 
     // 컴포넌트가 마운트되거나 symbolConfigs가 바뀔 때, 아직 로고가 없는 심볼에 대해 로고를 가져옴
@@ -751,7 +747,6 @@ export default function SymbolSection() {
                                 setAutocompletedBase(null);
                                 setSuggestionsVisible(true);
                                 setSelectedSuggestionIndex(0);
-                                setSuggestionNavigated(false);
 
                                 if (el && selStart !== null) {
                                     requestAnimationFrame(() => {
@@ -780,7 +775,6 @@ export default function SymbolSection() {
                                         setSelectedSuggestionIndex(-1);
                                         setJustAutocompleted(false);
                                         setAutocompletedBase(null);
-                                        setSuggestionNavigated(false);
                                         return;
                                     }
 
@@ -801,7 +795,6 @@ export default function SymbolSection() {
                                                 setSelectedSuggestionIndex(-1);
                                                 setJustAutocompleted(false);
                                                 setAutocompletedBase(null);
-                                                setSuggestionNavigated(false);
                                             } else {
                                                 setSymbolInput(chosen);
                                                 setCaretPos(chosen.length);
@@ -811,7 +804,6 @@ export default function SymbolSection() {
 
                                                 const newIndex = suggs.indexOf(chosen);
                                                 setSelectedSuggestionIndex(newIndex >= 0 ? newIndex : 0);
-                                                setSuggestionNavigated(false);
 
                                                 requestAnimationFrame(() => {
                                                     const inputEl = document.getElementById('strategy-symbol-input') as HTMLInputElement | null;
@@ -858,7 +850,6 @@ export default function SymbolSection() {
                                             setAutocompletedBase(chosen);
                                             setSuggestionsVisible(false);
                                             setSelectedSuggestionIndex(idx);
-                                            setSuggestionNavigated(true);
                                         }
                                     }
                                 } else if (e.key === 'ArrowDown') {
@@ -870,7 +861,6 @@ export default function SymbolSection() {
                                     }
 
                                     setSelectedSuggestionIndex(i => Math.min(i + 1, suggs.length - 1));
-                                    setSuggestionNavigated(true);
                                 } else if (e.key === 'ArrowUp') {
                                     e.preventDefault();
                                     const suggs = getSuggestions(symbolInput);
@@ -880,7 +870,6 @@ export default function SymbolSection() {
                                     }
 
                                     setSelectedSuggestionIndex(i => Math.max(i - 1, 0));
-                                    setSuggestionNavigated(true);
                                 } else if (e.key === 'Escape') {
                                     setSuggestionsVisible(false);
                                 }
@@ -888,7 +877,6 @@ export default function SymbolSection() {
                             onBlur={() => {
                                 setTimeout(() => {
                                     setSuggestionsVisible(false);
-                                    setSuggestionNavigated(false);
                                 }, 150);
                             }}
                             onSelect={(e: React.SyntheticEvent<HTMLInputElement>) => {
@@ -1049,7 +1037,7 @@ export default function SymbolSection() {
 
                                     handleAddSymbol(finalSymbol);
                                     setAutocompletedBase(null);
-                                } else if (chosen && (justAutocompleted || suggestionNavigated)) {
+                                } else if (chosen && (justAutocompleted || symbolInput === chosen)) {
                                     const finalSymbol = selectedPair === '없음' ? chosen : chosen + selectedPair;
 
                                     handleAddSymbol(finalSymbol);
@@ -1076,7 +1064,6 @@ export default function SymbolSection() {
                             setSuggestionsVisible(false);
                             setSelectedSuggestionIndex(-1);
                             setJustAutocompleted(false);
-                            setSuggestionNavigated(false);
                         }}
                         className="strategy-editor-button active"
                         title="심볼 추가"
