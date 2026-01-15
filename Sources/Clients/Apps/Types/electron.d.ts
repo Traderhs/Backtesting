@@ -13,7 +13,7 @@ export interface ElectronAPI {
     onWindowUnmaximized: (cb: () => void) => void;
 
     // 파일/폴더 선택
-    selectPath: (mode: 'file' | 'folder') => Promise<{ canceled: boolean; filePaths: string[] }>;
+    selectPath: (mode: 'file' | 'directory') => Promise<{ canceled: boolean; filePaths: string[] }>;
 }
 
 declare global {

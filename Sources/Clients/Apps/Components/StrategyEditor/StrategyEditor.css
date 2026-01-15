@@ -161,27 +161,23 @@
     letter-spacing: 0.3px;
     text-align: center;
     white-space: nowrap;
-    transform-origin: center center;
-    transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease !important;
+    transition: box-shadow 0.12s ease, border-color 0.12s ease, background-color 0.12s ease !important;
     cursor: pointer;
-    backface-visibility: hidden;
     -webkit-font-smoothing: antialiased;
     outline: none;
-    will-change: transform, box-shadow;
 }
 
 .strategy-editor-button:hover {
     z-index: 3 !important;
     border-color: rgb(255 215 0 / 70%) !important;
-    box-shadow: 0 0 3px rgb(255 215 0 / 50%) !important;
-    transform: scale(1.03) !important;
+    box-shadow: 0 0 6px rgb(255 215 0 / 60%) !important;
     transition-duration: 0.2s !important;
 }
 
 .strategy-editor-button:active {
     background-color: rgb(52 46 14) !important;
-    transform: scale(0.97) !important;
-    transition-duration: 0.2s !important;
+    box-shadow: 0 0 2px rgb(255 215 0 / 40%) !important;
+    transition-duration: 0.1s !important;
     outline: none;
 }
 
@@ -569,7 +565,7 @@ body.symbol-dragging * {
     font-weight: 500;
 }
 
-/* 심볼 삭제 버튼 - 완벽한 정사각형 */
+/* 심볼 삭제 버튼 */
 .strategy-editor-symbol-remove {
     display: inline-flex;
     flex-shrink: 0;
@@ -582,7 +578,7 @@ body.symbol-dragging * {
     height: 24px;
     min-height: 24px;
     max-height: 24px;
-    padding: 0;
+    padding: 0 0 2px;
     border: 1px solid rgb(255 100 100 / 30%);
     border-radius: 4px;
     background-color: transparent;
@@ -599,17 +595,159 @@ body.symbol-dragging * {
 .strategy-editor-symbol-remove:hover {
     border-color: rgb(255 100 100 / 80%);
     background-color: rgb(255 100 100 / 15%);
+    box-shadow: 0 0 4px rgb(255 100 100 / 30%);
     color: rgb(255 120 120);
-    transform: scale(1.1);
 }
 
 .strategy-editor-symbol-remove:active {
     background-color: rgb(255 100 100 / 25%);
-    transform: scale(0.95);
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 20%);
 }
 
 /* 드롭 대상 표시 */
 .strategy-editor-symbol-item.drag-over {
     border-color: rgb(255 215 0 / 80%);
     background-color: rgb(255 215 0 / 10%);
+}
+
+/* =================================================================
+   바 데이터 섹션 전용 스타일
+   ================================================================= */
+
+/* 바 데이터 카드 그리드 (2열) */
+.strategy-editor-bardata-grid {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: repeat(2, 1fr);
+}
+
+/* 바 데이터 카드 */
+.strategy-editor-bardata-card {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    border: 1px solid rgb(255 215 0 / 30%);
+    border-radius: 8px;
+    background-color: rgb(20 20 20 / 80%);
+    transition: border-color 0.2s ease, opacity 0.2s ease;
+}
+
+.strategy-editor-bardata-card:hover {
+    border-color: rgb(255 215 0 / 50%);
+}
+
+.strategy-editor-bardata-card.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+}
+
+/* 카드 헤더 */
+.strategy-editor-bardata-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgb(255 215 0 / 15%);
+}
+
+.strategy-editor-bardata-card.disabled .strategy-editor-bardata-card-header {
+    pointer-events: auto;
+}
+
+/* 카드 제목 */
+.strategy-editor-bardata-card-title {
+    color: rgb(255 255 255 / 95%);
+    font-size: 15px;
+    font-weight: 600;
+}
+
+/* 삭제 버튼 - SymbolSection의 strategy-editor-symbol-remove와 동일 */
+.strategy-editor-bardata-remove {
+    display: inline-flex;
+    flex-shrink: 0;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
+    width: 24px;
+    min-width: 24px;
+    max-width: 24px;
+    height: 24px;
+    min-height: 24px;
+    max-height: 24px;
+    padding: 0 0 2px;
+    border: 1px solid rgb(255 100 100 / 30%);
+    border-radius: 4px;
+    background-color: transparent;
+    color: rgb(255 100 100 / 70%);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 0;
+    text-align: center;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    vertical-align: middle;
+}
+
+.strategy-editor-bardata-remove:hover {
+    border-color: rgb(255 100 100 / 80%);
+    background-color: rgb(255 100 100 / 15%);
+    box-shadow: 0 0 4px rgb(255 100 100 / 30%);
+    color: rgb(255 120 120);
+}
+
+.strategy-editor-bardata-remove:active {
+    background-color: rgb(255 100 100 / 25%);
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 20%);
+}
+
+/* 카드 바디 */
+.strategy-editor-bardata-card-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+/* 가로 배치 행 (타임프레임 + 폴더 경로) */
+.strategy-editor-bardata-row-horizontal {
+    display: flex;
+    gap: 12px;
+}
+
+/* 개별 필드 (라벨 위 + 입력 아래) */
+.strategy-editor-bardata-field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+/* 위쪽 라벨 */
+.strategy-editor-bardata-label-top {
+    color: rgb(255 255 255 / 80%);
+    font-size: 13px;
+    font-weight: 500;
+}
+
+/* 폴더 경로 필드는 더 넓게 (값/단위 입력을 줄이기 위해 비중 확대) */
+.strategy-editor-bardata-path-field {
+    flex: 3;
+    min-width: 0;
+}
+
+/* 타임프레임 입력 영역 */
+.strategy-editor-bardata-timeframe-inputs {
+    display: flex;
+    gap: 8px;
+}
+
+/* 타임프레임 숫자 입력 - 값과 단위 너비를 같게 하고 작게 고정 */
+.strategy-editor-bardata-timeframe-value {
+    flex: 0 0 70px;
+    min-width: 70px;
+}
+
+/* 타임프레임 단위 드롭다운 - 값과 단위 너비를 같게 하고 작게 고정 */
+.strategy-editor-bardata-timeframe-unit {
+    flex: 0 0 70px;
+    min-width: 70px;
 }

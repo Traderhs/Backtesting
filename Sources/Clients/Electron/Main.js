@@ -244,7 +244,7 @@ ipcMain.handle('window-is-maximized', () => {
 
 // 파일/폴더 선택 다이얼로그
 ipcMain.handle('select-path', async (event, mode) => {
-    const properties = mode === 'folder' ? ['openDirectory'] : ['openFile'];
+    const properties = (mode === 'directory') ? ['openDirectory'] : ['openFile'];
 
     return await dialog.showOpenDialog(mainWindow, {
         properties: properties
