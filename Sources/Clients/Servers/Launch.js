@@ -1233,11 +1233,30 @@ extern "C" {
         // =============================================================================================================
         // 부분 컴파일 및 링크 준비
         // =============================================================================================================
+        // 절대 경로 기준 중복 소스 제거
+        const uniqueSourceSet = new Set();
+        const uniqueSources = [];
+        for (const s of allSourceFiles) {
+            try {
+                const resolved = path.resolve(s);
+                if (!uniqueSourceSet.has(resolved)) {
+                    uniqueSourceSet.add(resolved);
+                    uniqueSources.push(resolved);
+                }
+            } catch (e) {
+                // 경로 해석 중 오류가 발생하면 원본 경로 사용
+                if (!uniqueSourceSet.has(s)) {
+                    uniqueSourceSet.add(s);
+                    uniqueSources.push(s);
+                }
+            }
+        }
+
         // 1. 컴파일이 필요한 파일 선별
         const filesToCompile = [];
         const allObjFiles = [];
 
-        for (const src of allSourceFiles) {
+        for (const src of uniqueSources) {
             const fileName = path.basename(src, path.extname(src));
             const objPath = path.join(buildDir, fileName + ".obj");
 
