@@ -19,6 +19,7 @@ const TIMEFRAME_UNIT_OPTIONS = [
 // 기본 경로 상수
 const DEFAULT_CONTINUOUS_KLINES_PATH = 'Data/Continuous Klines';
 const DEFAULT_MARK_PRICE_KLINES_PATH = 'Data/Mark Price Klines';
+const DEFAULT_FUNDING_RATES_PATH = 'Data/Funding Rates';
 
 /**
  * 바 데이터 설정 섹션 컴포넌트
@@ -28,6 +29,8 @@ export default function BarDataSection() {
     const {
         barDataConfigs,
         setBarDataConfigs,
+        fundingRatesDirectory,
+        setFundingRatesDirectory,
         engineConfig,
         setEngineConfig
     } = useStrategy();
@@ -116,6 +119,32 @@ export default function BarDataSection() {
             : DEFAULT_CONTINUOUS_KLINES_PATH;
 
         updateBarDataConfig(index, {klinesDirectory: joinPosix(baseDir, defaultPath)});
+    };
+
+    // 펀딩 비율 폴더 선택 핸들러
+    const handleSelectFundingDirectory = async () => {
+        try {
+            if (!window.electronAPI) {
+                console.error('Electron API가 사용 불가능합니다.');
+                return;
+            }
+
+            const result = await window.electronAPI.selectPath('directory');
+            if (result && !result.canceled && result.filePaths.length > 0) {
+                setFundingRatesDirectory(toPosix(result.filePaths[0]));
+            }
+        } catch (error) {
+            console.error('펀딩 폴더 선택 오류:', error);
+        }
+    };
+
+    const handleResetFundingDirectory = () => {
+        const baseDir = toPosix(projectDirectory || '').replace(/\/+$/, '');
+        if (!baseDir) {
+            return;
+        }
+
+        setFundingRatesDirectory(joinPosix(baseDir, DEFAULT_FUNDING_RATES_PATH));
     };
 
     // 드롭다운 외부 클릭 감지
@@ -337,6 +366,43 @@ export default function BarDataSection() {
                         </div>
                     );
                 })}
+
+                {/* 펀딩 비율 카드 (바 데이터 카드와 동일한 스타일, 타임프레임 없음) */}
+                <div className="strategy-editor-bardata-card">
+                    <div className="strategy-editor-bardata-card-header">
+                        <span className="strategy-editor-bardata-card-title">펀딩 비율</span>
+                    </div>
+
+                    <div className="strategy-editor-bardata-card-body">
+                        <div className="strategy-editor-bardata-row-horizontal">
+                            <div className="strategy-editor-bardata-field strategy-editor-bardata-path-field">
+                                <span className="strategy-editor-bardata-label-top">폴더 경로</span>
+
+                                <div className="strategy-editor-file-selector">
+                                    <input
+                                        type="text"
+                                        value={fundingRatesDirectory}
+                                        readOnly
+                                        placeholder="폴더 경로"
+                                        title={fundingRatesDirectory}
+                                        className="strategy-editor-input strategy-editor-input-with-icon cursor-text"
+                                    />
+
+                                    <div className="strategy-editor-file-selector-buttons">
+                                        <PathResetButton onClick={handleResetFundingDirectory}/>
+                                        <button
+                                            onClick={handleSelectFundingDirectory}
+                                            className="strategy-editor-file-selector-button"
+                                            title="폴더 선택"
+                                        >
+                                            <FolderOpen size={20}/>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );
