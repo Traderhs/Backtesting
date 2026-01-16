@@ -22,20 +22,22 @@ Strategy::Strategy(const string& name)
   // AddStrategy 함수를 거치지 않은 전략 생성자는 오류
   if (!used_creation_function_) {
     logger->Log(ERROR_L,
-                "전략의 추가는 AddStrategy 함수의 호출로만 가능합니다.",
+                format("[{}] 전략을 추가하는 중 오류가 발생했습니다.", name),
                 __FILE__, __LINE__, true);
-    Logger::LogAndThrowError(
-        format("[{}] 전략을 추가하는 중 에러가 발생했습니다.", name), __FILE__,
-        __LINE__);
-  } else {
-    // 추후 OrderHandler를 또 받을 수 있기 때문에 초기화
-    used_creation_function_ = false;
+
+    throw runtime_error(
+        "전략의 추가는 AddStrategy 함수의 호출로만 가능합니다.");
   }
 
+  // 추후 OrderHandler를 또 받을 수 있기 때문에 초기화
+  used_creation_function_ = false;
+
   if (name.empty()) {
-    logger->Log(ERROR_L, "전략 이름이 비어있습니다.", __FILE__, __LINE__, true);
-    Logger::LogAndThrowError("전략 생성 중 오류가 발생했습니다.", __FILE__,
-                             __LINE__);
+    logger->Log(ERROR_L,
+                format("[{}] 전략을 추가하는 중 오류가 발생했습니다.", name),
+                __FILE__, __LINE__, true);
+
+    throw runtime_error("전략 이름이 비어있습니다.");
   }
 }
 Strategy::~Strategy() = default;
@@ -61,11 +63,10 @@ void Strategy::SetTradingTimeframe(const string& trading_tf) {
   if (trading_timeframe == "TRADING_TIMEFRAME") {
     trading_timeframe = trading_tf;
   } else {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("트레이딩 바 데이터의 타임프레임 [{}]이(가) 이미 설정되어 "
                "재설정할 수 없습니다.",
-               trading_timeframe),
-        __FILE__, __LINE__);
+               trading_timeframe));
   }
 }
 

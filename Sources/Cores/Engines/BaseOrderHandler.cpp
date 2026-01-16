@@ -471,9 +471,10 @@ double BaseOrderHandler::CalculateTradingFee(const OrderType order_type,
     }
 
     [[unlikely]] case ORDER_NONE: {
-      Logger::LogAndThrowError("수수료 계산 오류: 주문 타입이 NONE으로 지정됨.",
-                               __FILE__, __LINE__);
-      return NAN;
+      logger_->Log(ERROR_L, "수수료 계산 중 엔진 오류가 발생했습니다.",
+                   __FILE__, __LINE__, true);
+
+      throw runtime_error("주문 유형은 ORDER_NONE으로 지정할 수 없습니다.");
     }
   }
 
@@ -494,11 +495,12 @@ LeverageBracket BaseOrderHandler::GetLeverageBracket(
     }
   }
 
-  [[unlikely]] Logger::LogAndThrowError(
-      format("엔진 오류: 명목 가치 [{}]에 해당되는 레버리지 구간 미존재",
-             FormatDollar(notional_value, true)),
-      __FILE__, __LINE__);
-  [[unlikely]] throw;
+  logger_->Log(ERROR_L, "레버리지 구간을 얻는 중 엔진 오류가 발생했습니다.",
+               __FILE__, __LINE__, true);
+
+  throw runtime_error(
+      format("명목 가치 [{}]에 해당되는 레버리지 구간이 존재하지 않습니다.",
+             FormatDollar(notional_value, true)));
 }
 
 double BaseOrderHandler::CalculatePnl(const Direction entry_direction,
@@ -513,9 +515,10 @@ double BaseOrderHandler::CalculatePnl(const Direction entry_direction,
     return (entry_price - base_price) * position_size;
   }
 
-  [[unlikely]] Logger::LogAndThrowError("손익 계산 중 방향 오지정", __FILE__,
-                                        __LINE__);
-  [[unlikely]] return NAN;
+  logger_->Log(ERROR_L, "손익 계산 중 엔진 오류가 발생했습니다.", __FILE__,
+               __LINE__, true);
+
+  throw runtime_error("주문 방향은 DIRECTION_NONE으로 지정할 수 없습니다.");
 }
 
 optional<string> BaseOrderHandler::IsValidPositionSize(
@@ -597,12 +600,12 @@ optional<string> BaseOrderHandler::IsValidPositionSize(
         break;
       }
 
-      case ORDER_NONE:
-        [[unlikely]] {
-          Logger::LogAndThrowError(
-              "엔진 오류: 포지션 크기 계산 중 주문 타입 오류", __FILE__,
-              __LINE__);
-        }
+      [[unlikely]] case ORDER_NONE: {
+        logger_->Log(ERROR_L, "포지션 크기 계산 중 엔진 오류가 발생했습니다.",
+                     __FILE__, __LINE__, true);
+
+        throw runtime_error("주문 유형은 ORDER_NONE으로 지정할 수 없습니다.");
+      }
     }
   }
 
@@ -642,9 +645,8 @@ void BaseOrderHandler::UpdateLastExitBarIndex(const int symbol_idx) {
 void BaseOrderHandler::Initialize(const int num_symbols,
                                   const vector<string>& symbol_names) {
   if (is_initialized_) [[unlikely]] {
-    Logger::LogAndThrowError(
-        "주문 핸들러가 이미 초기화가 완료되어 다시 초기화할 수 없습니다.",
-        __FILE__, __LINE__);
+    throw runtime_error(
+        "OrderHandler가 이미 초기화되어 다시 초기화할 수 없습니다.");
   }
 
   // 엔진 설정 초기화
@@ -696,9 +698,8 @@ void BaseOrderHandler::SetSymbolInfo(const vector<SymbolInfo>& symbol_info) {
   if (symbol_info_.empty()) {
     symbol_info_ = symbol_info;
   } else [[unlikely]] {
-    Logger::LogAndThrowError(
-        "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.", __FILE__,
-        __LINE__);
+    throw runtime_error(
+        "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.");
   }
 }
 
@@ -758,10 +759,12 @@ void BaseOrderHandler::DecreaseUsedMarginOnEntryCancel(
     }
 
     [[unlikely]] case ORDER_NONE: {
-      Logger::LogAndThrowError(
-          "진입 대기 주문 취소를 위해 예약 마진 감소 중 오류 발생: 주문 타입이 "
-          "NONE으로 지정됨.",
-          __FILE__, __LINE__);
+      logger_->Log(ERROR_L,
+                   "진입 대기 주문 취소를 위해 예약 마진 감소 중 엔진 오류가 "
+                   "발생했습니다.",
+                   __FILE__, __LINE__, true);
+
+      throw runtime_error("주문 유형은 ORDER_NONE으로 지정할 수 없습니다.");
     }
   }
 }

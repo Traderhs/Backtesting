@@ -25,6 +25,9 @@ class BACKTESTING_API Backtesting {
   /// 서버 모드를 설정하는 함수
   static void SetServerMode(bool server_mode);
 
+  /// 서버 모드 여부를 반환하는 함수
+  static bool IsServerMode();
+
   /// 백테스팅을 실행하는 함수
   static void RunBacktesting();
 
@@ -169,11 +172,12 @@ class BACKTESTING_API Backtesting {
   static void AddStrategy(const string& name, Args&&... args) {
     try {
       Strategy::AddStrategy<CustomStrategy>(name, std::forward<Args>(args)...);
-    } catch (...) {
-      // 하위에서 이미 상세 로그를 남겼으므로 여기서는 간단하게
-      Logger::LogAndThrowError(
-          format("[{}] 전략을 엔진에 추가하는 데 실패했습니다.", name),
-          __FILE__, __LINE__);
+    } catch (const exception& e) {
+      logger_->Log(ERROR_L,
+                   format("[{}] 전략을 엔진에 추가하는 데 실패했습니다.", name),
+                   __FILE__, __LINE__, true);
+
+      logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
     }
   }
 

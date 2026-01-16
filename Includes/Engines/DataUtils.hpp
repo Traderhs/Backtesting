@@ -42,7 +42,8 @@ namespace backtesting::utils {
  * @param decimal_places 값이 반올림될 소수점 자릿수
  * @return 주어진 값이 지정된 소수 자릿수로 반올림된 값
  */
-[[nodiscard]] BACKTESTING_API double RoundToDecimalPlaces(double value, size_t decimal_places);
+[[nodiscard]] BACKTESTING_API double RoundToDecimalPlaces(
+    double value, size_t decimal_places);
 
 /**
  * typeid().name()에서 클래스 이름을 추출하는 함수
@@ -88,8 +89,9 @@ BACKTESTING_API void ClearParquetMetadataCache();
  * @param row_index 값을 검색할 행의 인덱스
  * @return 지정된 열과 행의 인덱스에 해당하는 셀의 값
  */
-[[nodiscard]] BACKTESTING_API any GetCellValue(const shared_ptr<arrow::Table>& table,
-                               const string& column_name, int64_t row_index);
+[[nodiscard]] BACKTESTING_API any
+GetCellValue(const shared_ptr<arrow::Table>& table, const string& column_name,
+             int64_t row_index);
 
 /**
  * 지정된 테이블에서 주어진 열 인덱스와 행 인덱스에 해당하는
@@ -102,8 +104,8 @@ BACKTESTING_API void ClearParquetMetadataCache();
  * @param row_index 값을 검색할 행의 인덱스
  * @return 지정된 열과 행의 인덱스에 해당하는 셀의 값
  */
-[[nodiscard]] BACKTESTING_API any GetCellValue(const shared_ptr<arrow::Table>& table,
-                               int column_index, int64_t row_index);
+[[nodiscard]] BACKTESTING_API any GetCellValue(
+    const shared_ptr<arrow::Table>& table, int column_index, int64_t row_index);
 
 /**
  * 주어진 Scalar 객체에서 값을 추출하여 반환하는 함수
@@ -113,10 +115,12 @@ BACKTESTING_API void ClearParquetMetadataCache();
  * @param scalar 값을 추출할 Scalar 객체의 shared_ptr
  * @return 주어진 Scalar의 실제 값
  */
-[[nodiscard]] BACKTESTING_API any GetScalarValue(const shared_ptr<arrow::Scalar>& scalar);
+[[nodiscard]] BACKTESTING_API any
+GetScalarValue(const shared_ptr<arrow::Scalar>& scalar);
 
 /// 주어진 Json에서 주어진 키를 찾고 Double로 반환하는 함수
-[[nodiscard]] BACKTESTING_API double GetDoubleFromJson(const json& data, const string& key);
+[[nodiscard]] BACKTESTING_API double GetDoubleFromJson(const json& data,
+                                                       const string& key);
 
 /**
  * 주어진 테이블을 Parquet 파일 형식으로 지정된 파일 경로에 저장하는 함수
@@ -130,8 +134,10 @@ BACKTESTING_API void ClearParquetMetadataCache();
  * @param reset_directory 저장 폴더를 초기화하고 저장하는지 결정하는 플래그
  */
 BACKTESTING_API void TableToParquet(const shared_ptr<arrow::Table>& table,
-                    const string& directory_path, const string& file_name,
-                    bool save_split_files, bool reset_directory);
+                                    const string& directory_path,
+                                    const string& file_name,
+                                    bool save_split_files,
+                                    bool reset_directory);
 
 /// Json을 지정된 경로에 파일로 저장하는 함수
 BACKTESTING_API void JsonToFile(future<json> data, const string& file_path);
@@ -145,8 +151,9 @@ BACKTESTING_API void JsonToFile(future<json> data, const string& file_path);
  * @return 주어진 테이블을 `split_ratio`에 따라 나눈 두 개의 서브 테이블을
  * 포함하는 pair 객체. 첫 번째는 `split_ratio` 비율, 두 번째는 나머지 비율
  */
-[[nodiscard]] BACKTESTING_API pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>>
-SplitTable(const shared_ptr<arrow::Table>& table, double split_ratio);
+[[nodiscard]] BACKTESTING_API
+    pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>>
+    SplitTable(const shared_ptr<arrow::Table>& table, double split_ratio);
 
 /// 최소 스텝 크기로 값을 반올림하여 반환하는 함수
 [[nodiscard]] BACKTESTING_API double RoundToStep(double value, double step);
@@ -155,26 +162,18 @@ SplitTable(const shared_ptr<arrow::Table>& table, double split_ratio);
 inline locale global_locale("en_US.UTF-8");
 
 /// 금액을 천 단위 쉼표와 달러 표기로 포맷하여 반환하는 함수
-[[nodiscard]] BACKTESTING_API string FormatDollar(double price, bool use_rounding);
+[[nodiscard]] BACKTESTING_API string FormatDollar(double price,
+                                                  bool use_rounding);
 
 /// 퍼센트 값을 퍼센트 형식으로 포맷하여 반환하는 함수
-[[nodiscard]] BACKTESTING_API string FormatPercentage(double percentage, bool use_rounding);
+[[nodiscard]] BACKTESTING_API string FormatPercentage(double percentage,
+                                                      bool use_rounding);
 
 /// 값을 주어진 정밀도의 string으로 변환하여 반환하는 함수
 BACKTESTING_API string ToFixedString(double value, int precision);
 
 /// 환경 변수 값을 가져오는 함수
 [[nodiscard]] BACKTESTING_API string GetEnvVariable(const string& env_var);
-
-/// 파이썬 스크립트를 실행하는 함수
-BACKTESTING_API void RunPythonScript(const string& script_path,
-                     const vector<string>& args = {});
-
-/// 지정된 경로에서 Html 파일을 열고 String으로 반환하는 함수
-[[nodiscard]] BACKTESTING_API string OpenHtml(const string& html_path);
-
-/// Parquet 확장자를 제거한 문자열을 반환하는 함수
-BACKTESTING_API string RemoveParquetExtension(const string& file_path);
 
 /// 부동 소수점 같은 값 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값과 같으면 true를 반환함.

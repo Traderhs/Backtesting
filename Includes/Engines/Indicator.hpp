@@ -161,11 +161,16 @@ class BACKTESTING_API Indicator {
 
     // 프로젝트 폴더가 설정되지 않았는지 확인
     if (project_directory.empty()) {
-      Logger::LogAndThrowError(
-          format("[{}] 지표의 소스 파일 경로를 자동 감지하기 위해서는 "
-                 "먼저 엔진 설정에서 프로젝트 폴더를 지정해야 합니다.",
+      logger_->Log(
+          ERROR_L,
+          format("[{}] 지표의 헤더 및 소스 파일 경로 감지가 실패했습니다.",
                  name_),
-          __FILE__, __LINE__);
+          __FILE__, __LINE__, true);
+
+      throw runtime_error(
+          format("[{}] 지표의 헤더 및 소스 파일 경로를 자동 감지하기 위해서는 "
+                 "먼저 엔진 설정에서 프로젝트 폴더를 지정해야 합니다.",
+                 name_));
     }
 
     // typeid에서 클래스 이름 추출
@@ -226,11 +231,10 @@ class BACKTESTING_API Indicator {
           format("[{}] 지표의 헤더 파일 경로 감지가 실패했습니다.", name_),
           __FILE__, __LINE__, true);
 
-      Logger::LogAndThrowError(
+      throw runtime_error(
           format("지표의 클래스명과 헤더 파일명은 동일해야 하며, "
                  "[{}/Includes/Indicators/{}.hpp] 경로에 존재해야 합니다.",
-                 project_directory, class_name_),
-          __FILE__, __LINE__);
+                 project_directory, class_name_));
     }
 
     // 소스 파일 경로 후보들
@@ -284,11 +288,10 @@ class BACKTESTING_API Indicator {
           format("[{}] 지표의 소스 파일 경로 감지가 실패했습니다.", name_),
           __FILE__, __LINE__, true);
 
-      Logger::LogAndThrowError(
+      throw runtime_error(
           format("지표의 클래스명과 소스 파일명은 동일해야 하며, "
                  "[{}/Sources/Cores/Indicators/{}.cpp] 경로에 존재해야 합니다.",
-                 project_directory, class_name_),
-          __FILE__, __LINE__);
+                 project_directory, class_name_));
     }
   }
 

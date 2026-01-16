@@ -21,10 +21,9 @@ StandardDeviation::StandardDeviation(const string& name,
       buffer_(sizet_period_, 0.0),
       buffer_idx_(0) {
   if (period <= 0) {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("StandardDeviation 지표의 Period [{}]은(는) 0보다 커야 합니다.",
-               period),
-        __FILE__, __LINE__);
+               period));
   }
 }
 

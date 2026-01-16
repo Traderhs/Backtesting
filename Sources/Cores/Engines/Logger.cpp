@@ -27,13 +27,13 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
-#include <queue>
 #include <thread>
 
 // 파일 헤더
 #include "Engines/Logger.hpp"
 
 // 내부 헤더
+#include "Engines/Backtesting.hpp"
 #include "Engines/TimeUtils.hpp"
 
 // 네임 스페이스
@@ -383,7 +383,10 @@ void Logger::SetLogDirectory(const string& log_directory) {
       instance_->backtesting_log_created_in_current_session_ = true;
     }
   } catch (const exception& e) {
-    LogAndThrowError(e.what(), __FILE__, __LINE__);
+    instance_->Log(ERROR_L, "로그 폴더를 설정하는 중 오류가 발생했습니다.",
+                   __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 
   log_directory_ = log_directory;
@@ -719,12 +722,6 @@ FORCE_INLINE void Logger::WriteToBuffersFast(const LogLevel log_level,
   if (UNLIKELY(!backtesting_written && backtesting_log_.is_open())) {
     backtesting_log_.write(data, static_cast<streamsize>(len));
   }
-}
-
-void Logger::LogAndThrowError(const string& message, const string& file,
-                              const int line) {
-  instance_->Log(ERROR_L, message, file, line, true);
-  throw runtime_error(message);
 }
 
 void Logger::ConsoleLog(const string& level, const string& message) {

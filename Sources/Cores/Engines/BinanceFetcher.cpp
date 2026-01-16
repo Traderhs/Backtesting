@@ -124,6 +124,7 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
         format("[{} {}] 연속 선물 캔들스틱 파일이 [{}] 경로에 이미 존재합니다.",
                symbol, timeframe_filename, ConvertBackslashToSlash(file_path)),
         __FILE__, __LINE__, true);
+
     Engine::LogSeparator(true);
     return;
   }
@@ -148,6 +149,7 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
   if (transformed_klines.empty()) {
     logger_->Log(ERROR_L, "선물 데이터가 비어있습니다. 처리를 중단합니다.",
                  __FILE__, __LINE__, true);
+
     Engine::LogSeparator(true);
     return;
   }
@@ -172,6 +174,7 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
       __FILE__, __LINE__, true);
+
   Engine::LogSeparator(true);
 }
 
@@ -194,17 +197,13 @@ void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
                         "업데이트할 수 없습니다.",
                         symbol, filename_timeframe),
                  __FILE__, __LINE__, true);
+
     Engine::LogSeparator(true);
     return;
   }
 
   // Parquet 파일 읽기
-  shared_ptr<arrow::Table> klines_file;
-  try {
-    klines_file = ReadParquet(file_path);
-  } catch (const exception& e) {
-    Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
-  }
+  const shared_ptr<arrow::Table> klines_file = ReadParquet(file_path);
 
   logger_->Log(
       INFO_L,
@@ -341,6 +340,7 @@ void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
       __FILE__, __LINE__, true);
+
   Engine::LogSeparator(true);
 }
 
@@ -362,17 +362,13 @@ void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
                         "업데이트할 수 없습니다.",
                         symbol, filename_timeframe),
                  __FILE__, __LINE__, true);
+
     Engine::LogSeparator(true);
     return;
   }
 
   // Parquet 파일 읽기
-  shared_ptr<arrow::Table> klines_file;
-  try {
-    klines_file = ReadParquet(file_path);
-  } catch (const exception& e) {
-    Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
-  }
+  const shared_ptr<arrow::Table> klines_file = ReadParquet(file_path);
 
   logger_->Log(
       INFO_L,
@@ -440,6 +436,7 @@ void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
       __FILE__, __LINE__, true);
+
   Engine::LogSeparator(true);
 }
 
@@ -453,6 +450,7 @@ void BinanceFetcher::FetchFundingRates(const string& symbol) const {
                  format("[{}] 펀딩 비율 파일이 [{}] 경로에 이미 존재합니다.",
                         symbol, ConvertBackslashToSlash(file_path)),
                  __FILE__, __LINE__, true);
+
     Engine::LogSeparator(true);
     return;
   }
@@ -475,6 +473,7 @@ void BinanceFetcher::FetchFundingRates(const string& symbol) const {
   if (funding_rates.empty()) {
     logger_->Log(ERROR_L, "펀딩 비율 데이터가 비어있습니다. 처리를 중단합니다.",
                  __FILE__, __LINE__, true);
+
     Engine::LogSeparator(true);
     return;
   }
@@ -482,10 +481,11 @@ void BinanceFetcher::FetchFundingRates(const string& symbol) const {
   // 저장
   ofstream file(file_path);
   if (!file.is_open()) {
-    logger_->Log(
-        ERROR_L,
-        format("파일을 열 수 없습니다: {}", ConvertBackslashToSlash(file_path)),
-        __FILE__, __LINE__, true);
+    logger_->Log(ERROR_L,
+                 format("[{}] 파일을 열 수 없습니다",
+                        ConvertBackslashToSlash(file_path)),
+                 __FILE__, __LINE__, true);
+
     Engine::LogSeparator(true);
     return;
   }
@@ -515,6 +515,7 @@ void BinanceFetcher::FetchFundingRates(const string& symbol) const {
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
       __FILE__, __LINE__, true);
+
   Engine::LogSeparator(true);
 }
 
@@ -529,6 +530,7 @@ void BinanceFetcher::UpdateFundingRates(const string& symbol) const {
                         "업데이트할 수 없습니다.",
                         symbol),
                  __FILE__, __LINE__, true);
+
     Engine::LogSeparator(true);
     return;
   }
@@ -538,8 +540,9 @@ void BinanceFetcher::UpdateFundingRates(const string& symbol) const {
   if (!file.is_open()) {
     logger_->Log(
         ERROR_L,
-        format("[{}] 펀딩 비율 파일을 열 수 없습니다: {}", symbol, file_path),
+        format("[{}] 펀딩 비율 파일 [{}]을 열 수 없습니다.", symbol, file_path),
         __FILE__, __LINE__, true);
+
     return;
   }
 
@@ -548,9 +551,10 @@ void BinanceFetcher::UpdateFundingRates(const string& symbol) const {
     file >> funding_rates;
   } catch (const std::exception& e) {
     logger_->Log(ERROR_L,
-                 format("[{}] JSON 파싱 중 오류 발생: {}", symbol, e.what()),
+                 format("[{}] JSON 파싱 중 오류가 발생했습니다.", symbol),
                  __FILE__, __LINE__, true);
-    return;
+
+    throw runtime_error(e.what());
   }
 
   logger_->Log(INFO_L,
@@ -586,9 +590,10 @@ void BinanceFetcher::UpdateFundingRates(const string& symbol) const {
     ofstream output_file(file_path);
     if (!output_file.is_open()) {
       logger_->Log(ERROR_L,
-                   format("[{}] 펀딩 비율 파일을 저장할 수 없습니다: {}",
+                   format("[{}] 펀딩 비율 파일 [{}]을 저장할 수 없습니다.",
                           symbol, file_path),
                    __FILE__, __LINE__, true);
+
       return;
     }
 
@@ -617,6 +622,7 @@ void BinanceFetcher::UpdateFundingRates(const string& symbol) const {
           FormatTimeDiff(
               duration_cast<chrono::milliseconds>(end - start).count()),
       __FILE__, __LINE__, true);
+
   Engine::LogSeparator(true);
 }
 
@@ -624,10 +630,13 @@ void BinanceFetcher::FetchExchangeInfo(const string& exchange_info_path) {
   try {
     JsonToFile(Fetch(exchange_info_url_), exchange_info_path);
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, string(e.what()), __FILE__, __LINE__, true);
+    logger_->Log(
+        ERROR_L,
+        format("바이낸스 거래소 정보 파일 [{}]을 생성하는 데 실패했습니다.",
+               exchange_info_path),
+        __FILE__, __LINE__, true);
 
-    throw runtime_error(
-        "바이낸스 거래소 정보 파일을 생성하는 데 실패했습니다.");
+    throw runtime_error(e.what());
   }
 
   logger_->Log(INFO_L,
@@ -644,10 +653,13 @@ void BinanceFetcher::FetchLeverageBracket(
                      header_, api_key_env_var_, api_secret_env_var_),
                leverage_bracket_path);
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, string(e.what()), __FILE__, __LINE__, true);
+    logger_->Log(
+        ERROR_L,
+        format("바이낸스 레버리지 구간 파일 [{}]을 생성하는 데 실패했습니다.",
+               leverage_bracket_path),
+        __FILE__, __LINE__, true);
 
-    throw runtime_error(
-        "바이낸스 레버리지 구간 파일을 생성하는 데 실패했습니다.");
+    throw runtime_error(e.what());
   }
 
   logger_->Log(
@@ -705,10 +717,11 @@ future<vector<json>> BinanceFetcher::FetchKlines(
           param["endTime"] = to_string(result.front().at(0).get<int64_t>() - 1);
         }
       } catch (const exception& e) {
-        logger_->Log(ERROR_L, "\n" + string(e.what()), __FILE__, __LINE__,
-                     true);
-        Logger::LogAndThrowError("데이터를 요청하는 중 에러가 발생했습니다.",
-                                 __FILE__, __LINE__);
+        logger_->Log(ERROR_L,
+                     "[Fetch] 데이터를 요청하는 중 에러가 발생했습니다.",
+                     __FILE__, __LINE__, true);
+
+        throw runtime_error(e.what());
       }
     }
 
@@ -735,42 +748,35 @@ future<vector<json>> BinanceFetcher::FetchContinuousFundingRates(
     auto param = params;
 
     while (true) {
-      try {
-        // fetched_future를 미리 받아둠
-        auto fetched_future = Fetch(url, param);
+      // fetched_future를 미리 받아둠
+      auto fetched_future = Fetch(url, param);
 
-        // Fetch 대기
-        const auto& fetched_data = fetched_future.get();
+      // Fetch 대기
+      const auto& fetched_data = fetched_future.get();
 
-        // fetch 해온 데이터가 비어있거나 잘못된 데이터면 종료
-        if (fetched_data.empty() ||
-            (fetched_data.contains("code") && fetched_data["code"] == -1121)) {
-          break;
-        }
-
-        logger_->Log(
-            INFO_L,
-            format("[{} - {}] 요청 완료",
-                   UtcTimestampToUtcDatetime(
-                       fetched_data.front()["fundingTime"].get<int64_t>()),
-                   UtcTimestampToUtcDatetime(
-                       fetched_data.back()["fundingTime"].get<int64_t>())),
-            __FILE__, __LINE__, true);
-
-        // 뒤에 붙임
-        for (const auto& data : fetched_data) {
-          result.push_back(data);
-        }
-
-        // 다음 startTime은 마지막 startTime의 뒤 시간
-        param["startTime"] =
-            to_string(result.back()["fundingTime"].get<int64_t>() + 1);
-      } catch (const exception& e) {
-        logger_->Log(ERROR_L, "\n" + string(e.what()), __FILE__, __LINE__,
-                     true);
-        Logger::LogAndThrowError("데이터를 요청하는 중 에러가 발생했습니다.",
-                                 __FILE__, __LINE__);
+      // fetch 해온 데이터가 비어있거나 잘못된 데이터면 종료
+      if (fetched_data.empty() ||
+          (fetched_data.contains("code") && fetched_data["code"] == -1121)) {
+        break;
       }
+
+      logger_->Log(
+          INFO_L,
+          format("[{} - {}] 요청 완료",
+                 UtcTimestampToUtcDatetime(
+                     fetched_data.front()["fundingTime"].get<int64_t>()),
+                 UtcTimestampToUtcDatetime(
+                     fetched_data.back()["fundingTime"].get<int64_t>())),
+          __FILE__, __LINE__, true);
+
+      // 뒤에 붙임
+      for (const auto& data : fetched_data) {
+        result.push_back(data);
+      }
+
+      // 다음 startTime은 마지막 startTime의 뒤 시간
+      param["startTime"] =
+          to_string(result.back()["fundingTime"].get<int64_t>() + 1);
     }
 
     if (!result.empty()) {
@@ -938,24 +944,21 @@ vector<shared_ptr<arrow::Array>> BinanceFetcher::GetArraysAddedKlines(
   const vector<vector<int64_t>*>& time_data = {
       &open_time, nullptr, nullptr, nullptr, nullptr, nullptr, &close_time};
 
-  for (int i = 0; i < 7; ++i) {
-    if (i == 0 || i == 6) {  // 시간 데이터
+  for (int column_idx = 0; column_idx < 7; ++column_idx) {
+    if (column_idx == 0 || column_idx == 6) {  // 시간 데이터
       auto builder = make_shared<arrow::Int64Builder>();
       if (auto* int64_builder = builder.get();
-          !int64_builder->AppendValues(*time_data[i]).ok() ||
-          !int64_builder->Finish(&arrays[i]).ok()) {
-        Logger::LogAndThrowError(
-            format("{} time 데이터를 처리하는 데 실패했습니다.",
-                   (i == 0 ? "Open" : "Close")),
-            __FILE__, __LINE__);
+          !int64_builder->AppendValues(*time_data[column_idx]).ok() ||
+          !int64_builder->Finish(&arrays[column_idx]).ok()) {
+        throw runtime_error(format("{} time 데이터를 처리하는 데 실패했습니다.",
+                                   column_idx == 0 ? "Open" : "Close"));
       }
     } else {  // 가격 데이터
       auto builder = make_shared<arrow::DoubleBuilder>();
       if (auto* double_builder = builder.get();
-          !double_builder->AppendValues(*price_data[i]).ok() ||
-          !double_builder->Finish(&arrays[i]).ok()) {
-        Logger::LogAndThrowError("가격 데이터를 처리하는 데 실패했습니다.",
-                                 __FILE__, __LINE__);
+          !double_builder->AppendValues(*price_data[column_idx]).ok() ||
+          !double_builder->Finish(&arrays[column_idx]).ok()) {
+        throw runtime_error("가격 데이터를 처리하는 데 실패했습니다.");
       }
     }
   }
@@ -975,12 +978,11 @@ int64_t BinanceFetcher::GetServerTime() {
   try {
     return Fetch(server_time_url_).get()["serverTime"];
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, "\n" + string(e.what()), __FILE__, __LINE__, true);
-    Logger::LogAndThrowError("서버 시간의 요청이 실패했습니다.", __FILE__,
-                             __LINE__);
-  }
+    logger_->Log(ERROR_L, "서버 시간의 요청이 실패했습니다.", __FILE__,
+                 __LINE__, true);
 
-  return 0;
+    throw runtime_error(e.what());
+  }
 }
 
 }  // namespace backtesting::fetcher

@@ -13,9 +13,8 @@ SwingHigh::SwingHigh(const string& name, const string& timeframe,
       can_calculate_(false),
       last_swing_high_(NAN) {
   if (period <= 0) {
-    Logger::LogAndThrowError(
-        format("SwingHigh 지표의 Period [{}]은(는) 0보다 커야 합니다.", period),
-        __FILE__, __LINE__);
+    throw runtime_error(format(
+        "SwingHigh 지표의 Period [{}]은(는) 0보다 커야 합니다.", period));
   }
 }
 

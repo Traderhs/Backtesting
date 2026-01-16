@@ -281,8 +281,9 @@ string Order::OrderTypeToString(const OrderType order_type) {
     }
 
     case ORDER_NONE: {
-      Logger::LogAndThrowError("[OrderTypeToString] 잘못된 주문 타입 NONE 지정",
-                               __FILE__, __LINE__);
+      throw runtime_error(
+          "주문 유형을 String으로 변환하는 중 오류가 발생했습니다. 주문 유형은 "
+          "ORDER_NONE으로 지정할 수 없습니다.");
     }
   }
 

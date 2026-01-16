@@ -19,10 +19,10 @@ ExponentialMovingAverage::ExponentialMovingAverage(const string& name,
       prev_(0.0),
       alpha_(2.0 / (period + 1.0)) {
   if (period <= 0) {
-    Logger::LogAndThrowError(format("ExponentialMovingAverage 지표의 Period "
-                                    "[{}]은(는) 0보다 커야 합니다.",
-                                    period),
-                             __FILE__, __LINE__);
+    throw runtime_error(
+        format("ExponentialMovingAverage 지표의 Period "
+               "[{}]은(는) 0보다 커야 합니다.",
+               period));
   }
 }
 

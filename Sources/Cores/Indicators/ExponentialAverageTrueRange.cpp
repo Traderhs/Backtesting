@@ -23,11 +23,10 @@ ExponentialAverageTrueRange::ExponentialAverageTrueRange(
       prev_atr_(0.0),
       alpha_(2.0 / (period + 1.0)) {
   if (period <= 0) {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("ExponentialAverageTrueRange 지표의 Period [{}]은(는) 0보다 "
                "커야 합니다.",
-               period),
-        __FILE__, __LINE__);
+               period));
   }
 }
 

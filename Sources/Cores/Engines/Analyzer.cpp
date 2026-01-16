@@ -93,10 +93,8 @@ void Analyzer::Initialize(const int64_t begin_open_time,
                               .SetHoldingTime("-")
                               .SetWalletBalance(initial_balance)
                               .SetMaxWalletBalance(initial_balance));
-  } else {
-    Logger::LogAndThrowError(
-        "분석기가 이미 초기화되어 다시 초기화할 수 없습니다.", __FILE__,
-        __LINE__);
+  } else [[unlikely]] {
+    throw runtime_error("분석기가 이미 초기화되어 다시 초기화할 수 없습니다.");
   }
 }
 
@@ -104,14 +102,8 @@ void Analyzer::SetSymbolInfo(const vector<SymbolInfo>& symbol_info) {
   if (symbol_info_.empty()) {
     symbol_info_ = symbol_info;
   } else [[unlikely]] {
-    if (engine_->server_mode_) {
-      throw runtime_error(
-          "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.");
-    }
-
-    Logger::LogAndThrowError(
-        "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.", __FILE__,
-        __LINE__);
+    throw runtime_error(
+        "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.");
   }
 }
 
@@ -162,9 +154,11 @@ void Analyzer::CreateDirectories() {
     // 소스 코드 저장 폴더 생성
     fs::create_directories(format("{}/BackBoard/Sources", main_directory));
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
-    Logger::LogAndThrowError("폴더 생성 중 에러가 발생했습니다.", __FILE__,
-                             __LINE__);
+    logger_->Log(ERROR_L,
+                 "백테스팅 결과 저장 폴더 생성 중 에러가 발생했습니다.",
+                 __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -441,9 +435,10 @@ void Analyzer::SaveIndicatorData() {
     logger_->Log(INFO_L, "지표 데이터가 저장되었습니다.", __FILE__, __LINE__,
                  true);
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
-    Logger::LogAndThrowError("지표 데이터를 저장하는 중 오류가 발생했습니다.",
-                             __FILE__, __LINE__);
+    logger_->Log(ERROR_L, "지표 데이터를 저장하는 중 오류가 발생했습니다.",
+                 __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -452,9 +447,8 @@ void Analyzer::SaveTradeList() const {
 
   ofstream trade_list_file(file_path);
   if (!trade_list_file.is_open()) {
-    Logger::LogAndThrowError(
-        format("거래 내역 [{}]을(를) 생성할 수 없습니다.", file_path), __FILE__,
-        __LINE__);
+    throw runtime_error(
+        format("거래 내역 파일 [{}]을 생성할 수 없습니다.", file_path));
   }
 
   ordered_json trade_list_json = json::array();  // JSON 배열로 시작
@@ -710,7 +704,7 @@ void Analyzer::SaveConfig() {
         }
 
         // 평균 펀딩 비율 계산 (소수점 8자리에서 반올림)
-        // -> 백보드에서는 100을 곱하므로 6자리로 보임
+        // -> BackBoard에서는 100을 곱하므로 6자리로 보임
         double average_funding_rate = 0;
         if (!funding_rates.empty()) {
           average_funding_rate =
@@ -960,11 +954,12 @@ void Analyzer::SaveSourcesAndHeaders() {
     logger_->Log(INFO_L, "전략과 지표의 헤더 및 소스 파일이 저장되었습니다.",
                  __FILE__, __LINE__, true);
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
-    Logger::LogAndThrowError(
-        "전략과 지표의 헤더 및 소스 파일을 저장하는 중 오류가 "
-        "발생했습니다.",
-        __FILE__, __LINE__);
+    logger_->Log(ERROR_L,
+                 "전략과 지표의 헤더 및 소스 파일을 저장하는 중 오류가 "
+                 "발생했습니다.",
+                 __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -992,11 +987,13 @@ void Analyzer::SaveBackBoard() const {
       DownloadBackBoardFromGitHub();
     }
 
-    logger_->Log(INFO_L, "백보드가 저장되었습니다.", __FILE__, __LINE__, true);
+    logger_->Log(INFO_L, "BackBoard가 저장되었습니다.", __FILE__, __LINE__,
+                 true);
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
-    Logger::LogAndThrowError("백보드를 저장하는 중 오류가 발생했습니다.",
-                             __FILE__, __LINE__);
+    logger_->Log(ERROR_L, "BackBoard를 저장하는 중 오류가 발생했습니다.",
+                 __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -1008,10 +1005,11 @@ void Analyzer::SaveBacktestingLog() const {
     fs::rename(logger_->backtesting_log_temp_path_,
                main_directory_ + "/BackBoard/backtesting.log");
   } catch (const exception& e) {
-    Logger::LogAndThrowError(
-        "백테스팅 로그 파일을 저장하는 데 오류가 발생했습니다.: " +
-            string(e.what()),
-        __FILE__, __LINE__);
+    logger_->Log(ERROR_L,
+                 "백테스팅 로그 파일을 저장하는 데 오류가 발생했습니다.",
+                 __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -1270,10 +1268,9 @@ void Analyzer::DownloadBackBoardFromGitHub() const {
 
       if (int fallback_result = system(fallback_exe_cmd.c_str());
           fallback_result != 0) {
-        Logger::LogAndThrowError(
+        throw runtime_error(
             "BackBoard.exe를 다운로드하는 데 실패했습니다. "
-            "네트워크 연결을 확인하고 다시 시도해주세요.",
-            __FILE__, __LINE__);
+            "네트워크 연결을 확인하고 다시 시도해주세요.");
       }
     }
 
@@ -1303,24 +1300,21 @@ void Analyzer::DownloadBackBoardFromGitHub() const {
 
       if (int zip_fallback_result = system(fallback_zip_cmd.c_str());
           zip_fallback_result != 0) {
-        Logger::LogAndThrowError(
+        throw runtime_error(
             "BackBoard.zip을 다운로드하는 데 실패했습니다. "
-            "네트워크 연결을 확인하고 다시 시도해주세요.",
-            __FILE__, __LINE__);
+            "네트워크 연결을 확인하고 다시 시도해주세요.");
       }
     }
 
     // 다운로드된 파일 크기 확인
     if (!fs::exists(exe_temp_path) || fs::file_size(exe_temp_path) == 0) {
-      Logger::LogAndThrowError(
-          "BackBoard.exe 파일이 올바르게 다운로드되지 않았습니다.", __FILE__,
-          __LINE__);
+      throw runtime_error(
+          "BackBoard.exe 파일이 올바르게 다운로드되지 않았습니다.");
     }
 
     if (!fs::exists(zip_temp_path) || fs::file_size(zip_temp_path) == 0) {
-      Logger::LogAndThrowError(
-          "BackBoard.zip 파일이 올바르게 다운로드되지 않았습니다.", __FILE__,
-          __LINE__);
+      throw runtime_error(
+          "BackBoard.zip 파일이 올바르게 다운로드되지 않았습니다.");
     }
 
     // ZIP 파일 압축 해제
@@ -1334,8 +1328,7 @@ void Analyzer::DownloadBackBoardFromGitHub() const {
         zip_temp_path, extract_temp_path);
 
     if (system(extract_cmd.c_str()) != 0) {
-      Logger::LogAndThrowError("BackBoard.zip 압축 해제에 실패했습니다.",
-                               __FILE__, __LINE__);
+      throw runtime_error("BackBoard.zip 압축 해제에 실패했습니다.");
     }
 
     // BackBoard.exe 복사
@@ -1394,14 +1387,16 @@ void Analyzer::DownloadBackBoardFromGitHub() const {
                    __FILE__, __LINE__, true);
     }
 
-    logger_->Log(INFO_L, "GitHub에서 백보드가 성공적으로 다운로드되었습니다.",
+    logger_->Log(INFO_L,
+                 "GitHub에서 BackBoard가 성공적으로 다운로드되었습니다.",
                  __FILE__, __LINE__, true);
 
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
-    Logger::LogAndThrowError(
-        "GitHub에서 백보드를 다운로드하는 중 오류가 발생했습니다.", __FILE__,
-        __LINE__);
+    logger_->Log(ERROR_L,
+                 "GitHub에서 BackBoard를 다운로드하는 중 오류가 발생했습니다.",
+                 __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 

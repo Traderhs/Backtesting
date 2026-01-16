@@ -17,6 +17,7 @@
 
 // 내부 헤더
 #include "Engines/Analyzer.hpp"
+#include "Engines/Backtesting.hpp"
 #include "Engines/BarData.hpp"
 #include "Engines/BarHandler.hpp"
 #include "Engines/BaseBarHandler.hpp"
@@ -37,8 +38,7 @@ using namespace utils;
 namespace backtesting::engine {
 
 Engine::Engine()
-    : server_mode_(false),
-      use_bar_magnifier_(false),
+    : use_bar_magnifier_(false),
       trading_indices_(),
       magnifier_indices_(),
       mark_price_indices_(),
@@ -69,9 +69,7 @@ shared_ptr<Engine>& Engine::GetEngine() {
   return instance_;
 }
 
-void Engine::Backtesting(const bool server_mode) {
-  server_mode_ = server_mode;
-
+void Engine::Backtesting() {
   LogSeparator(true);
   Initialize();
 
@@ -83,6 +81,7 @@ void Engine::Backtesting(const bool server_mode) {
     BacktestingMain();
   } catch ([[maybe_unused]] const Bankruptcy& e) {
     SetBankruptcy();
+
     logger_->Log(ERROR_L, "파산으로 인해 백테스팅을 종료합니다.", __FILE__,
                  __LINE__, true);
   }
@@ -183,11 +182,13 @@ void Engine::Initialize() {
 
 void Engine::IsValidConfig() {
   try {
+    // 이후 에러 로그에서 서버 모드는 메세지가 달라야하지만,
+    // 앞선 검증을 통해 null 가능성은 없으므로 패스
+
     if (config_ == nullptr) {
-      Logger::LogAndThrowError(
-          "엔진에 설정값이 추가되지 않았습니다. "
-          "Backtesting::SetConfig 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
+      throw runtime_error(
+          "엔진 설정이 추가되지 않았습니다. "
+          "Backtesting::SetConfig 함수를 호출해 주세요.");
     }
 
     const auto& project_directory = Config::GetProjectDirectory();
@@ -206,158 +207,136 @@ void Engine::IsValidConfig() {
 
     // 각 항목에 대해 초기화되지 않았을 경우 예외를 던짐
     if (project_directory.empty()) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "프로젝트 폴더가 초기화되지 않았습니다. "
-          "Backtesting::SetConfig().SetProjectDirectory 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
+          "Backtesting::SetConfig().SetProjectDirectory 함수를 호출해 주세요.");
     }
 
     if (!filesystem::exists(project_directory)) {
-      Logger::LogAndThrowError(
-          format("프로젝트 폴더 [{}]이(가) 존재하지 않습니다.",
-                 project_directory),
-          __FILE__, __LINE__);
+      throw runtime_error(format("프로젝트 폴더 [{}]이(가) 존재하지 않습니다.",
+                                 project_directory));
     }
 
     if (!opt_backtest_period) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "백테스팅 기간이 설정되지 않았습니다. "
-          "Backtesting::SetConfig().SetBacktestPeriod 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
+          "Backtesting::SetConfig().SetBacktestPeriod 함수를 호출해 주세요.");
     }
 
     if (!opt_use_bar_magnifier) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "바 돋보기 사용 여부가 초기화되지 않았습니다. "
-          "Backtesting::SetConfig().SetUseBarMagnifier 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
+          "Backtesting::SetConfig().SetUseBarMagnifier 함수를 호출해 주세요.");
     }
 
     if (isnan(initial_balance)) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "초기 자금이 초기화되지 않았습니다. "
-          "Backtesting::SetConfig().SetInitialBalance 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
+          "Backtesting::SetConfig().SetInitialBalance 함수를 호출해 주세요.");
     }
 
     if (isnan(taker_fee_percentage)) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "테이커 수수료 퍼센트가 초기화되지 않았습니다. "
           "Backtesting::SetConfig().SetTakerFeePercentage 함수를 호출해 "
-          "주세요.",
-          __FILE__, __LINE__);
+          "주세요.");
     }
 
     if (isnan(maker_fee_percentage)) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "메이커 수수료 퍼센트가 초기화되지 않았습니다. "
           "Backtesting::SetConfig().SetMakerFeePercentage 함수를 호출해 "
-          "주세요.",
-          __FILE__, __LINE__);
+          "주세요.");
     }
 
     if (slippage == nullptr) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "슬리피지가 초기화되지 않았습니다. "
-          "Backtesting::SetConfig().SetSlippage 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
-    }
-
-    if (!filesystem::exists(project_directory)) {
-      Logger::LogAndThrowError(
-          format("지정된 프로젝트 폴더 [{}]은(는) 유효하지 않습니다.",
-                 project_directory),
-          __FILE__, __LINE__);
+          "Backtesting::SetConfig().SetSlippage 함수를 호출해 주세요.");
     }
 
     if (IsLessOrEqual(initial_balance, 0.0)) {
-      Logger::LogAndThrowError(
-          format("지정된 초기 자금 [{}]는 0보다 커야 합니다.",
-                 FormatDollar(initial_balance, true)),
-          __FILE__, __LINE__);
+      throw runtime_error(format("지정된 초기 자금 [{}]는 0보다 커야 합니다.",
+                                 FormatDollar(initial_balance, true)));
     }
 
     if (IsGreater(taker_fee_percentage, 100.0) ||
         IsLess(taker_fee_percentage, 0.0)) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           format("지정된 테이커 수수료 퍼센트 [{}%]는 100% 초과 혹은 "
                  "0% 미만으로 설정할 수 없습니다.",
-                 taker_fee_percentage),
-          __FILE__, __LINE__);
+                 taker_fee_percentage));
     }
 
     if (IsGreater(maker_fee_percentage, 100.0) ||
         IsLess(maker_fee_percentage, 0.0)) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           format("지정된 메이커 수수료 퍼센트 [{}%]는 100% 초과 혹은 "
                  "0% 미만으로 설정할 수 없습니다.",
-                 maker_fee_percentage),
-          __FILE__, __LINE__);
+                 maker_fee_percentage));
     }
 
     if (const auto& error_msg = slippage->ValidateTakerSlippage()) {
-      Logger::LogAndThrowError(*error_msg, __FILE__, __LINE__);
+      throw runtime_error(*error_msg);
     }
 
     if (const auto& error_msg = slippage->ValidateMakerSlippage()) {
-      Logger::LogAndThrowError(*error_msg, __FILE__, __LINE__);
+      throw runtime_error(*error_msg);
     }
 
     if (!opt_check_market_max_qty) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "시장가 최대 수량 검사 여부가 초기화되지 않았습니다. "
-          "Backtesting::SetConfig().SetCheckMarketMaxQty 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
+          "Backtesting::SetConfig().SetCheckMarketMaxQty 함수를 호출해 "
+          "주세요.");
     }
 
     if (!opt_check_market_min_qty) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "시장가 최소 수량 검사 여부가 초기화되지 않았습니다. "
-          "Backtesting::SetConfig().SetCheckMarketMinQty 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
+          "Backtesting::SetConfig().SetCheckMarketMinQty 함수를 호출해 "
+          "주세요.");
     }
 
     if (!opt_check_limit_max_qty) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "지정가 최대 수량 검사 여부가 초기화되지 않았습니다. "
-          "Backtesting::SetConfig().SetCheckLimitMaxQty 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
+          "Backtesting::SetConfig().SetCheckLimitMaxQty 함수를 호출해 주세요.");
     }
 
     if (!opt_check_limit_min_qty) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "지정가 최소 수량 검사 여부가 초기화되지 않았습니다. "
-          "Backtesting::SetConfig().SetCheckLimitMinQty 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
+          "Backtesting::SetConfig().SetCheckLimitMinQty 함수를 호출해 주세요.");
     }
 
     if (!opt_check_min_notional_value) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "최소 명목 가치 검사 여부가 초기화되지 않았습니다. "
           "Backtesting::SetConfig().SetCheckMinNotionalValue 함수를 호출해 "
-          "주세요.",
-          __FILE__, __LINE__);
+          "주세요.");
     }
 
-    logger_->Log(INFO_L, "엔진 설정값 유효성 검증이 완료되었습니다.", __FILE__,
+    logger_->Log(INFO_L, "엔진 설정 유효성 검증이 완료되었습니다.", __FILE__,
                  __LINE__, true);
-  } catch (...) {
-    Logger::LogAndThrowError("엔진 설정값 유효성 검증이 실패했습니다.",
-                             __FILE__, __LINE__);
+  } catch (const std::exception& e) {
+    logger_->Log(ERROR_L, "엔진 설정 유효성 검증이 실패했습니다.", __FILE__,
+                 __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
-void Engine::IsValidBarData() const {
+void Engine::IsValidBarData() {
   try {
     const auto& trading_bar_data = bar_->GetBarData(TRADING, "");
     const auto trading_num_symbols = trading_bar_data->GetNumSymbols();
 
     // 1.1. 트레이딩 바 데이터가 비었는지 검증
     if (!trading_num_symbols)
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "트레이딩 바 데이터가 추가되지 않았습니다. "
-          "Backtesting::AddBarData 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
+          "Backtesting::AddBarData 함수를 호출해 주세요.");
 
     // 1.2. 트레이딩 바 데이터의 중복 가능성 검증
     // set은 중복 불가능하므로 set에 추가한 open 개수가 심볼 개수와 다르다면
@@ -375,17 +354,16 @@ void Engine::IsValidBarData() const {
             "가능성이 있습니다.",
             __FILE__, __LINE__, true);
 
-        if (server_mode_) {
+        if (Backtesting::IsServerMode()) {
           throw runtime_error(
               "이 검사를 비활성화하고 싶다면 심볼 간 트레이딩 바 데이터 중복 "
               "검사 체크 박스를 해제해 주세요.");
         }
 
-        Logger::LogAndThrowError(
+        throw runtime_error(
             "이 검사를 비활성화하고 싶다면 "
             "Backtesting::SetConfig().DisableSameBarDataCheck 함수를 "
-            "호출해 주세요.",
-            __FILE__, __LINE__);
+            "호출해 주세요.");
       }
     }
 
@@ -398,12 +376,11 @@ void Engine::IsValidBarData() const {
       /* 2.1. 트레이딩 바 데이터의 심볼 개수와 돋보기 바 데이터의
               심볼 개수가 같은지 검증 */
       if (trading_num_symbols != magnifier_num_symbols) {
-        Logger::LogAndThrowError(
+        throw runtime_error(
             format("돋보기 기능 사용 시 트레이딩 바 데이터에 추가된 "
                    "심볼 개수({}개)와 돋보기 바 데이터에 추가된 심볼 "
                    "개수({}개)는 동일해야 합니다.",
-                   trading_num_symbols, magnifier_num_symbols),
-            __FILE__, __LINE__);
+                   trading_num_symbols, magnifier_num_symbols));
       }
 
       /* 2.2. 트레이딩 바 데이터의 심볼들이 돋보기 바 데이터에 존재하고
@@ -412,12 +389,10 @@ void Engine::IsValidBarData() const {
         if (const auto& symbol_name =
                 trading_bar_data->GetSafeSymbolName(symbol_idx);
             symbol_name != magnifier_bar_data->GetSafeSymbolName(symbol_idx)) {
-          Logger::LogAndThrowError(
-              format(
-                  "돋보기 바 데이터에 [{}]이(가) 존재하지 않거나 "
-                  "트레이딩 바 데이터에 추가된 심볼 순서와 일치하지 않습니다.",
-                  symbol_name),
-              __FILE__, __LINE__);
+          throw runtime_error(format(
+              "돋보기 바 데이터에 [{}]이(가) 존재하지 않거나 "
+              "트레이딩 바 데이터에 추가된 심볼 순서와 일치하지 않습니다.",
+              symbol_name));
         }
       }
 
@@ -438,26 +413,24 @@ void Engine::IsValidBarData() const {
               "가능성이 있습니다.",
               __FILE__, __LINE__, true);
 
-          if (server_mode_) {
+          if (Backtesting::IsServerMode()) {
             throw runtime_error(
                 "이 검사를 비활성화하고 싶다면 심볼 간 돋보기 바 데이터 중복 "
                 "검사 체크 박스를 해제해 주세요.");
           }
 
-          Logger::LogAndThrowError(
+          throw runtime_error(
               "이 검사를 비활성화하고 싶다면 "
               "Backtesting::SetConfig().DisableSameBarDataCheck 함수를 "
-              "호출해 주세요.",
-              __FILE__, __LINE__);
+              "호출해 주세요.");
         }
       }
     } else {
       // 2.4. 돋보기 기능을 사용하지 않는데 돋보기 바로 추가되었는지 확인
       if (magnifier_num_symbols != 0) {
-        Logger::LogAndThrowError(
+        throw runtime_error(
             "돋보기 기능을 사용하지 않으면 돋보기 바 데이터를 추가할 수 "
-            "없습니다.",
-            __FILE__, __LINE__);
+            "없습니다.");
       }
     }
 
@@ -472,12 +445,10 @@ void Engine::IsValidBarData() const {
       /* 3.1. 트레이딩 바 데이터의 심볼 개수와 참조 바 데이터의
               심볼 개수가 같은지 검증 */
       if (trading_num_symbols != reference_num_symbols) {
-        Logger::LogAndThrowError(
-            format("트레이딩 바 데이터에 추가된 심볼 개수({}개)와 참조 바 "
-                   "데이터 [{}]에 추가된 심볼 개수({}개)는 동일해야 합니다.",
-                   trading_num_symbols, reference_timeframe,
-                   reference_num_symbols),
-            __FILE__, __LINE__);
+        throw runtime_error(format(
+            "트레이딩 바 데이터에 추가된 심볼 개수({}개)와 참조 바 "
+            "데이터 [{}]에 추가된 심볼 개수({}개)는 동일해야 합니다.",
+            trading_num_symbols, reference_timeframe, reference_num_symbols));
       }
 
       /* 3.2. 트레이딩 바 데이터의 심볼들이 참조 바 데이터에 존재하고
@@ -486,12 +457,10 @@ void Engine::IsValidBarData() const {
         if (const auto& symbol_name =
                 trading_bar_data->GetSafeSymbolName(symbol_idx);
             symbol_name != reference_bar_data->GetSafeSymbolName(symbol_idx)) {
-          Logger::LogAndThrowError(
-              format(
-                  "참조 바 데이터에 [{} {}]이(가) 존재하지 않거나 "
-                  "트레이딩 바 데이터에 추가된 심볼 순서와 일치하지 않습니다.",
-                  symbol_name, reference_timeframe),
-              __FILE__, __LINE__);
+          throw runtime_error(format(
+              "참조 바 데이터에 [{} {}]이(가) 존재하지 않거나 "
+              "트레이딩 바 데이터에 추가된 심볼 순서와 일치하지 않습니다.",
+              symbol_name, reference_timeframe));
         }
       }
 
@@ -512,17 +481,16 @@ void Engine::IsValidBarData() const {
                               reference_timeframe),
                        __FILE__, __LINE__, true);
 
-          if (server_mode_) {
+          if (Backtesting::IsServerMode()) {
             throw runtime_error(
                 "이 검사를 비활성화하고 싶다면 심볼 간 참조 바 데이터 중복 "
                 "검사 체크 박스를 해제해 주세요.");
           }
 
-          Logger::LogAndThrowError(
+          throw runtime_error(
               "이 검사를 비활성화하고 싶다면 "
               "Backtesting::SetConfig().DisableSameBarDataCheck 함수를 "
-              "호출해 주세요.",
-              __FILE__, __LINE__);
+              "호출해 주세요.");
         }
       }
     }
@@ -542,24 +510,21 @@ void Engine::IsValidBarData() const {
     const auto& target_timeframe = target_bar_data->GetTimeframe();
     if (const auto& mark_price_timeframe = mark_price_bar_data->GetTimeframe();
         target_timeframe != mark_price_timeframe) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           format("{} 바 데이터의 타임프레임 [{}]와(과) 마크 가격 바 데이터의 "
                  "타임프레임 [{}]은(는) 동일해야 합니다.",
                  use_bar_magnifier ? "돋보기 기능 사용 시 돋보기" : "트레이딩",
-                 target_timeframe, mark_price_timeframe),
-          __FILE__, __LINE__);
+                 target_timeframe, mark_price_timeframe));
     }
 
     /* 4.2. 타겟 바 데이터의 심볼 개수와 마크 가격 바 데이터의
             심볼 개수가 같은지 검증 */
     if (target_num_symbols != mark_price_num_symbols) {
-      Logger::LogAndThrowError(
-          format(
-              "{} 바 데이터에 추가된 심볼 개수({}개)와 마크 가격 바 데이터에 "
-              "추가된 심볼 개수({}개)는 동일해야 합니다.",
-              use_bar_magnifier ? "돋보기 기능 사용 시 돋보기" : "트레이딩",
-              target_num_symbols, mark_price_num_symbols),
-          __FILE__, __LINE__);
+      throw runtime_error(format(
+          "{} 바 데이터에 추가된 심볼 개수({}개)와 마크 가격 바 데이터에 "
+          "추가된 심볼 개수({}개)는 동일해야 합니다.",
+          use_bar_magnifier ? "돋보기 기능 사용 시 돋보기" : "트레이딩",
+          target_num_symbols, mark_price_num_symbols));
     }
 
     /* 4.3. 타겟 바 데이터의 심볼들이 마크 가격 바 데이터에 존재하고
@@ -568,11 +533,10 @@ void Engine::IsValidBarData() const {
       if (const auto& symbol_name =
               target_bar_data->GetSafeSymbolName(symbol_idx);
           symbol_name != mark_price_bar_data->GetSafeSymbolName(symbol_idx)) {
-        Logger::LogAndThrowError(
+        throw runtime_error(
             format("마크 가격 바 데이터에 [{}]이(가) 존재하지 않거나 "
                    "{} 바 데이터에 추가된 심볼 순서와 일치하지 않습니다.",
-                   symbol_name, use_bar_magnifier ? "돋보기" : "트레이딩"),
-            __FILE__, __LINE__);
+                   symbol_name, use_bar_magnifier ? "돋보기" : "트레이딩"));
       }
     }
 
@@ -593,17 +557,16 @@ void Engine::IsValidBarData() const {
             "가능성이 있습니다.",
             __FILE__, __LINE__, true);
 
-        if (server_mode_) {
+        if (Backtesting::IsServerMode()) {
           throw runtime_error(
               "이 검사를 비활성화하고 싶다면 심볼 간 마크 가격 바 데이터 중복 "
               "검사 체크 박스를 해제해 주세요.");
         }
 
-        Logger::LogAndThrowError(
+        throw runtime_error(
             "이 검사를 비활성화하고 싶다면 "
             "Backtesting::SetConfig().DisableSameBarDataCheck 함수를 "
-            "호출해 주세요.",
-            __FILE__, __LINE__);
+            "호출해 주세요.");
       }
     }
 
@@ -643,17 +606,16 @@ void Engine::IsValidBarData() const {
                     target_bar_data->GetSafeSymbolName(target_symbol_idx)),
                 __FILE__, __LINE__, true);
 
-            if (server_mode_) {
+            if (Backtesting::IsServerMode()) {
               throw runtime_error(
                   "이 검사를 비활성화하고 싶다면 마크 가격 바 데이터와 목표 바 "
                   "데이터 중복 검사 체크 박스를 해제해 주세요.");
             }
 
-            Logger::LogAndThrowError(
+            throw runtime_error(
                 "이 검사를 비활성화하고 싶다면 "
                 "Backtesting::SetConfig().DisableSameBarDataWithTargetCheck "
-                "함수를 호출해 주세요.",
-                __FILE__, __LINE__);
+                "함수를 호출해 주세요.");
           }
         }
       }
@@ -670,18 +632,19 @@ void Engine::IsValidBarData() const {
         (!use_bar_magnifier && parsed_trading_tf > parsed_1_h) ||
         (use_bar_magnifier &&
          ParseTimeframe(magnifier_bar_data->GetTimeframe()) > parsed_1_h)) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "펀딩비의 정확한 정산을 위해 돋보기 기능 미사용 시 트레이딩 바 "
           "데이터의 타임프레임이 1h 이하여야 하며, 돋보기 기능 사용 시 돋보기 "
-          "바 데이터의 타임프레임이 1h 이하여야 합니다.",
-          __FILE__, __LINE__);
+          "바 데이터의 타임프레임이 1h 이하여야 합니다.");
     }
 
     logger_->Log(INFO_L, "바 데이터 유효성 검증이 완료되었습니다.", __FILE__,
                  __LINE__, true);
-  } catch (...) {
-    Logger::LogAndThrowError("바 데이터 유효성 검증이 실패했습니다.", __FILE__,
-                             __LINE__);
+  } catch (const std::exception& e) {
+    logger_->Log(ERROR_L, "바 데이터 유효성 검증이 실패했습니다.", __FILE__,
+                 __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -713,12 +676,10 @@ void Engine::IsValidDateRange() {
       if (const auto start_time_ts =
               UtcDatetimeToUtcTimestamp(start_time, format);
           start_time_ts < begin_open_time_) {
-        Logger::LogAndThrowError(
-            std::format("지정된 백테스팅 시작 시간 [{}]은(는) 바 데이터 최소 "
-                        "시간 [{}]의 전으로 지정할 수 없습니다.",
-                        start_time,
-                        UtcTimestampToUtcDatetime(begin_open_time_)),
-            __FILE__, __LINE__);
+        throw runtime_error(std::format(
+            "지정된 백테스팅 시작 시간 [{}]은(는) 바 데이터 최소 "
+            "시간 [{}]의 전으로 지정할 수 없습니다.",
+            start_time, UtcTimestampToUtcDatetime(begin_open_time_)));
       } else {
         begin_open_time_ = start_time_ts;
       }
@@ -728,11 +689,10 @@ void Engine::IsValidDateRange() {
     if (!end_time.empty()) {
       if (const auto end_time_ts = UtcDatetimeToUtcTimestamp(end_time, format);
           end_time_ts > end_close_time_) {
-        Logger::LogAndThrowError(
+        throw runtime_error(
             std::format("지정된 백테스팅 종료 시간 [{}]은(는) 바 데이터 최대 "
                         "시간 [{}]의 후로 지정할 수 없습니다.",
-                        end_time, UtcTimestampToUtcDatetime(end_close_time_)),
-            __FILE__, __LINE__);
+                        end_time, UtcTimestampToUtcDatetime(end_close_time_)));
       } else {
         end_close_time_ = end_time_ts;
       }
@@ -742,19 +702,20 @@ void Engine::IsValidDateRange() {
     if (!start_time.empty() && !end_time.empty()) {
       if (UtcDatetimeToUtcTimestamp(start_time, format) >
           UtcDatetimeToUtcTimestamp(end_time, format)) {
-        Logger::LogAndThrowError(
+        throw runtime_error(
             std::format("지정된 백테스팅 시작 시간 [{}]은(는) 지정된 백테스팅 "
                         "종료 시간 [{}]의 후로 지정할 수 없습니다.",
-                        start_time, end_time),
-            __FILE__, __LINE__);
+                        start_time, end_time));
       }
     }
 
     logger_->Log(INFO_L, "시간 범위 유효성 검증이 완료되었습니다.", __FILE__,
                  __LINE__, true);
-  } catch (...) {
-    Logger::LogAndThrowError("시간 범위 유효성 검증이 실패했습니다.", __FILE__,
-                             __LINE__);
+  } catch (const std::exception& e) {
+    logger_->Log(ERROR_L, "시간 범위 유효성 검증이 실패했습니다.", __FILE__,
+                 __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -764,33 +725,29 @@ void Engine::IsValidSymbolInfo() {
 
   try {
     if (exchange_info_.empty()) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "엔진에 거래소 정보가 추가되지 않았습니다. "
-          "Backtesting::AddExchangeInfo 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
+          "Backtesting::AddExchangeInfo 함수를 호출해 주세요.");
     }
 
     if (leverage_bracket_.empty()) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "엔진에 레버리지 구간이 추가되지 않았습니다. "
-          "Backtesting::AddLeverageBracket 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
+          "Backtesting::AddLeverageBracket 함수를 호출해 주세요.");
     }
 
     if (funding_rates_.empty()) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           "엔진에 펀딩 비율이 추가되지 않았습니다. "
-          "Backtesting::AddFundingRates 함수를 호출해 주세요.",
-          __FILE__, __LINE__);
+          "Backtesting::AddFundingRates 함수를 호출해 주세요.");
     }
 
     if (const auto funding_rates_num_symbols = funding_rates_.size();
         funding_rates_num_symbols != trading_num_symbols) {
-      Logger::LogAndThrowError(
+      throw runtime_error(
           format("트레이딩 바 데이터에 추가된 심볼 개수({}개)와 펀딩 비율에 "
                  "추가된 심볼 개수({}개)는 동일해야 합니다.",
-                 trading_num_symbols, funding_rates_num_symbols),
-          __FILE__, __LINE__);
+                 trading_num_symbols, funding_rates_num_symbols));
     }
 
     for (int symbol_idx = 0; symbol_idx < trading_num_symbols; ++symbol_idx) {
@@ -798,19 +755,20 @@ void Engine::IsValidSymbolInfo() {
               trading_bar_data->GetSafeSymbolName(symbol_idx);
           symbol_name !=
           funding_rates_[symbol_idx][0]["symbol"].get<string>()) {
-        Logger::LogAndThrowError(
+        throw runtime_error(
             format("펀딩 비율에 [{}]이(가) 존재하지 않거나 "
                    "트레이딩 바 데이터에 추가된 심볼 순서와 일치하지 않습니다.",
-                   symbol_name),
-            __FILE__, __LINE__);
+                   symbol_name));
       }
     }
 
     logger_->Log(INFO_L, "심볼 정보 유효성 검증이 완료되었습니다.", __FILE__,
                  __LINE__, true);
-  } catch (...) {
-    Logger::LogAndThrowError("심볼 정보 유효성 검증이 실패했습니다.", __FILE__,
-                             __LINE__);
+  } catch (const std::exception& e) {
+    logger_->Log(ERROR_L, "심볼 정보 유효성 검증이 실패했습니다.", __FILE__,
+                 __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -821,22 +779,23 @@ void Engine::IsValidStrategy() {
       if (const auto& strategy = Strategy::GetStrategy(); strategy != nullptr) {
         strategy_ = strategy;
       } else {
-        Logger::LogAndThrowError(
+        throw runtime_error(
             "엔진에 전략이 추가되지 않았습니다. "
-            "Backtesting::AddStrategy 함수를 호출해 주세요.",
-            __FILE__, __LINE__);
+            "Backtesting::AddStrategy 함수를 호출해 주세요.");
       }
     } else {
-      Logger::LogAndThrowError(
-          "한 백테스팅은 한 개의 전략만 사용할 수 있습니다.", __FILE__,
-          __LINE__);
+      throw runtime_error(
+          "전략이 중복 추가되었습니다. 한 백테스팅은 한 개의 전략만 사용할 수 "
+          "있습니다.");
     }
 
     logger_->Log(INFO_L, "전략 유효성 검증이 완료되었습니다.", __FILE__,
                  __LINE__, true);
-  } catch (...) {
-    Logger::LogAndThrowError("전략 유효성 검증이 실패했습니다.", __FILE__,
-                             __LINE__);
+  } catch (const std::exception& e) {
+    logger_->Log(ERROR_L, "전략 유효성 검증이 실패했습니다.", __FILE__,
+                 __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -861,10 +820,9 @@ void Engine::IsValidIndicators() {
     }
 
     if (!duplicate_name.empty()) {
-      Logger::LogAndThrowError(format("[{}] 전략 내에서 동일한 이름의 지표 "
-                                      "[{}]을(를) 가질 수 없습니다.",
-                                      strategy_name, duplicate_name),
-                               __FILE__, __LINE__);
+      throw runtime_error(format(
+          "[{}] 전략 내에서 동일한 이름의 지표 [{}]을(를) 가질 수 없습니다.",
+          strategy_name, duplicate_name));
     }
 
     for (const auto& indicator : indicators_) {
@@ -875,12 +833,14 @@ void Engine::IsValidIndicators() {
           timeframe != "TRADING_TIMEFRAME") {
         try {
           ParseTimeframe(timeframe);
-        } catch ([[maybe_unused]] const std::exception& e) {
-          Logger::LogAndThrowError(
-              format("[{}] 전략에서 사용하는 [{}] 지표의 타임프레임 "
-                     "[{}]이(가) 유효하지 않습니다.",
-                     strategy_name, indicator_name, timeframe),
-              __FILE__, __LINE__);
+        } catch (const std::exception& e) {
+          logger_->Log(ERROR_L,
+                       format("[{}] 전략에서 사용하는 [{}] 지표의 타임프레임 "
+                              "[{}]이(가) 유효하지 않습니다.",
+                              strategy_name, indicator_name, timeframe),
+                       __FILE__, __LINE__, true);
+
+          throw runtime_error(e.what());
         }
       }
 
@@ -889,20 +849,21 @@ void Engine::IsValidIndicators() {
           plot_type != "Area" && plot_type != "Baseline" &&
           plot_type != "Histogram" && plot_type != "Line" &&
           plot_type != "Null") {
-        Logger::LogAndThrowError(
+        throw runtime_error(
             format("[{}] 전략에서 사용하는 [{}] 지표의 플롯 타입 "
                    "[{}]이(가) 유효하지 않습니다. "
                    "(가능한 타입: Area, Baseline, Histogram, Line, Null)",
-                   strategy_name, indicator_name, plot_type),
-            __FILE__, __LINE__);
+                   strategy_name, indicator_name, plot_type));
       }
     }
 
     logger_->Log(INFO_L, "지표 유효성 검증이 완료되었습니다.", __FILE__,
                  __LINE__, true);
-  } catch (...) {
-    Logger::LogAndThrowError("지표 유효성 검증이 실패했습니다.", __FILE__,
-                             __LINE__);
+  } catch (const std::exception& e) {
+    logger_->Log(INFO_L, "지표 유효성 검증이 실패했습니다.", __FILE__, __LINE__,
+                 true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -1073,11 +1034,13 @@ void Engine::InitializeSymbolInfo() {
                    symbol_name));
       }
     } catch (const std::exception& e) {
-      logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
-      Logger::LogAndThrowError(
+      logger_->Log(
+          ERROR_L,
           format("[{}] 거래소 정보를 초기화하는 중 오류가 발생했습니다.",
                  symbol_name),
-          __FILE__, __LINE__);
+          __FILE__, __LINE__, true);
+
+      throw runtime_error(e.what());
     }
 
     // 레버리지 구간 초기화
@@ -1122,11 +1085,13 @@ void Engine::InitializeSymbolInfo() {
                    symbol_name));
       }
     } catch (const std::exception& e) {
-      logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
-      Logger::LogAndThrowError(
+      logger_->Log(
+          ERROR_L,
           format("[{}] 레버리지 구간을 초기화하는 중 오류가 발생했습니다.",
                  symbol_name),
-          __FILE__, __LINE__);
+          __FILE__, __LINE__, true);
+
+      throw runtime_error(e.what());
     }
 
     // 펀딩 비율 인덱스 및 캐시 초기화
@@ -1192,11 +1157,12 @@ void Engine::InitializeSymbolInfo() {
 
       symbol_info.SetFundingRates(funding_rates_vector);
     } catch (const std::exception& e) {
-      logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
-      Logger::LogAndThrowError(
-          format("[{}] 심볼에서 펀딩 비율을 초기화하는 중 오류가 발생했습니다.",
-                 symbol_name),
-          __FILE__, __LINE__);
+      logger_->Log(ERROR_L,
+                   format("[{}] 펀딩 비율을 초기화하는 중 오류가 발생했습니다.",
+                          symbol_name),
+                   __FILE__, __LINE__, true);
+
+      throw runtime_error(e.what());
     }
 
     symbol_info_[symbol_idx] = symbol_info;
@@ -1964,12 +1930,12 @@ Direction Engine::CalculatePriceDirection(
       const auto price_type_cache = price_type_cache_[symbol_idx];
 
       if (isnan(price_cache)) [[unlikely]] {
-        order_handler_->LogFormattedInfo(
-            ERROR_L,
+        logger_->Log(ERROR_L, "가격 방향 계산 중 엔진 오류가 발생했습니다.",
+                     __FILE__, __LINE__, true);
+
+        throw runtime_error(
             "가격 캐시가 NaN이므로 CLOSE로 오는 가격 방향을 계산할 수 "
-            "없습니다.",
-            __FILE__, __LINE__);
-        throw;
+            "없습니다.");
       }
 
       // 전 High/Low와 종가가 같은 경우
@@ -1996,13 +1962,12 @@ Direction Engine::CalculatePriceDirection(
       }
     }
 
-    default:
-      [[unlikely]] {
-        order_handler_->LogFormattedInfo(
-            ERROR_L, "가격 방향 계산 오류: 잘못된 가격 타입 (엔진 오류)",
-            __FILE__, __LINE__);
-        throw;
-      }
+    [[unlikely]] default: {
+      logger_->Log(ERROR_L, "가격 방향 계산 중 엔진 오류가 발생했습니다.",
+                   __FILE__, __LINE__, true);
+
+      throw runtime_error("알 수 없는 가격 유형이 지정되었습니다.");
+    }
   }
 }
 

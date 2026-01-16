@@ -16,11 +16,11 @@ Config::Config()
   // 증가 카운터는 SetConfig 함수로만 증가하는데 SetConfig 없이 직접 생성자
   // 호출로 전 증가 카운터가 현재 증가 카운터와 같다면 오류 발생
   if (pre_creation_counter_ == creation_counter_) {
-    logger_->Log(ERROR_L,
-                 "엔진의 사전 설정은 SetConfig 함수의 호출로만 가능합니다.",
+    logger_->Log(ERROR_L, "엔진을 사전 설정하는 중 에러가 발생했습니다.",
                  __FILE__, __LINE__, true);
-    Logger::LogAndThrowError("엔진을 사전 설정하는 중 에러가 발생했습니다.",
-                             __FILE__, __LINE__);
+
+    throw runtime_error(
+        "엔진의 사전 설정은 SetConfig 함수의 호출로만 가능합니다.");
   }
 
   // 정상적으로 AddStrategy 함수를 통했다면 전 증가 가운터에 현재 카운터를 대입

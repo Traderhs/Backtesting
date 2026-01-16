@@ -135,8 +135,7 @@ int64_t UtcDatetimeToUtcTimestamp(const string& datetime,
   // 문자열을 tm으로 파싱
   ss >> get_time(&tm, format.c_str());
   if (ss.fail()) {
-    Logger::LogAndThrowError("Datetime 문자열을 파싱하는 데 실패했습니다.",
-                             __FILE__, __LINE__);
+    throw runtime_error("Datetime 문자열을 파싱하는 데 실패했습니다.");
   }
 
   // tm 구조체를 UTC 타임스탬프로 변환
@@ -189,10 +188,8 @@ int64_t ParseTimeframe(const string& timeframe_str) {
   }
 
   if (pos == 0) {
-    Logger::LogAndThrowError(
-        format("잘못된 타임프레임 포맷 [{}]이(가) 지정되었습니다.",
-               timeframe_str),
-        __FILE__, __LINE__);
+    throw runtime_error(format(
+        "잘못된 타임프레임 포맷 [{}]이(가) 지정되었습니다.", timeframe_str));
   }
 
   // str의 숫자 부분 찾기
@@ -220,12 +217,9 @@ int64_t ParseTimeframe(const string& timeframe_str) {
       return value * kMonth;
     }
 
-    Logger::LogAndThrowError(
-        format("잘못된 타임프레임 유닛 [{}]이(가) 지정되었습니다.", unit),
-        __FILE__, __LINE__);
+    throw runtime_error(
+        format("잘못된 타임프레임 유닛 [{}]이(가) 지정되었습니다.", unit));
   }
-
-  return -1;
 }
 
 string FormatTimeDiff(const int64_t diff_ms) {

@@ -233,15 +233,6 @@ class BACKTESTING_API Logger final {
                    bool log_to_console = false);
 
   /**
-   * 에러를 로깅하고 Throw하는 함수
-   * @param message 오류에 대한 설명 메시지
-   * @param file __FILE__로 지정
-   * @param line __LINE__으로 지정
-   */
-  static void LogAndThrowError(const string& message, const string& file,
-                               int line);
-
-  /**
    * 로거 소멸자 - 백그라운드 쓰레드 정리
    */
   ~Logger();
