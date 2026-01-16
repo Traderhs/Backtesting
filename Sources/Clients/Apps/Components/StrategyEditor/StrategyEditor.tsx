@@ -7,7 +7,6 @@ import {BarDataType, timeframeToString, TimeframeUnit} from '@/Types/BarData.ts'
 import EditorSection from './EditorSection';
 import SymbolSection from './SymbolSection';
 import BarDataSection from './BarDataSection';
-import FundingRateSection from './FundingRateSection';
 import ConfigSection from './ConfigSection';
 import ExchangeSection from './ExchangeSection';
 import StrategySection from './StrategySection';
@@ -322,9 +321,6 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
 
                 {/* 바 데이터 설정 */}
                 <BarDataSection/>
-
-                {/* 펀딩 비율 설정 */}
-                <FundingRateSection/>
 
                 {/* 엔진 설정 */}
                 <ConfigSection/>
