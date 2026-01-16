@@ -47,7 +47,8 @@
 //   ◆ 미실현 손익 계산, 강제 청산 확인은 Mark Price를 사용하지만,
 //     데이터가 누락된 경우 시장 가격을 사용함
 //   ◆ 커스텀 전략 및 지표 생성 방법은 Strategy, Indicator 헤더 파일 참조
-//   ◆ 한 백테스팅에는 한 전략만 추가 가능하며, 백보드에서 전략 합성 기능 제공
+//   ◆ 한 백테스팅에는 한 전략만 추가 가능하며, BackBoard에서 전략 합성 기능
+//   제공
 //     → 각 전략마다 독립 계좌로 작동 가정
 //
 // =============================================================================
@@ -90,16 +91,22 @@ void Backtesting::SetServerMode(const bool server_mode) {
   server_mode_ = server_mode;
 }
 
+bool Backtesting::IsServerMode() { return server_mode_; }
+
 void Backtesting::RunBacktesting() {
   try {
-    Engine::GetEngine()->Backtesting(server_mode_);
-  } catch (...) {
+    Engine::GetEngine()->Backtesting();
+  } catch (const std::exception& e) {
+    // 서버 모드는 실패 메세지가 따로 로그되므로 여기서는 오류 원인만 rethrow
     if (server_mode_) {
-      throw;
+      throw runtime_error(e.what());
     }
 
-    Logger::LogAndThrowError("백테스팅 실행 중 오류가 발생했습니다.", __FILE__,
-                             __LINE__);
+    logger_->Log(ERROR_L, "백테스팅 실행 중 오류가 발생했습니다.", __FILE__,
+                 __LINE__, true);
+
+    // 백테스팅 실행 중 발생한 오류의 상세 원인 로그
+    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
   }
 }
 
@@ -378,12 +385,12 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
                        bar_data_type);
           }
         }
-      } catch ([[maybe_unused]] const std::exception& e) {
+      } catch (const std::exception& e) {
         // 바 데이터 추가 중 발생한 오류는 다음 실행 때
         // 바 데이터를 강제로 초기화하도록 설정
         bar_data_adding_error_occurred = true;
 
-        throw;
+        throw runtime_error(e.what());
       }
     } else {
       logger_->Log(INFO_L, "바 데이터가 이미 캐시되어 있어 추가하지 않습니다.",
@@ -537,9 +544,11 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     // 엔진 코어 초기화
     ResetCores();
   } catch (const std::exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
     logger_->Log(ERROR_L, "단일 백테스팅 실행 중 오류가 발생했습니다.",
                  __FILE__, __LINE__, true);
+
+    // 상세 오류 원인 로그
+    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
 
     // 엔진 코어 초기화
     ResetCores();
@@ -558,15 +567,11 @@ void Backtesting::SetApiEnvVars(const string& api_key_env_var,
 
 void Backtesting::SetMarketDataDirectory(const string& market_data_directory) {
   if (!filesystem::exists(market_data_directory)) {
-    if (server_mode_) {
-      throw;
-    }
-
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("지정된 시장 데이터 폴더 [{}]이(가) 존재하지 않습니다: ",
-               market_data_directory),
-        __FILE__, __LINE__);
+               market_data_directory));
   }
+
   market_data_directory_ = market_data_directory;
 }
 
@@ -611,31 +616,14 @@ void Backtesting::UpdateFundingRates(const string& symbol) {
 }
 
 void Backtesting::FetchExchangeInfo(const string& exchange_info_path) {
-  try {
-    ValidateSettings();
-    BinanceFetcher::FetchExchangeInfo(exchange_info_path);
-  } catch (const std::exception& e) {
-    if (server_mode_) {
-      throw;
-    }
-
-    Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
-  }
+  ValidateSettings();
+  BinanceFetcher::FetchExchangeInfo(exchange_info_path);
 }
 
 void Backtesting::FetchLeverageBracket(const string& leverage_bracket_path) {
-  try {
-    ValidateSettings();
-    BinanceFetcher(api_key_env_var_, api_secret_env_var_,
-                   market_data_directory_)
-        .FetchLeverageBracket(leverage_bracket_path);
-  } catch (const std::exception& e) {
-    if (server_mode_) {
-      throw;
-    }
-
-    Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
-  }
+  ValidateSettings();
+  BinanceFetcher(api_key_env_var_, api_secret_env_var_, market_data_directory_)
+      .FetchLeverageBracket(leverage_bracket_path);
 }
 
 void Backtesting::AddBarData(const vector<string>& symbol_names,
@@ -690,8 +678,8 @@ void Backtesting::ValidateSettings() {
     if (server_mode_) {
       throw exception::InvalidValue(
           "시장 데이터 경로가 설정되지 않았습니다. "
-          "Backboard 폴더 내 editor.json 및 editor.json.bak 파일 삭제 후 "
-          "백보드를 다시 실행해 주세요.");
+          "BackBoard 폴더 내 editor.json 및 editor.json.bak 파일 삭제 후 "
+          "BackBoard를 다시 실행해 주세요.");
     }
 
     throw exception::InvalidValue(

@@ -68,10 +68,11 @@ future<json> BaseFetcher::Fetch(
     curl_slist_free_all(headers);  // 헤더 메모리 해제
 
     if (response != CURLE_OK || response_code != 200) {
-      logger_->Log(ERROR_L, full_url, __FILE__, __LINE__, true);
-      throw runtime_error(format("[{}] | [{}] | HTTP 응답이 실패했습니다.: {}",
-                                 response_header, response_code,
-                                 response_string));
+      logger_->Log(ERROR_L, format("HTTP [{}] 응답이 실패했습니다.", full_url),
+                   __FILE__, __LINE__, true);
+
+      throw runtime_error(format("[{}] | [{}] | {}", response_header,
+                                 response_code, response_string));
     }
 
     return json::parse(response_string);
@@ -129,8 +130,7 @@ string BaseFetcher::HmacSha256(const string& data, const string& key) {
            static_cast<int>(data.size()), digest.data(), &md_len);
 
   if (!result) {
-    Logger::LogAndThrowError("HMAC-SHA256 계산이 실패했습니다.", __FILE__,
-                             __LINE__);
+    throw runtime_error("HMAC-SHA256 계산이 실패했습니다.");
   }
 
   ostringstream oss;

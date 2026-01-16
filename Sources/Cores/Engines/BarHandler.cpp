@@ -561,10 +561,8 @@ void BarHandler::IsValidTimeframeBetweenBars(const string& timeframe,
 void BarHandler::IsValidReferenceBarTimeframe(const string& timeframe) {
   if (const auto& timeframe_it = reference_bar_data_.find(timeframe);
       timeframe_it == reference_bar_data_.end()) {
-    Logger::LogAndThrowError(
-        format("참조 바 데이터에 타임프레임 {}은(는) 존재하지 않습니다.",
-               timeframe),
-        __FILE__, __LINE__);
+    throw InvalidValue(format(
+        "참조 바 데이터에 타임프레임 {}은(는) 존재하지 않습니다.", timeframe));
   }
 }
 

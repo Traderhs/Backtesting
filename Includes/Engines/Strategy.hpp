@@ -110,9 +110,10 @@ class BACKTESTING_API Strategy {
   template <typename CustomStrategy, typename... Args>
   static void AddStrategy(const string& name, Args&&... args) {
     if (strategy_ != nullptr) {
-      Logger::LogAndThrowError(
-          "한 백테스팅은 한 개의 전략만 사용할 수 있습니다.", __FILE__,
-          __LINE__);
+      logger->Log(INFO_L, format("[{}] 전략을 추가하는 데 실패했습니다.", name),
+                  __FILE__, __LINE__, true);
+
+      throw runtime_error("한 백테스팅은 한 개의 전략만 사용할 수 있습니다.");
     }
 
     used_creation_function_ = true;
@@ -121,24 +122,18 @@ class BACKTESTING_API Strategy {
       strategy_ =
           std::make_shared<CustomStrategy>(name, std::forward<Args>(args)...);
     } catch (const std::exception& e) {
-      // 지표 관련 오류면 이미 로깅 됐으므로 간단하게,
-      // 전략 생성자의 다른 오류면 상세하게
-      if (const string& error_msg = e.what();
-          error_msg.find("지표 생성자에서 오류가 발생했습니다.") !=
-          string::npos) {
-        Logger::LogAndThrowError(
-            format("[{}] 전략 생성자에서 오류가 발생했습니다.", name), __FILE__,
-            __LINE__);
-      } else {
-        Logger::LogAndThrowError(
-            format("[{}] 전략 생성자에서 오류가 발생했습니다.: {}", name,
-                   error_msg),
-            __FILE__, __LINE__);
-      }
+      logger->Log(INFO_L,
+                  format("[{}] 전략 생성자에서 오류가 발생했습니다.", name),
+                  __FILE__, __LINE__, true);
+
+      throw runtime_error(e.what());
     } catch (...) {
-      Logger::LogAndThrowError(
+      logger->Log(
+          INFO_L,
           format("[{}] 전략 생성자에서 알 수 없는 오류가 발생했습니다.", name),
-          __FILE__, __LINE__);
+          __FILE__, __LINE__, true);
+
+      throw;
     }
 
     // 전략의 파일 경로 자동 설정
@@ -206,11 +201,16 @@ class BACKTESTING_API Strategy {
 
     // 프로젝트 폴더가 설정되지 않았는지 확인
     if (project_directory.empty()) {
-      Logger::LogAndThrowError(
-          format("[{}] 전략의 소스 파일 경로를 자동 감지하기 위해서는 "
-                 "먼저 엔진 설정에서 프로젝트 폴더를 지정해야 합니다.",
+      logger->Log(
+          ERROR_L,
+          format("[{}] 전략의 헤더 및 소스 파일 경로 감지가 실패했습니다.",
                  name_),
-          __FILE__, __LINE__);
+          __FILE__, __LINE__, true);
+
+      throw runtime_error(
+          format("[{}] 전략의 헤더 및 소스 파일 경로를 자동 감지하기 위해서는 "
+                 "먼저 엔진 설정에서 프로젝트 폴더를 지정해야 합니다.",
+                 name_));
     }
 
     // typeid에서 클래스 이름 추출
@@ -287,11 +287,10 @@ class BACKTESTING_API Strategy {
                              class_name_);
       }
 
-      Logger::LogAndThrowError(
+      throw runtime_error(
           format("전략의 클래스명과 헤더 파일명은 동일해야 하며, "
                  "[{}] 경로에 존재해야 합니다.",
-                 target_path),
-          __FILE__, __LINE__);
+                 target_path));
     }
 
     // 소스 파일 경로 후보들
@@ -361,11 +360,10 @@ class BACKTESTING_API Strategy {
                              project_directory, class_name_);
       }
 
-      Logger::LogAndThrowError(
+      throw runtime_error(
           format("전략의 클래스명과 소스 파일명은 동일해야 하며, "
                  "[{}] 경로에 존재해야 합니다.",
-                 target_path, class_name_),
-          __FILE__, __LINE__);
+                 target_path, class_name_));
     }
   }
 
@@ -398,14 +396,18 @@ class BACKTESTING_API Strategy {
       indicator = std::make_shared<CustomIndicator>(
           name, timeframe, plot, std::forward<Args>(args)...);
     } catch (const std::exception& e) {
-      Logger::LogAndThrowError(
-          format("[{}] 지표 생성자에서 오류가 발생했습니다.: {}", name,
-                 e.what()),
-          __FILE__, __LINE__);
+      logger->Log(ERROR_L,
+                  format("[{}] 지표 생성자에서 오류가 발생했습니다.", name),
+                  __FILE__, __LINE__, true);
+
+      throw runtime_error(e.what());
     } catch (...) {
-      Logger::LogAndThrowError(
+      logger->Log(
+          ERROR_L,
           format("[{}] 지표 생성자에서 알 수 없는 오류가 발생했습니다.", name),
-          __FILE__, __LINE__);
+          __FILE__, __LINE__, true);
+
+      throw;
     }
 
     // 지표의 파일 경로 자동 설정

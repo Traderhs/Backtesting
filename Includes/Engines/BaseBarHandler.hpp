@@ -20,6 +20,7 @@ class Logger;
 
 // 네임 스페이스
 using namespace std;
+
 namespace backtesting {
 using namespace bar;
 using namespace logger;

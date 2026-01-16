@@ -5,7 +5,6 @@
 #include "Indicators/EndOfDay.hpp"
 
 // 내부 헤더
-#include "Engines/Logger.hpp"
 #include "Engines/TimeUtils.hpp"
 
 EndOfDay::EndOfDay(const string& name, const string& timeframe,
@@ -21,12 +20,8 @@ EndOfDay::EndOfDay(const string& name, const string& timeframe,
 void EndOfDay::Initialize() {
   // Initialize 때 파싱하는 이유는, timeframe으로 TRADING_TIMEFRAME 문자열을
   // 사용할 수 있기 때문에 엔진 초기화 후 지표 초기화 때 하는 것
-  try {
-    timeframe_minutes_ =
-        static_cast<int>(ParseTimeframe(GetTimeframe()) / kMinute);
-  } catch (const exception& e) {
-    Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
-  }
+  timeframe_minutes_ =
+      static_cast<int>(ParseTimeframe(GetTimeframe()) / kMinute);
 
   reference_bar_ = bar_->GetBarData(REFERENCE, this->GetTimeframe());
   symbol_idx_ = bar_->GetCurrentSymbolIndex();
@@ -54,11 +49,9 @@ void EndOfDay::ValidateAndParseTime(const string& time_str) {
   smatch matches;
 
   if (!regex_match(time_str, matches, time_pattern)) {
-    Logger::LogAndThrowError(
-        format(
-            "EndOfDay 지표의 장 마감 시간 [{}]이(가) HH:MM:SS 형식이 아닙니다.",
-            time_str),
-        __FILE__, __LINE__);
+    throw runtime_error(format(
+        "EndOfDay 지표의 장 마감 시간 [{}]이(가) HH:MM:SS 형식이 아닙니다.",
+        time_str));
   }
 
   // 시간, 분, 초 파싱
@@ -68,27 +61,24 @@ void EndOfDay::ValidateAndParseTime(const string& time_str) {
 
   // 범위 검증 (00:00:00 ~ 23:59:59)
   if (close_hour < 0 || close_hour > 23) {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("EndOfDay 지표의 장 마감 시간의 시간 [{}]이(가) 0~23 범위를 "
                "벗어났습니다.",
-               close_hour),
-        __FILE__, __LINE__);
+               close_hour));
   }
 
   if (close_minute < 0 || close_minute > 59) {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("EndOfDay 지표의 장 마감 시간의 분 [{}]이(가) 0~59 범위를 "
                "벗어났습니다.",
-               close_minute),
-        __FILE__, __LINE__);
+               close_minute));
   }
 
   if (close_second < 0 || close_second > 59) {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("EndOfDay 지표의 장 마감 시간의 초 [{}]이(가) 0~59 범위를 "
                "벗어났습니다.",
-               close_second),
-        __FILE__, __LINE__);
+               close_second));
   }
 
   // 하루 기준 초 단위로 사전 계산 (한번만 계산)

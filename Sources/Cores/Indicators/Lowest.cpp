@@ -14,9 +14,8 @@ Lowest::Lowest(const string& name, const string& timeframe, const Plot& plot,
       can_calculate_(false),
       current_idx_(0) {
   if (period <= 0) {
-    Logger::LogAndThrowError(
-        format("Lowest 지표의 Period [{}]은(는) 0보다 커야 합니다.", period),
-        __FILE__, __LINE__);
+    throw runtime_error(
+        format("Lowest 지표의 Period [{}]은(는) 0보다 커야 합니다.", period));
   }
 }
 

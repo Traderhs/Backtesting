@@ -29,26 +29,30 @@ Indicator::Indicator(const string& name, const string& timeframe,
       cached_ref_bar_idx_(SIZE_MAX) {
   try {
     if (name.empty()) {
-      Logger::LogAndThrowError("지표 이름이 비어있습니다.", __FILE__, __LINE__);
+      throw runtime_error("지표 이름이 비어있습니다.");
     }
 
     if (timeframe.empty()) {
-      Logger::LogAndThrowError(
-          format("[{}] 지표의 타임프레임이 비어있습니다.", name), __FILE__,
-          __LINE__);
+      throw runtime_error(
+          format("[{}] 지표의 타임프레임이 비어있습니다.", name));
     }
-  } catch ([[maybe_unused]] const exception& e) {
-    throw runtime_error("지표를 추가하는 중 오류가 발생했습니다.");
+  } catch (const exception& e) {
+    logger_->Log(ERROR_L, "지표를 추가하는 중 오류가 발생했습니다.", __FILE__,
+                 __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 
   // 증가 카운터는 AddIndicator 함수로만 증가하는데 AddIndicator 없이 직접
   // 생성자 호출로 전 증가 카운터가 현재 증가 카운터와 같다면 오류 발생
   if (pre_creation_counter_ == creation_counter_) {
     logger_->Log(ERROR_L,
-                 "지표의 추가는 AddIndicator 함수의 호출로만 가능합니다.",
+                 format("[{} {}] 지표를 추가하는 중 오류가 발생했습니다.", name,
+                        timeframe),
                  __FILE__, __LINE__, true);
-    throw runtime_error(format(
-        "[{} {}] 지표를 추가하는 중 에러가 발생했습니다.", name, timeframe));
+
+    throw runtime_error(
+        "지표의 추가는 AddIndicator 함수의 호출로만 가능합니다.");
   }
 
   // 정상적으로 AddIndicator 함수를 통했다면 전 증가 가운터에 현재 카운터를 대입
@@ -84,20 +88,18 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // 지표 계산 전 참조 호출 시 에러 발생
   // 특정 지표 계산 중 다른 지표 참조하는데 참조 지표의 정의 순서가 더 늦는 경우
   if (!is_calculated_) [[unlikely]] {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("[{} {}] 지표가 계산되지 않았으므로 참조할 수 없습니다.", name_,
-               timeframe_),
-        __FILE__, __LINE__);
+               timeframe_));
   }
 
   // 다른 지표 계산 중 해당 지표와 다른 타임프레임의 이 지표를 사용 시 에러 발생
   if (is_calculating_ && timeframe_ != calculating_timeframe_) [[unlikely]] {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("[{} {}] 지표 계산에 사용하는 [{} {}] 지표의 타임프레임은 "
                "[{} {}] 지표의 타임프레임과 동일해야 합니다.",
                calculating_name_, calculating_timeframe_, name_, timeframe_,
-               calculating_name_, calculating_timeframe_),
-        __FILE__, __LINE__);
+               calculating_name_, calculating_timeframe_));
   }
 
   // AFTER 전략에서 현재 인덱스 값 참조 시 에러 발생
@@ -106,12 +108,10 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // (current_strategy_type의 초기값은 ON_CLOSE이므로 계산 중에는 관계 없음)
   if (index == 0 && engine_->GetCurrentStrategyType() != ON_CLOSE)
       [[unlikely]] {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("AfterEntry/AfterExit 전략에서는 [0]을 이용하여 [{} {}] 지표의 "
                "현재 인덱스의 값을 참조할 수 없습니다.",
-               name_, timeframe_),
-        __FILE__, __LINE__);
-    throw;
+               name_, timeframe_));
   }
 
   // 음수 index는 size_t 타입이므로 검사하지 않음
@@ -284,10 +284,9 @@ void Indicator::CalculateIndicator() {
   try {
     // 엔진이 초기화되기 전 지표를 계산하면 모든 심볼의 계산이 어려우므로 에러
     if (!engine_->IsEngineInitialized()) [[unlikely]] {
-      Logger::LogAndThrowError(
-          format("엔진 초기화 전 [{} {}] 지표 계산을 시도했습니다.", name_,
-                 timeframe_),
-          __FILE__, __LINE__);
+      throw runtime_error(
+          format("엔진 초기화 전 [{} {}] 지표 계산을 할 수 없습니다.", name_,
+                 timeframe_));
     }
 
     // 바 데이터 설정
@@ -362,12 +361,17 @@ void Indicator::CalculateIndicator() {
     is_calculated_ = true;
     is_calculating_ = false;
 
-    logger_->Log(INFO_L, format("[{} {}] 지표 계산 완료", name_, timeframe_),
-                 __FILE__, __LINE__, true);
-  } catch ([[maybe_unused]] const exception& e) {
-    Logger::LogAndThrowError(
+    logger_->Log(
+        INFO_L,
+        format("[{} {}] 지표 계산이 완료되었습니다.", name_, timeframe_),
+        __FILE__, __LINE__, true);
+  } catch (const exception& e) {
+    logger_->Log(
+        ERROR_L,
         format("[{} {}] 지표 계산 중 오류가 발생했습니다.", name_, timeframe_),
-        __FILE__, __LINE__);
+        __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -375,10 +379,8 @@ void Indicator::SetTimeframe(const string& timeframe) {
   if (!is_calculated_) {
     timeframe_ = timeframe;
   } else {
-    Logger::LogAndThrowError(
-        format("[{}] 지표가 계산되었으므로 타임프레임 변경을 할 수 없습니다.",
-               name_),
-        __FILE__, __LINE__);
+    throw runtime_error(format(
+        "[{}] 지표가 계산되었으므로 타임프레임 변경을 할 수 없습니다.", name_));
   }
 }
 

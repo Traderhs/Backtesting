@@ -30,9 +30,8 @@ void Slippage::SetSymbolInfo(const vector<SymbolInfo>& symbol_info) {
   if (symbol_info_.empty()) {
     symbol_info_ = symbol_info;
   } else [[unlikely]] {
-    Logger::LogAndThrowError(
-        "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.", __FILE__,
-        __LINE__);
+    throw runtime_error(
+        "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.");
   }
 }
 
