@@ -45,8 +45,12 @@
 
 /* 공통 입력 필드 스타일 */
 .strategy-editor-input {
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
     width: 100%;
-    padding: 8px 10px;
+    height: 38px !important;
+    padding: 0 10px;
     overflow: hidden;
     border: 1px solid rgb(255 215 0 / 40%) !important;
     border-radius: 6px !important;
@@ -71,8 +75,9 @@
     border-color: rgb(255 215 0 / 80%) !important;
 }
 
-/* 파일/폴더 선택용 입력 필드 (아이콘 나타나도록 우측 패딩 추가) */
+/* 파일/폴더 선택용 입력 필드 */
 .strategy-editor-input-with-icon {
+    height: 38px !important;
     padding-right: 76px !important;
 }
 
@@ -123,13 +128,21 @@
     background-color: rgb(17 17 17 / 80%) !important;
     color: rgb(255 255 255 / 95%);
     font-size: 14px;
+    transition: all 0.2s ease !important;
+    cursor: text;
+    user-select: text;
+}
+
+/* 공통 정보 표시 영역 호버 */
+.strategy-editor-info-display:hover {
+    border-color: rgb(255 215 0 / 80%) !important;
 }
 
 /* 좌우 분할 레이아웃 공통 높이 */
 .strategy-editor-row-item {
     display: flex;
     align-items: center;
-    height: 42px;
+    height: 38px !important;
 }
 
 /* =================================================================
@@ -144,8 +157,8 @@
     justify-content: center;
     align-items: center;
     box-sizing: border-box;
-    min-height: 36px !important;
-    padding: 8px 16px;
+    height: 38px !important;
+    padding: 0 16px;
     overflow: visible !important;
     border-width: 1px;
     border-style: solid;
@@ -157,7 +170,7 @@
     font-family: "'Inter', 'Pretendard'", sans-serif !important;
     font-size: 14px;
     font-weight: 400;
-    line-height: 1.2 !important;
+    line-height: 1 !important;
     letter-spacing: 0.3px;
     text-align: center;
     white-space: nowrap;
@@ -207,8 +220,12 @@
 .strategy-editor-dropdown-select {
     position: relative;
     z-index: 100;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
     width: 100%;
-    padding: 8px 32px 8px 10px !important;
+    height: 38px !important;
+    padding: 0 32px 0 10px !important;
     overflow: visible;
     border: 1px solid rgb(255 215 0 / 30%) !important;
     border-radius: 8px !important;
@@ -426,10 +443,10 @@
    심볼 섹션 전용 스타일
    ================================================================= */
 
-/* 심볼 리스트 외부 컨테이너 - Absolute Fill로 부모 영역에 강제 맞춤 */
+/* 심볼 리스트 외부 컨테이너 */
 .strategy-editor-symbol-list-container {
     position: absolute !important;
-    padding: 2px 8px 8px; /* 상단 드롭 가이드선이 잘리지 않도록 공간 확보 */
+    padding: 2px 8px 8px;
     overflow: hidden auto;
     border: 1px solid rgb(255 215 0 / 30%);
     border-radius: 6px;
@@ -641,6 +658,11 @@ body.symbol-dragging * {
     pointer-events: none;
 }
 
+.strategy-editor-bardata-card.disabled:hover {
+    border-color: rgb(255 215 0 / 30%);
+    box-shadow: none;
+}
+
 /* 카드 헤더 */
 .strategy-editor-bardata-card-header {
     display: flex;
@@ -750,4 +772,17 @@ body.symbol-dragging * {
 .strategy-editor-bardata-timeframe-unit {
     flex: 0 0 70px;
     min-width: 70px;
+}
+
+.strategy-editor-section-container .custom-checkbox {
+    margin-right: 6px;
+}
+
+/* 전략 에디터에서 체크박스 왼쪽 장식선 제거 */
+.strategy-editor-section-container .checkbox-container::before,
+.strategy-editor-section-container .checkbox-container::after {
+    display: none !important;
+    width: 0 !important;
+    background: transparent !important;
+    content: none !important;
 }

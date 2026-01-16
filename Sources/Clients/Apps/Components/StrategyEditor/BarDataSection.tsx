@@ -208,6 +208,7 @@ export default function BarDataSection() {
                     onClick={handleAddReferenceBar}
                     className="strategy-editor-button"
                     style={{position: 'absolute', left: '90%', top: '-50%', transform: 'translateY(-50%)'}}
+                    title={"참조 바 데이터 추가"}
                 >
                     참조 바 데이터 추가
                 </button>
@@ -252,7 +253,7 @@ export default function BarDataSection() {
                                         <button
                                             onClick={() => handleRemoveReferenceBar(index)}
                                             className="strategy-editor-bardata-remove"
-                                            title="참조 바 삭제"
+                                            title="참조 바 데이터 삭제"
                                         >
                                             ×
                                         </button>
@@ -343,6 +344,9 @@ export default function BarDataSection() {
                                                 type="text"
                                                 value={config.klinesDirectory}
                                                 readOnly
+                                                tabIndex={-1}
+                                                onFocus={(e) => e.currentTarget.blur()}
+                                                onMouseDown={(e) => e.preventDefault()}
                                                 disabled={isDisabled}
                                                 placeholder="폴더 경로"
                                                 className="strategy-editor-input strategy-editor-input-with-icon"
@@ -353,7 +357,7 @@ export default function BarDataSection() {
                                                 <button
                                                     onClick={() => handleSelectDirectory(index)}
                                                     className="strategy-editor-file-selector-button"
-                                                    title="폴더 선택"
+                                                    title={`${getBarDataTypeLabel(config.barDataType)} 폴더 선택`}
                                                     disabled={isDisabled}
                                                 >
                                                     <FolderOpen size={20}/>
@@ -367,7 +371,7 @@ export default function BarDataSection() {
                     );
                 })}
 
-                {/* 펀딩 비율 카드 (바 데이터 카드와 동일한 스타일, 타임프레임 없음) */}
+                {/* 펀딩 비율 카드 */}
                 <div className="strategy-editor-bardata-card">
                     <div className="strategy-editor-bardata-card-header">
                         <span className="strategy-editor-bardata-card-title">펀딩 비율</span>
@@ -383,6 +387,9 @@ export default function BarDataSection() {
                                         type="text"
                                         value={fundingRatesDirectory}
                                         readOnly
+                                        tabIndex={-1}
+                                        onFocus={(e) => e.currentTarget.blur()}
+                                        onMouseDown={(e) => e.preventDefault()}
                                         placeholder="폴더 경로"
                                         title={fundingRatesDirectory}
                                         className="strategy-editor-input strategy-editor-input-with-icon cursor-text"
@@ -393,7 +400,7 @@ export default function BarDataSection() {
                                         <button
                                             onClick={handleSelectFundingDirectory}
                                             className="strategy-editor-file-selector-button"
-                                            title="폴더 선택"
+                                            title="펀딩 비율 폴더 선택"
                                         >
                                             <FolderOpen size={20}/>
                                         </button>

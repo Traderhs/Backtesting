@@ -1021,7 +1021,7 @@ export default function SymbolSection() {
                     <button
                         onClick={handleResetSymbols}
                         className="strategy-editor-button"
-                        title="심볼 초기화"
+                        title="심볼 목록 초기화"
                     >
                         초기화
                     </button>

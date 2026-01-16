@@ -107,25 +107,34 @@ export default function ExchangeSection() {
                     <input type="text" value={exchangeConfig.apiKeyEnvVar}
                            onChange={(e) => updateConfig('apiKeyEnvVar', e.currentTarget.value)}
                            placeholder="환경 변수 이름"
-                           className="strategy-editor-input strategy-editor-row-item"/>
+                           className="strategy-editor-input strategy-editor-row-item"
+                           title={exchangeConfig.apiKeyEnvVar}
+                    />
 
                     <input type="text" value={exchangeConfig.apiSecretEnvVar}
                            onChange={(e) => updateConfig('apiSecretEnvVar', e.currentTarget.value)}
                            placeholder="환경 변수 이름"
-                           className="strategy-editor-input strategy-editor-row-item"/>
+                           className="strategy-editor-input strategy-editor-row-item"
+                           title={exchangeConfig.apiSecretEnvVar}
+                    />
 
                     <div className="strategy-editor-file-selector strategy-editor-row-item">
                         <input type="text" value={exchangeConfig.exchangeInfoPath}
                                readOnly
+                               tabIndex={-1}
+                               onFocus={(e) => e.currentTarget.blur()}
+                               onMouseDown={(e) => e.preventDefault()}
                                placeholder="거래소 정보 파일 경로"
-                               className="strategy-editor-input strategy-editor-input-with-icon cursor-text"/>
+                               className="strategy-editor-input strategy-editor-input-with-icon"
+                               title={exchangeConfig.exchangeInfoPath}
+                        />
 
                         <div className="strategy-editor-file-selector-buttons">
                             <PathResetButton onClick={handleResetExchangeInfoPath}/>
                             <button
                                 onClick={handleSelectExchangeInfoPath}
                                 className="strategy-editor-file-selector-button"
-                                title="파일 선택"
+                                title="거래소 정보 파일 선택"
                             >
                                 <FolderOpen size={20}/>
                             </button>
@@ -135,15 +144,20 @@ export default function ExchangeSection() {
                     <div className="strategy-editor-file-selector strategy-editor-row-item">
                         <input type="text" value={exchangeConfig.leverageBracketPath}
                                readOnly
+                               tabIndex={-1}
+                               onFocus={(e) => e.currentTarget.blur()}
+                               onMouseDown={(e) => e.preventDefault()}
                                placeholder="레버리지 구간 파일 경로"
-                               className="strategy-editor-input strategy-editor-input-with-icon cursor-text"/>
+                               className="strategy-editor-input strategy-editor-input-with-icon"
+                               title={exchangeConfig.leverageBracketPath}
+                        />
 
                         <div className="strategy-editor-file-selector-buttons">
                             <PathResetButton onClick={handleResetLeverageBracketPath}/>
                             <button
                                 onClick={handleSelectLeverageBracketPath}
                                 className="strategy-editor-file-selector-button"
-                                title="파일 선택"
+                                title="레버리지 구간 파일 선택"
                             >
                                 <FolderOpen size={20}/>
                             </button>
