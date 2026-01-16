@@ -54,8 +54,14 @@ BACKTESTING_API string BaseEngine::leverage_bracket_path_;
 
 void BaseEngine::AddExchangeInfo(const string& exchange_info_path) {
   ifstream file(exchange_info_path);
+
+  if (!filesystem::exists(exchange_info_path)) {
+    throw runtime_error(format("거래소 정보 파일 [{}]이(가) 존재하지 않습니다.",
+                               exchange_info_path));
+  }
+
   if (!file.is_open()) {
-    throw runtime_error(format("거래소 정보 파일 [{}]이(가) 유효하지 않습니다.",
+    throw runtime_error(format("거래소 정보 파일 [{}]을(를) 열 수 없습니다.",
                                exchange_info_path));
   }
 
@@ -86,10 +92,16 @@ void BaseEngine::AddExchangeInfo(const string& exchange_info_path) {
 
 void BaseEngine::AddLeverageBracket(const string& leverage_bracket_path) {
   ifstream file(leverage_bracket_path);
-  if (!file.is_open()) {
+
+  if (!filesystem::exists(leverage_bracket_path)) {
     throw runtime_error(
-        format("레버리지 구간 파일 [{}]이(가) 유효하지 않습니다.",
+        format("레버리지 구간 파일 [{}]이(가) 존재하지 않습니다.",
                leverage_bracket_path));
+  }
+
+  if (!file.is_open()) {
+    throw runtime_error(format("레버리지 구간 파일 [{}]을(를) 열 수 없습니다.",
+                               leverage_bracket_path));
   }
 
   if (file.peek() == ifstream::traits_type::eof()) {
@@ -120,7 +132,7 @@ void BaseEngine::AddLeverageBracket(const string& leverage_bracket_path) {
 void BaseEngine::AddFundingRates(const vector<string>& symbol_names,
                                  const string& funding_rates_directory) {
   if (!filesystem::exists(funding_rates_directory)) {
-    throw runtime_error(format("펀딩 비율 폴더 [{}]이(가) 유효하지 않습니다.",
+    throw runtime_error(format("펀딩 비율 폴더 [{}]이(가) 존재하지 않습니다.",
                                funding_rates_directory));
   }
 
@@ -129,8 +141,14 @@ void BaseEngine::AddFundingRates(const vector<string>& symbol_names,
         format("{}/{}.json", funding_rates_directory, symbol_name);
 
     ifstream file(funding_rate_path);
+
+    if (!filesystem::exists(funding_rate_path)) {
+      throw runtime_error(format("펀딩 비율 파일 [{}]이(가) 존재하지 않습니다.",
+                                 funding_rate_path));
+    }
+
     if (!file.is_open()) {
-      throw runtime_error(format("펀딩 비율 파일 [{}]이(가) 유효하지 않습니다.",
+      throw runtime_error(format("펀딩 비율 파일 [{}]을(를) 열 수 없습니다.",
                                  funding_rate_path));
     }
 
