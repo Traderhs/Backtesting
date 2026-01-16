@@ -134,6 +134,50 @@ function createWindow() {
     const targetURL = isDev ? `http://localhost:5173` : `http://localhost:${port}`;
     mainWindow.loadURL(targetURL).then();
 
+    // 개발 환경에서는 키 단축키(F12, Ctrl/Cmd+Shift+I)로 DevTools를 열 수 있게 허용
+    try {
+        if (isDev) {
+            mainWindow.webContents.on('before-input-event', (event, input) => {
+                const key = input.key;
+                const ctrl = input.control || input.meta;
+                const shift = input.shift;
+
+                // F12 또는 Ctrl/Cmd + Shift + I
+                if (key === 'F12' || (ctrl && shift && (key === 'I' || key === 'i'))) {
+                    try {
+                        mainWindow.webContents.openDevTools({mode: 'right'});
+                    } catch (e) {
+                        console.warn('Failed to open DevTools in dev:', e);
+                    }
+
+                    // 렌더러의 preventDefault를 무력화 하기 위해 이벤트는 취소
+                    event.preventDefault();
+                }
+            });
+        } else {
+            // 프로덕션에서는 키 입력으로 DevTools가 열리지 않도록 차단
+            mainWindow.webContents.on('before-input-event', (event, input) => {
+                const key = input.key;
+                const ctrl = input.control || input.meta;
+                const shift = input.shift;
+
+                if (key === 'F12' || (ctrl && shift && (key === 'I' || key === 'i'))) {
+                    try {
+                        if (mainWindow.webContents.isDevToolsOpened()) {
+                            mainWindow.webContents.closeDevTools();
+                        }
+                    } catch (e) {
+                        // 무시
+                    }
+
+                    event.preventDefault();
+                }
+            });
+        }
+    } catch (e) {
+        console.warn('Failed to bind before-input-event for DevTools:', e);
+    }
+
     // 로드 실패 시 재시도
     let retryCount = 0;
     mainWindow.webContents.on('did-fail-load', (event, errorCode) => {
