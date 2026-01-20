@@ -50,7 +50,7 @@ export default function SymbolSection() {
     const [dragPreviewPos, setDragPreviewPos] = useState<{ x: number; y: number } | null>(null);
     const [dragScrollVersion, setDragScrollVersion] = useState<number>(0);
 
-    // Pointer 기반 드래그(커스텀)용 ref
+    // Pointer 기반 드래그용 ref
     const activePointerIdRef = useRef<number | null>(null);
     const draggedIndexRef = useRef<number | null>(null);
     const dropIndexRef = useRef<number | null>(null);
@@ -68,7 +68,7 @@ export default function SymbolSection() {
         dropIndexRef.current = dropIndex;
     }, [dropIndex]);
 
-    // 커스텀 드래그 중에는 body 커서를 move로 강제
+    // 드래그 중에는 body 커서를 move로 강제
     useEffect(() => {
         if (draggedIndex === null) {
             document.body.classList.remove('symbol-dragging');
@@ -415,7 +415,7 @@ export default function SymbolSection() {
         })();
     }, [ws]);
 
-    // 커스텀 페어 추가 핸들러
+    // 페어 추가 핸들러
     const handleAddCustomPair = () => {
         const pair = customPairInput.trim().toUpperCase();
         if (!pair) {
@@ -439,7 +439,7 @@ export default function SymbolSection() {
         setCustomPairInput('');
     };
 
-    // 커스텀 페어 삭제 핸들러
+    // 페어 삭제 핸들러
     const handleRemoveCustomPair = (pair: string) => {
         setCustomPairs(prev => prev.filter(p => p !== pair));
 
@@ -448,7 +448,7 @@ export default function SymbolSection() {
         }
     };
 
-    // 커스텀 페어 입력창이 열릴 때 포커스
+    // 페어 입력창이 열릴 때 포커스
     useEffect(() => {
         if (isAddingCustomPair && customPairInputRef.current) {
             customPairInputRef.current.focus();
@@ -966,7 +966,7 @@ export default function SymbolSection() {
                                     </div>
                                 ))}
 
-                                {/* 커스텀 페어들 */}
+                                {/* 페어들 */}
                                 {customPairs.length > 0 && (
                                     <>
                                         {customPairs.map(pair => (
@@ -1131,8 +1131,11 @@ export default function SymbolSection() {
                                     position: 'absolute',
                                     left: 0,
                                     right: 0,
-                                    top: '50%',
-                                    transform: 'translateY(-50%)',
+                                    top: 0,
+                                    bottom: 0,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
                                     textAlign: 'center',
                                     color: 'rgb(255 255 255 / 50%)',
                                     fontSize: '16px',
@@ -1202,19 +1205,19 @@ export default function SymbolSection() {
                 </div>
             </div>
 
-            {/* 커스텀 페어 추가 모달 */}
+            {/* 페어 추가 모달 */}
             {isAddingCustomPair && (
                 <div className="strategy-editor-modal-overlay" onClick={() => {
                     setIsAddingCustomPair(false);
                     setCustomPairInput('');
                 }}>
                     <div className="strategy-editor-modal-container" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="strategy-editor-modal-header">커스텀 페어 추가</h3>
+                        <h3 className="strategy-editor-modal-header">페어 추가</h3>
                         <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
                             <input
                                 ref={customPairInputRef}
                                 type="text"
-                                placeholder="커스텀 페어"
+                                placeholder="페어 이름"
                                 value={customPairInput}
                                 onChange={(e) => setCustomPairInput(e.target.value.toUpperCase())}
                                 onKeyDown={(e) => {

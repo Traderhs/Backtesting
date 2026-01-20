@@ -16,9 +16,155 @@ import './StrategyEditor.css';
 
 function StrategyEditorContent({isActive}: { isActive: boolean }) {
     const [titleBarPortal, setTitleBarPortal] = useState<HTMLElement | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         setTitleBarPortal(document.getElementById('titlebar-actions-portal'));
+    }, []);
+
+    // 탭 전환 시 페이드 인/아웃 및 잔재 중립화 로직
+    useEffect(() => {
+        const fadeDuration = 300; // ms
+        const listOuterSelector = '.strategy-editor-fade-area';
+
+        const fadeIn = () => {
+            if (!containerRef.current) {
+                return;
+            }
+
+            const listOuter = containerRef.current.querySelector(listOuterSelector) as HTMLElement;
+            if (!listOuter) {
+                return;
+            }
+
+            listOuter.style.transition = `opacity ${fadeDuration}ms ease-out`;
+            listOuter.style.visibility = 'visible';
+            listOuter.style.pointerEvents = 'auto';
+            listOuter.style.opacity = '0';
+
+            void listOuter.offsetHeight;
+            requestAnimationFrame(() => (listOuter.style.opacity = '1'));
+        };
+
+        const fadeOut = () => {
+            if (!containerRef.current) {
+                return;
+            }
+
+            const listOuter = containerRef.current.querySelector(listOuterSelector) as HTMLElement;
+            if (!listOuter) return;
+
+            listOuter.style.transition = `opacity ${fadeDuration}ms ease-out`;
+            listOuter.style.opacity = '0';
+            listOuter.style.pointerEvents = 'none';
+
+            setTimeout(() => {
+                if (listOuter) {
+                    listOuter.style.visibility = 'hidden';
+                }
+            }, fadeDuration + 20);
+        };
+
+        // DOM subtree 내부의 transform / will-change / backface-visibility를 중립화
+        const neutralize = (target: HTMLElement | null) => {
+            if (!target) {
+                return;
+            }
+
+            const walker = document.createTreeWalker(target, NodeFilter.SHOW_ELEMENT, null);
+            const nodes: HTMLElement[] = [];
+
+            let cur = walker.currentNode as HTMLElement | null;
+            while (cur) {
+                nodes.push(cur);
+                cur = walker.nextNode() as HTMLElement | null;
+            }
+
+            for (const el of nodes) {
+                try {
+                    const cs = window.getComputedStyle(el);
+                    const transformStr = cs.transform || '';
+                    const willChangeTransform = cs.willChange && cs.willChange.includes('transform');
+                    const backfaceHidden = cs.backfaceVisibility === 'hidden';
+
+                    // translate(...) 또는 matrix(...)에서 실질적인 translation이 포함된 경우에만 처리
+                    const isTranslateOrMatrixWithTranslation = (t: string) => {
+                        if (!t || t === 'none') {
+                            return false;
+                        }
+
+                        if (/\btranslate(?:3d)?\b/i.test(t)) {
+                            return true;
+                        }
+
+                        const m = t.match(/matrix\(([^)]+)\)/);
+                        if (m) {
+                            const parts = m[1].split(',').map(p => p.trim());
+                            if (parts.length === 6) {
+                                const tx = parseFloat(parts[4]) || 0;
+                                const ty = parseFloat(parts[5]) || 0;
+                                return Math.abs(tx) > 0.0001 || Math.abs(ty) > 0.0001;
+                            }
+                        }
+                        return false;
+                    };
+
+                    const shouldNeutralizeTransform = isTranslateOrMatrixWithTranslation(transformStr);
+
+                    // 인터랙티브 요소 및 명시적 UI 클래스는 유지
+                    const skipSelector = 'button, a, input, textarea, select, .strategy-editor-path-reset-button, .strategy-editor-file-selector-button, .strategy-editor-button, .strategy-editor-toggle-slider';
+                    const isInteractive = el.matches && el.matches(skipSelector);
+
+                    if ((shouldNeutralizeTransform && !isInteractive) || willChangeTransform || backfaceHidden) {
+                        if (shouldNeutralizeTransform) {
+                            el.style.transform = 'none';
+                        }
+
+                        if (willChangeTransform) {
+                            el.style.willChange = 'auto';
+                        }
+
+                        if (backfaceHidden) {
+                            (el.style as any).backfaceVisibility = 'visible';
+                        }
+                    }
+                } catch (e) {
+                    // 접근 불가 요소 무시
+                }
+            }
+
+            void target.offsetHeight; // 강제 리플로우
+        };
+
+        const handleTabActive = () => {
+            // App의 탭 애니메이션이 끝난 뒤 실행
+            setTimeout(() => {
+                fadeIn();
+
+                setTimeout(() => {
+                    const listOuter = containerRef.current?.querySelector(listOuterSelector) as HTMLElement;
+
+                    neutralize(listOuter);
+                }, fadeDuration + 30);
+            }, 550);
+        };
+
+        const handleTabInactive = () => {
+            fadeOut();
+        };
+
+        const tabContentElement = containerRef.current?.closest('.tab-content');
+        if (tabContentElement) {
+            tabContentElement.addEventListener('tabActive', handleTabActive);
+            tabContentElement.addEventListener('tabInactive', handleTabInactive);
+        }
+
+        return () => {
+            if (tabContentElement) {
+                tabContentElement.removeEventListener('tabActive', handleTabActive);
+                tabContentElement.removeEventListener('tabInactive', handleTabInactive);
+            }
+        };
     }, []);
 
     const {
@@ -243,7 +389,9 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
     };
 
     return (
-        <div className="flex flex-col h-full w-full">
+        <div ref={(el) => {
+            containerRef.current = el;
+        }} className="flex flex-col h-full w-full">
             {/* 메인 콘텐츠 영역 */}
             <div className="h-full w-full flex flex-col p-4 overflow-y-auto"
                  style={{
@@ -307,26 +455,28 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
                     titleBarPortal
                 )}
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                    {/* 거래소 설정 */}
-                    <div className="h-full">
-                        <ExchangeSection/>
+                <div className="strategy-editor-fade-area" style={{width: '100%'}}>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        {/* 거래소 설정 */}
+                        <div className="h-full">
+                            <ExchangeSection/>
+                        </div>
+
+                        {/* 심볼 섹션 */}
+                        <div className="h-full">
+                            <SymbolSection/>
+                        </div>
                     </div>
 
-                    {/* 심볼 섹션 */}
-                    <div className="h-full">
-                        <SymbolSection/>
-                    </div>
+                    {/* 바 데이터 설정 */}
+                    <BarDataSection/>
+
+                    {/* 엔진 설정 */}
+                    <ConfigSection/>
+
+                    {/* 전략 설정 */}
+                    <StrategySection/>
                 </div>
-
-                {/* 바 데이터 설정 */}
-                <BarDataSection/>
-
-                {/* 엔진 설정 */}
-                <ConfigSection/>
-
-                {/* 전략 설정 */}
-                <StrategySection/>
             </div>
 
             {/* 에디터 설정 */}

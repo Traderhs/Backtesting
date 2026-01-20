@@ -28,7 +28,7 @@ export default function PathResetButton({onClick}: PathResetButtonProps) {
                 aria-label="경로 초기화"
                 title="기본 경로로 초기화"
             >
-                <VscRefresh size={15} style={{transform: 'rotate(90deg)', strokeWidth: '0.25'}}/>
+                <VscRefresh size={15} style={{strokeWidth: '0.25'}}/>
             </button>
         </div>
     );

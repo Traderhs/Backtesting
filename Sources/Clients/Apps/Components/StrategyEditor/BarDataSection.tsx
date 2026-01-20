@@ -186,7 +186,7 @@ export default function BarDataSection() {
 
     return (
         <div
-            className="strategy-editor-section-container h-full flex flex-col"
+            className="strategy-editor-section-container flex flex-col"
             style={{marginTop: '40px', marginRight: '10px'}}
         >
             {/* 헤더: 텍스트와 밑줄/버튼을 분리 렌더링 (클래스 외형 유지, 밑줄 간격 보존) */}
@@ -207,7 +207,14 @@ export default function BarDataSection() {
                 <button
                     onClick={handleAddReferenceBar}
                     className="strategy-editor-button"
-                    style={{position: 'absolute', left: '90%', top: '-50%', transform: 'translateY(-50%)'}}
+                    style={{
+                        position: 'absolute',
+                        left: '90%',
+                        top: '-65px',
+                        height: '100%',
+                        display: 'flex',
+                        alignItems: 'center'
+                    }}
                     title={"참조 바 데이터 추가"}
                 >
                     참조 바 데이터 추가
@@ -275,9 +282,14 @@ export default function BarDataSection() {
                                                 inputMode="numeric"
                                                 value={config.timeframe.value ?? ''}
                                                 onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                                                    if (e.ctrlKey || e.metaKey) return;
+                                                    if (e.ctrlKey || e.metaKey) {
+                                                        return;
+                                                    }
+
                                                     const allowed = /^(?:[0-9]|Backspace|Delete|ArrowLeft|ArrowRight|Tab|Home|End)$/;
-                                                    if (!allowed.test(e.key)) e.preventDefault();
+                                                    if (!allowed.test(e.key)) {
+                                                        e.preventDefault();
+                                                    }
                                                 }}
                                                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                                                     const raw = e.target.value || '';
