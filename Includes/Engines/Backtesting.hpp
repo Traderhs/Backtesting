@@ -177,7 +177,7 @@ class BACKTESTING_API Backtesting {
                    format("[{}] 전략을 엔진에 추가하는 데 실패했습니다.", name),
                    __FILE__, __LINE__, true);
 
-      logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
+      throw runtime_error(e.what());
     }
   }
 
