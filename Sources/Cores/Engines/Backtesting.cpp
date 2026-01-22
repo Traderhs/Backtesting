@@ -97,16 +97,10 @@ void Backtesting::RunBacktesting() {
   try {
     Engine::GetEngine()->Backtesting();
   } catch (const std::exception& e) {
-    // 서버 모드는 실패 메세지가 따로 로그되므로 여기서는 오류 원인만 rethrow
-    if (server_mode_) {
-      throw runtime_error(e.what());
-    }
-
     logger_->Log(ERROR_L, "백테스팅 실행 중 오류가 발생했습니다.", __FILE__,
                  __LINE__, true);
 
-    // 백테스팅 실행 중 발생한 오류의 상세 원인 로그
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
+    throw runtime_error(e.what());
   }
 }
 
