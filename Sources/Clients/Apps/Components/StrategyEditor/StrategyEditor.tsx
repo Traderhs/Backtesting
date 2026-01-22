@@ -472,7 +472,9 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
                     <BarDataSection/>
 
                     {/* 엔진 설정 */}
-                    <ConfigSection/>
+                    <div style={{maxWidth: '50%'}}>
+                        <ConfigSection/>
+                    </div>
 
                     {/* 전략 설정 */}
                     <StrategySection/>
