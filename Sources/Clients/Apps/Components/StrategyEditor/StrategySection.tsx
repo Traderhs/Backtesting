@@ -1,7 +1,27 @@
-import {useEffect, useState} from 'react';
-import {Button} from '@/Components/UI/Button.tsx';
-import {Input} from '@/Components/UI/Input.tsx';
+import React, {useEffect, useRef, useState} from 'react';
 import {useStrategy} from './StrategyContext';
+import {useDropdownAutoScroll} from './useDropdownAutoScroll';
+import './StrategyEditor.css';
+
+// 공통 파일 다이얼로그 유틸
+// 선택된 디렉토리 경로를 POSIX 스타일로 반환, 실패 시 null
+async function selectDirectory(): Promise<string | null> {
+    try {
+        if (!window.electronAPI) {
+            console.error('Electron API가 사용 불가능합니다.');
+            return null;
+        }
+
+        const result = await window.electronAPI.selectPath('directory');
+        if (result && !result.canceled && result.filePaths && result.filePaths.length > 0) {
+            return (result.filePaths[0] || '').replace(/\\/g, '/');
+        }
+    } catch (err) {
+        console.error('폴더 선택 오류:', err);
+    }
+
+    return null;
+}
 
 const toPosix = (p: string) => (p || '').replace(/\\/g, '/');
 
@@ -39,52 +59,98 @@ export default function StrategySection() {
     const [availableStrategies, setAvailableStrategies] = useState<StrategyInfo[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
+    // 스크롤 컨테이너 ref
+    const strategyHeaderScrollRef = useRef<HTMLDivElement>(null);
+    const strategySourceScrollRef = useRef<HTMLDivElement>(null);
+    const indicatorHeaderScrollRef = useRef<HTMLDivElement>(null);
+    const indicatorSourceScrollRef = useRef<HTMLDivElement>(null);
+    const isFetchingRef = useRef(false);
+
+    // 스크롤 헬퍼: 레이아웃 업데이트가 끝난 다음 프레임에 끝까지 스크롤
+    const scrollToBottom = (ref: React.RefObject<HTMLDivElement | null>) => {
+        const el = ref.current;
+        if (!el) return;
+
+        // 두 프레임 보장: 렌더/레이아웃이 완료되도록 함
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                el.scrollTop = el.scrollHeight;
+            });
+        });
+
+        // 추가 안전망: 한 번 더 작은 지연으로 보정
+        setTimeout(() => {
+            if (el.scrollTop + el.clientHeight < el.scrollHeight) {
+                el.scrollTop = el.scrollHeight;
+            }
+        }, 50);
+    };
+
+    // 경로 정규화
+    const normalizePath = (p: string) => (p || '').replace(/\\/g, '/').replace(/\/+/g, '/').replace(/\/+$/, '');
+
+    // 특정 경로가 있는 항목으로 스크롤
+    const scrollToPath = (ref: React.RefObject<HTMLDivElement | null>, path: string) => {
+        const el = ref.current;
+        if (!el) {
+            return;
+        }
+
+        const candidates = Array.from(el.querySelectorAll<HTMLElement>('[data-path]'));
+        const normalized = normalizePath(path);
+        const target = candidates.find(c => normalizePath(c.getAttribute('data-path') || '') === normalized) as HTMLElement | undefined;
+
+        if (!target) {
+            // 폴백
+            scrollToBottom(ref);
+            return;
+        }
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                el.scrollTop = target.offsetTop;
+            });
+        });
+
+        setTimeout(() => {
+            if (el.scrollTop + el.clientHeight < target.offsetTop + target.clientHeight) {
+                el.scrollTop = target.offsetTop;
+            }
+        }, 50);
+    };
+
+    // 전략 드롭다운 관련
+    const strategiesDropdownRef = useRef<HTMLDivElement>(null);
+    const [isStrategiesDropdownOpen, setIsStrategiesDropdownOpen] = useState(false);
+
     const project_dir = toPosix(engineConfig?.projectDirectory || '').replace(/\/+$/, '');
     const default_strategy_header_dir = joinPosix(project_dir, 'Includes/Strategies');
     const default_strategy_source_dir = joinPosix(project_dir, 'Sources/Cores/Strategies');
     const default_indicator_header_dir = joinPosix(project_dir, 'Includes/Indicators');
     const default_indicator_source_dir = joinPosix(project_dir, 'Sources/Cores/Indicators');
 
-    // 기본 폴더가 설정에 포함되어 있는지 확인하고 없으면 추가
-    useEffect(() => {
-        if (!project_dir || !strategyConfig) {
+
+    // 전략 헤더 폴더 추가
+    const handleAddHeaderFolder = async () => {
+        const selected = await selectDirectory();
+        if (!selected) {
             return;
         }
 
-        let changed = false;
-
-        // 객체 복사
-        const newConfig = {...strategyConfig};
-
-        const ensureDefault = (dirs: string[] | undefined, defaultPath: string): string[] => {
-            const currentDirs = dirs || [];
-
-            // 이미 존재하는지 확인
-            const exists = currentDirs.some(dir => isDefaultDir(dir, defaultPath));
-            if (!exists) {
-                changed = true;
-
-                return [defaultPath, ...currentDirs];
-            }
-
-            return currentDirs;
-        };
-
-        newConfig.strategyHeaderDirs = ensureDefault(newConfig.strategyHeaderDirs, default_strategy_header_dir);
-        newConfig.strategySourceDirs = ensureDefault(newConfig.strategySourceDirs, default_strategy_source_dir);
-        newConfig.indicatorHeaderDirs = ensureDefault(newConfig.indicatorHeaderDirs, default_indicator_header_dir);
-        newConfig.indicatorSourceDirs = ensureDefault(newConfig.indicatorSourceDirs, default_indicator_source_dir);
-
-        if (changed) {
-            setStrategyConfig(newConfig);
-        }
-    }, [strategyConfig, setStrategyConfig, project_dir, default_strategy_header_dir, default_strategy_source_dir, default_indicator_header_dir, default_indicator_source_dir]);
-
-    // 전략 헤더 폴더 추가
-    const handleAddHeaderFolder = () => {
+        const normalized = normalizePath(selected);
         const current = strategyConfig || {name: '', strategyHeaderDirs: [], strategySourceDirs: []};
-        const newFolders = [...(current.strategyHeaderDirs || []), ''];
+        const existsIndex = (current.strategyHeaderDirs || []).findIndex(d => normalizePath(d) === normalized);
+        if (existsIndex !== -1) {
+            // 중복은 추가하지 않고 해당 항목으로 스크롤
+            scrollToPath(strategyHeaderScrollRef, normalized);
+            return;
+        }
+
+        const newFolders = [...(current.strategyHeaderDirs || []), selected];
         setStrategyConfig(prev => ({...(prev || current), strategyHeaderDirs: newFolders}));
+
+        // 스크롤을 하단으로 이동
+        scrollToBottom(strategyHeaderScrollRef);
     };
 
     // 전략 헤더 폴더 변경
@@ -103,10 +169,26 @@ export default function StrategySection() {
     };
 
     // 전략 소스 폴더 추가
-    const handleAddSourceFolder = () => {
+    const handleAddSourceFolder = async () => {
+        const selected = await selectDirectory();
+        if (!selected) {
+            return;
+        }
+
+        const normalized = normalizePath(selected);
         const current = strategyConfig || {name: '', strategyHeaderDirs: [], strategySourceDirs: []};
-        const newFolders = [...(current.strategySourceDirs || []), ''];
+        const existsIndex = (current.strategySourceDirs || []).findIndex(d => normalizePath(d) === normalized);
+        if (existsIndex !== -1) {
+            // 중복은 추가하지 않고 해당 항목으로 스크롤
+            scrollToPath(strategySourceScrollRef, normalized);
+            return;
+        }
+
+        const newFolders = [...(current.strategySourceDirs || []), selected];
         setStrategyConfig(prev => ({...(prev || current), strategySourceDirs: newFolders}));
+
+        // 스크롤을 하단으로 이동
+        scrollToBottom(strategySourceScrollRef);
     };
 
     // 전략 소스 폴더 변경
@@ -125,7 +207,13 @@ export default function StrategySection() {
     };
 
     // 지표 헤더 폴더 추가
-    const handleAddIndicatorHeaderFolder = () => {
+    const handleAddIndicatorHeaderFolder = async () => {
+        const selected = await selectDirectory();
+        if (!selected) {
+            return;
+        }
+
+        const normalized = normalizePath(selected);
         const current = strategyConfig || {
             name: '',
             strategyHeaderDirs: [],
@@ -133,8 +221,18 @@ export default function StrategySection() {
             indicatorHeaderDirs: [],
             indicatorSourceDirs: []
         };
-        const newFolders = [...(current.indicatorHeaderDirs || []), ''];
+        const existsIndex = (current.indicatorHeaderDirs || []).findIndex(d => normalizePath(d) === normalized);
+        if (existsIndex !== -1) {
+            // 중복은 추가하지 않고 해당 항목으로 스크롤
+            scrollToPath(indicatorHeaderScrollRef, normalized);
+            return;
+        }
+
+        const newFolders = [...(current.indicatorHeaderDirs || []), selected];
         setStrategyConfig(prev => ({...(prev || current), indicatorHeaderDirs: newFolders}));
+
+        // 스크롤을 하단으로 이동
+        scrollToBottom(indicatorHeaderScrollRef);
     };
 
     // 지표 헤더 폴더 변경
@@ -165,7 +263,13 @@ export default function StrategySection() {
     };
 
     // 지표 소스 폴더 추가
-    const handleAddIndicatorSourceFolder = () => {
+    const handleAddIndicatorSourceFolder = async () => {
+        const selected = await selectDirectory();
+        if (!selected) {
+            return;
+        }
+
+        const normalized = normalizePath(selected);
         const current = strategyConfig || {
             name: '',
             strategyHeaderDirs: [],
@@ -173,8 +277,18 @@ export default function StrategySection() {
             indicatorHeaderDirs: [],
             indicatorSourceDirs: []
         };
-        const newFolders = [...(current.indicatorSourceDirs || []), ''];
+        const existsIndex = (current.indicatorSourceDirs || []).findIndex(d => normalizePath(d) === normalized);
+        if (existsIndex !== -1) {
+            // 중복은 추가하지 않고 해당 항목으로 스크롤
+            scrollToPath(indicatorSourceScrollRef, normalized);
+            return;
+        }
+
+        const newFolders = [...(current.indicatorSourceDirs || []), selected];
         setStrategyConfig(prev => ({...(prev || current), indicatorSourceDirs: newFolders}));
+
+        // 스크롤을 하단으로 이동
+        scrollToBottom(indicatorSourceScrollRef);
     };
 
     // 지표 소스 폴더 변경
@@ -206,7 +320,13 @@ export default function StrategySection() {
 
     // 전략 목록 새로고침
     const handleRefreshStrategies = async () => {
+        if (isFetchingRef.current) {
+            return;
+        }
+
+        isFetchingRef.current = true;
         setIsLoading(true);
+
         try {
             const response = await fetch('/api/strategies');
             const result = await response.json();
@@ -222,8 +342,30 @@ export default function StrategySection() {
             setAvailableStrategies([]);
         } finally {
             setIsLoading(false);
+            isFetchingRef.current = false;
         }
     };
+
+    // 드롭다운 자동 스크롤 연결
+    useDropdownAutoScroll(strategiesDropdownRef, isStrategiesDropdownOpen);
+
+    // 드롭다운 열 때 자동 새로고침
+    useEffect(() => {
+        if (!isStrategiesDropdownOpen) return;
+        handleRefreshStrategies().then();
+    }, [isStrategiesDropdownOpen]);
+
+    // 드롭다운 외부 클릭 시 닫기
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (strategiesDropdownRef.current && !strategiesDropdownRef.current.contains(event.target as Node)) {
+                setIsStrategiesDropdownOpen(false);
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     // 전략 선택
     const handleSelectStrategy = (strategy: StrategyInfo) => {
@@ -250,233 +392,412 @@ export default function StrategySection() {
     }, [strategyConfig?.strategyHeaderDirs, strategyConfig?.strategySourceDirs, strategyConfig?.indicatorHeaderDirs, strategyConfig?.indicatorSourceDirs]);
 
     return (
-        <div className="mb-6 p-4 bg-[#071029] border border-gray-700 rounded-lg">
-            <h2 className="text-lg font-semibold text-white mb-4">전략 설정</h2>
+        <div
+            className="strategy-editor-section-container"
+            style={{height: '825px', marginRight: '10px'}}
+        >
+            <h2 className="strategy-editor-section-header">전략 설정</h2>
 
-            <div className="space-y-4">
-                {/* 전략 헤더 폴더 관리 */}
-                <div>
-                    <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs text-gray-300">전략 헤더 폴더 (기본: Includes/Strategies)</label>
-                        <Button
-                            onClick={handleAddHeaderFolder}
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded"
+            <div style={{display: 'flex', flexDirection: 'column', gap: '32px'}}>
+                {/* 전략 선택 */}
+                <div style={{display: 'flex', flexDirection: 'column', alignItems: 'flex-start'}}>
+                    <label className="strategy-editor-label" style={{fontSize: '16px'}}>전략</label>
+
+                    <div style={{height: '8px'}}/>
+
+                    <div
+                        className="strategy-editor-dropdown-field" ref={strategiesDropdownRef}
+                        style={{width: '320px'}}
+                    >
+                        <div
+                            className={`strategy-editor-dropdown-select ${isStrategiesDropdownOpen ? 'open' : ''}`}
+                            onClick={() => setIsStrategiesDropdownOpen(!isStrategiesDropdownOpen)}
                         >
-                            헤더 폴더 추가
-                        </Button>
-                    </div>
+                            {strategyConfig?.name || '전략'}
+                        </div>
 
-                    {(!strategyConfig || (strategyConfig.strategyHeaderDirs || []).length === 0) && (
-                        <p className="text-xs text-gray-500 italic">추가 전략 헤더 폴더가 없습니다. 버튼을 클릭하여 추가하세요.</p>
-                    )}
-
-                    <div className="space-y-2">
-                        {(strategyConfig?.strategyHeaderDirs || []).map((folder, index) => (
-                            <div key={index} className="flex gap-2">
-                                <Input
-                                    type="text"
-                                    value={folder}
-                                    onChange={(e) => handleHeaderFolderChange(index, e.target.value)}
-                                    className="bg-[#050a12] border-gray-600 flex-1 text-sm"
-                                    readOnly={isDefaultDir(folder, default_strategy_header_dir)}
-                                />
-                                {!isDefaultDir(folder, default_strategy_header_dir) && (
-                                    <Button
-                                        onClick={() => handleRemoveHeaderFolder(index)}
-                                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                                    >
-                                        제거
-                                    </Button>
+                        {isStrategiesDropdownOpen && (
+                            <div className="strategy-editor-dropdown-options">
+                                {isLoading ? (
+                                    <div className="strategy-editor-dropdown-option">로딩 중...</div>
+                                ) : availableStrategies.length === 0 ? (
+                                    <div className="strategy-editor-dropdown-option">전략이 없습니다.</div>
+                                ) : (
+                                    availableStrategies.map((strategy) => (
+                                        <div
+                                            key={strategy.name}
+                                            className={`strategy-editor-dropdown-option ${strategyConfig?.name === strategy.name ? 'selected' : ''}`}
+                                            onClick={() => {
+                                                handleSelectStrategy(strategy);
+                                                setIsStrategiesDropdownOpen(false);
+                                            }}
+                                        >
+                                            {strategy.name}
+                                        </div>
+                                    ))
                                 )}
                             </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* 전략 소스 폴더 관리 */}
-                <div>
-                    <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs text-gray-300">전략 소스 폴더 (기본: Sources/Cores/Strategies)</label>
-                        <Button
-                            onClick={handleAddSourceFolder}
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded"
-                        >
-                            소스 폴더 추가
-                        </Button>
-                    </div>
-
-                    {(!strategyConfig || (strategyConfig.strategySourceDirs || []).length === 0) && (
-                        <p className="text-xs text-gray-500 italic">추가 전략 소스 폴더가 없습니다. 버튼을 클릭하여 추가하세요.</p>
-                    )}
-
-                    <div className="space-y-2">
-                        {(strategyConfig?.strategySourceDirs || []).map((folder, index) => (
-                            <div key={index} className="flex gap-2">
-                                <Input
-                                    type="text"
-                                    value={folder}
-                                    onChange={(e) => handleSourceFolderChange(index, e.target.value)}
-                                    className="bg-[#050a12] border-gray-600 flex-1 text-sm"
-                                    readOnly={isDefaultDir(folder, default_strategy_source_dir)}
-                                />
-                                {!isDefaultDir(folder, default_strategy_source_dir) && (
-                                    <Button
-                                        onClick={() => handleRemoveSourceFolder(index)}
-                                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                                    >
-                                        제거
-                                    </Button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* 지표 헤더 폴더 관리 */}
-                <div>
-                    <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs text-gray-300">지표 헤더 폴더 (기본: Includes/Indicators)</label>
-                        <Button
-                            onClick={handleAddIndicatorHeaderFolder}
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded"
-                        >
-                            헤더 폴더 추가
-                        </Button>
-                    </div>
-
-                    {(!strategyConfig || (strategyConfig.indicatorHeaderDirs || []).length === 0) && (
-                        <p className="text-xs text-gray-500 italic">추가 지표 헤더 폴더가 없습니다. 버튼을 클릭하여 추가하세요.</p>
-                    )}
-
-                    <div className="space-y-2">
-                        {(strategyConfig?.indicatorHeaderDirs || []).map((folder, index) => (
-                            <div key={index} className="flex gap-2">
-                                <Input
-                                    type="text"
-                                    value={folder}
-                                    onChange={(e) => handleIndicatorHeaderFolderChange(index, e.target.value)}
-                                    className="bg-[#050a12] border-gray-600 flex-1 text-sm"
-                                    readOnly={isDefaultDir(folder, default_indicator_header_dir)}
-                                />
-                                {!isDefaultDir(folder, default_indicator_header_dir) && (
-                                    <Button
-                                        onClick={() => handleRemoveIndicatorHeaderFolder(index)}
-                                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                                    >
-                                        제거
-                                    </Button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* 지표 소스 폴더 관리 */}
-                <div>
-                    <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs text-gray-300">지표 소스 폴더 (기본: Sources/Cores/Indicators)</label>
-                        <Button
-                            onClick={handleAddIndicatorSourceFolder}
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 py-1 rounded"
-                        >
-                            소스 폴더 추가
-                        </Button>
-                    </div>
-
-                    {(!strategyConfig || (strategyConfig.indicatorSourceDirs || []).length === 0) && (
-                        <p className="text-xs text-gray-500 italic">추가 지표 소스 폴더가 없습니다. 버튼을 클릭하여 추가하세요.</p>
-                    )}
-
-                    <div className="space-y-2">
-                        {(strategyConfig?.indicatorSourceDirs || []).map((folder, index) => (
-                            <div key={index} className="flex gap-2">
-                                <Input
-                                    type="text"
-                                    value={folder}
-                                    onChange={(e) => handleIndicatorSourceFolderChange(index, e.target.value)}
-                                    className="bg-[#050a12] border-gray-600 flex-1 text-sm"
-                                    readOnly={isDefaultDir(folder, default_indicator_source_dir)}
-                                />
-                                {!isDefaultDir(folder, default_indicator_source_dir) && (
-                                    <Button
-                                        onClick={() => handleRemoveIndicatorSourceFolder(index)}
-                                        className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-sm"
-                                    >
-                                        제거
-                                    </Button>
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-
-                {/* 선택된 전략 표시 */}
-                <div>
-                    <label className="text-xs text-gray-300 block mb-2">선택된 전략</label>
-                    <div className="bg-[#050a12] border border-gray-600 rounded p-3">
-                        {strategyConfig ? (
-                            <>
-                                <div className="text-sm text-white font-semibold mb-1">
-                                    {strategyConfig.name}
-                                </div>
-                                {strategyConfig.strategySourcePath && (
-                                    <div className="text-xs text-gray-400">
-                                        {strategyConfig.strategySourcePath}
-                                    </div>
-                                )}
-                            </>
-                        ) : (
-                            <div className="text-sm text-gray-500">전략이 선택되지 않았습니다</div>
                         )}
                     </div>
                 </div>
 
-                {/* 전략 목록 */}
-                <div>
-                    <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs text-gray-300">사용 가능한 전략</label>
-                        <Button
-                            onClick={handleRefreshStrategies}
-                            disabled={isLoading}
-                            className="bg-gray-600 hover:bg-gray-500 text-white text-xs px-3 py-1 rounded"
-                        >
-                            {isLoading ? '로딩 중...' : '새로고침'}
-                        </Button>
-                    </div>
+                {/* 2x2 그리드 레이아웃 */}
+                <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(2, 1fr)',
+                    rowGap: '32px',
+                    columnGap: '32px'
+                }}>
+                    {/* 전략 헤더 폴더 */}
+                    <div>
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '16px'
+                            }}>
 
-                    <div className="bg-[#050a12] border border-gray-600 rounded max-h-40 overflow-y-auto">
-                        {availableStrategies.length === 0 ? (
-                            <div className="p-3 text-xs text-gray-500 text-center">
-                                사용 가능한 전략이 없습니다. 새로고침 버튼을 클릭하세요.
-                            </div>
-                        ) : (
-                            <div className="divide-y divide-gray-700">
-                                {availableStrategies.map((strategy, index) => (
+                            <label className="strategy-editor-label strategy-section-label">전략 헤더 폴더</label>
+                            <button
+                                onClick={handleAddHeaderFolder}
+                                className="strategy-editor-button"
+                            >
+                                폴더 추가
+                            </button>
+                        </div>
+
+                        {/* 스크롤 가능한 폴더 리스트 컨테이너 */}
+                        <div
+                            ref={strategyHeaderScrollRef}
+                            style={{
+                                height: '232px',
+                                overflowY: 'auto',
+                                border: '1px solid rgb(255 215 0 / 30%)',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgb(17 17 17 / 80%)',
+                                padding: '16px'
+                            }}
+                        >
+                            {(!strategyConfig || (strategyConfig.strategyHeaderDirs || []).length === 0) && (
+                                <p style={{
+                                    fontSize: '12px',
+                                    color: 'rgb(255 255 255 / 40%)',
+                                    fontStyle: 'italic',
+                                    textAlign: 'center',
+                                    padding: '16px'
+                                }}>추가된 전략 헤더 폴더가 없습니다.</p>
+                            )}
+
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                {(strategyConfig?.strategyHeaderDirs || []).map((folder, index) => (
                                     <div
                                         key={index}
-                                        onClick={() => handleSelectStrategy(strategy)}
-                                        className={`p-2 cursor-pointer hover:bg-gray-700 transition-colors ${
-                                            strategyConfig?.name === strategy.name ? 'bg-blue-900' : ''
-                                        }`}
-                                    >
-                                        <div className="text-sm text-white">{strategy.name}</div>
-                                        <div className="text-xs text-gray-400 truncate">
-                                            소스: {strategy.strategySourcePath}
-                                        </div>
-                                        {strategy.strategyHeaderPath && (
-                                            <div className="text-xs text-gray-500 truncate">
-                                                헤더: {strategy.strategyHeaderPath}
+                                        data-path={normalizePath(folder)}
+                                        style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+
+                                        <div
+                                            className="strategy-editor-file-selector"
+                                            style={{flex: 1}}
+                                        >
+                                            <input
+                                                type="text"
+                                                value={folder}
+                                                title={folder}
+                                                onChange={(e) => handleHeaderFolderChange(index, e.target.value)}
+                                                className="strategy-editor-input strategy-editor-input-with-icon"
+                                                readOnly
+                                                tabIndex={-1}
+                                                onFocus={(e) => e.currentTarget.blur()}
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                style={{width: '100%'}}
+                                            />
+
+                                            <div className="strategy-editor-file-selector-buttons">
+                                                {!isDefaultDir(folder, default_strategy_header_dir) && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleRemoveHeaderFolder(index);
+                                                        }}
+                                                        onPointerDown={(e) => e.stopPropagation()}
+                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                        className="strategy-editor-symbol-remove"
+                                                        title="폴더 제거"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
-                        )}
+                        </div>
                     </div>
-                </div>
 
-                <div className="text-xs text-gray-400">
-                    <p>※ 백테스팅 실행 시 선택된 전략을 자동으로 빌드하고 로드합니다.</p>
+                    {/* 전략 소스 폴더 */}
+                    <div>
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '16px'
+                            }}
+                        >
+                            <label className="strategy-editor-label strategy-section-label">전략 소스 폴더</label>
+                            <button
+                                onClick={handleAddSourceFolder}
+                                className="strategy-editor-button"
+                            >
+                                폴더 추가
+                            </button>
+                        </div>
+
+                        {/* 스크롤 가능한 폴더 리스트 컨테이너 */}
+                        <div
+                            ref={strategySourceScrollRef}
+                            style={{
+                                height: '232px',
+                                overflowY: 'auto',
+                                border: '1px solid rgb(255 215 0 / 30%)',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgb(17 17 17 / 80%)',
+                                padding: '16px'
+                            }}
+                        >
+                            {(!strategyConfig || (strategyConfig.strategySourceDirs || []).length === 0) && (
+                                <p style={{
+                                    fontSize: '12px',
+                                    color: 'rgb(255 255 255 / 40%)',
+                                    fontStyle: 'italic',
+                                    textAlign: 'center',
+                                    padding: '16px'
+                                }}>추가된 전략 소스 폴더가 없습니다.</p>
+                            )}
+
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                {(strategyConfig?.strategySourceDirs || []).map((folder, index) => (
+                                    <div
+                                        key={index}
+                                        data-path={normalizePath(folder)}
+                                        style={{display: 'flex', gap: '8px', alignItems: 'center'}}
+                                    >
+                                        <div
+                                            className="strategy-editor-file-selector"
+                                            style={{flex: 1}}
+                                        >
+                                            <input
+                                                type="text"
+                                                value={folder}
+                                                title={folder}
+                                                onChange={(e) => handleSourceFolderChange(index, e.target.value)}
+                                                className="strategy-editor-input strategy-editor-input-with-icon"
+                                                readOnly
+                                                tabIndex={-1}
+                                                onFocus={(e) => e.currentTarget.blur()}
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                style={{width: '100%'}}
+                                            />
+                                            <div className="strategy-editor-file-selector-buttons">
+                                                {!isDefaultDir(folder, default_strategy_source_dir) && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleRemoveSourceFolder(index);
+                                                        }}
+                                                        onPointerDown={(e) => e.stopPropagation()}
+                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                        className="strategy-editor-symbol-remove"
+                                                        title="폴더 제거"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 지표 헤더 폴더 */}
+                    <div>
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '16px'
+                            }}
+                        >
+                            <label className="strategy-editor-label strategy-section-label">지표 헤더 폴더</label>
+                            <button
+                                onClick={handleAddIndicatorHeaderFolder}
+                                className="strategy-editor-button"
+                            >
+                                폴더 추가
+                            </button>
+                        </div>
+
+                        {/* 스크롤 가능한 폴더 리스트 컨테이너 */}
+                        <div
+                            ref={indicatorHeaderScrollRef}
+                            style={{
+                                height: '232px',
+                                overflowY: 'auto',
+                                border: '1px solid rgb(255 215 0 / 30%)',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgb(17 17 17 / 80%)',
+                                padding: '16px'
+                            }}
+                        >
+                            {(!strategyConfig || (strategyConfig.indicatorHeaderDirs || []).length === 0) && (
+                                <p style={{
+                                    fontSize: '12px',
+                                    color: 'rgb(255 255 255 / 40%)',
+                                    fontStyle: 'italic',
+                                    textAlign: 'center',
+                                    padding: '16px'
+                                }}>추가된 지표 헤더 폴더가 없습니다.</p>
+                            )}
+
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                {(strategyConfig?.indicatorHeaderDirs || []).map((folder, index) => (
+                                    <div
+                                        key={index}
+                                        data-path={normalizePath(folder)}
+                                        style={{display: 'flex', gap: '8px', alignItems: 'center'}}
+                                    >
+                                        <div
+                                            className="strategy-editor-file-selector"
+                                            style={{flex: 1}}
+                                        >
+                                            <input
+                                                type="text"
+                                                value={folder}
+                                                title={folder}
+                                                onChange={(e) => handleIndicatorHeaderFolderChange(index, e.target.value)}
+                                                className="strategy-editor-input strategy-editor-input-with-icon"
+                                                readOnly
+                                                tabIndex={-1}
+                                                onFocus={(e) => e.currentTarget.blur()}
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                style={{width: '100%'}}
+                                            />
+
+                                            <div className="strategy-editor-file-selector-buttons">
+                                                {!isDefaultDir(folder, default_indicator_header_dir) && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleRemoveIndicatorHeaderFolder(index);
+                                                        }}
+                                                        onPointerDown={(e) => e.stopPropagation()}
+                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                        className="strategy-editor-symbol-remove"
+                                                        title="폴더 제거"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 지표 소스 폴더 */}
+                    <div>
+                        <div
+                            style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                marginBottom: '16px'
+                            }}
+                        >
+                            <label className="strategy-editor-label strategy-section-label">지표 소스 폴더</label>
+                            <button
+                                onClick={handleAddIndicatorSourceFolder}
+                                className="strategy-editor-button"
+                            >
+                                폴더 추가
+                            </button>
+                        </div>
+
+                        {/* 스크롤 가능한 폴더 리스트 컨테이너 */}
+                        <div
+                            ref={indicatorSourceScrollRef}
+                            style={{
+                                height: '232px',
+                                overflowY: 'auto',
+                                border: '1px solid rgb(255 215 0 / 30%)',
+                                borderRadius: '6px',
+                                backgroundColor: 'rgb(17 17 17 / 80%)',
+                                padding: '16px'
+                            }}
+                        >
+                            {(!strategyConfig || (strategyConfig.indicatorSourceDirs || []).length === 0) && (
+                                <p style={{
+                                    fontSize: '12px',
+                                    color: 'rgb(255 255 255 / 40%)',
+                                    fontStyle: 'italic',
+                                    textAlign: 'center',
+                                    padding: '16px'
+                                }}>추가된 지표 소스 폴더가 없습니다.</p>
+                            )}
+
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '8px'}}>
+                                {(strategyConfig?.indicatorSourceDirs || []).map((folder, index) => (
+                                    <div
+                                        key={index}
+                                        data-path={normalizePath(folder)}
+                                        style={{display: 'flex', gap: '8px', alignItems: 'center'}}
+                                    >
+                                        <div
+                                            className="strategy-editor-file-selector"
+                                            style={{flex: 1}}
+                                        >
+                                            <input
+                                                type="text"
+                                                value={folder}
+                                                title={folder}
+                                                onChange={(e) => handleIndicatorSourceFolderChange(index, e.target.value)}
+                                                className="strategy-editor-input strategy-editor-input-with-icon"
+                                                readOnly
+                                                tabIndex={-1}
+                                                onFocus={(e) => e.currentTarget.blur()}
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                style={{width: '100%'}}
+                                            />
+
+                                            <div className="strategy-editor-file-selector-buttons">
+                                                {!isDefaultDir(folder, default_indicator_source_dir) && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleRemoveIndicatorSourceFolder(index);
+                                                        }}
+                                                        onPointerDown={(e) => e.stopPropagation()}
+                                                        onMouseDown={(e) => e.stopPropagation()}
+                                                        className="strategy-editor-symbol-remove"
+                                                        title="폴더 제거"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

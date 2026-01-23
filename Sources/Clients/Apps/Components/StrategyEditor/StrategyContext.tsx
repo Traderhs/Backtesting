@@ -201,11 +201,10 @@ export function StrategyProvider({children}: { children: ReactNode }) {
 
     // 전략 설정
     const [strategyConfig, setStrategyConfig] = useState<StrategyConfig | null>({
-        // 기본값: 생성 시부터 UI에 항목을 표시하기 위함
-        strategyHeaderDirs: ['Includes/Strategies'],
-        strategySourceDirs: ['Sources/Cores/Strategies'],
-        indicatorHeaderDirs: ['Includes/Indicators'],
-        indicatorSourceDirs: ['Sources/Cores/Indicators'],
+        strategyHeaderDirs: undefined,
+        strategySourceDirs: undefined,
+        indicatorHeaderDirs: undefined,
+        indicatorSourceDirs: undefined,
 
         name: '',
         dllPath: null,

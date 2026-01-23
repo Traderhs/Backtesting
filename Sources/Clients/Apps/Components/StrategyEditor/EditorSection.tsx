@@ -237,11 +237,6 @@ export default function EditorSection({
                         // 전략 설정
                         const strategySection = config['전략 설정'];
 
-                        const DEFAULT_STRATEGY_HEADER_DIR = projectDir ? joinPosix(projectDir, 'Includes/Strategies') : 'Includes/Strategies';
-                        const DEFAULT_STRATEGY_SOURCE_DIR = projectDir ? joinPosix(projectDir, 'Sources/Cores/Strategies') : 'Sources/Cores/Strategies';
-                        const DEFAULT_INDICATOR_HEADER_DIR = projectDir ? joinPosix(projectDir, 'Includes/Indicators') : 'Includes/Indicators';
-                        const DEFAULT_INDICATOR_SOURCE_DIR = projectDir ? joinPosix(projectDir, 'Sources/Cores/Indicators') : 'Sources/Cores/Indicators';
-
                         const normalizeDirs = (p: any[]) => {
                             if (!Array.isArray(p)) {
                                 return [];
@@ -252,21 +247,14 @@ export default function EditorSection({
                                 .map((s: string) => toAbs(s) || '')
                                 .filter((s: string) => !!s);
                         };
-                        const ensureDefaultPresent = (arr: string[], def: string) => {
-                            if (!arr.some(a => a.replace(/\\/g, '/') === def)) {
-                                return [def, ...arr];
-                            }
-
-                            return arr;
-                        };
 
                         if (strategySection && typeof strategySection === 'object') {
                             const selected = strategySection['선택된 전략'];
 
-                            const strategyHeaderDirs = ensureDefaultPresent(normalizeDirs(strategySection['전략 헤더 폴더']), DEFAULT_STRATEGY_HEADER_DIR);
-                            const strategySourceDirs = ensureDefaultPresent(normalizeDirs(strategySection['전략 소스 폴더']), DEFAULT_STRATEGY_SOURCE_DIR);
-                            const indicatorHeaderDirs = ensureDefaultPresent(normalizeDirs(strategySection['지표 헤더 폴더']), DEFAULT_INDICATOR_HEADER_DIR);
-                            const indicatorSourceDirs = ensureDefaultPresent(normalizeDirs(strategySection['지표 소스 폴더']), DEFAULT_INDICATOR_SOURCE_DIR);
+                            const strategyHeaderDirs = normalizeDirs(strategySection['전략 헤더 폴더']);
+                            const strategySourceDirs = normalizeDirs(strategySection['전략 소스 폴더']);
+                            const indicatorHeaderDirs = normalizeDirs(strategySection['지표 헤더 폴더']);
+                            const indicatorSourceDirs = normalizeDirs(strategySection['지표 소스 폴더']);
 
                             if (selected && typeof selected === 'object') {
                                 setStrategyConfig({
@@ -294,19 +282,6 @@ export default function EditorSection({
                                     strategySourcePath: null
                                 });
                             }
-                        } else {
-                            // 설정에 전략 섹션이 없으면 기본값을 사용
-                            setStrategyConfig({
-                                strategyHeaderDirs: [DEFAULT_STRATEGY_HEADER_DIR],
-                                strategySourceDirs: [DEFAULT_STRATEGY_SOURCE_DIR],
-                                indicatorHeaderDirs: [DEFAULT_INDICATOR_HEADER_DIR],
-                                indicatorSourceDirs: [DEFAULT_INDICATOR_SOURCE_DIR],
-
-                                name: '',
-                                dllPath: null,
-                                strategyHeaderPath: null,
-                                strategySourcePath: null
-                            });
                         }
                     }
 

@@ -471,13 +471,23 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
                     {/* 바 데이터 설정 */}
                     <BarDataSection/>
 
-                    {/* 엔진 설정 */}
-                    <div style={{maxWidth: '50%'}}>
-                        <ConfigSection/>
-                    </div>
+                    <div
+                        className="grid grid-cols-1 lg:grid-cols-2 gap-4"
+                        style={{
+                            marginTop: '32px',
+                            marginBottom: '32px'
+                        }}
+                    >
+                        {/* 엔진 설정 */}
+                        <div className="h-full">
+                            <ConfigSection/>
+                        </div>
 
-                    {/* 전략 설정 */}
-                    <StrategySection/>
+                        {/* 전략 설정 */}
+                        <div className="h-full">
+                            <StrategySection/>
+                        </div>
+                    </div>
                 </div>
             </div>
 
