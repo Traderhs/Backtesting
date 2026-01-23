@@ -217,7 +217,6 @@ export default function ConfigSection() {
     return (
         <div
             className="strategy-editor-section-container flex flex-col"
-            style={{marginTop: '38px', marginRight: '10px'}}
         >
             <h2 className="strategy-editor-section-header">엔진 설정</h2>
 
