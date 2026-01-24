@@ -127,6 +127,26 @@ string UtcTimestampToUtcDatetime(const int64_t timestamp_ms) {
   return ss.str();
 }
 
+string UtcTimestampToLocalDatetime(const int64_t timestamp_ms) {
+  if (timestamp_ms < 0) {
+    return "";
+  }
+
+  // timestamp ms를 time_t로 변환
+  const auto timestamp_s = seconds(timestamp_ms / 1000);
+  const system_clock::time_point tp(timestamp_s);
+  const time_t timestamp_time_t = system_clock::to_time_t(tp);
+
+  // 로컬 시간으로 변환
+  tm local_time{};
+  localtime_s(&local_time, &timestamp_time_t);
+
+  // Datetime으로 변환
+  ostringstream ss;
+  ss << put_time(&local_time, "%Y-%m-%d %H:%M:%S");
+  return ss.str();
+}
+
 int64_t UtcDatetimeToUtcTimestamp(const string& datetime,
                                   const string& format) {
   tm tm = {};
@@ -144,6 +164,24 @@ int64_t UtcDatetimeToUtcTimestamp(const string& datetime,
   const int64_t utc_timestamp = _mkgmtime(&tm);
 
   return utc_timestamp * 1000;
+}
+
+int64_t LocalDatetimeToUtcTimestamp(const string& datetime,
+                                    const string& format) {
+  tm tm = {};
+  istringstream ss(datetime);
+
+  // 문자열을 tm으로 파싱
+  ss >> get_time(&tm, format.c_str());
+  if (ss.fail()) {
+    throw runtime_error("Datetime 문자열을 파싱하는 데 실패했습니다.");
+  }
+
+  // tm 구조체를 로컬 타임으로 해석하여 타임스탬프로 변환
+  tm.tm_isdst = -1;  // Daylight Saving Time 무시
+  const int64_t local_timestamp = mktime(&tm);
+
+  return local_timestamp * 1000;
 }
 
 string FormatTimeframe(const int64_t timeframe_ms) {

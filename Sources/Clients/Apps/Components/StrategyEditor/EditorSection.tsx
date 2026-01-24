@@ -83,6 +83,11 @@ export default function EditorSection({
                 // Log 처리
                 if (data.action === 'backtestingLog') {
                     addLog(data.level, data.message, data.timestamp, data.fileInfo);
+                } else if (data.action === 'lastDataUpdates') {
+                    // 서버에서 lastDataUpdates만 전파하는 경우 처리
+                    if (typeof data.lastDataUpdates === 'string') {
+                        setLastDataUpdates(data.lastDataUpdates);
+                    }
                 } else if (data.action === 'editorConfigLoaded') {  // Config 처리
                     const config = data.config;
 
