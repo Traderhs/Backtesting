@@ -68,6 +68,16 @@ constexpr int64_t kYear = 12 * kMonth;
 UtcTimestampToUtcDatetime(int64_t timestamp_ms);
 
 /**
+ * 주어진 타임스탬프(밀리초 기준)를 유닉스 에포크 시간대부터 로컬 날짜-시간
+ * 문자열로 변환하여 반환하는 함수
+ *
+ * @param timestamp_ms 변환할 밀리초 단위의 타임스탬프
+ * @return 로컬 날짜와 시간의 문자열 표현
+ */
+[[nodiscard]] BACKTESTING_API string
+UtcTimestampToLocalDatetime(int64_t timestamp_ms);
+
+/**
  * 주어진 UTC 날짜 및 시간 문자열을 UTC 타임스탬프로 변환하여 반환하는 함수
  *
  * @param datetime 변환할 UTC 날짜 및 시간의 문자열
@@ -76,6 +86,16 @@ UtcTimestampToUtcDatetime(int64_t timestamp_ms);
  */
 [[nodiscard]] BACKTESTING_API int64_t
 UtcDatetimeToUtcTimestamp(const string& datetime, const string& format);
+
+/**
+ * 주어진 로컬 날짜 및 시간 문자열을 UTC 타임스탬프로 변환하여 반환하는 함수
+ *
+ * @param datetime 변환할 로컬 날짜 및 시간의 문자열
+ * @param format datetime 문자열의 포맷을 지정하는 형식 문자열
+ * @return 밀리초 단위의 UTC 타임스탬프
+ */
+[[nodiscard]] BACKTESTING_API int64_t
+LocalDatetimeToUtcTimestamp(const string& datetime, const string& format);
 
 /**
  * 주어진 타임프레임(밀리초 기준)을 사람이 읽을 수 있는

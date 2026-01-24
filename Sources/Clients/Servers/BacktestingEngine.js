@@ -88,21 +88,42 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
                         }
 
                         if (editorConfig && editorConfig.projectDirectory) {
-                            editorConfig.lastDataUpdates = ts;
-                            (async () => {
-                                await saveEditorConfig(editorConfig, broadcastLog, projectDir);
-                            })();
+                            // '마지막 데이터 업데이트' 항목만 갱신
+                            try {
+                                const editorConfigPath = getEditorConfigPath(editorConfig.projectDirectory);
+                                const loaded = readSignedConfigWithRecovery(editorConfigPath, editorConfig.projectDirectory, broadcastLog);
+                                let obj;
 
-                            // 클라이언트에게 설정 업데이트 전파
-                            if (activeClients) {
-                                activeClients.forEach(client => {
-                                    if (client.readyState === 1) {
-                                        client.send(JSON.stringify({
-                                            action: "editorConfigLoaded",
-                                            config: configToWs(editorConfig)
-                                        }));
+                                if (loaded && loaded.obj) {
+                                    obj = loaded.obj;
+                                } else {
+                                    // 파일이 없거나 손상되었으면 기본 config로 채움
+                                    obj = configToObj(createDefaultConfig(editorConfig.projectDirectory));
+                                }
+
+                                obj['거래소 설정'] = obj['거래소 설정'] || {};
+                                obj['거래소 설정']['마지막 데이터 업데이트'] = ts;
+
+                                if (writeSignedFileAtomic(editorConfigPath, obj, editorConfig.projectDirectory, broadcastLog)) {
+                                    const newConfig = objToConfig(obj);
+                                    setEditorConfig(newConfig);
+
+                                    // 전체 설정을 전파하면 사용자 UI 상태가 덮어써질 수 있으므로 변경된 필드만 전파
+                                    if (activeClients) {
+                                        activeClients.forEach(client => {
+                                            if (client.readyState === 1) {
+                                                client.send(JSON.stringify({
+                                                    action: "lastDataUpdates",
+                                                    lastDataUpdates: ts
+                                                }));
+                                            }
+                                        });
                                     }
-                                });
+                                } else {
+                                    broadcastLog("ERROR", `editor.json 저장 실패 (마지막 데이터 업데이트 갱신)`, null, null);
+                                }
+                            } catch (e) {
+                                broadcastLog("WARN", `마지막 데이터 업데이트 저장 중 오류: ${e && e.message ? e.message : e}`, null, null);
                             }
                         }
                     } catch (e) {

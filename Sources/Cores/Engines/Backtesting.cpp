@@ -226,7 +226,7 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
         if (last_data_update_datetime =
                 json_config["lastDataUpdates"].get<string>();
             !last_data_update_datetime.empty()) {
-          const auto last_data_update = UtcDatetimeToUtcTimestamp(
+          const auto last_data_update = LocalDatetimeToUtcTimestamp(
               last_data_update_datetime, "%Y-%m-%d %H:%M:%S");
 
           // 마지막 데이터 업데이트 시간으로부터 24시간이 지났으면
@@ -239,7 +239,7 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
                     "현재 시간 [{}]이 마지막 데이터 업데이트 시간 [{}]으로부터 "
                     "24시간이 경과하여 거래소 정보 및 레버리지 구간 데이터를 "
                     "업데이트합니다.",
-                    UtcTimestampToUtcDatetime(now), last_data_update_datetime),
+                    UtcTimestampToLocalDatetime(now), last_data_update_datetime),
                 __FILE__, __LINE__, true);
 
             need_update = true;
@@ -273,13 +273,13 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
             format("현재 시간 [{}]이 마지막 데이터 업데이트 시간 [{}]으로부터 "
                    "24시간이 경과하지 않아 거래소 정보 및 레버리지 구간 데이터 "
                    "업데이트를 건너뜁니다.",
-                   UtcTimestampToUtcDatetime(now), last_data_update_datetime),
+                   UtcTimestampToLocalDatetime(now), last_data_update_datetime),
             __FILE__, __LINE__, true);
       }
     }
 
     if (updated) {
-      const json& payload = UtcTimestampToUtcDatetime(now);
+      const json& payload = UtcTimestampToLocalDatetime(now);
 
       cout << "업데이트 완료" << payload.dump() << endl;
     }
