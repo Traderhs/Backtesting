@@ -39,6 +39,12 @@ export default function EditorSection({
     const [isResizing, setIsResizing] = useState(false);
     const logContainerRef = useRef<HTMLDivElement | null>(null);
 
+    const logPanelWrapperRef = useRef<HTMLDivElement | null>(null);
+    const mainContentRef = useRef<HTMLElement | null>(null);
+
+    const resizeLastYRef = useRef<number>(0);
+    const resizeRafRef = useRef<number | null>(null);
+
     // 컴포넌트 마운트 시 editor.json 로드
     useEffect(() => {
         if (!ws) {
@@ -437,59 +443,136 @@ export default function EditorSection({
 
     const handleResizeMouseDown = (e: React.MouseEvent) => {
         e.preventDefault();
+        // 초기 Y 위치 설정: 이후 mouseup이 윈도우 바깥에서 발생하더라도 마지막 알려진 위치를 사용
+        resizeLastYRef.current = e.clientY;
         setIsResizing(true);
+
+        try {
+            document.body.style.cursor = 'ns-resize';
+        } catch (err) {
+            // 무시
+        }
     };
 
+    // 드래그 중에는 DOM에 직접 높이를 적용하여 React 상태 변경을 줄임
     useEffect(() => {
         if (!isResizing) {
             return;
         }
 
-        let rafId: number | null = null;
-        let lastY = 0;
+        const MIN_HEIGHT = 200;
+        const MAX_FACTOR = 0.8;
+
+        // 마운트 시 메인 콘텐츠 요소 참조 확보
+        if (!mainContentRef.current) {
+            mainContentRef.current = document.querySelector('.strategy-editor-main-content');
+        }
 
         const handleMouseMove = (e: MouseEvent) => {
-            lastY = e.clientY;
-            if (rafId === null) {
-                rafId = requestAnimationFrame(() => {
-                    const newHeight = window.innerHeight - lastY;
+            resizeLastYRef.current = e.clientY;
 
-                    if (newHeight >= 200 && newHeight <= window.innerHeight * 0.8) {
-                        setLogPanelHeight(newHeight);
+            if (resizeRafRef.current === null) {
+                resizeRafRef.current = requestAnimationFrame(() => {
+                    const lastY = resizeLastYRef.current;
+                    const newHeight = window.innerHeight - lastY;
+                    const clamped = Math.max(MIN_HEIGHT, Math.min(newHeight, window.innerHeight * MAX_FACTOR));
+
+                    const wrapper = logPanelWrapperRef.current;
+                    if (wrapper) {
+                        // 로그 패널 높이 직접 적용
+                        wrapper.style.height = `${clamped}px`;
                     }
 
-                    rafId = null;
+                    const main = mainContentRef.current;
+                    if (main) {
+                        // 메인 콘텐츠도 inline style로 동기화 (기존 UX 유지)
+                        main.style.height = `calc(100% - ${clamped}px)`;
+                    }
+
+                    resizeRafRef.current = null;
                 });
             }
         };
 
-        const handleMouseUp = () => {
-            setIsResizing(false);
+        const handleMouseUp = (e?: MouseEvent | PointerEvent | FocusEvent | null) => {
+            // 이벤트에서 clientY가 전달되면 그 값을 사용하고, 없으면 마지막으로 기록된 값을 사용
+            let lastY = resizeLastYRef.current;
 
-            if (rafId !== null) {
-                cancelAnimationFrame(rafId);
+            if (e && (e as MouseEvent | PointerEvent).clientY !== undefined) {
+                const clientY = (e as MouseEvent | PointerEvent).clientY;
+                // 윈도우 범위를 벗어나면 클램프하여 과도한 collapse 발생 방지
+                lastY = Math.max(0, Math.min(clientY, window.innerHeight));
+            }
+
+            const finalHeight = Math.max(MIN_HEIGHT, Math.min(window.innerHeight - lastY, window.innerHeight * MAX_FACTOR));
+
+            setIsResizing(false);
+            try {
+                document.body.style.cursor = '';
+            } catch (err) {
+                // 무시
+            }
+
+            if (resizeRafRef.current !== null) {
+                cancelAnimationFrame(resizeRafRef.current);
+                resizeRafRef.current = null;
+            }
+
+            // 최종 값만 상태로 반영하여 불필요한 재렌더링 방지
+            setLogPanelHeight(finalHeight);
+
+            // 상태가 반영된 다음 프레임에 임시 inline 스타일 제거
+            const wrapper = logPanelWrapperRef.current;
+            const main = mainContentRef.current;
+
+            // 마지막으로 적용한 inline 높이가 존재하면 먼저 동기화
+            if (wrapper) {
+                wrapper.style.height = `${finalHeight}px`;
+            }
+
+            if (main) {
+                main.style.height = `calc(100% - ${finalHeight}px)`;
             }
         };
 
         document.addEventListener('mousemove', handleMouseMove);
         document.addEventListener('mouseup', handleMouseUp);
 
+        window.addEventListener('pointerup', handleMouseUp as EventListener);
+        window.addEventListener('blur', handleMouseUp as EventListener);
+
         return () => {
             document.removeEventListener('mousemove', handleMouseMove);
             document.removeEventListener('mouseup', handleMouseUp);
 
-            if (rafId !== null) {
-                cancelAnimationFrame(rafId);
+            window.removeEventListener('pointerup', handleMouseUp as EventListener);
+            window.removeEventListener('blur', handleMouseUp as EventListener);
+
+            if (resizeRafRef.current !== null) {
+                cancelAnimationFrame(resizeRafRef.current);
+                resizeRafRef.current = null;
+            }
+
+            try {
+                document.body.style.cursor = '';
+            } catch (err) {
+                // 무시
             }
         };
     }, [isResizing, setLogPanelHeight]);
 
     // 사용자가 직접 스크롤하면 자동으로 맨 아래로 내리는 동작을 중지
     const isAutoScrollRef = React.useRef(true);
+    const isProgrammaticScrollRef = React.useRef(false);
     const AUTO_SCROLL_THRESHOLD = 40; // 바닥에서 이 픽셀 이하이면 자동 스크롤 허용
 
     // 로그 컨테이너 스크롤 이벤트 처리 (사용자 조작 판단)
     const handleLogScroll = (e: React.UIEvent<HTMLDivElement>) => {
+        // 프로그램적 스크롤 중에는 사용자 조작으로 판단하지 않음
+        if (isProgrammaticScrollRef.current) {
+            return;
+        }
+
         const el = e.currentTarget as HTMLDivElement;
         const distanceFromBottom = el.scrollHeight - (el.scrollTop + el.clientHeight);
         isAutoScrollRef.current = distanceFromBottom < AUTO_SCROLL_THRESHOLD;
@@ -502,7 +585,13 @@ export default function EditorSection({
         }
 
         if (isAutoScrollRef.current) {
+            isProgrammaticScrollRef.current = true;
             logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+
+            // 다음 프레임에 플래그 해제 (스크롤 이벤트 처리 후)
+            requestAnimationFrame(() => {
+                isProgrammaticScrollRef.current = false;
+            });
         }
     }, [logs]);
 
@@ -510,7 +599,12 @@ export default function EditorSection({
     useEffect(() => {
         if (isLogPanelOpen && logContainerRef.current) {
             isAutoScrollRef.current = true;
+            isProgrammaticScrollRef.current = true;
             logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight;
+
+            requestAnimationFrame(() => {
+                isProgrammaticScrollRef.current = false;
+            });
         }
     }, [isLogPanelOpen]);
 
@@ -521,17 +615,26 @@ export default function EditorSection({
             {isLogPanelOpen && (
                 <>
                     <div
-                        className="h-1 bg-gray-700 hover:bg-blue-500 cursor-ns-resize transition-colors"
+                        role="separator"
+                        aria-label="로그 패널 크기 조절"
+                        aria-orientation="horizontal"
+                        className={`strategy-editor-log-resize-handle strategy-editor-fade-area ${isResizing ? 'dragging' : ''}`}
                         onMouseDown={handleResizeMouseDown}
                         style={{userSelect: 'none'}}
+                        tabIndex={0}
                     />
-                    <div className="bg-[#1a1a1a] border-t border-gray-700 flex flex-col"
-                         style={{height: `${logPanelHeight}px`}}>
-                        <div className="px-4 py-2 border-b border-gray-700 flex items-center justify-between">
-                            <h2 className="text-sm font-semibold text-gray-300">실행 로그</h2>
+
+                    <div
+                        ref={logPanelWrapperRef}
+                        className="strategy-editor-log-panel strategy-editor-fade-area flex flex-col"
+                        style={{height: `${logPanelHeight}px`}}
+                    >
+                        <div className="px-4 py-2 strategy-editor-log-header flex items-center justify-end">
                             <button
                                 onClick={() => setIsLogPanelOpen(false)}
-                                className="text-gray-400 hover:text-white text-lg leading-none px-2"
+                                className="strategy-editor-dropdown-option-remove strategy-editor-log-close-large"
+                                aria-label="로그 숨기기"
+                                title="로그 숨기기"
                             >
                                 ×
                             </button>
@@ -539,9 +642,7 @@ export default function EditorSection({
                         <div ref={logContainerRef} onScroll={handleLogScroll}
                              className="overflow-y-auto p-4 font-mono text-sm flex-1"
                              style={{fontFamily: "'Inter', 'Pretendard', monospace"}}>
-                            {logs.length === 0 ? (
-                                <div className="text-gray-500 text-center mt-8">백테스팅을 실행하면 로그가 여기에 표시됩니다.</div>
-                            ) : (
+                            {logs.length === 0 ? null : (
                                 logs.map((log, index) => {
                                     if (log.level === 'SEPARATOR') {
                                         return (
