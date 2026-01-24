@@ -911,6 +911,7 @@ export default function SymbolSection() {
                                 {getSuggestions(symbolInput).map((sugg, idx) => (
                                     <div
                                         key={sugg}
+                                        title={sugg}
                                         data-index={idx}
                                         onMouseDown={(ev) => {
                                             ev.preventDefault();
@@ -950,7 +951,19 @@ export default function SymbolSection() {
                             className="strategy-editor-dropdown-select"
                             onClick={() => setIsPairDropdownOpen(!isPairDropdownOpen)}
                         >
-                            {selectedPair}
+                            <span
+                                className="strategy-editor-dropdown-select-label"
+                                title={selectedPair}
+                                style={{
+                                    display: 'block',
+                                    overflow: 'hidden',
+                                    whiteSpace: 'nowrap',
+                                    textOverflow: 'ellipsis',
+                                    minWidth: 0
+                                }}
+                            >
+                                {selectedPair}
+                            </span>
                         </div>
 
                         {isPairDropdownOpen && (
@@ -959,6 +972,7 @@ export default function SymbolSection() {
                                 {DEFAULT_PAIRS.map(pair => (
                                     <div
                                         key={pair}
+                                        title={pair}
                                         className={`strategy-editor-dropdown-option ${selectedPair === pair ? 'selected' : ''}`}
                                         onClick={() => handlePairSelect(pair)}
                                     >
@@ -979,7 +993,10 @@ export default function SymbolSection() {
                                                     justifyContent: 'space-between'
                                                 }}
                                             >
-                                                <span onClick={() => handlePairSelect(pair)} style={{flex: 1}}>
+                                                <span onClick={() => handlePairSelect(pair)}
+                                                      title={pair}
+                                                      className="strategy-editor-dropdown-option-label"
+                                                      style={{flex: 1, minWidth: 0}}>
                                                     {pair}
                                                 </span>
                                                 <button
@@ -1109,7 +1126,7 @@ export default function SymbolSection() {
                                     <div className="strategy-editor-symbol-logo-placeholder"/>
                                 )}
 
-                                <div className="strategy-editor-symbol-name">
+                                <div className="strategy-editor-symbol-name" title={symbolConfigs[draggedIndex]}>
                                     {symbolConfigs[draggedIndex]}
                                 </div>
                             </div>,
@@ -1178,7 +1195,7 @@ export default function SymbolSection() {
                                                 )}
 
                                                 {/* 심볼 이름 */}
-                                                <div className="strategy-editor-symbol-name">
+                                                <div className="strategy-editor-symbol-name" title={symbol}>
                                                     {symbol}
                                                 </div>
 
@@ -1213,6 +1230,7 @@ export default function SymbolSection() {
                 }}>
                     <div className="strategy-editor-modal-container" onClick={(e) => e.stopPropagation()}>
                         <h3 className="strategy-editor-modal-header">페어 추가</h3>
+
                         <div style={{display: 'flex', flexDirection: 'column', gap: '12px'}}>
                             <input
                                 ref={customPairInputRef}
@@ -1230,6 +1248,7 @@ export default function SymbolSection() {
                                 }}
                                 className="strategy-editor-input"
                             />
+
                             <div style={{display: 'flex', gap: '8px', justifyContent: 'flex-end'}}>
                                 <button
                                     onClick={() => {
@@ -1240,6 +1259,7 @@ export default function SymbolSection() {
                                 >
                                     취소
                                 </button>
+
                                 <button
                                     onClick={handleAddCustomPair}
                                     className="strategy-editor-button active"
