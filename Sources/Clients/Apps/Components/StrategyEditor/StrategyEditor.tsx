@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {motion} from 'framer-motion';
-import {Button} from '@/Components/UI/Button.tsx';
+import {FileText, Play} from 'lucide-react';
 import {useWebSocket} from '../Server/WebSocketContext';
 import {BarDataType, timeframeToString, TimeframeUnit} from '@/Types/BarData.ts';
 import EditorSection from './EditorSection';
@@ -27,39 +27,45 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
         const fadeDuration = 300; // ms
         const listOuterSelector = '.strategy-editor-fade-area';
 
-        const fadeIn = () => {
+        const getListOuters = () => {
             if (!containerRef.current) {
+                return [] as HTMLElement[];
+            }
+
+            return Array.from(containerRef.current.querySelectorAll(listOuterSelector)) as HTMLElement[];
+        };
+
+        const fadeIn = () => {
+            const listOuters = getListOuters();
+            if (listOuters.length === 0) {
                 return;
             }
 
-            const listOuter = containerRef.current.querySelector(listOuterSelector) as HTMLElement;
-            if (!listOuter) {
-                return;
+            for (const listOuter of listOuters) {
+                listOuter.style.transition = `opacity ${fadeDuration}ms ease-out`;
+                listOuter.style.visibility = 'visible';
+                listOuter.style.pointerEvents = 'auto';
+                listOuter.style.opacity = '0';
+
+                void listOuter.offsetHeight;
+                requestAnimationFrame(() => (listOuter.style.opacity = '1'));
             }
-
-            listOuter.style.transition = `opacity ${fadeDuration}ms ease-out`;
-            listOuter.style.visibility = 'visible';
-            listOuter.style.pointerEvents = 'auto';
-            listOuter.style.opacity = '0';
-
-            void listOuter.offsetHeight;
-            requestAnimationFrame(() => (listOuter.style.opacity = '1'));
         };
 
         const fadeOut = () => {
-            if (!containerRef.current) {
+            const listOuters = getListOuters();
+            if (listOuters.length === 0) {
                 return;
             }
 
-            const listOuter = containerRef.current.querySelector(listOuterSelector) as HTMLElement;
-            if (!listOuter) return;
-
-            listOuter.style.transition = `opacity ${fadeDuration}ms ease-out`;
-            listOuter.style.opacity = '0';
-            listOuter.style.pointerEvents = 'none';
+            for (const listOuter of listOuters) {
+                listOuter.style.transition = `opacity ${fadeDuration}ms ease-out`;
+                listOuter.style.opacity = '0';
+                listOuter.style.pointerEvents = 'none';
+            }
 
             setTimeout(() => {
-                if (listOuter) {
+                for (const listOuter of listOuters) {
                     listOuter.style.visibility = 'hidden';
                 }
             }, fadeDuration + 20);
@@ -112,7 +118,7 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
                     const shouldNeutralizeTransform = isTranslateOrMatrixWithTranslation(transformStr);
 
                     // 인터랙티브 요소 및 명시적 UI 클래스는 유지
-                    const skipSelector = 'button, a, input, textarea, select, .strategy-editor-path-reset-button, .strategy-editor-file-selector-button, .strategy-editor-button, .strategy-editor-toggle-slider';
+                    const skipSelector = 'button, a, input, textarea, select, .strategy-editor-path-reset-button, .strategy-editor-file-selector-button, .strategy-editor-button, .strategy-editor-toggle-slider, .strategy-editor-log-resize-handle';
                     const isInteractive = el.matches && el.matches(skipSelector);
 
                     if ((shouldNeutralizeTransform && !isInteractive) || willChangeTransform || backfaceHidden) {
@@ -142,9 +148,10 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
                 fadeIn();
 
                 setTimeout(() => {
-                    const listOuter = containerRef.current?.querySelector(listOuterSelector) as HTMLElement;
-
-                    neutralize(listOuter);
+                    const listOuters = getListOuters();
+                    for (const listOuter of listOuters) {
+                        neutralize(listOuter);
+                    }
                 }, fadeDuration + 30);
             }, 550);
         };
@@ -393,7 +400,7 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
             containerRef.current = el;
         }} className="flex flex-col h-full w-full">
             {/* 메인 콘텐츠 영역 */}
-            <div className="h-full w-full flex flex-col p-4 overflow-y-auto"
+            <div className="strategy-editor-main-content h-full w-full flex flex-col p-4 overflow-y-auto"
                  style={{
                      height: isLogPanelOpen ? `calc(100% - ${logPanelHeight}px)` : '100%'
                  }}>
@@ -438,19 +445,33 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
                 </div>
 
                 {isActive && titleBarPortal && createPortal(
-                    <div className="flex items-center gap-2" style={{WebkitAppRegion: 'no-drag'} as any}>
-                        <Button
-                            onClick={() => setIsLogPanelOpen(!isLogPanelOpen)}
-                            className="bg-gray-700 hover:bg-gray-600 text-white font-semibold px-4 py-2 rounded-lg transition-colors"
+                    <div
+                        className="flex items-center gap-2"
+                        style={{
+                            WebkitAppRegion: 'no-drag',
+                            gap: '12px'
+                        } as any}
+                    >
+                        <button
+                            type="button"
+                            onClick={() => setIsLogPanelOpen(prev => !prev)}
+                            title={isLogPanelOpen ? '로그 숨기기' : '로그 표시'}
+                            aria-pressed={isLogPanelOpen}
+                            aria-label={isLogPanelOpen ? '로그 숨기기' : '로그 표시'}
+                            className="strategy-editor-action-button log"
                         >
-                            {isLogPanelOpen ? '로그 숨기기' : '로그 표시'}
-                        </Button>
-                        <Button
+                            <FileText size={16}/>
+                        </button>
+
+                        <button
+                            type="button"
                             onClick={handleRunSingleBacktesting}
-                            className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-6 py-2 rounded-lg transition-colors"
+                            title="백테스팅 실행"
+                            aria-label="백테스팅 실행"
+                            className="strategy-editor-action-button play"
                         >
-                            백테스팅 실행
-                        </Button>
+                            <Play size={16}/>
+                        </button>
                     </div>,
                     titleBarPortal
                 )}
