@@ -1487,10 +1487,10 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
                     } else {
                         setEditorConfig(config);
 
-                        // 프로젝트 폴더가 설정되어 있으면 백테스팅 엔진을 그 프로젝트 디렉터리에서 실행합니다.
+                        // 프로젝트 폴더가 설정되어 있으면 백테스팅 엔진을 그 프로젝트 디렉터리에서 실행
                         try {
                             const startDir = config && config.projectDirectory ? config.projectDirectory : projectDir;
-                            startBacktestingEngine(activeClients, broadcastLog, startDir);
+                            startBacktestingEngine(activeClients, broadcastLog, startDir, staticDir);
                         } catch (e) {
                             broadcastLog("ERROR", `백테스팅 엔진 시작 실패: ${e.message}`);
                         }
