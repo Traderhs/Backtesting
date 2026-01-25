@@ -1035,8 +1035,9 @@ async function createProjectStructure(projectDir) {
 
     const continuousDir = path.join(projectDir, 'Data', 'Continuous Klines');
     const markPriceDir = path.join(projectDir, 'Data', 'Mark Price Klines');
+    const fundingRatesDir = path.join(projectDir, 'Data', 'Funding Rates');
 
-    return await ensureDirectory(continuousDir) && await ensureDirectory(markPriceDir) && await ensureDirectory(backboardDir);
+    return await ensureDirectory(backboardDir) && await ensureDirectory(continuousDir) && await ensureDirectory(markPriceDir) && await ensureDirectory(fundingRatesDir);
 }
 
 function getEditorConfigPath(projectDir) {
