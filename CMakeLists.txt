@@ -98,11 +98,50 @@ target_link_libraries(Backtesting PRIVATE
 #        /DEBUG:FULL  # 전체 디버그 정보
 #)
 
-# BacktestingCore.lib를 BackBoard/Cores 폴더로 복사 (개발 중 전략 빌드용)
+# 개발용: Backtesting 및 BacktestingCore의 바이너리와 런타임 의존성을 복사
+set(RUNTIME_FILES "")
+foreach (_cfg IN LISTS CMAKE_CONFIGURATION_TYPES)
+    set(_d1 "${CMAKE_BINARY_DIR}/${_cfg}")
+
+    if (EXISTS "${_d1}")
+        file(GLOB _glob1 "${_d1}/*.dll" "${_d1}/*.exe" "${_d1}/*.lib" "${_d1}/*.pdb")
+        list(APPEND RUNTIME_FILES ${_glob1})
+    endif ()
+
+    set(_d2 "${CMAKE_BINARY_DIR}/${_cfg}/${_cfg}")
+    if (EXISTS "${_d2}")
+        file(GLOB _glob2 "${_d2}/*.dll" "${_d2}/*.exe" "${_d2}/*.lib" "${_d2}/*.pdb")
+        list(APPEND RUNTIME_FILES ${_glob2})
+    endif ()
+endforeach ()
+
+# 복사 명령 목록 준비
+set(_COPY_CMDS)
+foreach (_f IN LISTS RUNTIME_FILES)
+    list(APPEND _COPY_CMDS
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_f}" "${CMAKE_SOURCE_DIR}/BackBoard/Cores"
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different "${_f}" "${CMAKE_SOURCE_DIR}/Sources/Clients/Bundles/Cores"
+    )
+endforeach ()
+
 add_custom_command(TARGET BacktestingCore POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/BackBoard/Cores"
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different
-        $<TARGET_LINKER_FILE:BacktestingCore>
-        "${CMAKE_SOURCE_DIR}/BackBoard/Cores/BacktestingCore.lib"
-        COMMENT "Copying BacktestingCore.lib to BackBoard/Cores directory"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/Sources/Clients/Bundles/Cores"
+
+        # 핵심 바이너리 복사
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:BacktestingCore> "${CMAKE_SOURCE_DIR}/BackBoard/Cores/$<TARGET_FILE_NAME:BacktestingCore>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_LINKER_FILE:BacktestingCore> "${CMAKE_SOURCE_DIR}/BackBoard/Cores/BacktestingCore.lib"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:BacktestingCore> "${CMAKE_SOURCE_DIR}/Sources/Clients/Bundles/Cores/$<TARGET_FILE_NAME:BacktestingCore>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_LINKER_FILE:BacktestingCore> "${CMAKE_SOURCE_DIR}/Sources/Clients/Bundles/Cores/BacktestingCore.lib"
+
+        # 구성 시 수집한 런타임 파일들 복사 (.iobj, .ipdb는 제외)
+        ${_COPY_CMDS}
+)
+
+# Backtesting 실행 파일도 Cores 폴더로 복사
+add_custom_command(TARGET Backtesting POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/BackBoard/Cores"
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${CMAKE_SOURCE_DIR}/Sources/Clients/Bundles/Cores"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:Backtesting> "${CMAKE_SOURCE_DIR}/BackBoard/Cores/$<TARGET_FILE_NAME:Backtesting>"
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:Backtesting> "${CMAKE_SOURCE_DIR}/Sources/Clients/Bundles/Cores/$<TARGET_FILE_NAME:Backtesting>"
 )

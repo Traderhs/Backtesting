@@ -18,28 +18,13 @@ function toPosix(p) {
 let backtestingEngine = null;
 let backtestingEngineReady = false;
 
-function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
+function startBacktestingEngine(activeClients, broadcastLog, projectDir, staticDir) {
     if (backtestingEngine) {
         return;
     }
 
-    const possiblePaths = [
-        path.join(path.dirname(process.execPath), 'Backtesting.exe'),
-        path.join(path.dirname(process.execPath), 'BackBoard', 'Backtesting.exe'),
-        path.join('d:', 'Dev', 'Backtesting', 'Builds', 'Release', 'Release', 'Backtesting.exe')
-    ];
-
-    // 세 후보 경로 중에서 매칭 시도
-    let exePath = null;
-    for (const tryPath of possiblePaths) {
-        if (fs.existsSync(tryPath)) {
-            exePath = tryPath;
-            break;
-        }
-    }
-
-    if (!exePath) {
-        broadcastLog("ERROR", `Backtesting.exe 파일을 찾을 수 없습니다.`, null, null);
+    const exePath = path.join(staticDir, 'Cores', 'Backtesting.exe');
+    if (!fs.existsSync(exePath)) {
         return;
     }
 
