@@ -566,14 +566,14 @@ export default function SymbolSection() {
             if (window && (window as any).electronAPI && (window as any).electronAPI.showConfirm) {
                 confirmed = await (window as any).electronAPI.showConfirm({
                     title: 'BackBoard',
-                    message: '심볼 목록을 초기화하시겠습니까?'
+                    message: '추가된 심볼들을 초기화하시겠습니까?'
                 });
             } else {
-                confirmed = confirm('심볼 목록을 초기화하시겠습니까?');
+                confirmed = confirm('추가된 심볼들을 초기화하시겠습니까?');
             }
         } catch (e) {
             // 실패 시 안전하게 폴백
-            confirmed = confirm('심볼 목록을 초기화하시겠습니까?');
+            confirmed = confirm('추가된 심볼들을 초기화하시겠습니까?');
         }
 
         if (!confirmed) {
