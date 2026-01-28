@@ -88,6 +88,9 @@ function AppContent() {
     const [isChartLoading, setIsChartLoading] = useState(false);
     const [config, setConfig] = useState<any>(null);
 
+    // StrategyEditor가 내부 준비 되었는지 여부
+    const [isStrategyEditorReady, setIsStrategyEditorReady] = useState(false);
+
     // 분석 그래프(Plot) 탭의 활성 플롯 타입 상태 추가
     const [activePlotType, setActivePlotType] = useState<string>("equity-drawdown");
 
@@ -498,8 +501,8 @@ function AppContent() {
                 boxSizing: "border-box"
             }}
         >
-            {/* 이미지 로딩 중일 때 전체 화면 로딩 스피너 표시 */}
-            {isGlobalLoading && <LoadingSpinner/>}
+            {/* 이미지 로딩 중이거나 StrategyEditor가 활성화되어 있지만 아직 준비되지 않은 경우 전체 화면 로딩 스피너 표시 */}
+            {(isGlobalLoading || (tab === 'StrategyEditor' && !isStrategyEditorReady)) && <LoadingSpinner/>}
 
             {/* StarField 컴포넌트는 항상 렌더링하되, Chart 탭에서는 opacity로 숨김 처리 */}
             <div style={{
@@ -554,7 +557,10 @@ function AppContent() {
                         {/* StrategyEditor는 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
                         {visitedTabs["StrategyEditor"] && (
                             <Suspense fallback={<div/>}>
-                                <StrategyEditor isActive={tab === "StrategyEditor"}/>
+                                <StrategyEditor
+                                    isActive={tab === "StrategyEditor"}
+                                    onFullyLoaded={() => setIsStrategyEditorReady(true)}
+                                />
                             </Suspense>
                         )}
                     </div>

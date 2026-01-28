@@ -14,7 +14,7 @@ import {StrategyProvider, useStrategy} from './StrategyContext';
 import '../Common/LoadingSpinner.css';
 import './StrategyEditor.css';
 
-function StrategyEditorContent({isActive}: { isActive: boolean }) {
+function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, onFullyLoaded?: () => void }) {
     const [titleBarPortal, setTitleBarPortal] = useState<HTMLElement | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
 
@@ -174,6 +174,70 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
         };
     }, []);
 
+    // StrategyEditor의 진입 애니메이션(탭 활성화 + fade + motion)이 완전히 끝난 뒤에만 준비 완료 신호 전송
+    useEffect(() => {
+        if (!isActive || fullyLoadedCalledRef.current || !onFullyLoaded) {
+            return;
+        }
+
+        let fallbackTimer: number | null = null;
+        let scheduleTimer: number | null = null;
+        let tabHandled = false;
+
+        const scheduleFullyLoaded = () => {
+            if (fullyLoadedCalledRef.current) {
+                return;
+            }
+
+            // 안전 마진: App 탭 딜레이(≈550ms) + fade/motion(≈400ms) + 여유
+            scheduleTimer = window.setTimeout(() => {
+                fullyLoadedCalledRef.current = true;
+                try {
+                    onFullyLoaded();
+                } catch (e) {
+                    // 안전하게 무시
+                }
+            }, 1200);
+        };
+
+        const tabContent = containerRef.current?.closest('.tab-content');
+        const onTabActive = () => {
+            tabHandled = true;
+
+            if (fallbackTimer) {
+                clearTimeout(fallbackTimer);
+                fallbackTimer = null;
+            }
+
+            scheduleFullyLoaded();
+        };
+
+        if (tabContent) {
+            tabContent.addEventListener('tabActive', onTabActive, {once: true});
+        }
+
+        // 초기 마운트 시 tabActive 이벤트가 발생하지 않을 수 있으므로 짧게 대기 후 스케줄
+        fallbackTimer = window.setTimeout(() => {
+            if (!tabHandled) {
+                scheduleFullyLoaded();
+            }
+        }, 50);
+
+        return () => {
+            if (fallbackTimer) {
+                clearTimeout(fallbackTimer);
+            }
+
+            if (scheduleTimer) {
+                clearTimeout(scheduleTimer);
+            }
+
+            if (tabContent) {
+                tabContent.removeEventListener('tabActive', onTabActive as EventListener);
+            }
+        };
+    }, [isActive, onFullyLoaded]);
+
     const {
         addLog,
         clearLogs,
@@ -189,6 +253,9 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
 
     // 설정의 이전 해시값 저장 (변경 감지용)
     const previousConfigHash = useRef<string>('');
+
+    // 준비 완료 신호 중복 방지를 위한 플래그
+    const fullyLoadedCalledRef = useRef(false);
 
     const [isLogPanelOpen, setIsLogPanelOpen] = useState(false);
     const [logPanelHeight, setLogPanelHeight] = useState(400);
@@ -216,14 +283,14 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
         // 로그 초기화
         clearLogs();
 
+        // 로그 패널이 닫혀있으면 자동으로 열기
+        if (!isLogPanelOpen) {
+            setIsLogPanelOpen(true);
+        }
+
         if (!ws || ws.readyState !== WebSocket.OPEN) {
             addLog('ERROR', 'WebSocket 연결이 없습니다.');
             return;
-        }
-
-        // 백테스팅 실행 시 로그 패널이 닫혀있으면 자동으로 열기
-        if (!isLogPanelOpen) {
-            setIsLogPanelOpen(true);
         }
 
         if (!exchangeConfig.apiKeyEnvVar.trim()) {
@@ -397,26 +464,43 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
 
     // 데이터 다운로드 / 업데이트
     const handleFetchOrUpdateBarData = async (operation: 'download' | 'update') => {
+        const confirmMsg = operation === 'download' ? '추가된 심볼들의 바 데이터를 다운로드하시겠습니까?' : '추가된 심볼들의 바 데이터를 업데이트하시겠습니까?';
+
+        // Electron 환경이면 네이티브 다이얼로그 사용, 아니면 브라우저 confirm으로 폴백
+        let confirmed: boolean;
+        try {
+            if (window && (window as any).electronAPI && (window as any).electronAPI.showConfirm) {
+                confirmed = await (window as any).electronAPI.showConfirm({
+                    title: 'BackBoard',
+                    message: confirmMsg
+                });
+            } else {
+                confirmed = confirm(confirmMsg);
+            }
+        } catch (e) {
+            // 실패 시 안전하게 폴백
+            confirmed = confirm(confirmMsg);
+        }
+
+        if (!confirmed) {
+            return;
+        }
+
         // 로그 초기화
         clearLogs();
+
+        // 로그 패널이 닫혀있으면 자동으로 열기
+        if (!isLogPanelOpen) {
+            setIsLogPanelOpen(true);
+        }
 
         if (!ws || ws.readyState !== WebSocket.OPEN) {
             addLog('ERROR', 'WebSocket 연결이 없습니다.');
             return;
         }
 
-        // 로그 패널이 닫혀 있으면 자동으로 열기
-        if (!isLogPanelOpen) {
-            setIsLogPanelOpen(true);
-        }
-
         if (!symbolConfigs || symbolConfigs.length === 0) {
             addLog('ERROR', operation === 'download' ? '바 데이터를 다운로드하려면 최소 1개의 심볼이 필요합니다. 심볼을 추가해 주세요.' : '바 데이터를 업데이트하려면 최소 1개의 심볼이 필요합니다. 심볼을 추가해 주세요.');
-            return;
-        }
-
-        const confirmMsg = operation === 'download' ? '추가된 심볼의 바 데이터를 다운로드하시겠습니까?' : '추가된 심볼의 바 데이터를 업데이트하시겠습니까?';
-        if (!window.confirm(confirmMsg)) {
             return;
         }
 
@@ -565,10 +649,10 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
  * 전략 에디터 컴포넌트
  * 백테스팅 전략을 편집하고 실행할 수 있는 UI 제공
  */
-export default function StrategyEditor({isActive}: { isActive?: boolean }) {
+export default function StrategyEditor({isActive, onFullyLoaded}: { isActive?: boolean, onFullyLoaded?: () => void }) {
     return (
         <StrategyProvider>
-            <StrategyEditorContent isActive={isActive ?? true}/>
+            <StrategyEditorContent isActive={isActive ?? true} onFullyLoaded={onFullyLoaded}/>
         </StrategyProvider>
     );
 }
