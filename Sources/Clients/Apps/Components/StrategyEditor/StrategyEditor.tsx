@@ -395,6 +395,44 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
         previousConfigHash.current = currentHash;
     };
 
+    // 데이터 다운로드 / 업데이트
+    const handleFetchOrUpdateBarData = async (operation: 'download' | 'update') => {
+        // 로그 초기화
+        clearLogs();
+
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            addLog('ERROR', 'WebSocket 연결이 없습니다.');
+            return;
+        }
+
+        // 로그 패널이 닫혀 있으면 자동으로 열기
+        if (!isLogPanelOpen) {
+            setIsLogPanelOpen(true);
+        }
+
+        if (!symbolConfigs || symbolConfigs.length === 0) {
+            addLog('ERROR', operation === 'download' ? '바 데이터를 다운로드하려면 최소 1개의 심볼이 필요합니다. 심볼을 추가해 주세요.' : '바 데이터를 업데이트하려면 최소 1개의 심볼이 필요합니다. 심볼을 추가해 주세요.');
+            return;
+        }
+
+        const confirmMsg = operation === 'download' ? '추가된 심볼의 바 데이터를 다운로드하시겠습니까?' : '추가된 심볼의 바 데이터를 업데이트하시겠습니까?';
+        if (!window.confirm(confirmMsg)) {
+            return;
+        }
+
+        const payloadBarDataConfigs = barDataConfigs.map(c => ({
+            barDataType: c.barDataType,
+            timeframe: timeframeToString(c.timeframe)
+        }));
+
+        ws.send(JSON.stringify({
+            action: 'fetchOrUpdateBarData',
+            operation: operation === 'download' ? 'download' : 'update',
+            symbolConfigs: symbolConfigs,
+            barDataConfigs: payloadBarDataConfigs
+        }));
+    };
+
     return (
         <div ref={(el) => {
             containerRef.current = el;
@@ -490,7 +528,7 @@ function StrategyEditorContent({isActive}: { isActive: boolean }) {
                     </div>
 
                     {/* 바 데이터 설정 */}
-                    <BarDataSection/>
+                    <BarDataSection onFetchOrUpdateBarData={handleFetchOrUpdateBarData}/>
 
                     <div
                         className="grid grid-cols-1 lg:grid-cols-2 gap-4"

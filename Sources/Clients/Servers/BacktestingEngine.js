@@ -229,6 +229,25 @@ function runSingleBacktesting(ws, backtestingStartTime, editorConfig, symbolConf
     backtestingEngine.stdin.write(command);
 }
 
+function fetchOrUpdateBarData(ws, operation, editorConfig, symbolConfigs, barDataConfigs, broadcastLog) {
+    if (!backtestingEngine || !backtestingEngineReady) {
+        broadcastLog("ERROR", "백테스팅 엔진이 준비되지 않았습니다. 잠시 후 다시 시도해주세요.", null, null);
+        return;
+    }
+
+    const config = {
+        operation: operation || "download",
+        projectDirectory: (editorConfig && editorConfig.projectDirectory) ? toPosix(editorConfig.projectDirectory) : "",
+        apiKeyEnvVar: (editorConfig && editorConfig.apiKeyEnvVar) ? editorConfig.apiKeyEnvVar : "",
+        apiSecretEnvVar: (editorConfig && editorConfig.apiSecretEnvVar) ? editorConfig.apiSecretEnvVar : "",
+        symbols: symbolConfigs || [],
+        barDataConfigs: barDataConfigs || []
+    };
+
+    const command = `fetchOrUpdateBarData ${JSON.stringify(config)}\n`;
+    backtestingEngine.stdin.write(command);
+}
+
 function stopBacktestingEngine() {
     if (backtestingEngine) {
         backtestingEngine.stdin.write("shutdown\n");
@@ -1175,6 +1194,7 @@ function setEditorConfigLoading(loading) {
 module.exports = {
     startBacktestingEngine: startBacktestingEngine,
     runSingleBacktesting,
+    fetchOrUpdateBarData,
     stopBacktestingEngine: stopBacktestingEngine,
     loadOrCreateEditorConfig,
     saveEditorConfig,

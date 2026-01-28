@@ -192,6 +192,11 @@ string FormatTimeframe(const int64_t timeframe_ms) {
       31 * kDay   // 1,3,5,7,8,10,12월
   };
 
+  // 연 단위 체크
+  if (timeframe_ms % kYear == 0) {
+    return to_string(timeframe_ms / kYear) + "y";
+  }
+
   // 월 단위 체크
   for (const int64_t month : months) {
     if (timeframe_ms % month == 0) {
@@ -202,15 +207,19 @@ string FormatTimeframe(const int64_t timeframe_ms) {
   if (timeframe_ms % kWeek == 0) {
     return to_string(timeframe_ms / kWeek) + "w";
   }
+
   if (timeframe_ms % kDay == 0) {
     return to_string(timeframe_ms / kDay) + "d";
   }
+
   if (timeframe_ms % kHour == 0) {
     return to_string(timeframe_ms / kHour) + "h";
   }
+
   if (timeframe_ms % kMinute == 0) {
     return to_string(timeframe_ms / kMinute) + "m";
   }
+
   if (timeframe_ms % kSecond == 0) {
     return to_string(timeframe_ms / kSecond) + "s";
   }
@@ -239,20 +248,29 @@ int64_t ParseTimeframe(const string& timeframe_str) {
     if (unit == "s") {
       return value * kSecond;
     }
+
     if (unit == "m") {
       return value * kMinute;
     }
+
     if (unit == "h") {
       return value * kHour;
     }
+
     if (unit == "d") {
       return value * kDay;
     }
+
     if (unit == "w") {
       return value * kWeek;
     }
+
     if (unit == "M") {
       return value * kMonth;
+    }
+
+    if (unit == "y") {
+      return value * kYear;
     }
 
     throw runtime_error(

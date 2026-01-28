@@ -11,6 +11,7 @@ const {
 const {
     startBacktestingEngine,
     runSingleBacktesting,
+    fetchOrUpdateBarData,
     stopBacktestingEngine
 } = require("./BacktestingEngine");
 
@@ -1516,6 +1517,11 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
 
                     case "runSingleBacktesting": {
                         runSingleBacktesting(ws, msg.backtestingStartTime, getEditorConfig(), msg.symbolConfigs, msg.barDataConfigs, msg.useBarMagnifier, msg.clearAndAddBarData, msg.fundingRatesDirectory, msg.strategyConfig, broadcastLog);
+                        break;
+                    }
+
+                    case "fetchOrUpdateBarData": {
+                        fetchOrUpdateBarData(ws, msg.operation, getEditorConfig(), msg.symbolConfigs, msg.barDataConfigs, broadcastLog);
                         break;
                     }
 

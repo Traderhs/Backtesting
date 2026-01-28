@@ -1,6 +1,9 @@
 ﻿#pragma once
 
 // 표준 라이브러리
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <string>
 
 // 내부 헤더
@@ -116,6 +119,36 @@ class BACKTESTING_API BinanceFetcher final : public BaseFetcher {
   string continuous_klines_directory_;  // 연속 선물 Klines 폴더 경로
   string mark_price_klines_directory_;  // 마크 Klines 폴더 경로
   string funding_rates_directory_;      // Funding Rate 폴더 경로
+
+  // 바이낸스 REQUEST_WEIGHT 제한을 위한 토큰 버킷
+  class BACKTESTING_API TokenBucket {
+   public:
+    TokenBucket() = delete;
+
+    static TokenBucket& GetBinanceLimiter();
+
+    void Acquire(double weight = 1.0);
+
+   private:
+    /// @param capacity 최대 누적 weight
+    /// @param refill_per_sec 초당 회복량
+    TokenBucket(double capacity, double refill_per_sec);
+
+    // 내부적으로 토큰을 보충하는 함수
+    void refill();
+
+    static TokenBucket* limiter_;
+    double capacity_;     // 최대 누적 weight
+    double tokens_;       // 현재 보유 weight
+    double refill_rate_;  // 초당 회복 weight
+
+    chrono::time_point<chrono::steady_clock> last_refill_;
+    mutex mutex_;
+    condition_variable cv_;
+  };
+
+  // TokenBucket 요청 헬퍼
+  static void AcquireBinanceWeight(double weight);
 
   /**
    * Binance API를 사용하여 지정된 URL과 파라미터에 대한
