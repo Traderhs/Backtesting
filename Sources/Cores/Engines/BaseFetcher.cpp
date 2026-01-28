@@ -1,4 +1,5 @@
 // 표준 라이브러리
+#include <cctype>
 #include <format>
 #include <iomanip>
 #include <map>
@@ -68,8 +69,53 @@ future<json> BaseFetcher::Fetch(
     curl_slist_free_all(headers);  // 헤더 메모리 해제
 
     if (response != CURLE_OK || response_code != 200) {
-      logger_->Log(ERROR_L, format("HTTP [{}] 응답이 실패했습니다.", full_url),
-                   __FILE__, __LINE__, true);
+      if (response_code == 429 || response_code == 418) {
+        string detail_msg;
+        if (response_code == 429) {
+          // Retry-After 헤더가 있으면 추출하여 메시지에 포함
+          string retry_after;
+          const string& key = "Retry-After:";
+
+          if (const auto pos = response_header.find(key); pos != string::npos) {
+            const auto start = pos + key.size();
+            auto end = response_header.find_first_of("\r\n", start);
+
+            if (end == string::npos) {
+              end = response_header.size();
+            }
+
+            retry_after = response_header.substr(start, end - start);
+
+            // 앞뒤 공백 제거
+            while (!retry_after.empty() &&
+                   isspace(static_cast<unsigned char>(retry_after.front()))) {
+              retry_after.erase(retry_after.begin());
+            }
+
+            while (!retry_after.empty() &&
+                   isspace(static_cast<unsigned char>(retry_after.back()))) {
+              retry_after.pop_back();
+            }
+          }
+
+          detail_msg = format(
+              "HTTP [{}] 응답 코드 429. 요청이 너무 많아 rate limit에 "
+              "걸렸습니다. {}",
+              full_url,
+              retry_after.empty() ? string("")
+                                  : format(" Retry-After: {}", retry_after));
+        } else {
+          detail_msg = format(
+              "HTTP [{}] 응답 코드 418. 요청이 차단되었거나 비정상 응답입니다.",
+              full_url);
+        }
+
+        logger_->Log(ERROR_L, detail_msg, __FILE__, __LINE__, true);
+      } else {
+        logger_->Log(ERROR_L,
+                     format("HTTP [{}] 응답이 실패했습니다.", full_url),
+                     __FILE__, __LINE__, true);
+      }
 
       throw runtime_error(format("[{}] | [{}] | {}", response_header,
                                  response_code, response_string));

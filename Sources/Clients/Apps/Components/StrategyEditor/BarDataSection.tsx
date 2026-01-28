@@ -25,7 +25,9 @@ const DEFAULT_FUNDING_RATES_PATH = 'Data/Funding Rates';
  * 바 데이터 설정 섹션 컴포넌트
  * 트레이딩/돋보기/참조/마크 가격 바 데이터 설정 관리
  */
-export default function BarDataSection() {
+export default function BarDataSection({onFetchOrUpdateBarData}: {
+    onFetchOrUpdateBarData?: (operation: 'download' | 'update') => void
+}) {
     const {
         barDataConfigs,
         setBarDataConfigs,
@@ -55,7 +57,7 @@ export default function BarDataSection() {
     };
 
     // 참조 바 데이터 추가
-    const handleAddReferenceBar = () => {
+    const handleAddReferenceBarData = () => {
         const safeProjectDir = projectDirectory ? toPosix(projectDirectory) : '';
         const defaultKlinesDir = safeProjectDir ? joinPosix(safeProjectDir, DEFAULT_CONTINUOUS_KLINES_PATH) : '';
 
@@ -187,14 +189,17 @@ export default function BarDataSection() {
     return (
         <div
             className="strategy-editor-section-container flex flex-col"
-            style={{marginTop: '40px', marginRight: '10px'}}
+            style={{
+                marginTop: '40px',
+                marginRight: '10px'
+            }}
         >
             {/* 헤더: 텍스트와 밑줄/버튼을 분리 렌더링 (클래스 외형 유지, 밑줄 간격 보존) */}
             <div
                 style={{
                     position: 'relative',
                     width: '100%',
-                    marginBottom: '-24px'
+                    marginBottom: '8px'
                 }}
             >
                 <h2
@@ -203,22 +208,55 @@ export default function BarDataSection() {
                     바 데이터 설정
                 </h2>
 
-                {/* 버튼은 헤더 영역에 겹치도록 절대정렬하여 레이아웃에 영향 주지 않음 */}
-                <button
-                    onClick={handleAddReferenceBar}
-                    className="strategy-editor-button"
+                {/* 버튼은 헤더 우측에 한 줄로 정렬 */}
+                <div
                     style={{
                         position: 'absolute',
-                        left: '90%',
-                        top: '-65px',
-                        height: '100%',
+                        right: '0%',
+                        top: '-15%',
                         display: 'flex',
+                        gap: '8px',
                         alignItems: 'center'
                     }}
-                    title={"참조 바 데이터 추가"}
                 >
-                    참조 바 데이터 추가
-                </button>
+                    {/* 그룹: 바 데이터 다운로드, 바 데이터 업데이트 */}
+                    <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+                        <button
+                            onClick={() => {
+                                if (onFetchOrUpdateBarData) {
+                                    onFetchOrUpdateBarData('download');
+                                }
+                            }}
+                            className="strategy-editor-button"
+                            title={"바 데이터 다운로드"}
+                        >
+                            바 데이터 다운로드
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                if (onFetchOrUpdateBarData) {
+                                    onFetchOrUpdateBarData('update');
+                                }
+                            }}
+                            className="strategy-editor-button"
+                            title={"바 데이터 업데이트"}
+                        >
+                            바 데이터 업데이트
+                        </button>
+                    </div>
+
+                    {/* 참조 바 데이터 추가 */}
+                    <div style={{marginLeft: '12px'}}>
+                        <button
+                            onClick={handleAddReferenceBarData}
+                            className="strategy-editor-button"
+                            title={"참조 바 데이터 추가"}
+                        >
+                            참조 바 데이터 추가
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* 바 데이터 카드 그리드 (2열) */}

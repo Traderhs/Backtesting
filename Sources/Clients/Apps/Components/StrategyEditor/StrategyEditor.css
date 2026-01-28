@@ -277,12 +277,11 @@
 }
 
 /* =================================================================
-   공통 버튼 스타일 (FilterSection에서 복사)
+   공통 버튼 스타일
    ================================================================= */
 
 /* 기본 버튼 스타일 */
 .strategy-editor-button {
-    position: relative !important;
     z-index: 1 !important;
     display: flex;
     justify-content: center;

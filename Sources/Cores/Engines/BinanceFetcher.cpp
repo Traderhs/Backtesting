@@ -102,6 +102,77 @@ BACKTESTING_API string BinanceFetcher::exchange_info_url_ =
     futures_endpoint_ + "/fapi/v1/exchangeInfo";
 BACKTESTING_API string BinanceFetcher::leverage_bracket_url_ =
     futures_endpoint_ + "/fapi/v1/leverageBracket";
+BACKTESTING_API BinanceFetcher::TokenBucket*
+    BinanceFetcher::TokenBucket::limiter_ = nullptr;
+
+BinanceFetcher::TokenBucket::TokenBucket(const double capacity,
+                                         const double refill_per_sec)
+    : capacity_(capacity),
+      tokens_(capacity),
+      refill_rate_(refill_per_sec),
+      last_refill_(chrono::steady_clock::now()) {}
+
+BinanceFetcher::TokenBucket& BinanceFetcher::TokenBucket::GetBinanceLimiter() {
+  if (!limiter_) {
+    constexpr double capacity = 2400.0 * 0.5;  // 보수적으로 50%만 사용
+    constexpr double refill_per_sec = capacity / 60.0;
+
+    limiter_ = new TokenBucket(capacity, refill_per_sec);
+  }
+
+  return *limiter_;
+}
+
+void BinanceFetcher::TokenBucket::Acquire(double weight) {
+  if (weight <= 0.0) {
+    return;
+  }
+
+  if (weight > capacity_) {
+    throw runtime_error(format("요청 Weight({})가 버킷 용량({})을 초과합니다.",
+                               weight, capacity_));
+  }
+
+  unique_lock lock(mutex_);
+
+  // 초기 리필 한 번 수행
+  refill();
+
+  while (true) {
+    // refill() 후 토큰이 충분하면 즉시 종료
+    if (tokens_ + 1e-12 >= weight) {
+      break;
+    }
+
+    const double deficit = weight - tokens_;
+    double wait_seconds = deficit / max(refill_rate_, 1e-12);
+
+    if (wait_seconds < 0.001) {
+      wait_seconds = 0.001;
+    }
+
+    cv_.wait_for(lock, chrono::duration_cast<chrono::milliseconds>(
+                           chrono::duration<double>(wait_seconds)));
+    refill();
+  }
+
+  tokens_ -= weight;
+}
+
+void BinanceFetcher::TokenBucket::refill() {
+  const auto now = chrono::steady_clock::now();
+  const chrono::duration<double> elapsed = now - last_refill_;
+
+  if (const double add = elapsed.count() * refill_rate_; add > 0.0) {
+    tokens_ = min(capacity_, tokens_ + add);
+    last_refill_ = now;
+    cv_.notify_all();
+  }
+}
+
+void BinanceFetcher::AcquireBinanceWeight(const double weight) {
+  TokenBucket::GetBinanceLimiter().Acquire(weight);
+}
 
 void BinanceFetcher::FetchContinuousKlines(const string& symbol,
                                            const string& timeframe) const {
@@ -628,6 +699,8 @@ void BinanceFetcher::UpdateFundingRates(const string& symbol) const {
 
 void BinanceFetcher::FetchExchangeInfo(const string& exchange_info_path) {
   try {
+    AcquireBinanceWeight(1.0);
+
     JsonToFile(Fetch(exchange_info_url_), exchange_info_path);
   } catch (const exception& e) {
     logger_->Log(
@@ -648,6 +721,8 @@ void BinanceFetcher::FetchExchangeInfo(const string& exchange_info_path) {
 void BinanceFetcher::FetchLeverageBracket(
     const string& leverage_bracket_path) const {
   try {
+    AcquireBinanceWeight(1.0);
+
     JsonToFile(Fetch(leverage_bracket_url_,
                      {{"timestamp", to_string(GetServerTime())}}, true, false,
                      header_, api_key_env_var_, api_secret_env_var_),
@@ -678,6 +753,8 @@ future<vector<json>> BinanceFetcher::FetchKlines(
 
     while (true) {
       try {
+        AcquireBinanceWeight(5.0);
+
         // fetched_future를 미리 받아둠
         auto fetched_future = Fetch(url, param);
 
@@ -713,12 +790,11 @@ future<vector<json>> BinanceFetcher::FetchKlines(
                ++kline)
             result.push_front(*kline);
 
-          // 다음 entTime은 첫 startTime의 앞 시간
+          // 다음 endTime은 첫 startTime의 앞 시간
           param["endTime"] = to_string(result.front().at(0).get<int64_t>() - 1);
         }
       } catch (const exception& e) {
-        logger_->Log(ERROR_L,
-                     "[Fetch] 데이터를 요청하는 중 에러가 발생했습니다.",
+        logger_->Log(ERROR_L, "데이터를 요청하는 중 에러가 발생했습니다.",
                      __FILE__, __LINE__, true);
 
         throw runtime_error(e.what());
@@ -748,35 +824,44 @@ future<vector<json>> BinanceFetcher::FetchContinuousFundingRates(
     auto param = params;
 
     while (true) {
-      // fetched_future를 미리 받아둠
-      auto fetched_future = Fetch(url, param);
+      try {
+        AcquireBinanceWeight(1.0);
 
-      // Fetch 대기
-      const auto& fetched_data = fetched_future.get();
+        // fetched_future를 미리 받아둠
+        auto fetched_future = Fetch(url, param);
 
-      // fetch 해온 데이터가 비어있거나 잘못된 데이터면 종료
-      if (fetched_data.empty() ||
-          (fetched_data.contains("code") && fetched_data["code"] == -1121)) {
-        break;
+        // Fetch 대기
+        const auto& fetched_data = fetched_future.get();
+
+        // fetch 해온 데이터가 비어있거나 잘못된 데이터면 종료
+        if (fetched_data.empty() ||
+            (fetched_data.contains("code") && fetched_data["code"] == -1121)) {
+          break;
+        }
+
+        logger_->Log(
+            INFO_L,
+            format("[{} - {}] 요청 완료",
+                   UtcTimestampToUtcDatetime(
+                       fetched_data.front()["fundingTime"].get<int64_t>()),
+                   UtcTimestampToUtcDatetime(
+                       fetched_data.back()["fundingTime"].get<int64_t>())),
+            __FILE__, __LINE__, true);
+
+        // 뒤에 붙임
+        for (const auto& data : fetched_data) {
+          result.push_back(data);
+        }
+
+        // 다음 startTime은 마지막 startTime의 뒤 시간
+        param["startTime"] =
+            to_string(result.back()["fundingTime"].get<int64_t>() + 1);
+      } catch (const exception& e) {
+        logger_->Log(ERROR_L, "데이터를 요청하는 중 에러가 발생했습니다.",
+                     __FILE__, __LINE__, true);
+
+        throw runtime_error(e.what());
       }
-
-      logger_->Log(
-          INFO_L,
-          format("[{} - {}] 요청 완료",
-                 UtcTimestampToUtcDatetime(
-                     fetched_data.front()["fundingTime"].get<int64_t>()),
-                 UtcTimestampToUtcDatetime(
-                     fetched_data.back()["fundingTime"].get<int64_t>())),
-          __FILE__, __LINE__, true);
-
-      // 뒤에 붙임
-      for (const auto& data : fetched_data) {
-        result.push_back(data);
-      }
-
-      // 다음 startTime은 마지막 startTime의 뒤 시간
-      param["startTime"] =
-          to_string(result.back()["fundingTime"].get<int64_t>() + 1);
     }
 
     if (!result.empty()) {
@@ -976,6 +1061,8 @@ string BinanceFetcher::ConvertBackslashToSlash(const string& path_string) {
 
 int64_t BinanceFetcher::GetServerTime() {
   try {
+    AcquireBinanceWeight(1.0);
+
     return Fetch(server_time_url_).get()["serverTime"];
   } catch (const exception& e) {
     logger_->Log(ERROR_L, "서버 시간의 요청이 실패했습니다.", __FILE__,

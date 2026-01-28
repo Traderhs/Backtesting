@@ -34,8 +34,11 @@ class BACKTESTING_API Backtesting {
   /// 서버용 메인 실행
   static void RunServer();
 
-  /// 서버용 단일 백테스팅 실행
+  /// 서버용 단일 백테스팅 실행 함수
   static void RunSingleBacktesting(const string& json_str);
+
+  /// 서버용 바 데이터 다운로드/업데이트 함수
+  static void FetchOrUpdateBarData(const string& json_str);
 
   /// 엔진에 설정값을 추가하는 함수.
   ///

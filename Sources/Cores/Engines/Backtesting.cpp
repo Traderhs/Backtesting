@@ -126,6 +126,11 @@ void Backtesting::RunServer() {
         getline(iss, json_str);
 
         RunSingleBacktesting(json_str);
+      } else if (cmd == "fetchOrUpdateBarData") {
+        string json_str;
+        getline(iss, json_str);
+
+        FetchOrUpdateBarData(json_str);
       } else if (cmd == "shutdown") {
         break;
       } else {
@@ -239,7 +244,8 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
                     "현재 시간 [{}]이 마지막 데이터 업데이트 시간 [{}]으로부터 "
                     "24시간이 경과하여 거래소 정보 및 레버리지 구간 데이터를 "
                     "업데이트합니다.",
-                    UtcTimestampToLocalDatetime(now), last_data_update_datetime),
+                    UtcTimestampToLocalDatetime(now),
+                    last_data_update_datetime),
                 __FILE__, __LINE__, true);
 
             need_update = true;
@@ -540,6 +546,133 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
   } catch (const std::exception& e) {
     logger_->Log(ERROR_L, "단일 백테스팅 실행 중 오류가 발생했습니다.",
                  __FILE__, __LINE__, true);
+
+    // 상세 오류 원인 로그
+    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
+
+    // 엔진 코어 초기화
+    ResetCores();
+
+    throw;
+  }
+}
+
+void Backtesting::FetchOrUpdateBarData(const string& json_str) {
+  try {
+    if (!server_mode_) {
+      throw runtime_error(
+          "FetchOrUpdateBarData 함수는 서버 모드에서만 실행 가능합니다.");
+    }
+
+    if (json_str.empty()) {
+      throw runtime_error("서버 오류: 빈 Json이 C++ 서버로 전달되었습니다.");
+    }
+
+    const json& json_config = json::parse(json_str);
+
+    const string& operation = json_config.value("operation", "download");
+
+    SetMarketDataDirectory(json_config.at("projectDirectory").get<string>() +
+                           "/Data");
+    SetApiEnvVars(json_config.at("apiKeyEnvVar").get<string>(),
+                  json_config.at("apiSecretEnvVar").get<string>());
+
+    // 심볼 목록
+    vector<string> symbols;
+    for (const auto& symbol : json_config.at("symbols")) {
+      symbols.push_back(symbol.get<string>());
+    }
+
+    // 바 데이터 설정
+    vector<pair<string, string>> bar_data_configs;
+    for (const auto& bar_data_config : json_config.at("barDataConfigs")) {
+      bar_data_configs.emplace_back(
+          bar_data_config.at("barDataType").get<string>(),
+          bar_data_config.at("timeframe").get<string>());
+    }
+
+    // 각 심볼 별로 요청 수행
+    for (const auto& symbol : symbols) {
+      // 바 데이터 처리
+      for (const auto& [type, timeframe] : bar_data_configs) {
+        try {
+          if (type == "마크 가격") {
+            if (operation == "download") {
+              FetchMarkPriceKlines(symbol, timeframe);
+            } else {
+              UpdateMarkPriceKlines(symbol, timeframe);
+            }
+          } else {
+            // 트레이딩/참조/돋보기 바 데이터는 전부 연속 선물 klines
+            if (operation == "download") {
+              FetchContinuousKlines(symbol, timeframe);
+            } else {
+              UpdateContinuousKlines(symbol, timeframe);
+            }
+          }
+        } catch (...) {
+          if (type == "마크 가격") {
+            if (operation == "download") {
+              logger_->Log(
+                  ERROR_L,
+                  format("[{}] 마크 가격 캔들스틱 파일 생성이 실패했습니다.",
+                         symbol),
+                  __FILE__, __LINE__, true);
+            } else {
+              logger_->Log(
+                  ERROR_L,
+                  format(
+                      "[{}] 마크 가격 캔들스틱 파일 업데이트가 실패했습니다.",
+                      symbol),
+                  __FILE__, __LINE__, true);
+            }
+          } else {
+            if (operation == "download") {
+              logger_->Log(
+                  ERROR_L,
+                  format("[{} {}] 연속 선물 캔들스틱 파일 생성이 실패했습니다.",
+                         symbol, timeframe),
+                  __FILE__, __LINE__, true);
+            } else {
+              logger_->Log(ERROR_L,
+                           format("[{} {}] 연속 선물 캔들스틱 파일 "
+                                  "업데이트가 실패했습니다.",
+                                  symbol, timeframe),
+                           __FILE__, __LINE__, true);
+            }
+          }
+        }
+      }
+
+      // 펀딩 비율 처리
+      try {
+        if (operation == "download") {
+          FetchFundingRates(symbol);
+        } else {
+          UpdateFundingRates(symbol);
+        }
+      } catch (...) {
+        if (operation == "download") {
+          logger_->Log(
+              ERROR_L,
+              format("[{}] 펀딩 비율 파일 생성이 실패했습니다.", symbol),
+              __FILE__, __LINE__, true);
+        } else {
+          logger_->Log(
+              ERROR_L,
+              format("[{}] 펀딩 비율 파일 업데이트가 실패했습니다.", symbol),
+              __FILE__, __LINE__, true);
+        }
+      }
+    }
+
+    // 엔진 코어 초기화
+    ResetCores();
+  } catch (const std::exception& e) {
+    logger_->Log(
+        ERROR_L,
+        "바 데이터를 다운로드 혹은 업데이트하는 중 오류가 발생했습니다.",
+        __FILE__, __LINE__, true);
 
     // 상세 오류 원인 로그
     logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
