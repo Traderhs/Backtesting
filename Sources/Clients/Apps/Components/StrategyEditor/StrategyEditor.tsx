@@ -499,15 +499,43 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
             return;
         }
 
+        if (!exchangeConfig.apiKeyEnvVar.trim()) {
+            addLog('ERROR', 'Binance API Key의 환경 변수 이름을 입력해 주세요.');
+            return;
+        }
+
+        if (!exchangeConfig.apiSecretEnvVar.trim()) {
+            addLog('ERROR', 'Binance API Secret의 환경 변수 이름을 입력해 주세요.');
+            return;
+        }
+
         if (!symbolConfigs || symbolConfigs.length === 0) {
             addLog('ERROR', operation === 'download' ? '바 데이터를 다운로드하려면 최소 1개의 심볼이 필요합니다. 심볼을 추가해 주세요.' : '바 데이터를 업데이트하려면 최소 1개의 심볼이 필요합니다. 심볼을 추가해 주세요.');
             return;
         }
 
-        const payloadBarDataConfigs = barDataConfigs.map(c => ({
-            barDataType: c.barDataType,
-            timeframe: timeframeToString(c.timeframe)
-        }));
+        // 전송 대상에서 다음 항목들은 제외:
+        // - 타임프레임의 값 또는 단위가 비어있는 항목
+        // - BarDataType.MAGNIFIER 이고 engineConfig.useBarMagnifier === false
+        const payloadBarDataConfigs = barDataConfigs
+            .filter(c => {
+                const tf = c.timeframe;
+
+                const hasValidTimeframe = !!tf && tf.value !== null && tf.unit !== TimeframeUnit.NULL;
+                const magnifierAllowed = c.barDataType !== BarDataType.MAGNIFIER || engineConfig.useBarMagnifier;
+
+                return hasValidTimeframe && magnifierAllowed;
+            })
+            .map(c => ({
+                barDataType: c.barDataType,
+                timeframe: timeframeToString(c.timeframe)
+            }));
+
+        // 전송할 바 데이터 설정이 없으면 중단
+        if (payloadBarDataConfigs.length === 0) {
+            addLog('ERROR', operation === 'download' ? '다운로드할 바 데이터가 없습니다.' : '업데이트할 바 데이터가 없습니다.');
+            return;
+        }
 
         ws.send(JSON.stringify({
             action: 'fetchOrUpdateBarData',
