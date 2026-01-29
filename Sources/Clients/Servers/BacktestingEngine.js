@@ -229,19 +229,25 @@ function runSingleBacktesting(ws, backtestingStartTime, editorConfig, symbolConf
     backtestingEngine.stdin.write(command);
 }
 
-function fetchOrUpdateBarData(ws, operation, editorConfig, symbolConfigs, barDataConfigs, broadcastLog) {
+function fetchOrUpdateBarData(ws, operation, editorConfig, symbolConfigs, barDataConfigs, fundingRatesDirectory, broadcastLog) {
     if (!backtestingEngine || !backtestingEngineReady) {
         broadcastLog("ERROR", "백테스팅 엔진이 준비되지 않았습니다. 잠시 후 다시 시도해주세요.", null, null);
         return;
     }
 
     const config = {
-        operation: operation || "download",
-        projectDirectory: (editorConfig && editorConfig.projectDirectory) ? toPosix(editorConfig.projectDirectory) : "",
+        operation: operation,
+
         apiKeyEnvVar: (editorConfig && editorConfig.apiKeyEnvVar) ? editorConfig.apiKeyEnvVar : "",
         apiSecretEnvVar: (editorConfig && editorConfig.apiSecretEnvVar) ? editorConfig.apiSecretEnvVar : "",
-        symbols: symbolConfigs || [],
-        barDataConfigs: barDataConfigs || []
+
+        symbolConfigs: symbolConfigs || [],
+
+        barDataConfigs: barDataConfigs || [],
+
+        fundingRatesDirectory: fundingRatesDirectory,
+
+        projectDirectory: (editorConfig && editorConfig.projectDirectory) ? editorConfig.projectDirectory : "",
     };
 
     const command = `fetchOrUpdateBarData ${JSON.stringify(config)}\n`;

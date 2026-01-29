@@ -570,60 +570,78 @@ void Backtesting::FetchOrUpdateBarData(const string& json_str) {
 
     const json& json_config = json::parse(json_str);
 
-    const string& operation = json_config.value("operation", "download");
+    const string& operation = json_config.at("operation");
 
     SetMarketDataDirectory(json_config.at("projectDirectory").get<string>() +
                            "/Data");
     SetApiEnvVars(json_config.at("apiKeyEnvVar").get<string>(),
                   json_config.at("apiSecretEnvVar").get<string>());
 
-    // 심볼 목록
-    vector<string> symbols;
-    for (const auto& symbol : json_config.at("symbols")) {
-      symbols.push_back(symbol.get<string>());
+    // 심볼 이름들 파싱
+    vector<string> symbol_names;
+
+    // symbolConfigs는 Js 서버에서 더 다양한 정보를 가지고 있지만,
+    // CPP 서버로는 심볼 이름만 전달됨
+    const auto& symbol_configs = json_config.at("symbolConfigs");
+    if (!symbol_configs.is_array()) {
+      throw runtime_error(
+          "서버 오류: C++ 서버로 전달된 심볼 설정이 배열이 아닙니다.");
+    }
+
+    for (const auto& symbol_name : symbol_configs) {
+      symbol_names.push_back(symbol_name.get<string>());
     }
 
     // 바 데이터 설정
-    vector<pair<string, string>> bar_data_configs;
+    vector<tuple<string, string, string>> bar_data_configs;
     for (const auto& bar_data_config : json_config.at("barDataConfigs")) {
       bar_data_configs.emplace_back(
-          bar_data_config.at("barDataType").get<string>(),
-          bar_data_config.at("timeframe").get<string>());
+          bar_data_config.at("timeframe").get<string>(),
+          bar_data_config.at("klinesDirectory").get<string>(),
+          bar_data_config.at("barDataType").get<string>());
     }
 
+    // 펀딩 비율 폴더
+    const string& funding_rates_directory =
+        json_config.at("fundingRatesDirectory").get<string>();
+
     // 각 심볼 별로 요청 수행
-    for (const auto& symbol : symbols) {
+    for (const auto& symbol_name : symbol_names) {
       // 바 데이터 처리
-      for (const auto& [type, timeframe] : bar_data_configs) {
+      for (const auto& bar_data_config : bar_data_configs) {
+        const auto& timeframe = get<0>(bar_data_config);
+        const auto& klines_directory = get<1>(bar_data_config);
+        const auto& bar_data_type = get<2>(bar_data_config);
+
         try {
-          if (type == "마크 가격") {
+          if (bar_data_type == "마크 가격") {
             if (operation == "download") {
-              FetchMarkPriceKlines(symbol, timeframe);
+              FetchMarkPriceKlines(symbol_name, timeframe, klines_directory);
             } else {
-              UpdateMarkPriceKlines(symbol, timeframe);
+              UpdateMarkPriceKlines(symbol_name, timeframe, klines_directory);
             }
           } else {
             // 트레이딩/참조/돋보기 바 데이터는 전부 연속 선물 klines
             if (operation == "download") {
-              FetchContinuousKlines(symbol, timeframe);
+              FetchContinuousKlines(symbol_name, timeframe, klines_directory);
             } else {
-              UpdateContinuousKlines(symbol, timeframe);
+              UpdateContinuousKlines(symbol_name, timeframe, klines_directory);
             }
           }
         } catch (...) {
-          if (type == "마크 가격") {
+          if (bar_data_type == "마크 가격") {
             if (operation == "download") {
               logger_->Log(
                   ERROR_L,
                   format("[{}] 마크 가격 캔들스틱 파일 생성이 실패했습니다.",
-                         symbol),
+                         symbol_name),
                   __FILE__, __LINE__, true);
             } else {
               logger_->Log(
                   ERROR_L,
                   format(
                       "[{}] 마크 가격 캔들스틱 파일 업데이트가 실패했습니다.",
-                      symbol),
+                      symbol_name),
                   __FILE__, __LINE__, true);
             }
           } else {
@@ -631,13 +649,13 @@ void Backtesting::FetchOrUpdateBarData(const string& json_str) {
               logger_->Log(
                   ERROR_L,
                   format("[{} {}] 연속 선물 캔들스틱 파일 생성이 실패했습니다.",
-                         symbol, timeframe),
+                         symbol_name, timeframe),
                   __FILE__, __LINE__, true);
             } else {
               logger_->Log(ERROR_L,
                            format("[{} {}] 연속 선물 캔들스틱 파일 "
                                   "업데이트가 실패했습니다.",
-                                  symbol, timeframe),
+                                  symbol_name, timeframe),
                            __FILE__, __LINE__, true);
             }
           }
@@ -647,21 +665,21 @@ void Backtesting::FetchOrUpdateBarData(const string& json_str) {
       // 펀딩 비율 처리
       try {
         if (operation == "download") {
-          FetchFundingRates(symbol);
+          FetchFundingRates(symbol_name, funding_rates_directory);
         } else {
-          UpdateFundingRates(symbol);
+          UpdateFundingRates(symbol_name, funding_rates_directory);
         }
       } catch (...) {
         if (operation == "download") {
           logger_->Log(
               ERROR_L,
-              format("[{}] 펀딩 비율 파일 생성이 실패했습니다.", symbol),
+              format("[{}] 펀딩 비율 파일 생성이 실패했습니다.", symbol_name),
               __FILE__, __LINE__, true);
         } else {
-          logger_->Log(
-              ERROR_L,
-              format("[{}] 펀딩 비율 파일 업데이트가 실패했습니다.", symbol),
-              __FILE__, __LINE__, true);
+          logger_->Log(ERROR_L,
+                       format("[{}] 펀딩 비율 파일 업데이트가 실패했습니다.",
+                              symbol_name),
+                       __FILE__, __LINE__, true);
         }
       }
     }
@@ -702,44 +720,50 @@ void Backtesting::SetMarketDataDirectory(const string& market_data_directory) {
   market_data_directory_ = market_data_directory;
 }
 
-void Backtesting::FetchContinuousKlines(const string& symbol,
-                                        const string& timeframe) {
+void Backtesting::FetchContinuousKlines(
+    const string& symbol, const string& timeframe,
+    const string& continuous_klines_directory) {
   ValidateSettings();
   BinanceFetcher(api_key_env_var_, api_secret_env_var_, market_data_directory_)
-      .FetchContinuousKlines(symbol, timeframe);
+      .FetchContinuousKlines(symbol, timeframe, continuous_klines_directory);
 }
 
-void Backtesting::UpdateContinuousKlines(const string& symbol,
-                                         const string& timeframe) {
+void Backtesting::UpdateContinuousKlines(
+    const string& symbol, const string& timeframe,
+    const string& continuous_klines_directory) {
   ValidateSettings();
   BinanceFetcher(api_key_env_var_, api_secret_env_var_, market_data_directory_)
-      .UpdateContinuousKlines(symbol, timeframe);
+      .UpdateContinuousKlines(symbol, timeframe, continuous_klines_directory);
 }
 
-void Backtesting::FetchMarkPriceKlines(const string& symbol,
-                                       const string& timeframe) {
+void Backtesting::FetchMarkPriceKlines(
+    const string& symbol, const string& timeframe,
+    const string& mark_price_klines_directory) {
   ValidateSettings();
   BinanceFetcher(api_key_env_var_, api_secret_env_var_, market_data_directory_)
-      .FetchMarkPriceKlines(symbol, timeframe);
+      .FetchMarkPriceKlines(symbol, timeframe, mark_price_klines_directory);
 }
 
-void Backtesting::UpdateMarkPriceKlines(const string& symbol,
-                                        const string& timeframe) {
+void Backtesting::UpdateMarkPriceKlines(
+    const string& symbol, const string& timeframe,
+    const string& mark_price_klines_directory) {
   ValidateSettings();
   BinanceFetcher(api_key_env_var_, api_secret_env_var_, market_data_directory_)
-      .UpdateMarkPriceKlines(symbol, timeframe);
+      .UpdateMarkPriceKlines(symbol, timeframe, mark_price_klines_directory);
 }
 
-void Backtesting::FetchFundingRates(const string& symbol) {
+void Backtesting::FetchFundingRates(const string& symbol,
+                                    const string& funding_rates_directory) {
   ValidateSettings();
   BinanceFetcher(api_key_env_var_, api_secret_env_var_, market_data_directory_)
-      .FetchFundingRates(symbol);
+      .FetchFundingRates(symbol, funding_rates_directory);
 }
 
-void Backtesting::UpdateFundingRates(const string& symbol) {
+void Backtesting::UpdateFundingRates(const string& symbol,
+                                     const string& funding_rates_directory) {
   ValidateSettings();
   BinanceFetcher(api_key_env_var_, api_secret_env_var_, market_data_directory_)
-      .UpdateFundingRates(symbol);
+      .UpdateFundingRates(symbol, funding_rates_directory);
 }
 
 void Backtesting::FetchExchangeInfo(const string& exchange_info_path) {

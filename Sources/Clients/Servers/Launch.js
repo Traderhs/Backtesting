@@ -1521,7 +1521,7 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
                     }
 
                     case "fetchOrUpdateBarData": {
-                        fetchOrUpdateBarData(ws, msg.operation, getEditorConfig(), msg.symbolConfigs, msg.barDataConfigs, broadcastLog);
+                        fetchOrUpdateBarData(ws, msg.operation, getEditorConfig(), msg.symbolConfigs, msg.barDataConfigs, msg.fundingRatesDirectory, broadcastLog);
                         break;
                     }
 

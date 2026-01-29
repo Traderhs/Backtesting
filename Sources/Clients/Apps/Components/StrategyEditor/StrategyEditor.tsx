@@ -514,21 +514,22 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
             return;
         }
 
-        // 전송 대상에서 다음 항목들은 제외:
+        // 전송 대상에서 다음 항목들은 제외
         // - 타임프레임의 값 또는 단위가 비어있는 항목
         // - BarDataType.MAGNIFIER 이고 engineConfig.useBarMagnifier === false
         const payloadBarDataConfigs = barDataConfigs
-            .filter(c => {
-                const tf = c.timeframe;
+            .filter(config => {
+                const timeframe = config.timeframe;
 
-                const hasValidTimeframe = !!tf && tf.value !== null && tf.unit !== TimeframeUnit.NULL;
-                const magnifierAllowed = c.barDataType !== BarDataType.MAGNIFIER || engineConfig.useBarMagnifier;
+                const hasValidTimeframe = !!timeframe && timeframe.value !== null && timeframe.unit !== TimeframeUnit.NULL;
+                const magnifierAllowed = config.barDataType !== BarDataType.MAGNIFIER || engineConfig.useBarMagnifier;
 
                 return hasValidTimeframe && magnifierAllowed;
             })
-            .map(c => ({
-                barDataType: c.barDataType,
-                timeframe: timeframeToString(c.timeframe)
+            .map(config => ({
+                timeframe: timeframeToString(config.timeframe),
+                klinesDirectory: (config.klinesDirectory || '').replace(/\\/g, '/'),
+                barDataType: config.barDataType,
             }));
 
         // 전송할 바 데이터 설정이 없으면 중단
@@ -541,7 +542,8 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
             action: 'fetchOrUpdateBarData',
             operation: operation === 'download' ? 'download' : 'update',
             symbolConfigs: symbolConfigs,
-            barDataConfigs: payloadBarDataConfigs
+            barDataConfigs: payloadBarDataConfigs,
+            fundingRatesDirectory: (fundingRatesDirectory || '').replace(/\\/g, '/'),
         }));
     };
 
