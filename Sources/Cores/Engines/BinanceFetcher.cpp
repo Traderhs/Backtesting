@@ -174,17 +174,19 @@ void BinanceFetcher::AcquireBinanceWeight(const double weight) {
   TokenBucket::GetBinanceLimiter().Acquire(weight);
 }
 
-void BinanceFetcher::FetchContinuousKlines(const string& symbol,
-                                           const string& timeframe) const {
+void BinanceFetcher::FetchContinuousKlines(
+    const string& symbol, const string& timeframe,
+    const string& continuous_klines_directory) const {
   const auto& start = chrono::high_resolution_clock::now();
 
-  // 타임프레임 유효성 검사
   ParseTimeframe(timeframe);
 
-  // 저장 경로 생성
   const string& timeframe_filename = GetFilenameWithTimeframe(timeframe);
+  const string& klines_directory = continuous_klines_directory.empty()
+                                       ? continuous_klines_directory_
+                                       : continuous_klines_directory;
   const string& save_directory =
-      continuous_klines_directory_ + "/" + symbol + "/" + timeframe_filename;
+      klines_directory + "/" + symbol + "/" + timeframe_filename;
   const string& file_path =
       save_directory + "/" + timeframe_filename + ".parquet";
   filesystem::create_directories(save_directory);
@@ -249,16 +251,19 @@ void BinanceFetcher::FetchContinuousKlines(const string& symbol,
   Engine::LogSeparator(true);
 }
 
-void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
-                                            const string& timeframe) const {
+void BinanceFetcher::UpdateContinuousKlines(
+    const string& symbol, const string& timeframe,
+    const string& continuous_klines_directory) const {
   const auto& start = chrono::high_resolution_clock::now();
 
-  // 타임프레임 유효성 검사
   ParseTimeframe(timeframe);
 
   const auto& filename_timeframe = GetFilenameWithTimeframe(timeframe);
+  const string& klines_directory = continuous_klines_directory.empty()
+                                       ? continuous_klines_directory_
+                                       : continuous_klines_directory;
   const auto& directory_path =
-      continuous_klines_directory_ + "/" + symbol + "/" + filename_timeframe;
+      klines_directory + "/" + symbol + "/" + filename_timeframe;
   const auto& file_path =
       directory_path + "/" + filename_timeframe + ".parquet";
 
@@ -347,8 +352,9 @@ void BinanceFetcher::UpdateContinuousKlines(const string& symbol,
   Engine::LogSeparator(true);
 }
 
-void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
-                                          const string& timeframe) const {
+void BinanceFetcher::FetchMarkPriceKlines(
+    const string& symbol, const string& timeframe,
+    const string& mark_price_klines_directory) const {
   const auto& start = chrono::high_resolution_clock::now();
 
   // 타임프레임 유효성 검사
@@ -356,8 +362,11 @@ void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
 
   // 저장 경로 생성
   const string& timeframe_filename = GetFilenameWithTimeframe(timeframe);
-  const string& save_directory = mark_price_klines_directory_ + "/" + symbol;
-  const string& file_path =
+  const string& klines_directory = mark_price_klines_directory.empty()
+                                       ? mark_price_klines_directory_
+                                       : mark_price_klines_directory;
+  const auto& save_directory = klines_directory + "/" + symbol;
+  const auto& file_path =
       save_directory + "/" + timeframe_filename + ".parquet";
   filesystem::create_directories(save_directory);
 
@@ -415,15 +424,19 @@ void BinanceFetcher::FetchMarkPriceKlines(const string& symbol,
   Engine::LogSeparator(true);
 }
 
-void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
-                                           const string& timeframe) const {
+void BinanceFetcher::UpdateMarkPriceKlines(
+    const string& symbol, const string& timeframe,
+    const string& mark_price_klines_directory) const {
   const auto& start = chrono::high_resolution_clock::now();
 
   // 타임프레임 유효성 검사
   ParseTimeframe(timeframe);
 
   const auto& filename_timeframe = GetFilenameWithTimeframe(timeframe);
-  const auto& directory_path = mark_price_klines_directory_ + "/" + symbol;
+  const string& klines_directory = mark_price_klines_directory.empty()
+                                       ? mark_price_klines_directory_
+                                       : mark_price_klines_directory;
+  const auto& directory_path = klines_directory + "/" + symbol;
   const auto& file_path =
       directory_path + "/" + filename_timeframe + ".parquet";
 
@@ -511,10 +524,14 @@ void BinanceFetcher::UpdateMarkPriceKlines(const string& symbol,
   Engine::LogSeparator(true);
 }
 
-void BinanceFetcher::FetchFundingRates(const string& symbol) const {
+void BinanceFetcher::FetchFundingRates(
+    const string& symbol, const string& funding_rates_directory) const {
   const auto& start = chrono::high_resolution_clock::now();
 
-  const string& file_path = funding_rates_directory_ + "/" + symbol + ".json";
+  const string& save_directory = funding_rates_directory.empty()
+                                     ? funding_rates_directory_
+                                     : funding_rates_directory;
+  const auto& file_path = save_directory + "/" + symbol + ".json";
 
   if (filesystem::exists(file_path)) {
     logger_->Log(WARN_L,
@@ -590,10 +607,14 @@ void BinanceFetcher::FetchFundingRates(const string& symbol) const {
   Engine::LogSeparator(true);
 }
 
-void BinanceFetcher::UpdateFundingRates(const string& symbol) const {
+void BinanceFetcher::UpdateFundingRates(
+    const string& symbol, const string& funding_rates_directory) const {
   const auto& start = chrono::high_resolution_clock::now();
 
-  const auto& file_path = funding_rates_directory_ + "/" + symbol + ".json";
+  const string& save_directory = funding_rates_directory.empty()
+                                     ? funding_rates_directory_
+                                     : funding_rates_directory;
+  const auto& file_path = save_directory + "/" + symbol + ".json";
 
   if (!filesystem::exists(file_path)) {
     logger_->Log(WARN_L,

@@ -34,64 +34,80 @@ class BACKTESTING_API BinanceFetcher final : public BaseFetcher {
                           string market_data_directory);
 
   /**
-   * 지정된 심볼과 시간 프레임에 대해 연속 선물 klines 데이터를
+   * 지정된 심볼과 시간 프레임에 대한 연속 선물 klines 데이터를
    * Fetch 후 Parquet 형식으로 저장하는 함수
    *
    * @param symbol 연속 선물 캔들스틱 데이터를 가져올
    *               거래 쌍 심볼(예: "BTCUSDT")
    * @param timeframe 연속 선물 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
+   * @param continuous_klines_directory
+   *        연속 선물 캔들스틱 데이터를 저장할 폴더 경로
    */
-  void FetchContinuousKlines(const string& symbol,
-                             const string& timeframe) const;
+  void FetchContinuousKlines(
+      const string& symbol, const string& timeframe,
+      const string& continuous_klines_directory = "") const;
 
   /**
-   * 주어진 심볼과 시간 프레임에 대한 연속 선물 캔들스틱 데이터를
+   * 지정된 심볼과 시간 프레임에 대한 연속 선물 캔들스틱 데이터를
    * 업데이트하는 함수
    *
    * @param symbol 업데이트 할 연속 선물 캔들스틱 데이터의
    *               거래 쌍 심볼(예: "BTCUSDT")
    * @param timeframe 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
+   * @param continuous_klines_directory
+   *        연속 선물 캔들스틱 데이터가 저장된 폴더 경로
    */
-  void UpdateContinuousKlines(const string& symbol,
-                              const string& timeframe) const;
+  void UpdateContinuousKlines(
+      const string& symbol, const string& timeframe,
+      const string& continuous_klines_directory = "") const;
 
   /**
-   * 지정된 심볼과 시간 프레임에 대해 마크 가격 캔들스틱 데이터를
+   * 지정된 심볼과 시간 프레임에 대한 마크 가격 캔들스틱 데이터를
    * Fetch 후 Parquet 형식으로 저장하는 함수.
    *
    * @param symbol 마크 가격 캔들스틱 데이터를 가져올
    *               거래 쌍 심볼(예: "BTCUSDT")
    * @param timeframe 마크 가격 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
+   * @param mark_price_klines_directory
+   *        마크 가격 캔들스틱 데이터를 저장할 폴더 경로
    */
-  void FetchMarkPriceKlines(const string& symbol,
-                            const string& timeframe) const;
+  void FetchMarkPriceKlines(
+      const string& symbol, const string& timeframe,
+      const string& mark_price_klines_directory = "") const;
 
   /**
-   * 주어진 심볼과 시간 프레임에 대한 마크 가격 캔들스틱 데이터를
+   * 지정된 심볼과 시간 프레임에 대한 마크 가격 캔들스틱 데이터를
    * 업데이트하는 함수
    *
    * @param symbol 업데이트 할 마크 가격 캔들스틱 데이터의
    *               거래 쌍 심볼(예: "BTCUSDT")
    * @param timeframe 마크 가격 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
+   * @param mark_price_klines_directory
+   *        마크 가격 캔들스틱 데이터가 저장된 폴더 경로
    */
-  void UpdateMarkPriceKlines(const string& symbol,
-                             const string& timeframe) const;
+  void UpdateMarkPriceKlines(
+      const string& symbol, const string& timeframe,
+      const string& mark_price_klines_directory = "") const;
 
   /**
-   * 지정된 심볼에 대해 펀딩 비율 데이터를 Fetch 후 json 형식으로 저장하는 함수
+   * 지정된 심볼에 대한 펀딩 비율 데이터를 Fetch 후 json 형식으로 저장하는 함수
    *
    * @param symbol 펀딩 비율 데이터를 가져올
    *               거래 쌍 심볼(예: "BTCUSDT")
+   * @param funding_rates_directory 펀딩 비율 데이터를 저장할 폴더 경로
    */
-  void FetchFundingRates(const string& symbol) const;
+  void FetchFundingRates(const string& symbol,
+                         const string& funding_rates_directory = "") const;
 
   /**
-   * 지정된 심볼에 대해 펀딩 비율 데이터를 업데이트하는 함수
+   * 지정된 심볼에 대한 펀딩 비율 데이터를 업데이트하는 함수
    *
    * @param symbol 업데이트 할 펀딩 비율 데이터의
    *               거래 쌍 심볼(예: "BTCUSDT")
+   * @param funding_rates_directory 펀딩 비율 데이터가 저장된 폴더 경로
    */
-  void UpdateFundingRates(const string& symbol) const;
+  void UpdateFundingRates(const string& symbol,
+                          const string& funding_rates_directory = "") const;
 
   /// 바이낸스 선물 거래소 정보를 Fetch하고 json 형식으로 저장하는 함수
   static void FetchExchangeInfo(const string& exchange_info_path);
