@@ -25,6 +25,7 @@
 #include "Engines/Analyzer.hpp"
 
 // 내부 헤더
+#include "Engines/Backtesting.hpp"
 #include "Engines/BarData.hpp"
 #include "Engines/BarHandler.hpp"
 #include "Engines/Config.hpp"
@@ -148,11 +149,15 @@ void Analyzer::CreateDirectories() {
         Config::GetProjectDirectory() + "/Results/" + main_directory;
     main_directory_ = main_directory;
 
-    // 지표 데이터 저장 폴더 생성
-    fs::create_directories(main_directory + "/BackBoard/Indicators");
-
-    // 소스 코드 저장 폴더 생성
-    fs::create_directories(format("{}/BackBoard/Sources", main_directory));
+    // 서버 모드: BackBoard 폴더를 만들지 않고 Results/<run>/ 아래에 바로 저장
+    if (Backtesting::IsServerMode()) {
+      fs::create_directories(main_directory + "/Indicators");
+      fs::create_directories(format("{}/Sources", main_directory));
+    } else {
+      // 일반 실행: BackBoard 하위에 폴더 생성
+      fs::create_directories(main_directory + "/BackBoard/Indicators");
+      fs::create_directories(format("{}/BackBoard/Sources", main_directory));
+    }
   } catch (const exception& e) {
     logger_->Log(ERROR_L,
                  "백테스팅 결과 저장 폴더 생성 중 에러가 발생했습니다.",
@@ -426,10 +431,13 @@ void Analyzer::SaveIndicatorData() {
       }
 
       // 테이블을 parquet로 저장
-      TableToParquet(
-          table,
-          format("{}/BackBoard/Indicators/{}", main_directory_, indicator_name),
-          indicator_name + ".parquet", true, false);
+      const string& indicators_base =
+          Backtesting::IsServerMode()
+              ? format("{}/Indicators", main_directory_)
+              : format("{}/BackBoard/Indicators", main_directory_);
+
+      TableToParquet(table, format("{}/{}", indicators_base, indicator_name),
+                     indicator_name + ".parquet", true, false);
     }
 
     logger_->Log(INFO_L, "지표 데이터가 저장되었습니다.", __FILE__, __LINE__,
@@ -443,7 +451,9 @@ void Analyzer::SaveIndicatorData() {
 }
 
 void Analyzer::SaveTradeList() const {
-  const auto& file_path = main_directory_ + "/BackBoard/trade_list.json";
+  const auto& file_path = Backtesting::IsServerMode()
+                              ? main_directory_ + "/trade_list.json"
+                              : main_directory_ + "/BackBoard/trade_list.json";
 
   ofstream trade_list_file(file_path);
   if (!trade_list_file.is_open()) {
@@ -523,9 +533,11 @@ void Analyzer::SaveConfig() {
   const int num_symbols = trading_bar_data->GetNumSymbols();
 
   // 공통 경로 캐싱
-  const string backboard_path = format("{}/BackBoard", main_directory_);
-  const string sources_path = format("{}/Sources", backboard_path);
-  const string indicators_path = format("{}/Indicators", backboard_path);
+  const string& main_directory = Backtesting::IsServerMode()
+                                     ? main_directory_
+                                     : format("{}/BackBoard", main_directory_);
+  const string& indicators_path = format("{}/Indicators", main_directory);
+  const string& sources_path = format("{}/Sources", main_directory);
 
   // 심볼 배열 예약
   config["심볼"] = ordered_json::array();
@@ -835,7 +847,7 @@ void Analyzer::SaveConfig() {
   }
 
   // 파일로 저장
-  ofstream config_file(format("{}/config.json", backboard_path));
+  ofstream config_file(format("{}/config.json", main_directory));
   config_file << setw(4) << config << endl;
   config_file.close();
 
@@ -848,6 +860,12 @@ void Analyzer::SaveSourcesAndHeaders() {
     const auto& strategy = engine_->strategy_;
     const auto& strategy_class_name = strategy->GetStrategyClassName();
     set<string> saved_indicator_classes;  // 이미 저장한 지표 클래스명 집합
+
+    // 공통 경로 캐싱
+    const string main_directory = Backtesting::IsServerMode()
+                                      ? main_directory_
+                                      : format("{}/BackBoard", main_directory_);
+    const string sources_path = format("{}/Sources", main_directory);
 
     // 전략 소스 파일 저장
     const auto& source_path = strategy->GetSourcePath();
@@ -865,8 +883,7 @@ void Analyzer::SaveSourcesAndHeaders() {
 
     if (!source_path_to_copy.empty()) {
       fs::copy(source_path_to_copy,
-               format("{}/BackBoard/Sources/{}.cpp", main_directory_,
-                      strategy_class_name));
+               format("{}/{}.cpp", sources_path, strategy_class_name));
     }
 
     // 전략 헤더 파일 저장
@@ -885,8 +902,7 @@ void Analyzer::SaveSourcesAndHeaders() {
 
     if (!header_path_to_copy.empty()) {
       fs::copy(header_path_to_copy,
-               format("{}/BackBoard/Sources/{}.hpp", main_directory_,
-                      strategy_class_name));
+               format("{}/{}.hpp", sources_path, strategy_class_name));
     }
 
     // 전략에서 사용하는 지표 소스 코드 저장
@@ -926,8 +942,7 @@ void Analyzer::SaveSourcesAndHeaders() {
 
       if (!indicator_source_path_to_copy.empty()) {
         fs::copy(indicator_source_path_to_copy,
-                 format("{}/BackBoard/Sources/{}.cpp", main_directory_,
-                        indicator_class_name));
+                 format("{}/{}.cpp", sources_path, indicator_class_name));
       }
 
       // 헤더 파일 저장
@@ -946,8 +961,7 @@ void Analyzer::SaveSourcesAndHeaders() {
 
       if (!indicator_header_path_to_copy.empty()) {
         fs::copy(indicator_header_path_to_copy,
-                 format("{}/BackBoard/Sources/{}.hpp", main_directory_,
-                        indicator_class_name));
+                 format("{}/{}.hpp", sources_path, indicator_class_name));
       }
     }
 
@@ -1003,7 +1017,9 @@ void Analyzer::SaveBacktestingLog() const {
     logger_->backtesting_log_.close();
 
     fs::rename(logger_->backtesting_log_temp_path_,
-               main_directory_ + "/BackBoard/backtesting.log");
+               Backtesting::IsServerMode()
+                   ? main_directory_ + "/backtesting.log"
+                   : main_directory_ + "/BackBoard/backtesting.log");
   } catch (const exception& e) {
     logger_->Log(ERROR_L,
                  "백테스팅 로그 파일을 저장하는 데 오류가 발생했습니다.",

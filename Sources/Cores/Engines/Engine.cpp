@@ -105,8 +105,10 @@ void Engine::Backtesting() {
   // 전략 및 지표의 코드 저장
   analyzer_->SaveSourcesAndHeaders();
 
-  // 백보드 저장
-  analyzer_->SaveBackBoard();
+  // 서버 모드가 아닌 경우 BackBoard 저장
+  if (!Backtesting::IsServerMode()) {
+    analyzer_->SaveBackBoard();
+  }
 
   LogSeparator(true);
   logger_->Log(INFO_L, "백테스팅이 완료되었습니다.", __FILE__, __LINE__, true);
@@ -124,11 +126,13 @@ void Engine::Backtesting() {
   // 어색함 방지를 위해 저장 완료 로그를 발생시키지 않음
   analyzer_->SaveBacktestingLog();
 
-  // BackBoard.exe 자동 실행
-  if (const string backboard_exe_path =
-          analyzer_->GetMainDirectory() + "/BackBoard.exe";
-      filesystem::exists(backboard_exe_path)) {
-    system(format(R"(start "" "{}")", backboard_exe_path).c_str());
+  // 서버 모드가 아닌 경우 BackBoard.exe 자동 실행
+  if (!Backtesting::IsServerMode()) {
+    if (const string backboard_exe_path =
+            analyzer_->GetMainDirectory() + "/BackBoard.exe";
+        filesystem::exists(backboard_exe_path)) {
+      system(format(R"(start "" "{}")", backboard_exe_path).c_str());
+    }
   }
 }
 
