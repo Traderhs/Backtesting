@@ -1,5 +1,4 @@
 import React from 'react';
-import {Input} from '@/Components/UI/Input';
 import NumericInput from '@/Components/StrategyEditor/NumericInput';
 import {useStrategy} from './StrategyContext';
 import {Calendar as CalendarIcon} from 'lucide-react';
@@ -276,7 +275,7 @@ export default function ConfigSection() {
                                     <div
                                         className={`strategy-editor-period-field ${engineConfig.useBacktestPeriodStart ? 'disabled' : ''}`}>
                                         <div className="strategy-editor-file-selector">
-                                            <Input
+                                            <input
                                                 type="text"
                                                 value={engineConfig.backtestPeriodStart}
                                                 readOnly
@@ -338,7 +337,7 @@ export default function ConfigSection() {
                                     <div
                                         className={`strategy-editor-period-field ${engineConfig.useBacktestPeriodEnd ? 'disabled' : ''}`}>
                                         <div className="strategy-editor-file-selector">
-                                            <Input
+                                            <input
                                                 type="text"
                                                 value={engineConfig.backtestPeriodEnd}
                                                 readOnly

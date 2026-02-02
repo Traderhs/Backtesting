@@ -8,35 +8,110 @@ const axios = require('axios');
 // =====================================================================================================================
 
 const manualSymbolIdMap = {
-    'btc': 'bitcoin', 'eth': 'ethereum', 'usdt': 'tether', 'bnb': 'binancecoin',
-    'sol': 'solana', 'usdc': 'usd-coin', 'xrp': 'ripple', 'doge': 'dogecoin',
-    'ton': 'the-open-network', 'ada': 'cardano', 'shib': 'shiba-inu',
-    'avax': 'avalanche-2', 'trx': 'tron', 'dot': 'polkadot', 'link': 'chainlink',
-    'wbtc': 'wrapped-bitcoin', 'bch': 'bitcoin-cash', 'near': 'near',
-    'matic': 'matic-network', 'ltc': 'litecoin', 'icp': 'internet-computer',
-    'uni': 'uniswap', 'dai': 'dai', 'leo': 'leo-token', 'steth': 'staked-ether',
-    'kas': 'kaspa', 'etc': 'ethereum-classic', 'op': 'optimism', 'xlm': 'stellar',
-    'okb': 'okb', 'inj': 'injective-protocol', 'fil': 'filecoin', 'imx': 'immutable-x',
-    'hbar': 'hedera-hashgraph', 'cro': 'crypto-com-chain', 'tao': 'bittensor',
-    'apt': 'aptos', 'vet': 'vechain', 'ldo': 'lido-dao', 'mkr': 'maker',
-    'rndr': 'render-token', 'grt': 'the-graph', 'arb': 'arbitrum', 'atom': 'cosmos',
-    'mnt': 'mantle', 'tia': 'celestia', 'ethfi': 'ether-fi', 'fet': 'fetch-ai',
-    'sei': 'sei-network', 'weth': 'weth', 'stx': 'blockstack', 'aave': 'aave',
-    'theta': 'theta-token', 'reth': 'rocket-pool-eth', 'algo': 'algorand',
-    'floki': 'floki', 'sui': 'sui', 'fdusd': 'first-digital-usd', 'ftm': 'fantom',
-    'ena': 'ethena', 'axs': 'axie-infinity', 'core': 'core-dao', 'bonk': 'bonk',
-    'snx': 'havven', 'zeta': 'zetachain', 'bgb': 'bitget-token',
-    'agix': 'singularitynet', 'xtz': 'tezos', 'pyth': 'pyth-network',
-    'beam': 'beam-2', 'bsv': 'bitcoin-sv', 'jup': 'jupiter-exchange-solana',
-    'kava': 'kava', 'chz': 'chiliz', 'ordi': 'ordinals', 'wld': 'worldcoin-wld',
-    'wemix': 'wemix-token', 'ocean': 'ocean-protocol', 'hnt': 'helium',
-    'gala': 'gala', 'eos': 'eos', 'mina': 'mina-protocol', 'astr': 'astar',
-    'rose': 'oasis-network', 'pepe': 'pepe', 'cfx': 'conflux-token',
-    'xdc': 'xdce-network', 'neo': 'neo', 'flow': 'flow', 'rune': 'thorchain',
-    'kcs': 'kucoin-shares', 'akt': 'akash-network', 'sand': 'the-sandbox',
-    'xec': 'ecash', 'iota': 'iota', 'blur': 'blur-token', 'usdd': 'usdd',
-    'gt': 'gatetoken', 'ar': 'arweave', 'osmo': 'osmosis', 'mana': 'decentraland',
-    'zec': 'zcash', 'klay': 'klay-token', 'egld': 'elrond-erd-2',
+    'btc': 'bitcoin',
+    'eth': 'ethereum',
+    'usdt': 'tether',
+    'bnb': 'binancecoin',
+    'sol': 'solana',
+    'usdc': 'usd-coin',
+    'xrp': 'ripple',
+    'doge': 'dogecoin',
+    'ton': 'the-open-network',
+    'ada': 'cardano',
+    'shib': 'shiba-inu',
+    'avax': 'avalanche-2',
+    'trx': 'tron',
+    'dot': 'polkadot',
+    'link': 'chainlink',
+    'wbtc': 'wrapped-bitcoin',
+    'bch': 'bitcoin-cash',
+    'near': 'near',
+    'matic': 'matic-network',
+    'ltc': 'litecoin',
+    'icp': 'internet-computer',
+    'uni': 'uniswap',
+    'dai': 'dai',
+    'leo': 'leo-token',
+    'steth': 'staked-ether',
+    'kas': 'kaspa',
+    'etc': 'ethereum-classic',
+    'op': 'optimism',
+    'xlm': 'stellar',
+    'okb': 'okb',
+    'inj': 'injective-protocol',
+    'fil': 'filecoin',
+    'imx': 'immutable-x',
+    'hbar': 'hedera-hashgraph',
+    'cro': 'crypto-com-chain',
+    'tao': 'bittensor',
+    'apt': 'aptos',
+    'vet': 'vechain',
+    'ldo': 'lido-dao',
+    'mkr': 'maker',
+    'rndr': 'render-token',
+    'grt': 'the-graph',
+    'arb': 'arbitrum',
+    'atom': 'cosmos',
+    'mnt': 'mantle',
+    'tia': 'celestia',
+    'ethfi': 'ether-fi',
+    'fet': 'fetch-ai',
+    'sei': 'sei-network',
+    'weth': 'weth',
+    'stx': 'blockstack',
+    'aave': 'aave',
+    'theta': 'theta-token',
+    'reth': 'rocket-pool-eth',
+    'algo': 'algorand',
+    'floki': 'floki',
+    'sui': 'sui',
+    'fdusd': 'first-digital-usd',
+    'ftm': 'fantom',
+    'ena': 'ethena',
+    'axs': 'axie-infinity',
+    'core': 'core-dao',
+    'bonk': 'bonk',
+    'snx': 'havven',
+    'zeta': 'zetachain',
+    'bgb': 'bitget-token',
+    'agix': 'singularitynet',
+    'xtz': 'tezos',
+    'pyth': 'pyth-network',
+    'beam': 'beam-2',
+    'bsv': 'bitcoin-sv',
+    'jup': 'jupiter-exchange-solana',
+    'kava': 'kava',
+    'chz': 'chiliz',
+    'ordi': 'ordinals',
+    'wld': 'worldcoin-wld',
+    'wemix': 'wemix-token',
+    'ocean': 'ocean-protocol',
+    'hnt': 'helium',
+    'gala': 'gala',
+    'eos': 'eos',
+    'mina': 'mina-protocol',
+    'astr': 'astar',
+    'rose': 'oasis-network',
+    'pepe': 'pepe',
+    'cfx': 'conflux-token',
+    'xdc': 'xdce-network',
+    'neo': 'neo',
+    'flow': 'flow',
+    'rune': 'thorchain',
+    'kcs': 'kucoin-shares',
+    'akt': 'akash-network',
+    'sand': 'the-sandbox',
+    'xec': 'ecash',
+    'iota': 'iota',
+    'blur': 'blur-token',
+    'usdd': 'usdd',
+    'gt': 'gatetoken',
+    'ar': 'arweave',
+    'osmo': 'osmosis',
+    'mana': 'decentraland',
+    'zec': 'zcash',
+    'klay': 'klay-token',
+    'egld': 'elrond-erd-2',
 };
 
 let binanceSymbolCache = null;
@@ -46,11 +121,7 @@ const COINGECKO_RATE_LIMIT_MS = 2000;
 
 const BINANCE_24HR_TICKER_URL = "https://api.binance.com/api/v3/ticker/24hr";
 const COINGECKO_LIST_URL = "https://api.coingecko.com/api/v3/coins/list";
-const USDT_LOGO_URLS = [
-    "https://coin-images.coingecko.com/coins/images/325/small/Tether.png",
-    "https://s2.coinmarketcap.com/static/img/coins/64x64/825.png",
-    "https://assets.coingecko.com/coins/images/325/thumb/Tether-logo.png"
-];
+const USDT_LOGO_URLS = ["https://coin-images.coingecko.com/coins/images/325/small/Tether.png", "https://s2.coinmarketcap.com/static/img/coins/64x64/825.png", "https://assets.coingecko.com/coins/images/325/thumb/Tether-logo.png"];
 
 async function rateLimitedCoinGeckoCall(url) {
     const now = Date.now();
@@ -96,10 +167,7 @@ async function isBinanceSymbol(symbol) {
 
 function extractBaseAsset(symbol) {
     const upperSymbol = symbol.toUpperCase();
-    const quotePatterns = [
-        /USDT$/, /USDC$/, /BUSD$/, /FDUSD$/, /TUSD$/, /BNB$/, /ETH$/, /BTC$/,
-        /EUR$/, /GBP$/, /TRY$/, /RUB$/, /UAH$/, /BIDR$/, /BKRW$/, /DAI$/, /PAXG$/, /VAI$/
-    ];
+    const quotePatterns = [/USDT$/, /USDC$/, /BUSD$/, /FDUSD$/, /TUSD$/, /BNB$/, /ETH$/, /BTC$/, /EUR$/, /GBP$/, /TRY$/, /RUB$/, /UAH$/, /BIDR$/, /BKRW$/, /DAI$/, /PAXG$/, /VAI$/];
 
     for (const pattern of quotePatterns) {
         if (pattern.test(upperSymbol)) {
@@ -178,16 +246,12 @@ async function findLogoUrl(symbol) {
             logoPatterns.push(...reliableUrls[baseAsset]);
         }
 
-        logoPatterns.push(
-            `https://coin-images.coingecko.com/coins/images/1/small/${baseAsset.toLowerCase()}.png`,
-            `https://bin.bnbstatic.com/image/coin/${baseAsset}.png`
-        );
+        logoPatterns.push(`https://coin-images.coingecko.com/coins/images/1/small/${baseAsset.toLowerCase()}.png`, `https://bin.bnbstatic.com/image/coin/${baseAsset}.png`);
 
         try {
             for (const pattern of logoPatterns) {
                 const headResponse = await axios.head(pattern, {
-                    timeout: 5000,
-                    validateStatus: (status) => status >= 200 && status < 400
+                    timeout: 5000, validateStatus: (status) => status >= 200 && status < 400
                 });
 
                 const contentType = headResponse.headers['content-type'];
@@ -449,9 +513,119 @@ async function getIndicatorDataByTimeRange(directory, timeRange, symbol) {
     return allResults;
 }
 
-async function handleLoadChartData(ws, msg, dataPaths, indicatorPaths) {
-    const {symbol, indicators, fileRequest} = msg;
-    const candleDirectory = dataPaths[symbol];
+// Result 기반의 경로 로딩 캐시
+const resultConfigCache = {}; // { [resultName]: { ts: number, dataPaths: {}, indicatorPaths: {} } }
+const RESULT_CACHE_TTL = 60 * 1000; // 1분
+
+async function loadPathsForResult(resultName) {
+    if (!resultName || typeof resultName !== 'string') {
+        return null;
+    }
+
+    const safeName = path.basename(resultName);
+    if (safeName !== resultName) {
+        return null;
+    }
+
+    const now = Date.now();
+    const cached = resultConfigCache[resultName];
+    if (cached && (now - cached.ts) < RESULT_CACHE_TTL) {
+        return cached;
+    }
+
+    const projectDir = process.env.PROJECT_DIR || process.cwd();
+    const candidateA = path.join(projectDir, 'Results', safeName, 'config.json');
+    const candidateB = path.join(projectDir, 'Results', safeName, 'BackBoard', 'config.json');
+
+    let cfgPath = null;
+    try {
+        await fsPromises.access(candidateA, require('fs').constants.F_OK);
+        cfgPath = candidateA;
+    } catch (e) {
+        try {
+            await fsPromises.access(candidateB, require('fs').constants.F_OK);
+            cfgPath = candidateB;
+        } catch (e2) {
+            return null;
+        }
+    }
+
+    try {
+        const _raw = await fsPromises.readFile(cfgPath, 'utf8');
+        let txt = String(_raw);
+        if (txt && typeof txt.charCodeAt === 'function' && txt.charCodeAt(0) === 0xFEFF) {
+            txt = txt.slice(1);
+        }
+
+        const json = JSON.parse(txt);
+
+        const dataPaths = {};
+        if (Array.isArray(json['심볼'])) {
+            json['심볼'].forEach((symbol) => {
+                try {
+                    if (symbol['트레이딩 바 데이터'] && symbol['트레이딩 바 데이터']['데이터 경로']) {
+                        const name = symbol['심볼 이름'];
+                        const rawPath = String(symbol['트레이딩 바 데이터']['데이터 경로']);
+                        const posixPath = rawPath.replace(/\\/g, '/');
+
+                        dataPaths[name] = posixPath.replace(/\/[^\/]*$/, '');
+                    }
+                } catch (_) {
+                    // 무시
+                }
+            });
+        }
+
+        const indicatorPaths = {};
+        if (Array.isArray(json['지표'])) {
+            json['지표'].forEach((indicator) => {
+                try {
+                    const name = indicator['지표 이름'];
+                    const p = indicator['데이터 경로'];
+                    if (p) {
+                        const pos = String(p).replace(/\\/g, '/');
+
+                        indicatorPaths[name] = pos.replace(/\/[^\/]*$/, '');
+                    }
+                } catch (_) {
+                    // 무시
+                }
+            });
+        }
+
+        const entry = {ts: Date.now(), dataPaths, indicatorPaths};
+        resultConfigCache[resultName] = entry;
+
+        return entry;
+    } catch (err) {
+        return null;
+    }
+}
+
+async function handleLoadChartData(ws, msg) {
+    const {symbol, indicators, fileRequest, result} = msg;
+
+    // Result 기반 경로를 미리 캐시
+    let resultPaths = null;
+    if (result && typeof result === 'string') {
+        resultPaths = await loadPathsForResult(result);
+    }
+
+    // 서버는 Result 기반 경로만 허용
+    const rp = await loadPathsForResult(result);
+    if (!rp || !rp.dataPaths || !rp.dataPaths[symbol]) {
+        ws.send(JSON.stringify({
+            action: "loadChartDataResponse",
+            error: `Results/${result}에 심볼 '${symbol}'의 캔들 데이터 경로가 없습니다. config.json을 확인하세요.`,
+            candleData: [],
+            indicatorResults: (indicators || []).map(name => ({
+                indicatorName: name, error: 'no data (missing result path)', data: []
+            }))
+        }));
+        return;
+    }
+
+    const candleDirectory = rp.dataPaths[symbol];
 
     let candleDataPromise;
     if (!candleDirectory) {
@@ -461,14 +635,22 @@ async function handleLoadChartData(ws, msg, dataPaths, indicatorPaths) {
     } else {
         candleDataPromise = getCandleDataByFiles(candleDirectory, fileRequest)
             .then(data => ({data}))
-            .catch(err => ({error: `캔들스틱 데이터(file, ${fileRequest.type}) 처리 오류: ${err.message}`, data: []}));
+            .catch(err => ({
+                error: `캔들스틱 데이터(file, ${fileRequest.type}) 처리 오류: ${err && err.message ? err.message : err}`, data: []
+            }));
     }
 
+    // 지표 경로는 Results/<result>/config.json에서 유도된 경로만 사용
     const indicatorPromises = indicators.map(async (indicatorName) => {
-        const indicatorDir = indicatorPaths[indicatorName];
-        if (!indicatorDir) {
-            return {indicatorName, error: "해당 지표 데이터 경로 없음", data: []};
+        if (!resultPaths || !resultPaths.indicatorPaths || !resultPaths.indicatorPaths[indicatorName]) {
+            return {
+                indicatorName,
+                error: `Results/${result}에 지표 '${indicatorName}'의 데이터 경로가 없습니다. config.json을 확인하세요.`,
+                data: []
+            };
         }
+
+        const indicatorDir = resultPaths.indicatorPaths[indicatorName];
 
         if (!fileRequest || !fileRequest.type) {
             return {indicatorName, error: "지표 요청 파라미터 오류 (fileRequest)", data: []};
@@ -479,8 +661,7 @@ async function handleLoadChartData(ws, msg, dataPaths, indicatorPaths) {
             const candleResult = await candleDataPromise;
             if (candleResult.data && candleResult.data.length > 0) {
                 indicatorTimeRange = {
-                    from: candleResult.data[0].time,
-                    to: candleResult.data[candleResult.data.length - 1].time
+                    from: candleResult.data[0].time, to: candleResult.data[candleResult.data.length - 1].time
                 };
             }
 
@@ -495,8 +676,7 @@ async function handleLoadChartData(ws, msg, dataPaths, indicatorPaths) {
     try {
         const [candleResult, ...indicatorResults] = await Promise.all([candleDataPromise, ...indicatorPromises]);
         const filteredIndicatorResults = indicatorResults.map(indResult => ({
-            ...indResult,
-            data: indResult.data || []
+            ...indResult, data: indResult.data || []
         }));
 
         const response = {
@@ -519,8 +699,5 @@ async function handleLoadChartData(ws, msg, dataPaths, indicatorPaths) {
 }
 
 module.exports = {
-    initializeFallbackImage,
-    findLogoUrl,
-    downloadAndSaveImage,
-    handleLoadChartData
+    initializeFallbackImage, findLogoUrl, downloadAndSaveImage, handleLoadChartData
 };

@@ -9,10 +9,7 @@ const {
     handleLoadChartData, initializeFallbackImage, findLogoUrl, downloadAndSaveImage
 } = require("./ChartDataHandler");
 const {
-    startBacktestingEngine,
-    runSingleBacktesting,
-    fetchOrUpdateBarData,
-    stopBacktestingEngine
+    startBacktestingEngine, runSingleBacktesting, fetchOrUpdateBarData, stopBacktestingEngine
 } = require("./BacktestingEngine");
 
 
@@ -231,57 +228,213 @@ async function ensureBundledIconsLogosCopied() {
         await copyDirIfEmpty(path.join(staticDir, 'Icons'), iconDir);
         await copyDirIfEmpty(path.join(staticDir, 'Logos'), logoDir);
     } catch (e) {
-        broadcastLog('WARN', `아이콘/로고 복사 중 오류: ${e.message}`);
+        // 무시
     }
 }
 
 // =====================================================================================================================
 // API: config 가져오기
 // =====================================================================================================================
-// 서버에서 미리 로드한 config.json을 클라이언트가 요청할 수 있도록 전역 변수와 API 제공
 let config = null;
 
-app.get('/api/config', (req, res) => {
-    if (!config) {
-        // 설정이 아직 로드되지 않았거나 문제 발생 시 빈 객체 반환
-        return res.json({});
+// 안전한 Results/BackBoard 경로 생성기
+async function resolveResultBackboardPath(resultName, relativePath = '') {
+    if (!projectDir) {
+        throw new Error('프로젝트 폴더가 설정되지 않았습니다.');
     }
 
-    res.json(config);
-});
+    if (!resultName || typeof resultName !== 'string') {
+        throw new Error('resultName is required');
+    }
 
-// =====================================================================================================================
-// API: 거래 내역 가져오기
-// =====================================================================================================================
-app.get('/api/trade-list', async (req, res) => {
-    const tradeListPath = path.join(dynamicDir, 'trade_list.json');
+    // resultName은 디렉터리 이름만 허용
+    const safeResult = path.basename(resultName);
+    if (safeResult !== resultName) {
+        throw new Error('invalid result name');
+    }
+
+    // 우선순위: Results/<name>/<relativePath> → Results/<name>/BackBoard/<relativePath>
+    const candidateRoot = path.resolve(projectDir, 'Results', safeResult, relativePath || '');
+    const candidateBackboard = path.resolve(projectDir, 'Results', safeResult, 'BackBoard', relativePath || '');
+
+    const projectRoot = path.resolve(projectDir);
+
+    const isUnderProject = p => p.startsWith(projectRoot);
+    if (!isUnderProject(candidateRoot) || !isUnderProject(candidateBackboard)) {
+        throw new Error('result path outside project');
+    }
+
+    // 존재하는 경로를 우선 반환
+    try {
+        await fsPromises.access(candidateRoot, fs.constants.F_OK);
+
+        return candidateRoot;
+    } catch (e) {
+        // candidateRoot 없음, 다음으로 candidateBackboard 확인
+    }
 
     try {
-        // 파일 존재 확인
+        await fsPromises.access(candidateBackboard, fs.constants.F_OK);
+
+        return candidateBackboard;
+    } catch (e) {
+        // 어느 쪽에도 없음 - 호출자가 처리하게 함
+        throw new Error('result file not found');
+    }
+}
+
+// Results 목록 조회
+app.get('/api/results', async (req, res) => {
+    try {
+        if (!projectDir) {
+            return res.json({results: []});
+        }
+
+        const resultsDir = path.join(projectDir, 'Results');
+        const entries = await fsPromises.readdir(resultsDir, {withFileTypes: true}).catch(() => []);
+
+        const required = ['Indicators', 'Sources', 'backtesting.log', 'config.json', 'trade_list.json'];
+
+        const valid = [];
+        const invalid = [];
+
+        for (const e of entries) {
+            if (!e.isDirectory()) {
+                continue;
+            }
+
+            const name = e.name;
+            const reasons = [];
+
+            // 각 필수 항목이 Results/<name> or Results/<name>/BackBoard 에서 존재하는지 확인
+            for (const rel of required) {
+                try {
+                    const p = await resolveResultBackboardPath(name, rel);
+                    const st = await fsPromises.stat(p);
+
+                    // Indicators / Sources 는 디렉터리여야 함
+                    if ((rel === 'Indicators' || rel === 'Sources') && !st.isDirectory()) {
+                        reasons.push(`${rel} is not a directory`);
+                    }
+
+                    // 나머지는 파일
+                    if (!(rel === 'Indicators' || rel === 'Sources') && !st.isFile()) {
+                        reasons.push(`${rel} is not a file`);
+                    }
+                } catch (err) {
+                    reasons.push(`${rel} missing (${String(err && err.message)})`);
+                }
+            }
+
+            try {
+                const pRoot = path.join(resultsDir, name);
+                const stRoot = await fsPromises.stat(pRoot);
+                const mtime = stRoot && stRoot.mtime ? stRoot.mtime.getTime() : Date.now();
+
+                if (reasons.length === 0) {
+                    // YYMMDD_hhmmss 또는 YYYYMMDD_hhmmss만 허용
+                    const ok = /^(?:\d{2}\d{2}\d{2}_\d{6}|\d{4}\d{2}\d{2}_\d{6})$/.test(name);
+                    if (ok) {
+                        valid.push({name, mtime});
+                    }
+                } else {
+                    invalid.push({name, reasons});
+                }
+            } catch (err) {
+                // 디렉터리 접근 불가
+                invalid.push({name, reasons: [`cannot access result folder: ${String(err && err.message)}`]});
+                return;
+            }
+        }
+
+        // 파일명 기준 정렬(문자열 역순)
+        valid.sort((a, b) => b.name.localeCompare(a.name));
+
+        const includeDebug = req.query && (req.query.debug === '1' || req.query.debug === 'true');
+        const payload = {results: valid};
+        if (includeDebug) {
+            payload.invalid = invalid;
+        }
+
+        return res.json(payload);
+    } catch (err) {
+        res.status(500).json({error: err.message});
+    }
+});
+
+// Results 내부 파일 프록시
+app.get('/api/results/:result/*', async (req, res) => {
+    try {
+        const resultName = req.params.result;
+        const rel = req.params[0] || '';
+        const filePath = await resolveResultBackboardPath(resultName, rel);
+
+        await fsPromises.access(filePath, fs.constants.F_OK);
+
+        return res.sendFile(filePath);
+    } catch (err) {
+        return res.status(404).json({error: 'not found', details: String(err && err.message)});
+    }
+});
+
+// /api/config: 반드시 ?result=NAME
+app.get('/api/config', async (req, res) => {
+    const {result} = req.query || {};
+
+    // 결과 기반 전용: result 파라미터가 반드시 필요합니다
+    if (!result || typeof result !== 'string') {
+        return res.status(400).json({error: 'result query parameter is required. BackBoard now loads only from Results/<name>/BackBoard.'});
+    }
+
+    try {
+        const p = await resolveResultBackboardPath(result, 'config.json');
+        const _raw = await fsPromises.readFile(p, {encoding: 'utf8'});
+        let txt = String(_raw);
+
+        if (txt && typeof txt.charCodeAt === 'function' && txt.charCodeAt(0) === 0xFEFF) {
+            txt = txt.slice(1);
+        }
+
+        const json = JSON.parse(txt);
+
+        return res.json(json);
+    } catch (err) {
+        return res.status(404).json({
+            error: 'config.json not found for result', result: String(result), details: String(err && err.message)
+        });
+    }
+});
+
+// /api/trade-list: Result 쿼리 우선 처리
+app.get('/api/trade-list', async (req, res) => {
+    const {result} = req.query || {};
+
+    if (!result || typeof result !== 'string') {
+        return res.status(400).json({error: 'result query parameter is required for /api/trade-list.'});
+    }
+
+    try {
+        const tradeListPath = await resolveResultBackboardPath(result, 'trade_list.json');
         await fsPromises.access(tradeListPath, fs.constants.F_OK);
 
-        // 파일 읽기
-        let fileContent = await fsPromises.readFile(tradeListPath, {encoding: 'utf8'});
-
-        // BOM (Byte Order Mark) 제거
-        if (fileContent.charCodeAt(0) === 0xFEFF) {
+        const _rawFileContent = await fsPromises.readFile(tradeListPath, {encoding: 'utf8'});
+        let fileContent = String(_rawFileContent);
+        if (fileContent && typeof fileContent.charCodeAt === 'function' && fileContent.charCodeAt(0) === 0xFEFF) {
             fileContent = fileContent.slice(1);
         }
 
         const tradeData = JSON.parse(fileContent);
 
-        res.set({
-            'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0'
-        });
-
+        res.set({'Cache-Control': 'no-cache, no-store, must-revalidate', 'Pragma': 'no-cache', 'Expires': '0'});
         res.json(tradeData);
     } catch (error) {
         res.status(404).json({
-            error: 'trade_list.json 파일을 찾을 수 없습니다.',
-            attemptedPath: toPosix(tradeListPath),
+            error: 'trade_list.json 파일을 찾을 수 없습니다. (result-specific)',
+            result: String(result),
+            attemptedPath: toPosix(error && error.path ? error.path : ''),
             projectDir: toPosix(projectDir),
             cwd: toPosix(process.cwd()),
-            details: error.message
+            details: String(error && error.message)
         });
     }
 });
@@ -310,7 +463,6 @@ app.get('/api/icon', async (req, res) => {
     } catch (e) {
         return res.status(404).send('icon not found');
     }
-
 });
 
 // =====================================================================================================================
@@ -354,8 +506,6 @@ app.get('/api/get-logo', async (req, res) => {
             return res.json({logoUrl: `${origin}${isDev ? '/Logos' : '/BackBoard/Logos'}/${safeSymbolName}.png`});
         } catch (err) {
             // 실패 시 폴백 반환
-            broadcastLog('ERROR', `로고 다운로드 실패 (${symbol}): ${err.message}`);
-
             const origin = (req.protocol && req.get('host')) ? `${req.protocol}://${req.get('host')}` : `http://localhost:${port}`;
             return res.json({logoUrl: `${origin}${isDev ? '/Logos' : '/BackBoard/Logos'}/USDT.png`});
         }
@@ -441,7 +591,6 @@ app.get('/api/symbols', async (req, res) => {
                     }
                 } catch (e) {
                     // 네트워크 문제, 무시
-                    broadcastLog('WARN', `외부 심볼 조회 실패: ${e.message}`);
                 }
             }
 
@@ -482,7 +631,6 @@ app.get('/api/symbols', async (req, res) => {
 
         res.json({symbols});
     } catch (err) {
-        broadcastLog('ERROR', `심볼 목록을 불러오는 동안 오류가 발생했습니다: ${err.message}`);
         res.status(500).json({symbols: []});
     }
 });
@@ -526,56 +674,47 @@ app.get("/api/get-source-code", async (req, res) => {
 // =====================================================================================================================
 app.head('/api/log', async (req, res) => {
     try {
-        const logPath = path.join(dynamicDir, 'backtesting.log');
+        const {result} = req.query || {};
 
-        let filePath = null;
-        try {
-            await fsPromises.access(logPath, fs.constants.F_OK);
-
-            filePath = logPath;
-        } catch (e) {
-            // continue
+        if (!result || typeof result !== 'string') {
+            return res.status(400).end('result query parameter is required for /api/log');
         }
 
-        if (!filePath) {
+        const p = await resolveResultBackboardPath(result, 'backtesting.log');
+
+        try {
+            await fsPromises.access(p, fs.constants.F_OK);
+        } catch (e) {
             return res.status(404).end();
         }
 
-        const stat = await fsPromises.stat(filePath);
-
-        res.set({
-            'Content-Length': stat.size, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-cache'
-        });
-
+        const stat = await fsPromises.stat(p);
+        res.set({'Content-Length': stat.size, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-cache'});
         return res.status(200).end();
     } catch (err) {
-        broadcastLog('ERROR', `로그 메타데이터 응답 실패: ${err.message}`);
         return res.status(500).end();
     }
 });
 
 app.get('/api/log', async (req, res) => {
     try {
-        const logPath = path.join(dynamicDir, 'backtesting.log');
+        const {result} = req.query || {};
 
-        let filePath = null;
-        try {
-            await fsPromises.access(logPath, fs.constants.F_OK);
-
-            filePath = logPath;
-        } catch (e) {
-            // continue
+        if (!result || typeof result !== 'string') {
+            return res.status(400).send('result query parameter is required for /api/log');
         }
 
-        if (!filePath) {
-            broadcastLog('WARN', '백테스팅 로그 파일을 찾을 수 없습니다.');
+        const p = await resolveResultBackboardPath(result, 'backtesting.log');
+
+        try {
+            await fsPromises.access(p, fs.constants.F_OK);
+        } catch (e) {
             return res.status(404).send('log not found');
         }
 
-        const stat = await fsPromises.stat(filePath);
+        const stat = await fsPromises.stat(p);
         const range = req.headers.range;
 
-        // Range가 없는 경우 전체 파일 반환
         if (!range) {
             res.set({
                 'Content-Type': 'text/plain; charset=utf-8',
@@ -583,10 +722,10 @@ app.get('/api/log', async (req, res) => {
                 'Accept-Ranges': 'bytes',
                 'Cache-Control': 'no-cache'
             });
-            return fs.createReadStream(filePath).pipe(res);
+
+            return fs.createReadStream(p).pipe(res);
         }
 
-        // Range 요청 처리
         const bytesPrefix = 'bytes=';
         if (!range.startsWith(bytesPrefix)) {
             return res.status(416).send('Invalid Range');
@@ -602,7 +741,7 @@ app.get('/api/log', async (req, res) => {
         }
 
         const chunkSize = (end - start) + 1;
-        const stream = fs.createReadStream(filePath, {start, end});
+        const stream = fs.createReadStream(p, {start, end});
 
         res.status(206).set({
             'Content-Range': `bytes ${start}-${end}/${stat.size}`,
@@ -615,7 +754,6 @@ app.get('/api/log', async (req, res) => {
         stream.pipe(res);
 
     } catch (err) {
-        broadcastLog('ERROR', `로그 파일 전송 실패: ${err.message}`);
         return res.status(500).send('internal error');
     }
 });
@@ -711,7 +849,6 @@ app.get('/api/strategies', async (req, res) => {
 
         res.json({strategies});
     } catch (err) {
-        broadcastLog('ERROR', `전략 목록 조회 실패: ${err.message}`);
         res.json({strategies: [], error: err.message});
     }
 });
@@ -1434,7 +1571,7 @@ async function startServer() {
 // =====================================================================================================================
 // WebSocket 설정
 // =====================================================================================================================
-function setupWebSocket(server, dataPaths, indicatorPaths) {
+function setupWebSocket(server) {
     const wss = new WebSocketServer({server});
     const {
         loadOrCreateEditorConfig,
@@ -1511,7 +1648,7 @@ function setupWebSocket(server, dataPaths, indicatorPaths) {
 
                 switch (msg.action) {
                     case "loadChartData": {
-                        await handleLoadChartData(ws, msg, dataPaths, indicatorPaths);
+                        await handleLoadChartData(ws, msg);
                         break;
                     }
 
@@ -1620,47 +1757,8 @@ async function main() {
         // 서버 시작
         const server = await startServer();
 
-        // config.json에서 데이터 경로 파싱
-        const configPath = path.join(dynamicDir, "config.json");
-
-        try {
-            // 전역 `config` 변수에 파일 내용을 로드
-            config = JSON.parse(fs.readFileSync(configPath, "utf8"));
-        } catch (e) {
-            broadcastLog("WARN", `config.json 로드 실패: ${e.message}`);
-
-            // 실패 시 전역 config를 null로 유지
-            config = config || null;
-        }
-
-        // 캔들스틱 데이터 경로 구성
-        const dataPaths = {};
-        if (config && config["심볼"]) {
-            config["심볼"].forEach((symbol) => {
-                if (symbol["트레이딩 바 데이터"] && symbol["트레이딩 바 데이터"]["데이터 경로"]) {
-                    const symbolName = symbol["심볼 이름"];
-
-                    const rawPath = String(symbol["트레이딩 바 데이터"]["데이터 경로"]);
-                    const posixPath = rawPath.replace(/\\/g, '/');
-                    dataPaths[symbolName] = posixPath.replace(/\/[^\/]*$/, "");
-                }
-            });
-        }
-
-        // 지표 데이터 경로 구성
-        const indicatorPaths = {};
-        if (config && config["지표"]) {
-            config["지표"].forEach((indicatorObj) => {
-                const indicatorName = indicatorObj["지표 이름"];
-                const indicatorPath = indicatorObj["데이터 경로"];
-                const posIndicatorPath = String(indicatorPath).replace(/\\/g, '/');
-
-                indicatorPaths[indicatorName] = posIndicatorPath.replace(/\/[^\/]*$/, "");
-            });
-        }
-
         // WebSocket 설정
-        setupWebSocket(server, dataPaths, indicatorPaths);
+        setupWebSocket(server);
     } catch (err) {
         broadcastLog("ERROR", `서버를 시작하는 데 실패했습니다.: ${err}`);
         process.exit(1);

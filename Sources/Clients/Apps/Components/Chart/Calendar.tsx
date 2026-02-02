@@ -12,9 +12,11 @@ interface CalendarProps {
     lastSelectedDate: Date | null; // props로 이전 선택 날짜 받기
     lastSelectedTime: string; // props로 이전 선택 시간 받기
     onDateTimeSelected: (date: Date, time: string) => void; // 날짜/시간 선택 시 부모에게 알리는 콜백
-    symbol: string; // symbol 정보 추가
+    symbol: string;
+    result: string;
     onLoadingStart: () => void; // 캘린더 로딩 시작 콜백
     onLoadingEnd: () => void; // 캘린더 로딩 종료 콜백
+    config: any;
 }
 
 // 타임프레임에 따른 시간 간격 생성 함수
@@ -151,8 +153,10 @@ const Calendar: React.FC<CalendarProps> = ({
                                                lastSelectedTime,
                                                onDateTimeSelected,
                                                symbol,
+                                               result,
                                                onLoadingStart,
-                                               onLoadingEnd
+                                               onLoadingEnd,
+                                               config
                                            }) => {
     const {ws} = useWebSocket();
     const now = new Date();
@@ -950,11 +954,16 @@ const Calendar: React.FC<CalendarProps> = ({
             }
 
             // 3. 요청한 시간이 포함된 파일로부터 과거로 5개 파일 요청
-            const indicatorsToLoad = (window as any).indicatorPaths ? Object.keys((window as any).indicatorPaths) : [];
+            const indicatorsToLoad = config?.['지표']
+                ? config['지표']
+                    .filter((i: any) => i['플롯']?.['플롯 종류'] !== '비활성화' && i['데이터 경로'])
+                    .map((i: any) => i['지표 이름'])
+                : [];
 
             const requestPayload = {
                 action: "loadChartData",
                 symbol: symbol,
+                result: result,
                 indicators: indicatorsToLoad,
                 fileRequest: {
                     type: "date",

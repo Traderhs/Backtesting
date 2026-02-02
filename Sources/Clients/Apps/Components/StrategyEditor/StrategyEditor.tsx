@@ -606,6 +606,16 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
                     >
                         <button
                             type="button"
+                            onClick={handleRunSingleBacktesting}
+                            title="백테스팅 실행"
+                            aria-label="백테스팅 실행"
+                            className="strategy-editor-action-button play"
+                        >
+                            <Play size={16}/>
+                        </button>
+
+                        <button
+                            type="button"
                             onClick={() => setIsLogPanelOpen(prev => !prev)}
                             title={isLogPanelOpen ? '로그 숨기기' : '로그 표시'}
                             aria-pressed={isLogPanelOpen}
@@ -613,16 +623,6 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
                             className="strategy-editor-action-button log"
                         >
                             <FileText size={16}/>
-                        </button>
-
-                        <button
-                            type="button"
-                            onClick={handleRunSingleBacktesting}
-                            title="백테스팅 실행"
-                            aria-label="백테스팅 실행"
-                            className="strategy-editor-action-button play"
-                        >
-                            <Play size={16}/>
                         </button>
                     </div>,
                     titleBarPortal

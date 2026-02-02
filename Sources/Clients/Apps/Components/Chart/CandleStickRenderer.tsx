@@ -30,7 +30,6 @@ class CandleStickRenderer {
     private volumeSeries: ReturnType<IChartApi['addSeries']> | null = null;
     private readonly priceStep: number;
     private readonly pricePrecision: number;
-    private firstUpdate: boolean = true;
 
     constructor({chart, priceStep, pricePrecision}: CandleStickRendererProps) {
         this.chart = chart;
@@ -38,17 +37,18 @@ class CandleStickRenderer {
         this.pricePrecision = pricePrecision;
     }
 
-    public initSeries() {
-        if (!this.chart) return;
+    public initVolumeSeries() {
+        if (!this.chart) {
+            return;
+        }
 
-        // 이미 초기화되어 있으면 재사용
-        if (this.mainSeries || this.volumeSeries) {
-            console.warn("[CandleStickRenderer] Series already initialized.");
+        // 이미 초기화되어 있으면 무시
+        if (this.volumeSeries) {
             return;
         }
 
         try {
-            // 볼륨 시리즈 생성
+            // 볼륨 시리즈 생성 (Pane 0 확보용)
             this.volumeSeries = this.chart.addSeries(HistogramSeries, {
                 priceScaleId: "volume",
                 priceFormat: {
@@ -66,8 +66,24 @@ class CandleStickRenderer {
                     bottom: 0.0
                 }
             });
+        } catch (error) {
+            console.error("[CandleStickRenderer] 볼륨 시리즈 초기화 중 오류 발생:", error);
+            this.volumeSeries = null;
+        }
+    }
 
-            // 메인 캔들스틱 시리즈 생성
+    public initMainSeries() {
+        if (!this.chart) {
+            return;
+        }
+
+        // 이미 초기화되어 있으면 무시
+        if (this.mainSeries) {
+            return;
+        }
+
+        try {
+            // 메인 캔들스틱 시리즈 생성 (마지막에 생성하여 Z-index 최상위 확보)
             this.mainSeries = this.chart.addSeries(CandlestickSeries, {
                 upColor: "#4caf50",
                 downColor: "#f23645",
@@ -103,10 +119,14 @@ class CandleStickRenderer {
                 void chartContainer.offsetHeight;
             }
         } catch (error) {
-            console.error("[CandleStickRenderer] 시리즈 초기화 중 오류 발생:", error);
+            console.error("[CandleStickRenderer] 메인 시리즈 초기화 중 오류 발생:", error);
             this.mainSeries = null;
-            this.volumeSeries = null;
         }
+    }
+
+    public initSeries() {
+        this.initVolumeSeries();
+        this.initMainSeries();
     }
 
     public removeSeries() {
@@ -123,27 +143,9 @@ class CandleStickRenderer {
         }
     }
 
-    // 특수 상황에서 시리즈를 재생성하는 메서드 (첫 심볼 로딩시 지표와 순서 충돌 시 활용)
-    public recreateSeries() {
-        if (!this.chart) return;
-
-        // 기존 시리즈 제거
-        this.removeSeries();
-
-        // 새 시리즈 초기화
-        this.initSeries();
-    }
-
     public updateData(data: CandleData[], positionSettings?: PositionSettings) {
-        if (!this.chart) return;
-
-        // 시리즈가 없으면 초기화
-        if (!this.mainSeries || !this.volumeSeries) {
-            this.initSeries();
-            if (!this.mainSeries || !this.volumeSeries) {
-                console.error("[CandleStickRenderer] Failed to create series");
-                return;
-            }
+        if (!this.chart) {
+            return;
         }
 
         try {
@@ -203,59 +205,6 @@ class CandleStickRenderer {
                 if (positionSettings.setVisibleLogicalRange) {
                     this.chart.timeScale().setVisibleLogicalRange(positionSettings.setVisibleLogicalRange);
                 }
-            }
-
-            // 첫 업데이트 플래그 해제 및 첫 로딩 시 시리즈 재생성
-            if (this.firstUpdate) {
-                this.firstUpdate = false;
-
-                setTimeout(() => {
-                    this.recreateSeries();
-
-                    // 시리즈 재생성 후 데이터 다시 업데이트
-                    if (this.mainSeries && this.volumeSeries) {
-                        this.volumeSeries.setData(data.map((bar, index) => {
-                            if (bar.close === null || bar.open === null) {
-                                return {
-                                    time: bar.time,
-                                    value: bar.volume,
-                                    color: "#08998180"
-                                };
-                            }
-
-                            let color: string;
-
-                            // 시가 == 종가인 경우 (도지 캔들)
-                            if (bar.open === bar.close) {
-                                // 첫 번째 캔들이거나 이전 종가가 없으면 기본 캔들 색상 로직 사용
-                                if (index === 0 || data[index - 1].close === null) {
-                                    color = bar.close >= bar.open ? "#08998180" : "#ef535080";
-                                } else {
-                                    // 이전 종가와 비교
-                                    const previousClose = data[index - 1].close;
-                                    color = bar.close >= previousClose ? "#08998180" : "#ef535080";
-                                }
-                            } else {
-                                // 기존 방식: 시가 vs 종가
-                                color = bar.close >= bar.open ? "#08998180" : "#ef535080";
-                            }
-
-                            return {
-                                time: bar.time,
-                                value: bar.volume,
-                                color: color
-                            };
-                        }));
-
-                        this.mainSeries.setData(data.map(bar => ({
-                            time: bar.time,
-                            open: bar.open,
-                            high: bar.high,
-                            low: bar.low,
-                            close: bar.close
-                        })));
-                    }
-                }, 100);
             }
 
             // 차트 업데이트 후 z-index 확인 및 재조정

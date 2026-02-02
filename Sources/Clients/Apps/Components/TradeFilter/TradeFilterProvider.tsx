@@ -11,6 +11,7 @@ import {
 
 import ServerAlert from "../Server/ServerAlert.tsx";
 import {filterTradesAsync} from "@/Workers/TradeFilterUtils.ts";
+import {useResults} from '@/Contexts/ResultsContext';
 
 // 필터링 로직을 청크 단위로 처리하는 함수
 export const TradeFilterProvider = ({children}: { children: React.ReactNode }) => {
@@ -127,12 +128,22 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
     // 자금 재계산 시 파산 발생 여부
     const [hasBankruptcy, setHasBankruptcy] = useState<boolean>(false);
 
+    // 현재 선택된 Results 폴더
+    const {selectedResult} = useResults();
+
     // 앱 시작 시 config.json 불러오기 (전략, 심볼)
     useEffect(() => {
         async function loadConfig() {
             try {
-                const res = await fetch("/api/config");
-                const config = await res.json();
+                if (!selectedResult) {
+                    setLoading(false);
+                    return;
+                }
+
+                const url = `/api/config?result=${encodeURIComponent(selectedResult)}`;
+                const config = await (window.__resultsFetchParsed
+                    ? window.__resultsFetchParsed(url)
+                    : (await (await fetch(url)).json()));
                 const symbols = (config["심볼"] ?? []).map(
                     (s: Record<string, unknown>) => ({name: String(s["심볼 이름"])})
                 );
@@ -154,14 +165,25 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
         }
 
         void loadConfig();
-    }, []);
+    }, [selectedResult]);
 
     // trade_list.json 로드 및 "진입 이름", "청산 이름" 고유값 추출
     useEffect(() => {
         async function fetchTrades() {
             try {
-                const res = await fetch("/api/trade-list");
-                const data: TradeItem[] = await res.json();
+                if (!selectedResult) {
+                    // Results가 없으면 에러 UI를 띄우지 말고 빈 상태로 처리
+                    setTradeListError(false);
+                    setAllTrades([]);
+                    setLoading(false);
+
+                    return;
+                }
+
+                const tlUrl = `/api/trade-list?result=${encodeURIComponent(selectedResult)}`;
+                const data: TradeItem[] = await (window.__resultsFetchParsed
+                    ? window.__resultsFetchParsed(tlUrl)
+                    : (await (await fetch(tlUrl)).json()));
 
                 // 0행 오류 확인
                 if (data.length > 0) {
@@ -193,6 +215,9 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                 }
 
                 setAllTrades(data);
+
+                // 성공적으로 불러왔으므로 이전에 설정된 에러 상태가 있으면 해제
+                setTradeListError(false);
 
                 const uniqueEntryNames = Array.from(
                     new Set(
@@ -322,7 +347,7 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
         }
 
         void fetchTrades();
-    }, []);
+    }, [selectedResult]);
 
     // 고급 필터가 처음 열릴 때만 시간 옵션 계산
     useEffect(() => {
@@ -513,7 +538,7 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
     ]);
 
     // 에러 경고 컴포넌트를 변수로 분리
-    const tradeListAlert = tradeListError ? (
+    const tradeListAlert = (tradeListError && selectedResult) ? (
         <ServerAlert
             serverError={true}
             message="거래 내역 데이터 오류: 0번 거래(초기 자금 정보)가 올바르게 구성되지 않았습니다."

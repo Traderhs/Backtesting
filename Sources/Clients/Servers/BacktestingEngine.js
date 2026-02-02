@@ -18,10 +18,16 @@ function toPosix(p) {
 let backtestingEngine = null;
 let backtestingEngineReady = false;
 
+let _projectDirForEngine = null;
+const _pendingBacktestRequesters = [];
+
 function startBacktestingEngine(activeClients, broadcastLog, projectDir, staticDir) {
     if (backtestingEngine) {
         return;
     }
+
+    // 프로젝트 경로를 보관
+    _projectDirForEngine = projectDir;
 
     const exePath = path.join(staticDir, 'Cores', 'Backtesting.exe');
     if (!fs.existsSync(exePath)) {
@@ -45,7 +51,7 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir, staticD
             const ansiRegex = /\x1b\[[0-9;]*[mGKHF]/g;
             const lines = output.split('\n');
 
-            lines.forEach(line => {
+            lines.forEach(async (line) => {
                 if (!line || !line.trim()) {
                     return;
                 }
@@ -60,6 +66,97 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir, staticD
                 if (cleaned.includes('백테스팅 엔진 준비 완료')) {
                     backtestingEngineReady = true;
                     broadcastLog("INFO", `백테스팅 엔진이 준비되었습니다.`, null, null);
+                    return;
+                }
+
+                // 백테스팅이 정상적으로 완료되었을 때, 해당 작업을 요청한 클라이언트에게만 성공 알림을 보냄
+                if (cleaned.includes('백테스팅이 완료되었습니다.')) {
+                    const parsed = cleaned.match(/^\[([^\]]+)]\s*\[([^\]]+?)]\s*(?:\[([^\]]+)]\s*)?\|\s*(.*)$/);
+                    if (parsed) {
+                        const [, timestamp, level, fileInfo, message] = parsed;
+                        const formattedTimestamp = timestamp ? timestamp.replace(/-(?=\d{2}:\d{2}:\d{2}$)/, ' ') : null;
+                        broadcastLog(level || 'INFO', message || '', formattedTimestamp, fileInfo || null);
+                    } else {
+                        // 포맷이 다를 경우 안전하게 전체 문자열을 INFO로 전파
+                        broadcastLog('INFO', cleaned, null, null);
+                    }
+
+                    try {
+                        // 가장 최신의 결과 폴더를 찾아 응답자에게 송신
+                        let latestName = null;
+                        const resultsDir = path.join(_projectDirForEngine || process.cwd(), 'Results');
+
+                        try {
+                            const entries = await fsPromises.readdir(resultsDir, {withFileTypes: true});
+                            const dirs = entries.filter(e => e.isDirectory()).map(d => d.name);
+                            const stats = await Promise.all(dirs.map(async (d) => {
+                                try {
+                                    const p = path.join(resultsDir, d);
+                                    const st = await fsPromises.stat(p);
+
+                                    return {name: d, mtime: st.mtimeMs};
+                                } catch (e) {
+                                    return null;
+                                }
+                            }));
+
+                            const valid = stats.filter(Boolean).sort((a, b) => (b.mtime - a.mtime));
+                            if (valid.length > 0) {
+                                latestName = valid[0].name;
+                            }
+                        } catch (e) {
+                            latestName = null;
+                        }
+
+                        // 큐에서 요청자(ws)를 꺼내 해당 클라이언트에만 알림 전송
+                        async function ensureLogReady(name) {
+                            if (!name) {
+                                return false;
+                            }
+
+                            const p = path.join(resultsDir, name, 'backtesting.log');
+                            const deadline = Date.now() + 3000; // 최대 3s 대기
+                            while (Date.now() < deadline) {
+                                try {
+                                    const st = await fsPromises.stat(p);
+                                    if (st.isFile() && st.size > 0) {
+                                        return true;
+                                    }
+                                } catch (err) {
+                                    // 파일이 아직 없으면 무시하고 재시도
+                                }
+
+                                await new Promise(r => setTimeout(r, 200));
+                            }
+                            return false;
+                        }
+
+                        const requester = _pendingBacktestRequesters.shift();
+                        if (requester && requester.readyState === 1) {
+                            const payload = {action: 'backtestingSuccess'};
+
+                            if (latestName) {
+                                const ready = await ensureLogReady(latestName).catch(() => false);
+                                if (ready) {
+                                    payload.resultName = latestName;
+                                } else {
+                                    // 로그가 준비되지 않았더라도 결과는 존재할 수 있으므로 경고 후 이름을 포함
+                                    broadcastLog('WARN', `백테스팅 로그가 아직 준비되지 않았습니다`);
+                                    payload.resultName = latestName;
+                                }
+                            }
+
+                            try {
+                                requester.send(JSON.stringify(payload));
+                            } catch (e) {
+                                // 무시
+                            }
+                        }
+                    } catch (e) {
+                        // 안전하게 무시
+                        broadcastLog("WARN", `백테스팅 완료 후 알림 처리 중 오류: ${e && e.message ? e.message : e}`, null, null);
+                    }
+
                     return;
                 }
 
@@ -224,6 +321,15 @@ function runSingleBacktesting(ws, backtestingStartTime, editorConfig, symbolConf
 
         strategyConfig: strategyConfig || null
     };
+
+    // 요청자(ws)를 대기열에 추가
+    try {
+        if (ws && ws.send && typeof ws.send === 'function') {
+            _pendingBacktestRequesters.push(ws);
+        }
+    } catch (e) {
+        // 무시
+    }
 
     const command = `runSingleBacktesting ${JSON.stringify(config)}\n`;
     backtestingEngine.stdin.write(command);
