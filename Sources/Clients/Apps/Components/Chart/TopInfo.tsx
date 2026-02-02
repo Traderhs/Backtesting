@@ -2,25 +2,18 @@ import React, {useEffect, useRef, useState} from "react";
 import {IChartApi} from "lightweight-charts";
 import {useLogo} from "@/Contexts/LogoContext";
 import "./TopInfo.css";
-
-interface Candle {
-    time: number | string;
-    open: number;
-    high: number;
-    low: number;
-    close: number;
-    volume: number;
-}
+import {CandleData} from './CandleStickRenderer';
 
 interface TopInfoProps {
     symbol: string;
     chart: IChartApi | null;
-    candleStickData: Candle[];
+    candleStickData: CandleData[];
     pricePrecision: number;
-    containerRef?: React.RefObject<HTMLDivElement | null>;
+    containerRef: React.RefObject<HTMLDivElement | null>;
+    config: any;
 }
 
-const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, pricePrecision, containerRef}) => {
+const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, pricePrecision, containerRef, config}) => {
     // 가격 및 지표 정보를 업데이트하기 위한 상태
     const [priceInfo, setPriceInfo] = useState<string>("");
     const [indicatorInfo, setIndicatorInfo] = useState<string>("");
@@ -38,10 +31,11 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
     const currentLogoUrl = getLogoUrl(symbol);
 
     // config.json에서 설정 정보를 가져오는 함수
-    const loadConfigData = async () => {
+    const loadConfigData = () => {
         try {
-            const res = await fetch('/api/config');
-            const config = await res.json();
+            if (!config) {
+                return;
+            }
 
             // 현재 심볼 설정 찾기
             const currentSymbolConfig = config['심볼'].find((s: any) => s['심볼 이름'] === symbol);
@@ -146,11 +140,12 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
     };
 
     // 수량 최소 단위를 기반으로 거래량의 precision을 계산하는 함수
-    const getVolumePrecision = async (symbolName: string): Promise<number> => {
-        // 심볼 관련 설정을 가져오기 위해 fetch 요청
+    const getVolumePrecision = (symbolName: string): number => {
+        // 심볼 관련 설정을 가져오기
         try {
-            const res = await fetch('/api/config');
-            const config = await res.json();
+            if (!config || !config['심볼']) {
+                return 0;
+            }
 
             // 해당 심볼의 설정 찾기
             const symbolConfig = config['심볼'].find((s: any) => s['심볼 이름'] === symbolName);
@@ -185,16 +180,15 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
         }
     }
 
-    // 심볼이 변경되면 설정 정보 로드 및 거래량 precision 업데이트
+    // 심볼 또는 config가 변경되면 설정 정보 로드 및 거래량 precision 업데이트
     useEffect(() => {
-        const loadVolumePrecision = async () => {
-            await loadConfigData();
+        if (!config) {
+            return;
+        }
 
-            volumePrecisionRef.current = await getVolumePrecision(symbol);
-        };
-
-        loadVolumePrecision().then();
-    }, [symbol]);
+        loadConfigData();
+        volumePrecisionRef.current = getVolumePrecision(symbol);
+    }, [symbol, config]);
 
     // 특정 페인의 top 위치(픽셀)를 계산하는 헬퍼 함수
     // (pane 0부터 paneIdx-1까지의 높이를 누적)

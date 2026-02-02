@@ -5,6 +5,7 @@ import {oneDark} from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {FormControl, InputLabel, MenuItem, Select, SelectChangeEvent} from '@mui/material';
 import NoDataMessage from '../Common/NoDataMessage';
 import "./StrategyIndicatorCard.css";
+import {useResults} from '@/Contexts/ResultsContext';
 
 // CSS 스타일 추가
 const styles = {
@@ -65,6 +66,9 @@ const StrategyIndicatorCard = memo(({
                                     }: StrategyIndicatorCardProps) => {
     // 지표가 있는지 확인하는 변수
     const hasIndicators = indicators.length > 0;
+
+    // 선택된 Result
+    const {selectedResult} = useResults();
 
     const [strategyHeader, setStrategyHeader] = useState<string | null | undefined>(undefined)
     const [strategySource, setStrategySource] = useState<string | null | undefined>(undefined)
@@ -521,7 +525,12 @@ const StrategyIndicatorCard = memo(({
     // 컴포넌트 마운트 시 및 지표 변경 시 config.json에서 지표 정보 가져오기
     const loadIndicatorConfigInfo = useCallback(async (indicatorName: string) => {
         try {
-            const response = await fetch('/api/config');
+            if (!selectedResult) {
+                return;
+            }
+
+            const url = `/api/config?result=${encodeURIComponent(selectedResult)}`;
+            const response = await fetch(url);
             const config = await response.json();
 
             // config.json에서 지표 정보 찾기
@@ -554,7 +563,7 @@ const StrategyIndicatorCard = memo(({
         } catch (error) {
             console.error("config.json 로드 오류:", error);
         }
-    }, []);
+    }, [selectedResult]);
 
     useEffect(() => {
         // 선택된 지표가 변경되면 해당 지표의 소스 코드 및 헤더 로드
@@ -590,7 +599,7 @@ const StrategyIndicatorCard = memo(({
             setIndicatorHeader(undefined);
             setSelectedIndicatorInfo(null);
         }
-    }, [selectedIndicator, indicators, loadIndicatorConfigInfo]);
+    }, [selectedIndicator, indicators, loadIndicatorConfigInfo, useResults]);
 
     // 컴포넌트 마운트 시 첫 번째 지표 정보 로드
     useEffect(() => {

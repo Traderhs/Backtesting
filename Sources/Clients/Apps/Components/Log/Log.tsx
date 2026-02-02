@@ -4,8 +4,9 @@ import {VariableSizeList as List} from 'react-window';
 import AutoSizer from 'react-virtualized-auto-sizer';
 import LogSpinner from './LogSpinner';
 import NoDataMessage from '@/Components/Common/NoDataMessage';
+import {useResults} from '@/Contexts/ResultsContext';
 
-const LOG_FILE_PATH = '/api/log'; // 서버 API 엔드포인트로 변경: HEAD 및 Range 요청을 지원합니다
+const LOG_FILE_PATH = '/api/log'; // 서버 API 엔드포인트
 
 interface SearchResult {
     lineIndex: number;
@@ -255,15 +256,7 @@ const LogRow: React.FC<{
                 display: 'flex',
                 alignItems: 'center',
                 backgroundColor: isCurrentSearchLine ? 'rgba(255, 165, 0, 0.1)' : 'transparent',
-                // 텍스트 뿌옇게 되는 문제 방지 - 더 강력한 설정
                 opacity: 1,
-                filter: 'none',
-                backfaceVisibility: 'hidden',
-                WebkitBackfaceVisibility: 'hidden',
-                transform: 'translate3d(0, 0, 0)',
-                willChange: 'auto',
-                WebkitTransform: 'translate3d(0, 0, 0)',
-                // 강화된 안티엘리어싱 설정
                 fontSmooth: 'always',
                 WebkitFontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
                 fontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
@@ -286,12 +279,14 @@ const Log: React.FC = () => {
     const [showContent, setShowContent] = useState<boolean>(false);
     const [error, setError] = useState<string | null>(null);
     const [searchTerm, setSearchTerm] = useState<string>('');
+    const {selectedResult} = useResults();
     const [currentSearchIndex, setCurrentSearchIndex] = useState<number>(0);
     const [visibleStopIndex, setVisibleStopIndex] = useState<number>(0);
     const scrollOffsetRef = useRef(0);
     const listHeightRef = useRef(0);
     const animationFrameRef = useRef<number | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const fetchLogAbortRef = useRef<AbortController | null>(null);
 
     // 청킹 관련 상태 - 대용량 로그 처리를 위한 순차 로딩
     const CHUNK_SIZE = 300000; // 한 번에 렌더링할 최대 라인 수
@@ -302,31 +297,46 @@ const Log: React.FC = () => {
 
     // 탭 전환 시 부드럽게 페이드 인/아웃
     useEffect(() => {
-
-
         // 탭 전환 시 부드럽게 페이드 인/아웃
         const fadeDuration = 300; // ms
         const listOuterSelector = '[style*=\"overflow\"]';
+        const searchSelector = '.log-search-area';
+
+        const getFadeTargets = (): HTMLElement[] => {
+            if (!containerRef.current) {
+                return [];
+            }
+
+            // 페이드 대상에 최상위 컨테이너를 포함시켜
+            // 경계선(rasterized layer)에 대한 강제 리페인트가 보장되도록 함
+            const container = containerRef.current as HTMLElement;
+            const listOuter = container.querySelector(listOuterSelector) as HTMLElement | null;
+            const searchArea = container.querySelector(searchSelector) as HTMLElement | null;
+
+            return [container, listOuter, searchArea].filter(Boolean) as HTMLElement[];
+        };
 
         const fadeIn = () => {
             if (!containerRef.current) {
                 return;
             }
 
-            const listOuter = containerRef.current.querySelector(listOuterSelector) as HTMLElement;
-            if (!listOuter) {
+            const targets = getFadeTargets();
+            if (targets.length === 0) {
                 return;
             }
 
             // 준비 상태: 보이게 하고 투명도 0으로 초기화
-            listOuter.style.transition = `opacity ${fadeDuration}ms ease-out`;
-            listOuter.style.visibility = 'visible';
-            listOuter.style.pointerEvents = 'auto';
-            listOuter.style.opacity = '0';
+            targets.forEach(t => {
+                t.style.transition = `opacity ${fadeDuration}ms ease-out`;
+                t.style.visibility = 'visible';
+                t.style.pointerEvents = 'auto';
+                t.style.opacity = '0';
+            });
 
             // 강제 리플로우 후 트리거해서 페이드 인
-            void listOuter.offsetHeight;
-            requestAnimationFrame(() => listOuter.style.opacity = '1');
+            targets.forEach(t => void t.offsetHeight);
+            requestAnimationFrame(() => targets.forEach(t => (t.style.opacity = '1')));
         };
 
         const fadeOut = () => {
@@ -334,20 +344,18 @@ const Log: React.FC = () => {
                 return;
             }
 
-            const listOuter = containerRef.current.querySelector(listOuterSelector) as HTMLElement;
-            if (!listOuter) {
-                return;
-            }
+            const targets = getFadeTargets();
+            if (targets.length === 0) return;
 
-            listOuter.style.transition = `opacity ${fadeDuration}ms ease-out`;
-            listOuter.style.opacity = '0';
-            listOuter.style.pointerEvents = 'none';
+            targets.forEach(t => {
+                t.style.transition = `opacity ${fadeDuration}ms ease-out`;
+                t.style.opacity = '0';
+                t.style.pointerEvents = 'none';
+            });
 
             // 페이드 아웃이 끝나면 완전 숨김 처리
             setTimeout(() => {
-                if (listOuter) {
-                    listOuter.style.visibility = 'hidden';
-                }
+                getFadeTargets().forEach(t => (t.style.visibility = 'hidden'));
             }, fadeDuration + 20);
         };
 
@@ -361,6 +369,29 @@ const Log: React.FC = () => {
                     if (listRef.current) {
                         listRef.current.resetAfterIndex(0, true);
                     }
+
+                    const forcePaint = (el: HTMLElement | null) => {
+                        if (!el) {
+                            return;
+                        }
+
+                        try {
+                            el.style.willChange = 'transform, opacity';
+                            el.style.transform = 'translateZ(0)';
+
+                            // 강제 레이아웃/리페인트 유도
+                            void el.offsetHeight;
+
+                            // 원래 상태로 되돌림하되 backfaceVisibility는 유지하여 선명도 보장
+                            el.style.transform = '';
+                            el.style.willChange = 'auto';
+                            el.style.backfaceVisibility = 'hidden';
+                        } catch (e) {
+                            // 무시
+                        }
+                    };
+
+                    getFadeTargets().forEach(forcePaint);
                 }, fadeDuration + 30);
             }, 550);
         };
@@ -429,15 +460,49 @@ const Log: React.FC = () => {
 
     // 로그 파일 청크 단위 순차 로딩
     const fetchLog = useCallback(async () => {
+        // 새로운 선택이 들어오면 이전 요청을 취소할 수 있도록 컨트롤러 생성
+        const controller = new AbortController();
+        const signal = controller.signal;
+
+        // 이전 컨트롤러가 있으면 취소
+        try {
+            fetchLogAbortRef.current?.abort();
+        } catch (e) {
+            // 무시
+        }
+
+        fetchLogAbortRef.current = controller;
+
         setLoading(true);
+        setShowContent(false);
         setError(null);
         setAllLogLines([]);
         setTotalLines(0);
         setLoadedLines(0);
 
         try {
+            // selectedResult가 변경되면 즉시 아무것도 없도록 초기화
+            if (!selectedResult) {
+                setLoading(false);
+                setShowContent(false);
+                setAllLogLines([]);
+                setTotalLines(0);
+                setLoadedLines(0);
+
+                return;
+            }
+
+            const result = selectedResult; // non-null로 좁힘
+
             // 1단계: 파일 메타데이터 확인 (HEAD 요청)
-            const headResponse = await fetch(LOG_FILE_PATH, {method: 'HEAD'});
+            const headResponse = await fetch(`${LOG_FILE_PATH}?result=${encodeURIComponent(result)}`, {
+                method: 'HEAD',
+                signal
+            });
+
+            if (signal.aborted) {
+                return;
+            }
 
             // 2단계: 전체 파일 크기 확인
             const contentLength = headResponse.headers.get('content-length');
@@ -446,8 +511,16 @@ const Log: React.FC = () => {
             // 3단계: 파일이 작은 경우 전체 로딩, 큰 경우 청크 로딩
             if (fileSize < 50 * 1024 * 1024) { // 50MB 미만
                 // 작은 파일은 전체 로딩
-                const response = await fetch(LOG_FILE_PATH);
-                const text = await response.text();
+                const text = await (window.__resultsFetchParsed
+                    ? window.__resultsFetchParsed(`${LOG_FILE_PATH}?result=${encodeURIComponent(result)}`, {
+                        responseType: 'text',
+                        timeoutMs: 5000
+                    })
+                    : (await (await fetch(`${LOG_FILE_PATH}?result=${encodeURIComponent(result)}`, {signal})).text()));
+
+                if (signal.aborted) {
+                    return;
+                }
 
                 const lines = text.split(/\r?\n/);
                 setAllLogLines(lines);
@@ -455,26 +528,34 @@ const Log: React.FC = () => {
                 setLoadedLines(lines.length);
             } else {
                 // 대용량 파일은 청크 단위 로딩
-                await loadFileInChunks(fileSize);
+                await loadFileInChunks(fileSize, result, signal);
             }
 
             // 항상 첫 번째 청크에서 시작
             setCurrentChunkStart(0);
 
         } catch (err: any) {
+            if (err && err.name === 'AbortError') {
+                // 취소는 정상 경로
+                return;
+            }
+
             console.error('로그 파일 불러오기 오류:', err);
             setError(err.message || '로그 파일을 불러오는 중 오류가 발생했습니다.');
         } finally {
+            // 진행중인 컨트롤러 해제
+            fetchLogAbortRef.current = null;
+
             // 최소 1초 로딩 후 컨텐츠 표시
             setTimeout(() => {
                 setLoading(false);
                 setShowContent(true);
             }, 1000);
         }
-    }, []);
+    }, [selectedResult]);
 
     // 대용량 파일을 청크 단위로 로딩하는 함수
-    const loadFileInChunks = useCallback(async (fileSize: number) => {
+    const loadFileInChunks = useCallback(async (fileSize: number, resultName: string, signal?: AbortSignal) => {
         const chunkSize = 512 * 1024; // 512KB 청크
         let loadedData = '';
         let offset = 0;
@@ -483,15 +564,24 @@ const Log: React.FC = () => {
         setIsChunkLoading(true);
 
         while (offset < fileSize) {
+            if (signal?.aborted) {
+                throw new DOMException('aborted', 'AbortError');
+            }
+
             try {
                 const endByte = Math.min(offset + chunkSize - 1, fileSize - 1);
 
                 // Range 요청으로 청크 데이터 가져오기
-                const response = await fetch(LOG_FILE_PATH, {
+                const response = await fetch(`${LOG_FILE_PATH}?result=${encodeURIComponent(resultName)}`, {
                     headers: {
                         'Range': `bytes=${offset}-${endByte}`
-                    }
+                    },
+                    signal
                 });
+
+                if (signal?.aborted) {
+                    return;
+                }
 
                 const chunk = await response.text();
                 loadedData += chunk;
@@ -521,8 +611,12 @@ const Log: React.FC = () => {
             } catch (chunkError) {
                 console.error('청크 로딩 오류:', chunkError);
                 // 청크 로딩 실패 시 전체 파일 로딩 시도
-                const fallbackResponse = await fetch(LOG_FILE_PATH);
-                const fallbackText = await fallbackResponse.text();
+                const fallbackText = await (window.__resultsFetchParsed
+                    ? window.__resultsFetchParsed(`${LOG_FILE_PATH}?result=${encodeURIComponent(resultName)}`, {
+                        responseType: 'text',
+                        timeoutMs: 8000
+                    })
+                    : (await (await fetch(`${LOG_FILE_PATH}?result=${encodeURIComponent(resultName)}`)).text()));
                 allLines = fallbackText.split(/\r?\n/);
                 break;
             }
@@ -890,22 +984,17 @@ const Log: React.FC = () => {
             ref={containerRef}
             className="h-full w-full flex flex-col p-4 overflow-y-auto log-container"
             style={{
-                // 뿌옇게 되는 문제 방지를 위한 명시적 스타일 - 강화된 버전
-                filter: 'none',
-                backfaceVisibility: 'hidden',
-                WebkitBackfaceVisibility: 'hidden',
-                transform: 'translate3d(0, 0, 0)',
-                WebkitTransform: 'translate3d(0, 0, 0)',
-                willChange: 'auto',
                 WebkitFontSmoothing: 'antialiased',
                 MozOsxFontSmoothing: 'grayscale',
                 textRendering: 'optimizeLegibility',
-                // 강화된 안티엘리어싱 설정
                 fontSmooth: 'always',
                 fontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
                 WebkitFontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
                 textSizeAdjust: '100%',
                 WebkitTextSizeAdjust: '100%',
+                willChange: 'transform, opacity',
+                transform: 'translate3d(0,0,0)',
+                backfaceVisibility: 'hidden',
                 position: 'relative', // LogSpinner를 위한 상대 위치 설정
             }}
         >
@@ -956,6 +1045,7 @@ const Log: React.FC = () => {
 
                     {/* 검색 영역과 청크 네비게이션 */}
                     <div
+                        className="log-search-area"
                         style={{
                             margin: '0 20px 15px 20px',
                             display: 'flex',
@@ -976,6 +1066,11 @@ const Log: React.FC = () => {
                                 width: '800px',
                                 minWidth: '800px',
                                 maxWidth: '800px',
+                                WebkitFontSmoothing: 'antialiased',
+                                MozOsxFontSmoothing: 'grayscale',
+                                backfaceVisibility: 'hidden',
+                                transform: 'translate3d(0,0,0)',
+                                willChange: 'auto'
                             }}
                         >
                             {/* 검색 입력 및 네비게이션 */}
@@ -1231,23 +1326,18 @@ const Log: React.FC = () => {
                             display: 'flex',
                             alignItems: 'stretch',
                             justifyContent: 'flex-start',
-                            // 뿌옇게 되는 문제 방지 - 더 강력한 설정
                             opacity: 1,
-                            filter: 'none',
-                            backfaceVisibility: 'hidden',
-                            WebkitBackfaceVisibility: 'hidden',
-                            transform: 'translate3d(0, 0, 0)',
-                            WebkitTransform: 'translate3d(0, 0, 0)',
-                            willChange: 'auto',
                             WebkitFontSmoothing: 'antialiased',
                             MozOsxFontSmoothing: 'grayscale',
                             textRendering: 'optimizeLegibility',
-                            // 강화된 안티엘리어싱 설정
                             fontSmooth: 'always',
                             fontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
                             WebkitFontFeatureSettings: '"liga" 1, "kern" 1, "calt" 1',
                             textSizeAdjust: '100%',
                             WebkitTextSizeAdjust: '100%',
+                            willChange: 'transform, opacity',
+                            transform: 'translate3d(0,0,0)',
+                            backfaceVisibility: 'hidden',
                         }}
                     >
                         {loading && (
