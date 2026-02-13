@@ -155,6 +155,64 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
         return () => window.removeEventListener('resize', handleResize);
     }, [adjustTextSize]);
 
+    // 자동 전환 시(또는 tabActive 이벤트를 놓친 경우)도 확실히 재측정하도록 탭 활성 이벤트를 수신
+    useEffect(() => {
+        const onTabActive = (ev: Event) => {
+            try {
+                const detail = (ev as CustomEvent).detail as any;
+
+                // 전역 이벤트에서 탭명이 넘어오면 확인
+                if (detail && detail.newTab && detail.newTab !== 'Overview') {
+                    return;
+                }
+            } catch (e) {
+                // 무시
+            }
+
+            // 강제로 재측정
+            adjustTextSize();
+        };
+
+        const onGlobalSelect = (ev: Event) => {
+            try {
+                const d = (ev as CustomEvent).detail as any;
+                if (!d || d.tab !== 'Overview') {
+                    return;
+                }
+            } catch (e) {
+                // 무시
+            }
+            adjustTextSize();
+        };
+
+        window.addEventListener('tabActive', onTabActive as EventListener);
+        window.addEventListener('backboard.selectTab', onGlobalSelect as EventListener);
+
+        return () => {
+            window.removeEventListener('tabActive', onTabActive as EventListener);
+            window.removeEventListener('backboard.selectTab', onGlobalSelect as EventListener);
+        };
+    }, [adjustTextSize]);
+
+    // 마운트시 및 애니메이션 정리 후 보장된 재측정 (자동 전환에서 이벤트를 놓친 경우 보정)
+    useEffect(() => {
+        let raf: number | null = null;
+        const t = setTimeout(() => {
+            raf = requestAnimationFrame(() => adjustTextSize());
+        }, 40);
+
+        // 추가 안전장치: 몇 프레임 뒤 재시도
+        const retry = setTimeout(() => adjustTextSize(), 120);
+        return () => {
+            if (raf) {
+                cancelAnimationFrame(raf);
+            }
+
+            clearTimeout(t);
+            clearTimeout(retry);
+        };
+    }, [adjustTextSize]);
+
     // 지표 색상 결정 함수
     const getMetricColor = (metricId: string, data: any) => {
         const isProfitPositive = Number(data.totalProfitLossMetrics.totalProfitLoss) >= 0;
@@ -392,6 +450,46 @@ const FilteredEquityCurveWrapper = React.memo(() => {
         };
     }, [filteredTrades, updateLoadingState]);
 
+    // 마운트 타이밍으로 인해 'tabActive'를 놓친 경우가 있어서
+    // 1. 마운트 시 현재 탭이 Overview로 보이면 즉시 상태 갱신
+    // 2. 'tabActive' 이벤트를 수신하면 상태 갱신
+    useEffect(() => {
+        // 마운트 직후 DOM이 준비된 경우 filteredTrades가 이미 존재하면 바로 반영
+        try {
+            updateLoadingState();
+        } catch (e) {
+            // 무시
+        }
+
+        const handler = () => {
+            try {
+                updateLoadingState();
+            } catch (e) {
+                // 무시
+            }
+        };
+
+        // 탭 활성 이벤트 수신기 등록
+        const backboardHandler = (ev: Event) => {
+            try {
+                const d = (ev as CustomEvent).detail as any;
+                if (d && d.tab === 'Overview') {
+                    handler();
+                }
+            } catch (e) {
+                // 무시
+            }
+        };
+
+        window.addEventListener('tabActive', handler as EventListener);
+        window.addEventListener('backboard.selectTab', backboardHandler as EventListener);
+
+        return () => {
+            window.removeEventListener('tabActive', handler as EventListener);
+            window.removeEventListener('backboard.selectTab', backboardHandler as EventListener);
+        };
+    }, [updateLoadingState]);
+
     // 로딩 중이면 스피너 표시
     if (isLoading) {
         return <LoadingSpinner/>;
@@ -418,6 +516,12 @@ interface OverviewProps {
 
 const Overview = React.memo(({}: OverviewProps) => {
     const {filteredTrades, loading} = useTradeFilter();
+
+    // 거래 데이터가 없는 경우
+    if (!filteredTrades || filteredTrades.length === 1) {
+        return <NoDataMessage message={"거래 내역이 존재하지 않습니다."}/>;
+    }
+
     const [metricsData, setMetricsData] = useState<ReturnType<typeof calculatePerformanceMetrics> | null>(null);
     const [dataLoading, setDataLoading] = useState(true);
     const [isMounted, setIsMounted] = useState(false);

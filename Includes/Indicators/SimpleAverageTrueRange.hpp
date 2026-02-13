@@ -4,7 +4,7 @@
 #include "Engines/Indicator.hpp"
 
 /// Simple Average True Range
-class SimpleAverageTrueRange final : public Indicator {
+class BACKTESTING_API SimpleAverageTrueRange final : public Indicator {
  public:
   explicit SimpleAverageTrueRange(const string& name, const string& timeframe,
                                   const Plot& plot, double period);
@@ -13,8 +13,8 @@ class SimpleAverageTrueRange final : public Indicator {
   shared_ptr<BarData> reference_bar_;
   int symbol_idx_;
 
-  double double_period_;
   size_t sizet_period_;
+  double double_period_;
 
   // TR 계산용
   double prev_close_;

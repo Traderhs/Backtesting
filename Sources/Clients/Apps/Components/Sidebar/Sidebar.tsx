@@ -3,6 +3,7 @@ import 'react-datepicker/dist/react-datepicker.css'
 import {Button} from "@/Components/UI/Button.tsx"
 import {AnimatePresence, motion} from 'framer-motion'
 import {useLogo} from "@/Contexts/LogoContext"
+import {useResults} from '@/Contexts/ResultsContext';
 import FilterSection from "./FilterSection";
 import './Sidebar.css';
 
@@ -126,6 +127,7 @@ export default function Sidebar({
     const symbolListRef = useRef<HTMLDivElement>(null);
     const {preloadLogos} = useLogo();
     const sidebarRef = useRef<HTMLDivElement>(null);
+    const {selectedResult} = useResults();
 
     // 이전 활성 탭 인덱스를 저장하기 위한 Ref
     const prevActiveTabIndexRef = useRef<number | null>(null);
@@ -169,6 +171,23 @@ export default function Sidebar({
             preloadLogos(symbolNames);
         }
     }, [chartExpanded, config, preloadLogos]);
+
+    const hasSelectedResult = Boolean(selectedResult);
+
+    useEffect(() => {
+        const el = sidebarRef.current;
+        if (!el) {
+            return;
+        }
+
+        const editorOnly = !hasSelectedResult;
+        el.classList.toggle('sidebar-editor-only', Boolean(editorOnly));
+
+        // selectedResult가 없는 경우 전략 에디터로 강제 이동
+        if (editorOnly && activeTab !== 'StrategyEditor') {
+            onSelectTab('StrategyEditor');
+        }
+    }, [hasSelectedResult, activeTab, onSelectTab]);
 
     /**
      * 탭 전환 시 로딩 상태 및 애니메이션 방향 관리 함수
@@ -410,7 +429,7 @@ export default function Sidebar({
                         animate="visible"
                         whileHover="hover"
                         whileTap="tap"
-                        className={`sidebar-button-container main-button-container ${activeTab === "StrategyEditor" ? "active-sidebar-button" : ""}`}
+                        className={`sidebar-button-container main-button-container strategy-editor-container ${activeTab === "StrategyEditor" ? "active-sidebar-button" : ""}`}
                     >
                         <Button
                             variant={activeTab === "StrategyEditor" ? "default" : "ghost"}
@@ -422,393 +441,397 @@ export default function Sidebar({
                         </Button>
                     </motion.div>
 
-                    {/* 전체 요약 버튼 - 백테스팅 결과의 전체적인 요약 정보 제공 */}
-                    <motion.div
-                        custom={{index: 1, isActive: activeTab === "Overview"}}
-                        variants={itemVariants}
-                        initial="hidden"
-                        animate="visible"
-                        whileHover="hover"
-                        whileTap="tap"
-                        className={`sidebar-button-container main-button-container ${activeTab === "Overview" ? "active-sidebar-button" : ""}`}
-                    >
-                        <Button
-                            variant={activeTab === "Overview" ? "default" : "ghost"}
-                            className={`w-full justify-start sidebar-button ${activeTab === "Overview" ? "active" : ""}`}
-                            onClick={() => handleTabChange("Overview")}
-                        >
-                            <SidebarIcon name={'overview.ico'} alt="Overview" className="sidebar-icon"/>
-                            <span className="ml-2 button-text">전체 요약</span>
-                        </Button>
-                    </motion.div>
+                    {hasSelectedResult && (
+                        <>
+                            {/* 전체 요약 버튼 - 백테스팅 결과의 전체적인 요약 정보 제공 */}
+                            <motion.div
+                                custom={{index: 1, isActive: activeTab === "Overview"}}
+                                variants={itemVariants}
+                                initial="hidden"
+                                animate="visible"
+                                whileHover="hover"
+                                whileTap="tap"
+                                className={`sidebar-button-container main-button-container ${activeTab === "Overview" ? "active-sidebar-button" : ""}`}
+                            >
+                                <Button
+                                    variant={activeTab === "Overview" ? "default" : "ghost"}
+                                    className={`w-full justify-start sidebar-button ${activeTab === "Overview" ? "active" : ""}`}
+                                    onClick={() => handleTabChange("Overview")}
+                                >
+                                    <SidebarIcon name={'overview.ico'} alt="Overview" className="sidebar-icon"/>
+                                    <span className="ml-2 button-text">전체 요약</span>
+                                </Button>
+                            </motion.div>
 
-                    {/* 성과 지표 버튼 - 백테스팅 성능 메트릭 및 통계 지표 제공 */}
-                    <motion.div
-                        custom={{index: 2, isActive: activeTab === "Performance"}}
-                        variants={itemVariants}
-                        initial="hidden"
-                        animate="visible"
-                        whileHover="hover"
-                        whileTap="tap"
-                        className={`sidebar-button-container main-button-container ${activeTab === "Performance" ? "active-sidebar-button" : ""}`}
-                    >
-                        <Button
-                            variant={activeTab === "Performance" ? "default" : "ghost"}
-                            className={`w-full justify-start sidebar-button ${activeTab === "Performance" ? "active" : ""}`}
-                            onClick={() => handleTabChange("Performance")}
-                        >
-                            <SidebarIcon name={'performance.ico'} alt="Performance" className="sidebar-icon"/>
-                            <span className="ml-2 button-text">성과 지표</span>
-                        </Button>
-                    </motion.div>
+                            {/* 성과 지표 버튼 - 백테스팅 성능 메트릭 및 통계 지표 제공 */}
+                            <motion.div
+                                custom={{index: 2, isActive: activeTab === "Performance"}}
+                                variants={itemVariants}
+                                initial="hidden"
+                                animate="visible"
+                                whileHover="hover"
+                                whileTap="tap"
+                                className={`sidebar-button-container main-button-container ${activeTab === "Performance" ? "active-sidebar-button" : ""}`}
+                            >
+                                <Button
+                                    variant={activeTab === "Performance" ? "default" : "ghost"}
+                                    className={`w-full justify-start sidebar-button ${activeTab === "Performance" ? "active" : ""}`}
+                                    onClick={() => handleTabChange("Performance")}
+                                >
+                                    <SidebarIcon name={'performance.ico'} alt="Performance" className="sidebar-icon"/>
+                                    <span className="ml-2 button-text">성과 지표</span>
+                                </Button>
+                            </motion.div>
 
-                    {/* 분석 그래프 버튼 - 백테스팅 결과를 시각화한 그래프 모음 제공 */}
-                    <motion.div
-                        custom={{index: 3, isActive: activeTab === "Plot"}}
-                        variants={itemVariants}
-                        initial="hidden"
-                        animate="visible"
-                        whileHover="hover"
-                        whileTap="tap"
-                        className={`sidebar-button-container main-button-container ${activeTab === "Plot" || plotExpanded ? "active-sidebar-button" : ""} ${plotExpanded ? "plot-expanded-button" : ""}`}
-                    >
-                        <Button
-                            variant={activeTab === "Plot" ? "default" : "ghost"}
-                            className={`w-full justify-start sidebar-button ${activeTab === "Plot" || plotExpanded ? "active" : ""}`}
-                            onClick={handlePlotToggle}
-                        >
-                            <SidebarIcon name={'plot.ico'} alt="Plot" className="sidebar-icon"/>
-                            <span className="ml-2 button-text">분석 그래프</span>
-                            <span
-                                className={`expand-arrow ${plotExpanded ? "expand-arrow-expanded" : "expand-arrow-collapsed"}`}>
+                            {/* 분석 그래프 버튼 - 백테스팅 결과를 시각화한 그래프 모음 제공 */}
+                            <motion.div
+                                custom={{index: 3, isActive: activeTab === "Plot"}}
+                                variants={itemVariants}
+                                initial="hidden"
+                                animate="visible"
+                                whileHover="hover"
+                                whileTap="tap"
+                                className={`sidebar-button-container main-button-container ${activeTab === "Plot" || plotExpanded ? "active-sidebar-button" : ""} ${plotExpanded ? "plot-expanded-button" : ""}`}
+                            >
+                                <Button
+                                    variant={activeTab === "Plot" ? "default" : "ghost"}
+                                    className={`w-full justify-start sidebar-button ${activeTab === "Plot" || plotExpanded ? "active" : ""}`}
+                                    onClick={handlePlotToggle}
+                                >
+                                    <SidebarIcon name={'plot.ico'} alt="Plot" className="sidebar-icon"/>
+                                    <span className="ml-2 button-text">분석 그래프</span>
+                                    <span
+                                        className={`expand-arrow ${plotExpanded ? "expand-arrow-expanded" : "expand-arrow-collapsed"}`}>
                                 {plotExpanded ? "▼" : "▶"}
                             </span>
-                        </Button>
-                    </motion.div>
-
-                    {/* 분석 그래프 유형 클릭 핸들러 */}
-                    <AnimatePresence initial={false} mode="wait" onExitComplete={() => {
-                    }}>
-                        {plotExpanded && (
-                            <motion.div
-                                key="plot-type-list"
-                                initial={{opacity: 0, height: 0, marginTop: 0, marginBottom: 0}}
-                                animate={{
-                                    opacity: 1,
-                                    height: 'auto',
-                                    marginTop: '6px',
-                                    marginBottom: '-5px'
-                                }}
-                                exit={{
-                                    opacity: 0,
-                                    height: 0,
-                                    marginTop: 0,
-                                    marginBottom: 0,
-                                    y: -15,
-                                    transition: {
-                                        opacity: {duration: 0.25},
-                                        height: {duration: 0.4},
-                                        marginTop: {duration: 0.35},
-                                        marginBottom: {duration: 0.4},
-                                        y: {duration: 0.4}
-                                    }
-                                }}
-                                transition={{
-                                    duration: 0.35,
-                                    ease: [0.4, 0, 0.2, 1],
-                                    height: {duration: 0.35},
-                                    marginBottom: {duration: 0.35}
-                                }}
-                                className="sub-section-container"
-                            >
-                                {/* 자금 & 드로우다운 탭 */}
-                                <div key="plot-equity-drawdown" className="sub-section-item">
-                                    <motion.div
-                                        custom={{
-                                            index: 0,
-                                            isActive: activeTab === "Plot" && activePlotType === "equity-drawdown"
-                                        }}
-                                        variants={itemVariants}
-                                        initial="hidden"
-                                        animate="visible"
-                                        whileHover="hover"
-                                        whileTap="tap"
-                                        className={`symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "equity-drawdown" ? "active-symbol-button" : ""}`}
-                                    >
-                                        <Button
-                                            variant="ghost"
-                                            className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "equity-drawdown" ? "active" : ""}`}
-                                            onClick={() => handlePlotTypeClick("equity-drawdown")}
-                                        >
-                                            <span className="sub-button-text">자금 & 드로우다운</span>
-                                        </Button>
-                                    </motion.div>
-                                </div>
-
-                                {/* 손익 비교 탭 추가 */}
-                                <div key="plot-profit-loss" className="sub-section-item">
-                                    <motion.div
-                                        custom={{
-                                            index: 1,
-                                            isActive: activeTab === "Plot" && activePlotType === "profit-loss-comparison"
-                                        }}
-                                        variants={itemVariants}
-                                        initial="hidden"
-                                        animate="visible"
-                                        whileHover="hover"
-                                        whileTap="tap"
-                                        className={`symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "profit-loss-comparison" ? "active-symbol-button" : ""}`}
-                                    >
-                                        <Button
-                                            variant="ghost"
-                                            className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "profit-loss-comparison" ? "active" : ""}`}
-                                            onClick={() => handlePlotTypeClick("profit-loss-comparison")}
-                                        >
-                                            <span className="sub-button-text">시간별 순손익 비교</span>
-                                        </Button>
-                                    </motion.div>
-                                </div>
-
-                                {/* 보유 시간별 순손익 분포 탭 */}
-                                <div key="plot-holding-time-pnl" className="sub-section-item">
-                                    <motion.div
-                                        custom={{
-                                            index: 2,
-                                            isActive: activeTab === "Plot" && activePlotType === "holding-time-pnl-distribution"
-                                        }}
-                                        variants={itemVariants}
-                                        initial="hidden"
-                                        animate="visible"
-                                        whileHover="hover"
-                                        whileTap="tap"
-                                        className={`symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "holding-time-pnl-distribution" ? "active-symbol-button" : ""}`}
-                                    >
-                                        <Button
-                                            variant="ghost"
-                                            className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "holding-time-pnl-distribution" ? "active" : ""}`}
-                                            onClick={() => handlePlotTypeClick("holding-time-pnl-distribution")}
-                                        >
-                                            <span className="sub-button-text">보유 시간 순손익 분포</span>
-                                        </Button>
-                                    </motion.div>
-                                </div>
-
-                                {/* 심볼별 성과 추이 탭 */}
-                                <div key="plot-symbol-performance" className="sub-section-item">
-                                    <motion.div
-                                        custom={{
-                                            index: 3,
-                                            isActive: activeTab === "Plot" && activePlotType === "symbol-performance"
-                                        }}
-                                        variants={itemVariants}
-                                        initial="hidden"
-                                        animate="visible"
-                                        whileHover="hover"
-                                        whileTap="tap"
-                                        className={`symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "symbol-performance" ? "active-symbol-button" : ""}`}
-                                    >
-                                        <Button
-                                            variant="ghost"
-                                            className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "symbol-performance" ? "active" : ""}`}
-                                            onClick={() => handlePlotTypeClick("symbol-performance")}
-                                        >
-                                            <span className="sub-button-text">심볼별 성과 추이</span>
-                                        </Button>
-                                    </motion.div>
-                                </div>
+                                </Button>
                             </motion.div>
-                        )}
-                    </AnimatePresence>
 
-                    {/* 거래 차트 버튼 - 개별 심볼의 가격 차트와 거래 포인트 표시 */}
-                    <motion.div
-                        custom={{index: 4, isActive: activeTab === "Chart"}}
-                        variants={itemVariants}
-                        initial="hidden"
-                        animate="visible"
-                        whileHover="hover"
-                        whileTap="tap"
-                        className={`sidebar-button-container main-button-container ${activeTab === "Chart" || chartExpanded ? "active-sidebar-button" : ""} ${chartExpanded ? "plot-expanded-button" : ""}`}
-                    >
-                        <Button
-                            variant={activeTab === "Chart" ? "default" : "ghost"}
-                            className={`w-full justify-start sidebar-button ${activeTab === "Chart" || chartExpanded ? "active" : ""}`}
-                            onClick={handleChartToggle}
-                        >
-                            <SidebarIcon name={'chart.ico'} alt="Chart" className="sidebar-icon"/>
-                            <span className="ml-2 button-text">거래 차트</span>
-                            <span
-                                className={`expand-arrow ${chartExpanded ? "expand-arrow-expanded" : "expand-arrow-collapsed"}`}>
-                                {chartExpanded ? "▼" : "▶"}
-                            </span>
-                        </Button>
-                    </motion.div>
-
-                    {/* AnimatePresence와 심볼 리스트 */}
-                    <AnimatePresence initial={false} mode="wait" onExitComplete={() => {
-                    }}>
-                        {chartExpanded && config && config["심볼"] && (
-                            <motion.div
-                                ref={symbolListRef}
-                                key="chart-symbol-list"
-                                initial={{opacity: 0, height: 0, marginTop: 0, marginBottom: 0}}
-                                animate={{
-                                    opacity: 1,
-                                    height: 'auto',
-                                    marginTop: '6px',
-                                    marginBottom: '-5px'
-                                }}
-                                exit={{
-                                    opacity: 0,
-                                    height: 0,
-                                    marginTop: 0,
-                                    marginBottom: 0,
-                                    y: -15,
-                                    transition: {
-                                        opacity: {duration: 0.25},
-                                        height: {duration: 0.4},
-                                        marginTop: {duration: 0.35},
-                                        marginBottom: {duration: 0.4},
-                                        y: {duration: 0.4}
-                                    }
-                                }}
-                                transition={{
-                                    duration: 0.35,
-                                    ease: [0.4, 0, 0.2, 1],
-                                    height: {duration: 0.35},
-                                    marginBottom: {duration: 0.35}
-                                }}
-                                className="sub-section-container"
-                            >
-                                {config["심볼"].map((sym: any, index: number) => {
-                                    const symbolName = sym["심볼 이름"];
-                                    const isCurrentSymbolActive = activeTab === "Chart" && symbolName === activeSymbol;
-                                    const totalSymbols = config["심볼"].length;
-
-                                    return (
-                                        <div key={`symbol-wrapper-${index}`} className="sub-section-item">
+                            {/* 분석 그래프 유형 클릭 핸들러 */}
+                            <AnimatePresence initial={false} mode="wait" onExitComplete={() => {
+                            }}>
+                                {plotExpanded && (
+                                    <motion.div
+                                        key="plot-type-list"
+                                        initial={{opacity: 0, height: 0, marginTop: 0, marginBottom: 0}}
+                                        animate={{
+                                            opacity: 1,
+                                            height: 'auto',
+                                            marginTop: '6px',
+                                            marginBottom: '-5px'
+                                        }}
+                                        exit={{
+                                            opacity: 0,
+                                            height: 0,
+                                            marginTop: 0,
+                                            marginBottom: 0,
+                                            y: -15,
+                                            transition: {
+                                                opacity: {duration: 0.25},
+                                                height: {duration: 0.4},
+                                                marginTop: {duration: 0.35},
+                                                marginBottom: {duration: 0.4},
+                                                y: {duration: 0.4}
+                                            }
+                                        }}
+                                        transition={{
+                                            duration: 0.35,
+                                            ease: [0.4, 0, 0.2, 1],
+                                            height: {duration: 0.35},
+                                            marginBottom: {duration: 0.35}
+                                        }}
+                                        className="sub-section-container"
+                                    >
+                                        {/* 자금 & 드로우다운 탭 */}
+                                        <div key="plot-equity-drawdown" className="sub-section-item">
                                             <motion.div
-                                                key={index}
-                                                custom={{index: index, isActive: isCurrentSymbolActive}}
-                                                initial={{opacity: 0, x: -15}}
-                                                animate={{
-                                                    opacity: 1,
-                                                    x: 0,
-                                                    transition: {
-                                                        delay: getSymbolDelay(index, totalSymbols),
-                                                        duration: 0.2,
-                                                    }
+                                                custom={{
+                                                    index: 0,
+                                                    isActive: activeTab === "Plot" && activePlotType === "equity-drawdown"
                                                 }}
-                                                whileHover={{
-                                                    borderColor: 'rgba(255, 215, 0, 0.7)',
-                                                    boxShadow: '0 0 9px rgba(255, 215, 0, 0.5)',
-                                                    scale: 1.03,
-                                                    transition: {duration: 0.2}
-                                                }}
-                                                whileTap={{
-                                                    backgroundColor: 'rgba(52, 46, 14, 1)',
-                                                    boxShadow: isCurrentSymbolActive
-                                                        ? 'inset 0 0 0 1000px rgba(255, 215, 0, 0.2), 0 0 8px rgba(255, 215, 0, 0.3)'
-                                                        : 'inset 0 0 0 1000px rgba(255, 215, 0, 0.15), 0 0 8px rgba(255, 215, 0, 0.3)',
-                                                    scale: 0.98,
-                                                    transition: {duration: 0.1}
-                                                }}
-                                                className={`symbol-button-container sub-button-container ${isCurrentSymbolActive ? "active-symbol-button" : ""}`}
+                                                variants={itemVariants}
+                                                initial="hidden"
+                                                animate="visible"
+                                                whileHover="hover"
+                                                whileTap="tap"
+                                                className={`symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "equity-drawdown" ? "active-symbol-button" : ""}`}
                                             >
                                                 <Button
                                                     variant="ghost"
-                                                    disabled={activeTab === "Chart" && isChartLoading}
-                                                    className={`w-full justify-start symbol-button ${isCurrentSymbolActive ? "active" : ""} ${activeTab === "Chart" && isChartLoading ? "chart-loading-disabled cursor-not-allowed" : ""}`}
-                                                    onClick={() => handleChartSymbolClick(sym)}
+                                                    className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "equity-drawdown" ? "active" : ""}`}
+                                                    onClick={() => handlePlotTypeClick("equity-drawdown")}
                                                 >
-                                                    <SymbolLogoImage
-                                                        symbolName={symbolName}
-                                                        isActive={isCurrentSymbolActive}
-                                                    />
-                                                    <span
-                                                        className="sub-button-text symbol-text-limited">{symbolName}</span>
+                                                    <span className="sub-button-text">자금 & 드로우다운</span>
                                                 </Button>
                                             </motion.div>
                                         </div>
-                                    );
-                                })}
+
+                                        {/* 손익 비교 탭 추가 */}
+                                        <div key="plot-profit-loss" className="sub-section-item">
+                                            <motion.div
+                                                custom={{
+                                                    index: 1,
+                                                    isActive: activeTab === "Plot" && activePlotType === "profit-loss-comparison"
+                                                }}
+                                                variants={itemVariants}
+                                                initial="hidden"
+                                                animate="visible"
+                                                whileHover="hover"
+                                                whileTap="tap"
+                                                className={`symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "profit-loss-comparison" ? "active-symbol-button" : ""}`}
+                                            >
+                                                <Button
+                                                    variant="ghost"
+                                                    className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "profit-loss-comparison" ? "active" : ""}`}
+                                                    onClick={() => handlePlotTypeClick("profit-loss-comparison")}
+                                                >
+                                                    <span className="sub-button-text">시간별 순손익 비교</span>
+                                                </Button>
+                                            </motion.div>
+                                        </div>
+
+                                        {/* 보유 시간별 순손익 분포 탭 */}
+                                        <div key="plot-holding-time-pnl" className="sub-section-item">
+                                            <motion.div
+                                                custom={{
+                                                    index: 2,
+                                                    isActive: activeTab === "Plot" && activePlotType === "holding-time-pnl-distribution"
+                                                }}
+                                                variants={itemVariants}
+                                                initial="hidden"
+                                                animate="visible"
+                                                whileHover="hover"
+                                                whileTap="tap"
+                                                className={`symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "holding-time-pnl-distribution" ? "active-symbol-button" : ""}`}
+                                            >
+                                                <Button
+                                                    variant="ghost"
+                                                    className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "holding-time-pnl-distribution" ? "active" : ""}`}
+                                                    onClick={() => handlePlotTypeClick("holding-time-pnl-distribution")}
+                                                >
+                                                    <span className="sub-button-text">보유 시간 순손익 분포</span>
+                                                </Button>
+                                            </motion.div>
+                                        </div>
+
+                                        {/* 심볼별 성과 추이 탭 */}
+                                        <div key="plot-symbol-performance" className="sub-section-item">
+                                            <motion.div
+                                                custom={{
+                                                    index: 3,
+                                                    isActive: activeTab === "Plot" && activePlotType === "symbol-performance"
+                                                }}
+                                                variants={itemVariants}
+                                                initial="hidden"
+                                                animate="visible"
+                                                whileHover="hover"
+                                                whileTap="tap"
+                                                className={`symbol-button-container sub-button-container ${activeTab === "Plot" && activePlotType === "symbol-performance" ? "active-symbol-button" : ""}`}
+                                            >
+                                                <Button
+                                                    variant="ghost"
+                                                    className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "symbol-performance" ? "active" : ""}`}
+                                                    onClick={() => handlePlotTypeClick("symbol-performance")}
+                                                >
+                                                    <span className="sub-button-text">심볼별 성과 추이</span>
+                                                </Button>
+                                            </motion.div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* 거래 차트 버튼 - 개별 심볼의 가격 차트와 거래 포인트 표시 */}
+                            <motion.div
+                                custom={{index: 4, isActive: activeTab === "Chart"}}
+                                variants={itemVariants}
+                                initial="hidden"
+                                animate="visible"
+                                whileHover="hover"
+                                whileTap="tap"
+                                className={`sidebar-button-container main-button-container ${activeTab === "Chart" || chartExpanded ? "active-sidebar-button" : ""} ${chartExpanded ? "plot-expanded-button" : ""}`}
+                            >
+                                <Button
+                                    variant={activeTab === "Chart" ? "default" : "ghost"}
+                                    className={`w-full justify-start sidebar-button ${activeTab === "Chart" || chartExpanded ? "active" : ""}`}
+                                    onClick={handleChartToggle}
+                                >
+                                    <SidebarIcon name={'chart.ico'} alt="Chart" className="sidebar-icon"/>
+                                    <span className="ml-2 button-text">거래 차트</span>
+                                    <span
+                                        className={`expand-arrow ${chartExpanded ? "expand-arrow-expanded" : "expand-arrow-collapsed"}`}>
+                                {chartExpanded ? "▼" : "▶"}
+                            </span>
+                                </Button>
                             </motion.div>
-                        )}
-                    </AnimatePresence>
 
-                    {/* --- 하단 탭 그룹 --- */}
-                    <div
-                        className="flex flex-col space-y-5"
-                    >
-                        {/* 거래 내역 버튼 */}
-                        <motion.div
-                            custom={{index: 5, isActive: activeTab === "TradeList"}}
-                            variants={itemVariants}
-                            initial="hidden"
-                            animate="visible"
-                            whileHover="hover"
-                            whileTap="tap"
-                            className={`sidebar-button-container main-button-container ${activeTab === "TradeList" ? "active-sidebar-button" : ""}`}
-                        >
-                            <Button
-                                variant={activeTab === "TradeList" ? "default" : "ghost"}
-                                className={`w-full justify-start sidebar-button ${activeTab === "TradeList" ? "active" : ""}`}
-                                onClick={() => handleTabChange("TradeList")}
+                            {/* AnimatePresence와 심볼 리스트 */}
+                            <AnimatePresence initial={false} mode="wait" onExitComplete={() => {
+                            }}>
+                                {chartExpanded && config && config["심볼"] && (
+                                    <motion.div
+                                        ref={symbolListRef}
+                                        key="chart-symbol-list"
+                                        initial={{opacity: 0, height: 0, marginTop: 0, marginBottom: 0}}
+                                        animate={{
+                                            opacity: 1,
+                                            height: 'auto',
+                                            marginTop: '6px',
+                                            marginBottom: '-5px'
+                                        }}
+                                        exit={{
+                                            opacity: 0,
+                                            height: 0,
+                                            marginTop: 0,
+                                            marginBottom: 0,
+                                            y: -15,
+                                            transition: {
+                                                opacity: {duration: 0.25},
+                                                height: {duration: 0.4},
+                                                marginTop: {duration: 0.35},
+                                                marginBottom: {duration: 0.4},
+                                                y: {duration: 0.4}
+                                            }
+                                        }}
+                                        transition={{
+                                            duration: 0.35,
+                                            ease: [0.4, 0, 0.2, 1],
+                                            height: {duration: 0.35},
+                                            marginBottom: {duration: 0.35}
+                                        }}
+                                        className="sub-section-container"
+                                    >
+                                        {config["심볼"].map((sym: any, index: number) => {
+                                            const symbolName = sym["심볼 이름"];
+                                            const isCurrentSymbolActive = activeTab === "Chart" && symbolName === activeSymbol;
+                                            const totalSymbols = config["심볼"].length;
+
+                                            return (
+                                                <div key={`symbol-wrapper-${index}`} className="sub-section-item">
+                                                    <motion.div
+                                                        key={index}
+                                                        custom={{index: index, isActive: isCurrentSymbolActive}}
+                                                        initial={{opacity: 0, x: -15}}
+                                                        animate={{
+                                                            opacity: 1,
+                                                            x: 0,
+                                                            transition: {
+                                                                delay: getSymbolDelay(index, totalSymbols),
+                                                                duration: 0.2,
+                                                            }
+                                                        }}
+                                                        whileHover={{
+                                                            borderColor: 'rgba(255, 215, 0, 0.7)',
+                                                            boxShadow: '0 0 9px rgba(255, 215, 0, 0.5)',
+                                                            scale: 1.03,
+                                                            transition: {duration: 0.2}
+                                                        }}
+                                                        whileTap={{
+                                                            backgroundColor: 'rgba(52, 46, 14, 1)',
+                                                            boxShadow: isCurrentSymbolActive
+                                                                ? 'inset 0 0 0 1000px rgba(255, 215, 0, 0.2), 0 0 8px rgba(255, 215, 0, 0.3)'
+                                                                : 'inset 0 0 0 1000px rgba(255, 215, 0, 0.15), 0 0 8px rgba(255, 215, 0, 0.3)',
+                                                            scale: 0.98,
+                                                            transition: {duration: 0.1}
+                                                        }}
+                                                        className={`symbol-button-container sub-button-container ${isCurrentSymbolActive ? "active-symbol-button" : ""}`}
+                                                    >
+                                                        <Button
+                                                            variant="ghost"
+                                                            disabled={activeTab === "Chart" && isChartLoading}
+                                                            className={`w-full justify-start symbol-button ${isCurrentSymbolActive ? "active" : ""} ${activeTab === "Chart" && isChartLoading ? "chart-loading-disabled cursor-not-allowed" : ""}`}
+                                                            onClick={() => handleChartSymbolClick(sym)}
+                                                        >
+                                                            <SymbolLogoImage
+                                                                symbolName={symbolName}
+                                                                isActive={isCurrentSymbolActive}
+                                                            />
+                                                            <span
+                                                                className="sub-button-text symbol-text-limited">{symbolName}</span>
+                                                        </Button>
+                                                    </motion.div>
+                                                </div>
+                                            );
+                                        })}
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+
+                            {/* --- 하단 탭 그룹 --- */}
+                            <div
+                                className="flex flex-col space-y-5"
                             >
-                                <SidebarIcon name={'trade_list.ico'} alt="Trade List" className="sidebar-icon"/>
-                                <span className="ml-2 button-text">거래 내역</span>
-                            </Button>
-                        </motion.div>
+                                {/* 거래 내역 버튼 */}
+                                <motion.div
+                                    custom={{index: 5, isActive: activeTab === "TradeList"}}
+                                    variants={itemVariants}
+                                    initial="hidden"
+                                    animate="visible"
+                                    whileHover="hover"
+                                    whileTap="tap"
+                                    className={`sidebar-button-container main-button-container ${activeTab === "TradeList" ? "active-sidebar-button" : ""}`}
+                                >
+                                    <Button
+                                        variant={activeTab === "TradeList" ? "default" : "ghost"}
+                                        className={`w-full justify-start sidebar-button ${activeTab === "TradeList" ? "active" : ""}`}
+                                        onClick={() => handleTabChange("TradeList")}
+                                    >
+                                        <SidebarIcon name={'trade_list.ico'} alt="Trade List" className="sidebar-icon"/>
+                                        <span className="ml-2 button-text">거래 내역</span>
+                                    </Button>
+                                </motion.div>
 
-                        {/* 거래 필터 섹션 */}
-                        <FilterSection
-                            timeframe={timeframe}
-                        />
+                                {/* 거래 필터 섹션 */}
+                                <FilterSection
+                                    timeframe={timeframe}
+                                />
 
-                        {/* 백테스팅 설정 버튼 */}
-                        <motion.div
-                            custom={{index: 6, isActive: activeTab === "Config"}}
-                            variants={itemVariants}
-                            initial="hidden"
-                            animate="visible"
-                            whileHover="hover"
-                            whileTap="tap"
-                            className={`sidebar-button-container main-button-container ${activeTab === "Config" ? "active-sidebar-button" : ""}`}
-                        >
-                            <Button
-                                variant={activeTab === "Config" ? "default" : "ghost"}
-                                className={`w-full justify-start sidebar-button ${activeTab === "Config" ? "active" : ""}`}
-                                onClick={() => handleTabChange("Config")}
-                            >
-                                <SidebarIcon name={'config.ico'} alt="Config" className="sidebar-icon"/>
-                                <span className="ml-2 button-text">백테스팅 설정</span>
-                            </Button>
-                        </motion.div>
+                                {/* 백테스팅 설정 버튼 */}
+                                <motion.div
+                                    custom={{index: 6, isActive: activeTab === "Config"}}
+                                    variants={itemVariants}
+                                    initial="hidden"
+                                    animate="visible"
+                                    whileHover="hover"
+                                    whileTap="tap"
+                                    className={`sidebar-button-container main-button-container ${activeTab === "Config" ? "active-sidebar-button" : ""}`}
+                                >
+                                    <Button
+                                        variant={activeTab === "Config" ? "default" : "ghost"}
+                                        className={`w-full justify-start sidebar-button ${activeTab === "Config" ? "active" : ""}`}
+                                        onClick={() => handleTabChange("Config")}
+                                    >
+                                        <SidebarIcon name={'config.ico'} alt="Config" className="sidebar-icon"/>
+                                        <span className="ml-2 button-text">백테스팅 설정</span>
+                                    </Button>
+                                </motion.div>
 
-                        {/* 백테스팅 로그 버튼 */}
-                        <motion.div
-                            custom={{index: 7, isActive: activeTab === "Log"}}
-                            variants={itemVariants}
-                            initial="hidden"
-                            animate="visible"
-                            whileHover="hover"
-                            whileTap="tap"
-                            className={`sidebar-button-container main-button-container last-button ${activeTab === "Log" ? "active-sidebar-button" : ""}`}
-                        >
-                            <Button
-                                variant={activeTab === "Log" ? "default" : "ghost"}
-                                className={`w-full justify-start sidebar-button ${activeTab === "Log" ? "active" : ""}`}
-                                onClick={() => handleTabChange("Log")}
-                            >
-                                <SidebarIcon name={'log.ico'} alt="Log" className="sidebar-icon"/>
-                                <span className="ml-2 button-text">백테스팅 로그</span>
-                            </Button>
-                        </motion.div>
+                                {/* 백테스팅 로그 버튼 */}
+                                <motion.div
+                                    custom={{index: 7, isActive: activeTab === "Log"}}
+                                    variants={itemVariants}
+                                    initial="hidden"
+                                    animate="visible"
+                                    whileHover="hover"
+                                    whileTap="tap"
+                                    className={`sidebar-button-container main-button-container last-button ${activeTab === "Log" ? "active-sidebar-button" : ""}`}
+                                >
+                                    <Button
+                                        variant={activeTab === "Log" ? "default" : "ghost"}
+                                        className={`w-full justify-start sidebar-button ${activeTab === "Log" ? "active" : ""}`}
+                                        onClick={() => handleTabChange("Log")}
+                                    >
+                                        <SidebarIcon name={'log.ico'} alt="Log" className="sidebar-icon"/>
+                                        <span className="ml-2 button-text">백테스팅 로그</span>
+                                    </Button>
+                                </motion.div>
 
-                        {/* 백테스팅 로그 버튼 밑 공간 */}
-                        <div style={{height: '50px'}}></div>
-                    </div>
-                    {/* --- 하단 탭 그룹 끝 --- */}
+                                {/* 백테스팅 로그 버튼 밑 공간 */}
+                                <div style={{height: '50px'}}></div>
+                            </div>
+                            {/* --- 하단 탭 그룹 끝 --- */}
+                        </>
+                    )}
                 </div>
             </div>
         </div>

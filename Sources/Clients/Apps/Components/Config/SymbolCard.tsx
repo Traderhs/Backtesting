@@ -24,10 +24,10 @@ interface ExchangeInfo {
     pricePrecision: number
     qtyStep: number
     qtyPrecision: number
-    maxOrderQty: number
-    minOrderQty: number
     maxMarketOrderQty: number
     minMarketOrderQty: number
+    maxOrderQty: number
+    minOrderQty: number
     minNotional: number
     liquidationFee: number
 }
@@ -169,7 +169,10 @@ const SymbolCard = memo(({
 
     // 심볼 변경 시 데이터 업데이트 및 스크롤바 재확인
     const updateSymbolData = useCallback((symbolName: string) => {
-        if (symbolName === currentData.symbol) return; // 이미 선택된 심볼이면 스킵
+        // 이미 선택된 심볼이면 스킵
+        if (symbolName === currentData.symbol) {
+            return;
+        }
 
         // 현재 심볼과 다음 심볼을 기록
         prevSymbolRef.current = currentData.symbol;
@@ -177,7 +180,9 @@ const SymbolCard = memo(({
 
         // 심볼 데이터 찾기
         const symbolData = symbols.find(s => s.symbol === symbolName);
-        if (!symbolData) return;
+        if (!symbolData) {
+            return;
+        }
 
         // 즉시 데이터 변경 (로딩 상태 없음)
         setCurrentData({
@@ -509,18 +514,6 @@ const SymbolCard = memo(({
                             <div className="exchange-info-row">
                                 <div className="exchange-info-row-inner">
                                     <span className="exchange-info-bullet">•</span>
-                                    <span className="exchange-info-label">지정가 최대 수량</span>
-                                </div>
-                            </div>
-                            <div className="exchange-info-row">
-                                <div className="exchange-info-row-inner">
-                                    <span className="exchange-info-bullet">•</span>
-                                    <span className="exchange-info-label">지정가 최소 수량</span>
-                                </div>
-                            </div>
-                            <div className="exchange-info-row">
-                                <div className="exchange-info-row-inner">
-                                    <span className="exchange-info-bullet">•</span>
                                     <span className="exchange-info-label">시장가 최대 수량</span>
                                 </div>
                             </div>
@@ -528,6 +521,18 @@ const SymbolCard = memo(({
                                 <div className="exchange-info-row-inner">
                                     <span className="exchange-info-bullet">•</span>
                                     <span className="exchange-info-label">시장가 최소 수량</span>
+                                </div>
+                            </div>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-bullet">•</span>
+                                    <span className="exchange-info-label">지정가 최대 수량</span>
+                                </div>
+                            </div>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-bullet">•</span>
+                                    <span className="exchange-info-label">지정가 최소 수량</span>
                                 </div>
                             </div>
                             <div className="exchange-info-row">
@@ -576,16 +581,6 @@ const SymbolCard = memo(({
                             </div>
                             <div className="exchange-info-row">
                                 <div className="exchange-info-row-inner">
-                                    <span className="exchange-info-value">{data.maxOrderQty.toLocaleString()}</span>
-                                </div>
-                            </div>
-                            <div className="exchange-info-row">
-                                <div className="exchange-info-row-inner">
-                                    <span className="exchange-info-value">{trimEndZeros(data.minOrderQty)}</span>
-                                </div>
-                            </div>
-                            <div className="exchange-info-row">
-                                <div className="exchange-info-row-inner">
                                     <span
                                         className="exchange-info-value">{data.maxMarketOrderQty.toLocaleString()}</span>
                                 </div>
@@ -593,6 +588,16 @@ const SymbolCard = memo(({
                             <div className="exchange-info-row">
                                 <div className="exchange-info-row-inner">
                                     <span className="exchange-info-value">{trimEndZeros(data.minMarketOrderQty)}</span>
+                                </div>
+                            </div>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-value">{data.maxOrderQty.toLocaleString()}</span>
+                                </div>
+                            </div>
+                            <div className="exchange-info-row">
+                                <div className="exchange-info-row-inner">
+                                    <span className="exchange-info-value">{trimEndZeros(data.minOrderQty)}</span>
                                 </div>
                             </div>
                             <div className="exchange-info-row">
@@ -615,7 +620,9 @@ const SymbolCard = memo(({
 
     // 레버리지 구간 렌더링 함수
     const renderLeverageBrackets = (data?: LeverageBrackets) => {
-        if (!data || !data.brackets || data.brackets.length === 0) return null;
+        if (!data || !data.brackets || data.brackets.length === 0) {
+            return null;
+        }
 
         // 가로선 너비 계산을 위한 ref들
         const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -625,14 +632,18 @@ const SymbolCard = memo(({
 
         // 가로선 너비를 조정하는 함수
         const adjustSeparatorWidths = () => {
-            if (!rightSectionRef.current) return;
+            if (!rightSectionRef.current) {
+                return;
+            }
 
             const rightWidth = rightSectionRef.current.scrollWidth;
             const visibleWidth = rightSectionRef.current.clientWidth;
 
             // 각 구분선의 너비 업데이트
             separatorRefs.current.forEach((separator) => {
-                if (!separator) return;
+                if (!separator) {
+                    return;
+                }
 
                 // 스크롤 영역이 컨테이너보다 넓으면 스크롤 너비를, 아니면 컨테이너 너비를 사용
                 const width = Math.max(rightWidth, visibleWidth);
@@ -874,7 +885,9 @@ const SymbolCard = memo(({
 
     // 펀딩 비율 렌더링 함수
     const renderFundingRates = (data?: FundingRates) => {
-        if (!data) return null;
+        if (!data) {
+            return null;
+        }
 
         return (
             <motion.div
@@ -1320,13 +1333,13 @@ const SymbolCard = memo(({
                         >
                             {hasExchangeInfo && renderExchangeInfo(currentData.exchangeInfo)}
                             {hasLeverageBrackets && renderLeverageBrackets(currentData.leverageBrackets)}
-                            {hasFundingRates && renderFundingRates(currentData.fundingRates)}
                             {renderBar("트레이딩 바 데이터", currentData.trading)}
                             {hasMagnifier && renderBar("돋보기 바 데이터", currentData.magnifier)}
                             {currentData.reference && currentData.reference.map((refBar, index) =>
                                 renderBar(currentData.reference.length === 1 ? "참조 바 데이터" : `참조 바 데이터 ${index + 1}`, refBar)
                             )}
                             {renderBar("마크 가격 바 데이터", currentData.mark)}
+                            {hasFundingRates && renderFundingRates(currentData.fundingRates)}
                         </motion.div>
                     </AnimatePresence>
                 </div>

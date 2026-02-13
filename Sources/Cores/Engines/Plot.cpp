@@ -30,33 +30,31 @@ string Rgba::RgbaToHex() const {
   return oss.str();
 }
 
-const Rgba Rgba::red = Rgba(255, 82, 82, 1);       // 빨강
-const Rgba Rgba::orange = Rgba(255, 152, 0, 1);    // 주황
-const Rgba Rgba::yellow = Rgba(255, 245, 157, 1);  // 노랑
-const Rgba Rgba::green = Rgba(76, 175, 80, 1);     // 초록
-const Rgba Rgba::cyan = Rgba(0, 188, 212, 1);      // 청록
-const Rgba Rgba::blue = Rgba(41, 98, 255, 1);      // 파랑
-const Rgba Rgba::purple = Rgba(103, 58, 183, 1);   // 보라
-const Rgba Rgba::pink = Rgba(156, 39, 176, 1);     // 검정
-const Rgba Rgba::gray = Rgba(120, 123, 134, 1);    // 검정
-const Rgba Rgba::black = Rgba(0, 0, 0, 1);         // 검정
-const Rgba Rgba::white = Rgba(255, 255, 255, 1);   // 흰색
+BACKTESTING_API const Rgba Rgba::red = Rgba(255, 82, 82, 1);       // 빨강
+BACKTESTING_API const Rgba Rgba::orange = Rgba(255, 152, 0, 1);    // 주황
+BACKTESTING_API const Rgba Rgba::yellow = Rgba(255, 245, 157, 1);  // 노랑
+BACKTESTING_API const Rgba Rgba::green = Rgba(76, 175, 80, 1);     // 초록
+BACKTESTING_API const Rgba Rgba::cyan = Rgba(0, 188, 212, 1);      // 청록
+BACKTESTING_API const Rgba Rgba::blue = Rgba(41, 98, 255, 1);      // 파랑
+BACKTESTING_API const Rgba Rgba::purple = Rgba(103, 58, 183, 1);   // 보라
+BACKTESTING_API const Rgba Rgba::pink = Rgba(156, 39, 176, 1);     // 검정
+BACKTESTING_API const Rgba Rgba::gray = Rgba(120, 123, 134, 1);    // 검정
+BACKTESTING_API const Rgba Rgba::black = Rgba(0, 0, 0, 1);         // 검정
+BACKTESTING_API const Rgba Rgba::white = Rgba(255, 255, 255, 1);   // 흰색
 
 void Rgba::IsValidRgb(const string& color_name, const int value) {
   if (value < 0 || value > 255) {
-    Logger::LogAndThrowError(format("지정된 {} 값 [{}]은(는) RGB 범위 "
-                                    "[0 - 255] 사이로 지정해야 합니다.",
-                                    color_name, to_string(value)),
-                             __FILE__, __LINE__);
+    throw runtime_error(format(
+        "지정된 {} 값 [{}]은(는) RGB 범위 [0 - 255] 사이로 지정해야 합니다.",
+        color_name, to_string(value)));
   }
 }
 
 void Rgba::IsValidAlpha(const float value) {
   if (value < 0 || value > 1) {
-    Logger::LogAndThrowError(format("지정된 Alpha 값 [{}]은(는) "
-                                    "[0 - 1] 사이로 지정해야 합니다.",
-                                    to_string(value)),
-                             __FILE__, __LINE__);
+    throw runtime_error(
+        format("지정된 Alpha 값 [{}]은(는) [0 - 1] 사이로 지정해야 합니다.",
+               to_string(value)));
   }
 }
 
@@ -75,40 +73,36 @@ Plot::Plot(const char line_width, const LineStyle line_style,
       format_(format),
       precision_(precision) {
   if (line_width < 1 || line_width > 4) {
-    Logger::LogAndThrowError(std::format("주어진 플롯의 선 굵기 [{}]은(는) 1 "
-                                         "이상, 4 이하로 설정해야 합니다.",
-                                         to_string(line_width)),
-                             __FILE__, __LINE__);
+    throw runtime_error(std::format(
+        "주어진 플롯의 선 굵기 [{}]은(는) 1 이상, 4 이하로 설정해야 합니다.",
+        to_string(line_width)));
   }
 
   if (plot_point_markers &&
       (point_markers_radius < 1 || point_markers_radius > 4)) {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         std::format("주어진 플롯의 포인트 마커의 픽셀 [{}]은(는) 1 이상, "
                     "4 이하로 설정해야 합니다.",
-                    to_string(point_markers_radius)),
-        __FILE__, __LINE__);
+                    to_string(point_markers_radius)));
   }
 
   if (!overlay && pane_name.empty()) {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         "주어진 플롯이 오버레이 하지 않는다면 반드시 페인 이름을 가져야 "
-        "합니다.",
-        __FILE__, __LINE__);
+        "합니다.");
   }
 
   if (precision) {
     if (const auto precision_val = *precision;
         precision_val < 0 || precision_val > 15)
-      Logger::LogAndThrowError(
+      throw runtime_error(
           std::format("주어진 플롯의 소수점 정밀도 [{}]은(는) 0 이상, "
                       "15 이하로 설정해야 합니다.",
-                      to_string(precision_val)),
-          __FILE__, __LINE__);
+                      to_string(precision_val)));
   }
 }
 
-shared_ptr<Logger>& Plot::logger_ = Logger::GetLogger();
+BACKTESTING_API shared_ptr<Logger>& Plot::logger_ = Logger::GetLogger();
 
 Area::Area(const Rgba& top_gradient_color, const Rgba& bottom_gradient_color,
            const Rgba& line_color, const char line_width,

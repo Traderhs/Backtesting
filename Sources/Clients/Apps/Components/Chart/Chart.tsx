@@ -13,11 +13,18 @@ import LoadingSpinner from '@/Components/Common/LoadingSpinner';
 import NoDataMessage from '@/Components/Common/NoDataMessage';
 import '@/Components/Common/LoadingSpinner.css';
 
-// 메인 차트 높이 설정 (페인 개수에 따라 변화하는 함수)
-// 페인 차트 비율은 1개 25%로 시작하여 70%까지 수렴
-function calculateMainChartHeight(paneCount: number, windowHeight: number): number {
+// 메인 차트 stretchFactor 계산 (페인 개수에 따라 변화)
+// 페인 1개: 메인 75%, 페인 25% -> stretchFactor 비율 3:1
+// 페인 2개: 메인 60%, 페인 20%, 페인 20% -> stretchFactor 비율 3:1:1
+function calculateMainChartStretchFactor(paneCount: number): number {
+    // 메인 차트 비율 계산 (기존 로직 유지)
     const ratio = 0.3 + 0.45 * Math.exp(-0.237 * (paneCount - 1));
-    return windowHeight * ratio;
+
+    // 추가 페인 하나당 비율
+    const paneRatio = (1 - ratio) / paneCount;
+
+    // stretchFactor는 상대적 비율이므로, 메인차트/페인 비율을 반환
+    return ratio / paneRatio;
 }
 
 export interface IndicatorDataPoint {
@@ -77,7 +84,8 @@ const Chart: React.FC<{
     timeframe: string;
     priceStep: number;
     pricePrecision: number;
-    config?: any;
+    config: any;
+    result: string;
     onChartLoaded?: () => void
 }> = ({
           symbol,
@@ -85,6 +93,7 @@ const Chart: React.FC<{
           priceStep,
           pricePrecision,
           config,
+          result,
           onChartLoaded
       }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -119,6 +128,9 @@ const Chart: React.FC<{
 
     // 차트 초기화 완료 여부를 상태로 관리
     const [isChartInitialized, setIsChartInitialized] = useState(false);
+
+    // 캔들스틱 시리즈 초기화 완료 여부
+    const [isCandleSeriesReady, setIsCandleSeriesReady] = useState(false);
 
     // 데이터 로딩 요청 실패 횟수 추적
     const requestFailCountRef = useRef<number>(0);
@@ -159,6 +171,9 @@ const Chart: React.FC<{
     // 캘린더 이동 중 로딩 상태 관리
     const [isCalendarLoading, setIsCalendarLoading] = useState(false);
 
+    // stretchFactor 설정 여부 추적
+    const stretchFactorSetRef = useRef<boolean>(false);
+
     // 마우스 오른쪽 클릭 이벤트 핸들러
     const handleContextMenu = useCallback((e: React.MouseEvent) => {
         e.preventDefault(); // 기본 컨텍스트 메뉴 방지
@@ -172,6 +187,53 @@ const Chart: React.FC<{
 
     const handleCalendarLoadingEnd = useCallback(() => {
         setIsCalendarLoading(false);
+    }, []);
+
+    // 지표 페인 생성 완료 콜백
+    const handlePanesCreated = useCallback((paneCount: number) => {
+        if (!chartRef.current) {
+            return;
+        }
+
+        // 1. stretchFactor 설정 (페인이 추가된 경우)
+        // paneCount는 메인 페인을 제외한, 추가된 페인의 수
+        if (paneCount > 0 && !stretchFactorSetRef.current) {
+            const panes = chartRef.current.panes();
+
+            // 페인이 2개 이상일 때만 높이 비율 조정 (메인 페인 + 추가 페인)
+            if (panes.length > 1) {
+                // 메인 차트의 stretchFactor 계산 (paneCount는 추가 페인 개수)
+                const mainStretchFactor = calculateMainChartStretchFactor(paneCount);
+
+                // 메인 차트 (pane 0) stretchFactor 설정
+                panes[0].setStretchFactor(mainStretchFactor);
+
+                // 나머지 페인들은 기본값 1 유지 (균등 분배)
+                for (let i = 1; i < panes.length; i++) {
+                    panes[i].setStretchFactor(1);
+                }
+            }
+            stretchFactorSetRef.current = true;
+        }
+
+        // 2. 메인 캔들 시리즈 생성
+        // 지표들이 다 그려진 후 메인 캔들 시리즈 생성 (Z-Index 최상위 보장)
+        if (candleStickRendererRef.current) {
+            // 이미 생성되어 있어도 안전 (내부 체크) - 하지만 여기서 호출로 순서 보장
+            candleStickRendererRef.current.initMainSeries();
+
+            // 데이터 업데이트
+            if (dataCacheRef.current.length > 0) {
+                candleStickRendererRef.current.updateData(dataCacheRef.current);
+            }
+        }
+
+        // 3. 로딩 상태 해제
+        if (isLoadingRef.current) {
+            setIsLoading(false);
+            isLoadingRef.current = false;
+        }
+
     }, []);
 
     // 특정 시간으로 차트 이동
@@ -231,11 +293,16 @@ const Chart: React.FC<{
             pendingRequestRef.current = true; // 요청 시작 플래그
         }
 
-        const indicatorsToLoad = window.indicatorPaths ? Object.keys(window.indicatorPaths) : [];
+        const indicatorsToLoad = config?.['지표']
+            ? config['지표']
+                .filter((i: any) => i['플롯']?.['플롯 종류'] !== '비활성화' && i['데이터 경로'])
+                .map((i: any) => i['지표 이름'])
+            : [];
 
         const requestPayload: any = {
             action: "loadChartData",
             symbol,
+            result,
             indicators: indicatorsToLoad,
             fileRequest: {} // 파일 요청 객체 초기화
         };
@@ -320,10 +387,15 @@ const Chart: React.FC<{
         setIsCandleReady(false);
         setChartVisible(true);
         setIsChartInitialized(false); // 차트 초기화 상태 초기화
+        setIsCandleSeriesReady(false); // 캔들 시리즈 초기화 상태 리셋
 
         requestFailCountRef.current = 0;
         window.paneCount = undefined;
-        if (!chartContainerRef.current) return;
+
+        stretchFactorSetRef.current = false; // stretchFactor 설정 플래그 리셋
+        if (!chartContainerRef.current) {
+            return;
+        }
 
         const chart = createChart(chartContainerRef.current, {
             layout: {
@@ -589,8 +661,14 @@ const Chart: React.FC<{
                     }
 
                     if (isInitialLoadResponse || (!candleDataReceived && msg.candleData?.length === 0)) { // 초기로드 응답이거나, 스크롤 시 빈 데이터 응답이어도 로딩 해제
-                        setIsLoading(false);
-                        isLoadingRef.current = false;
+                        // 지표가 없는 경우 여기서 해제
+                        const hasIndicators = config && config['지표'] && config['지표'].some((indicator: any) =>
+                            indicator['플롯']?.['플롯 종류'] !== '비활성화' && indicator['데이터 경로']);
+
+                        if (!hasIndicators) {
+                            setIsLoading(false);
+                            isLoadingRef.current = false;
+                        }
                     }
 
 
@@ -608,12 +686,26 @@ const Chart: React.FC<{
                             if (chartRef.current && dataCacheRef.current.length > 0) {
                                 // 캔들스틱 및 거래량 시리즈 생성, 데이터 설정
                                 // Calendar 요청도 초기 로드처럼 처리
+
+                                // 지표 유무 확인
+                                const hasIndicators = config && config['지표'] && config['지표'].some((indicator: any) =>
+                                    indicator['플롯']?.['플롯 종류'] !== '비활성화' && indicator['데이터 경로']);
+
+                                // 시리즈 초기화 로직 분리
+                                if (hasIndicators) {
+                                    // 지표가 있는 경우: 볼륨만 먼저 생성 -> 지표 생성 -> handlePanesCreated에서 메인 캔들 생성
+                                    candleStickRendererRef.current.initVolumeSeries();
+                                } else {
+                                    // 지표가 없는 경우: 볼륨과 메인 캔들 모두 생성
+                                    candleStickRendererRef.current.initVolumeSeries();
+                                    candleStickRendererRef.current.initMainSeries();
+                                }
+
                                 candleStickRendererRef.current.updateData(dataCacheRef.current);
 
-                                if (window.paneCount && chartRef.current.panes().length > 0) {
-                                    const height = calculateMainChartHeight(window.paneCount, window.innerHeight);
-                                    chartRef.current.panes()[0].setHeight(height);
-                                }
+                                // 캔들 시리즈 초기화 완료 - 지표 시리즈 생성 허용
+                                // 메인 페인 높이는 onPanesCreated 콜백에서 모든 페인 생성 후 설정
+                                setIsCandleSeriesReady(true);
 
                                 requestAnimationFrame(() => {
                                     if (!chartRef.current || !isChartVisible) {
@@ -826,7 +918,7 @@ const Chart: React.FC<{
             setIsCandleReady(false);
             setChartVisible(true);
         };
-    }, [symbol, timeframe, priceStep, pricePrecision, secondsPerBar, ws]);
+    }, [symbol, timeframe, priceStep, pricePrecision, secondsPerBar, ws, config]);
 
     // isLoading 상태를 감시하는 useEffect에 추가
     useEffect(() => {
@@ -1079,6 +1171,7 @@ const Chart: React.FC<{
                                     onDateSelected={moveToTimestamp}
                                     timeframe={timeframe}
                                     symbol={symbol}
+                                    result={result}
                                     // 저장된 달력 상태 전달 (처음 열 때는 null 전달하여 첫 데이터 사용)
                                     lastSelectedDate={isCalendarFirstOpen ? null : calendarLastSelectedDate}
                                     lastSelectedTime={isCalendarFirstOpen ? '' : (calendarLastSelectedTime || '00:00')}
@@ -1091,6 +1184,7 @@ const Chart: React.FC<{
                                     // 캘린더 로딩 상태 제어 콜백 추가
                                     onLoadingStart={handleCalendarLoadingStart}
                                     onLoadingEnd={handleCalendarLoadingEnd}
+                                    config={config}
                                 />
                             )}
                             <IndicatorSeriesContainer
@@ -1099,6 +1193,9 @@ const Chart: React.FC<{
                                 indicatorDataMap={indicatorDataMap}
                                 priceStep={priceStep}
                                 pricePrecision={pricePrecision}
+                                config={config}
+                                isCandleSeriesReady={isCandleSeriesReady}
+                                onPanesCreated={handlePanesCreated}
                             />
                             <TimeSlider
                                 chart={chartRef.current}
@@ -1113,6 +1210,7 @@ const Chart: React.FC<{
                                 candleStickData={candleStickData}
                                 pricePrecision={pricePrecision}
                                 containerRef={chartContainerRef}
+                                config={config}
                             />
                             <TimeAxisTooltip
                                 chart={chartRef.current}

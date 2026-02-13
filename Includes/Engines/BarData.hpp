@@ -6,6 +6,9 @@
 #include <string>
 #include <vector>
 
+// 내부 헤더
+#include "Engines/Export.hpp"
+
 // 전방 선언
 namespace arrow {
 class Table;
@@ -17,7 +20,7 @@ using namespace std;
 namespace backtesting::bar {
 
 /// 하나의 바 구조를 지정하는 구조체
-struct Bar {
+struct BACKTESTING_API Bar {
   Bar() = default;  // 명시적 초기화용
   Bar(const int64_t open_time, const double open, const double high,
       const double low, const double close, const double volume,
@@ -41,7 +44,7 @@ struct Bar {
 };
 
 /// 바 데이터를 심볼별 시계열 순서대로 벡터화하여 저장하는 클래스
-class BarData final {
+class BACKTESTING_API BarData final {
  public:
   explicit BarData(const string& bar_data_type);
   ~BarData();

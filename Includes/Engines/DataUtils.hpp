@@ -10,6 +10,9 @@
 // 외부 라이브러리
 #include <nlohmann/json_fwd.hpp>
 
+// 내부 헤더
+#include "Engines/Export.hpp"
+
 // 전방 선언
 namespace arrow {
 class Array;
@@ -30,7 +33,7 @@ namespace backtesting::utils {
  * @param value 소수 자릿수를 계산할 값
  * @return 주어진 double 값에 존재하는 소수점 자릿수의 개수
  */
-[[nodiscard]] int CountDecimalPlaces(double value);
+[[nodiscard]] BACKTESTING_API int CountDecimalPlaces(double value);
 
 /**
  * 주어진 값을 지정된 소수 자릿수로 반올림하여 반환하는 함수
@@ -39,7 +42,8 @@ namespace backtesting::utils {
  * @param decimal_places 값이 반올림될 소수점 자릿수
  * @return 주어진 값이 지정된 소수 자릿수로 반올림된 값
  */
-[[nodiscard]] double RoundToDecimalPlaces(double value, size_t decimal_places);
+[[nodiscard]] BACKTESTING_API double RoundToDecimalPlaces(
+    double value, size_t decimal_places);
 
 /**
  * typeid().name()에서 클래스 이름을 추출하는 함수
@@ -47,7 +51,7 @@ namespace backtesting::utils {
  * @param type_name typeid(T).name()의 결과 문자열
  * @return 추출된 클래스 이름
  */
-[[nodiscard]] string ExtractClassName(const string& type_name);
+[[nodiscard]] BACKTESTING_API string ExtractClassName(const string& type_name);
 
 /**
  * 지정된 경로의 Parquet 파일에서 특정 컬럼만 읽어오는 함수
@@ -56,7 +60,7 @@ namespace backtesting::utils {
  * @param column_indices 읽을 컬럼의 인덱스 목록 (빈 벡터면 모든 컬럼 읽기)
  * @return 변환된 테이블을 포함하는 shared_ptr 객체
  */
-[[nodiscard]] shared_ptr<arrow::Table> ReadParquet(
+[[nodiscard]] BACKTESTING_API shared_ptr<arrow::Table> ReadParquet(
     const string& file_path, const vector<int>& column_indices = {});
 
 /**
@@ -66,13 +70,13 @@ namespace backtesting::utils {
  * @param column_indices 읽을 컬럼의 인덱스 목록
  * @return 변환된 테이블들을 포함하는 vector
  */
-[[nodiscard]] vector<shared_ptr<arrow::Table>> ReadParquetBatch(
+[[nodiscard]] BACKTESTING_API vector<shared_ptr<arrow::Table>> ReadParquetBatch(
     const vector<string>& file_paths, const vector<int>& column_indices);
 
 /**
  * Parquet 파일 메타데이터 캐시를 정리하는 함수
  */
-void ClearParquetMetadataCache();
+BACKTESTING_API void ClearParquetMetadataCache();
 
 /**
  * 지정된 테이블에서 주어진 열 이름과 행 인덱스에 해당하는
@@ -85,8 +89,9 @@ void ClearParquetMetadataCache();
  * @param row_index 값을 검색할 행의 인덱스
  * @return 지정된 열과 행의 인덱스에 해당하는 셀의 값
  */
-[[nodiscard]] any GetCellValue(const shared_ptr<arrow::Table>& table,
-                               const string& column_name, int64_t row_index);
+[[nodiscard]] BACKTESTING_API any
+GetCellValue(const shared_ptr<arrow::Table>& table, const string& column_name,
+             int64_t row_index);
 
 /**
  * 지정된 테이블에서 주어진 열 인덱스와 행 인덱스에 해당하는
@@ -99,8 +104,8 @@ void ClearParquetMetadataCache();
  * @param row_index 값을 검색할 행의 인덱스
  * @return 지정된 열과 행의 인덱스에 해당하는 셀의 값
  */
-[[nodiscard]] any GetCellValue(const shared_ptr<arrow::Table>& table,
-                               int column_index, int64_t row_index);
+[[nodiscard]] BACKTESTING_API any GetCellValue(
+    const shared_ptr<arrow::Table>& table, int column_index, int64_t row_index);
 
 /**
  * 주어진 Scalar 객체에서 값을 추출하여 반환하는 함수
@@ -110,10 +115,12 @@ void ClearParquetMetadataCache();
  * @param scalar 값을 추출할 Scalar 객체의 shared_ptr
  * @return 주어진 Scalar의 실제 값
  */
-[[nodiscard]] any GetScalarValue(const shared_ptr<arrow::Scalar>& scalar);
+[[nodiscard]] BACKTESTING_API any
+GetScalarValue(const shared_ptr<arrow::Scalar>& scalar);
 
 /// 주어진 Json에서 주어진 키를 찾고 Double로 반환하는 함수
-[[nodiscard]] double GetDoubleFromJson(const json& data, const string& key);
+[[nodiscard]] BACKTESTING_API double GetDoubleFromJson(const json& data,
+                                                       const string& key);
 
 /**
  * 주어진 테이블을 Parquet 파일 형식으로 지정된 파일 경로에 저장하는 함수
@@ -126,12 +133,14 @@ void ClearParquetMetadataCache();
  * @param save_split_files 분할 저장을 할지 결정하는 플래그
  * @param reset_directory 저장 폴더를 초기화하고 저장하는지 결정하는 플래그
  */
-void TableToParquet(const shared_ptr<arrow::Table>& table,
-                    const string& directory_path, const string& file_name,
-                    bool save_split_files, bool reset_directory);
+BACKTESTING_API void TableToParquet(const shared_ptr<arrow::Table>& table,
+                                    const string& directory_path,
+                                    const string& file_name,
+                                    bool save_split_files,
+                                    bool reset_directory);
 
 /// Json을 지정된 경로에 파일로 저장하는 함수
-void JsonToFile(future<json> data, const string& file_path);
+BACKTESTING_API void JsonToFile(future<json> data, const string& file_path);
 
 /**
  * 주어진 테이블을 주어진 비율로 분할하여 두 개의 서브 테이블을 생성하여
@@ -142,36 +151,29 @@ void JsonToFile(future<json> data, const string& file_path);
  * @return 주어진 테이블을 `split_ratio`에 따라 나눈 두 개의 서브 테이블을
  * 포함하는 pair 객체. 첫 번째는 `split_ratio` 비율, 두 번째는 나머지 비율
  */
-[[nodiscard]] pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>>
-SplitTable(const shared_ptr<arrow::Table>& table, double split_ratio);
+[[nodiscard]] BACKTESTING_API
+    pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>>
+    SplitTable(const shared_ptr<arrow::Table>& table, double split_ratio);
 
 /// 최소 스텝 크기로 값을 반올림하여 반환하는 함수
-[[nodiscard]] double RoundToStep(double value, double step);
+[[nodiscard]] BACKTESTING_API double RoundToStep(double value, double step);
 
 // FormatDollar에서 사용하는 공통 Locale 설정
-static locale global_locale("en_US.UTF-8");
+inline locale global_locale("en_US.UTF-8");
 
 /// 금액을 천 단위 쉼표와 달러 표기로 포맷하여 반환하는 함수
-[[nodiscard]] string FormatDollar(double price, bool use_rounding);
+[[nodiscard]] BACKTESTING_API string FormatDollar(double price,
+                                                  bool use_rounding);
 
 /// 퍼센트 값을 퍼센트 형식으로 포맷하여 반환하는 함수
-[[nodiscard]] string FormatPercentage(double percentage, bool use_rounding);
+[[nodiscard]] BACKTESTING_API string FormatPercentage(double percentage,
+                                                      bool use_rounding);
 
 /// 값을 주어진 정밀도의 string으로 변환하여 반환하는 함수
-string ToFixedString(double value, int precision);
+BACKTESTING_API string ToFixedString(double value, int precision);
 
 /// 환경 변수 값을 가져오는 함수
-[[nodiscard]] string GetEnvVariable(const string& env_var);
-
-/// 파이썬 스크립트를 실행하는 함수
-void RunPythonScript(const string& script_path,
-                     const vector<string>& args = {});
-
-/// 지정된 경로에서 Html 파일을 열고 String으로 반환하는 함수
-[[nodiscard]] string OpenHtml(const string& html_path);
-
-/// Parquet 확장자를 제거한 문자열을 반환하는 함수
-string RemoveParquetExtension(const string& file_path);
+[[nodiscard]] BACKTESTING_API string GetEnvVariable(const string& env_var);
 
 /// 부동 소수점 같은 값 비교를 위한 함수.
 /// 왼쪽 값이 오른쪽 값과 같으면 true를 반환함.

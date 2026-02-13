@@ -61,8 +61,8 @@ void OrderHandler::Deleter::operator()(const OrderHandler* p) const {
   delete p;
 }
 
-mutex OrderHandler::mutex_;
-shared_ptr<OrderHandler> OrderHandler::instance_;
+BACKTESTING_API mutex OrderHandler::mutex_;
+BACKTESTING_API shared_ptr<OrderHandler> OrderHandler::instance_;
 
 shared_ptr<OrderHandler>& OrderHandler::GetOrderHandler() {
   lock_guard lock(mutex_);  // 스레드에서 안전하게 접근하기 위해 mutex 사용
@@ -74,6 +74,17 @@ shared_ptr<OrderHandler>& OrderHandler::GetOrderHandler() {
   }
 
   return instance_;
+}
+
+void OrderHandler::ResetOrderHandler() {
+  lock_guard lock(mutex_);
+
+  ResetBaseOrderHandler();
+
+  if (instance_) {
+    instance_.reset();
+    instance_ = shared_ptr<OrderHandler>(new OrderHandler(), Deleter());
+  }
 }
 
 bool OrderHandler::MarketEntry(const string& entry_name,
@@ -1276,10 +1287,12 @@ void OrderHandler::CheckPendingExits(const int symbol_idx, const double price,
       }
 
       [[unlikely]] case ORDER_NONE: {
-        LogFormattedInfo(WARN_L, "청산 대기 주문에 NONE 주문 존재", __FILE__,
-                         __LINE__);
+        logger_->Log(
+            ERROR_L,
+            "청산 대기 주문의 체결을 확인하는 중 엔진 오류가 발생했습니다.",
+            __FILE__, __LINE__, true);
 
-        throw;
+        throw runtime_error("주문 유형은 ORDER_NONE으로 지정할 수 없습니다.");
       }
     }
   }
@@ -1339,10 +1352,12 @@ void OrderHandler::CheckPendingEntries(const int symbol_idx, const double price,
       }
 
       [[unlikely]] case ORDER_NONE: {
-        LogFormattedInfo(ERROR_L, "진입 대기 주문에 NONE 주문 존재", __FILE__,
-                         __LINE__);
+        logger_->Log(
+            ERROR_L,
+            "진입 대기 주문의 체결을 확인하는 중 엔진 오류가 발생했습니다.",
+            __FILE__, __LINE__, true);
 
-        throw;
+        throw runtime_error("주문 유형은 ORDER_NONE으로 지정할 수 없습니다.");
       }
     }
   }
@@ -1409,10 +1424,12 @@ void OrderHandler::FillOrder(const FillInfo& order_info, const int symbol_idx,
           }
 
           default: {
-            Logger::LogAndThrowError(
-                "엔진 오류: 잘못된 전략 타입 ORDER_NONE이 지정되었으므로 "
-                "주문을 실행할 수 없습니다.",
-                __FILE__, __LINE__);
+            logger_->Log(ERROR_L,
+                         "체결을 수행하는 중 엔진 오류가 발생했습니다.",
+                         __FILE__, __LINE__, true);
+
+            throw runtime_error(
+                "주문 유형은 ORDER_NONE으로 지정할 수 없습니다.");
           }
         }
       }
@@ -1825,8 +1842,8 @@ void OrderHandler::ExitOppositeFilledEntries(
                       filled_entry->GetEntryName(),
                       filled_entry->GetEntryFilledSize() -
                           filled_entry->GetExitFilledSize())) {
-        Logger::LogAndThrowError("엔진 오류: 리버스 청산 실패", __FILE__,
-                                 __LINE__);
+        throw runtime_error(
+            "리버스 청산을 수행하는 중 엔진 오류가 발생했습니다.");
       }
     }
   }
@@ -2607,9 +2624,12 @@ bool OrderHandler::ExistsPendingOrder(const shared_ptr<Order>& pending_order,
       return pending_exits_[symbol_idx];
     }
 
-    Logger::LogAndThrowError("엔진 오류: 대기 주문을 찾는데 LIQUIDATION 존재",
-                             __FILE__, __LINE__);
-    throw;  // 컴파일러 만족용
+    logger_->Log(ERROR_L,
+                 "대기 주문의 유효성 확인 중 엔진 오류가 발생했습니다.",
+                 __FILE__, __LINE__, true);
+
+    throw runtime_error(
+        "주문 시그널 LIQUIDATION은 대기 주문으로 존재할 수 없습니다.");
   }();
 
   return ranges::find(target_pending_orders, pending_order) !=

@@ -25,6 +25,7 @@
 #include "Engines/Analyzer.hpp"
 
 // 내부 헤더
+#include "Engines/Backtesting.hpp"
 #include "Engines/BarData.hpp"
 #include "Engines/BarHandler.hpp"
 #include "Engines/Config.hpp"
@@ -51,14 +52,15 @@ namespace backtesting::analyzer {
 Analyzer::Analyzer() : trade_num_(1) {}
 void Analyzer::Deleter::operator()(const Analyzer* p) const { delete p; }
 
-mutex Analyzer::mutex_;
-shared_ptr<Analyzer> Analyzer::instance_;
+BACKTESTING_API mutex Analyzer::mutex_;
+BACKTESTING_API shared_ptr<Analyzer> Analyzer::instance_;
 
-shared_ptr<BarHandler>& Analyzer::bar_ = BarHandler::GetBarHandler();
-shared_ptr<Config>& Analyzer::config_ = Engine::GetConfig();
-shared_ptr<Engine>& Analyzer::engine_ = Engine::GetEngine();
-shared_ptr<Logger>& Analyzer::logger_ = Logger::GetLogger();
-vector<SymbolInfo> Analyzer::symbol_info_;
+BACKTESTING_API shared_ptr<BarHandler>& Analyzer::bar_ =
+    BarHandler::GetBarHandler();
+BACKTESTING_API shared_ptr<Config>& Analyzer::config_ = Engine::GetConfig();
+BACKTESTING_API shared_ptr<Engine>& Analyzer::engine_ = Engine::GetEngine();
+BACKTESTING_API shared_ptr<Logger>& Analyzer::logger_ = Logger::GetLogger();
+BACKTESTING_API vector<SymbolInfo> Analyzer::symbol_info_;
 
 shared_ptr<Analyzer>& Analyzer::GetAnalyzer() {
   lock_guard lock(mutex_);  // 스레드에서 안전하게 접근하기 위해 mutex 사용
@@ -92,10 +94,8 @@ void Analyzer::Initialize(const int64_t begin_open_time,
                               .SetHoldingTime("-")
                               .SetWalletBalance(initial_balance)
                               .SetMaxWalletBalance(initial_balance));
-  } else {
-    Logger::LogAndThrowError(
-        "분석기가 이미 초기화되어 다시 초기화할 수 없습니다.", __FILE__,
-        __LINE__);
+  } else [[unlikely]] {
+    throw runtime_error("분석기가 이미 초기화되어 다시 초기화할 수 없습니다.");
   }
 }
 
@@ -103,9 +103,8 @@ void Analyzer::SetSymbolInfo(const vector<SymbolInfo>& symbol_info) {
   if (symbol_info_.empty()) {
     symbol_info_ = symbol_info;
   } else [[unlikely]] {
-    Logger::LogAndThrowError(
-        "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.", __FILE__,
-        __LINE__);
+    throw runtime_error(
+        "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.");
   }
 }
 
@@ -150,15 +149,21 @@ void Analyzer::CreateDirectories() {
         Config::GetProjectDirectory() + "/Results/" + main_directory;
     main_directory_ = main_directory;
 
-    // 지표 데이터 저장 폴더 생성
-    fs::create_directories(main_directory + "/BackBoard/Indicators");
-
-    // 소스 코드 저장 폴더 생성
-    fs::create_directories(format("{}/BackBoard/Sources", main_directory));
+    // 서버 모드: BackBoard 폴더를 만들지 않고 Results/<run>/ 아래에 바로 저장
+    if (Backtesting::IsServerMode()) {
+      fs::create_directories(main_directory + "/Indicators");
+      fs::create_directories(format("{}/Sources", main_directory));
+    } else {
+      // 일반 실행: BackBoard 하위에 폴더 생성
+      fs::create_directories(main_directory + "/BackBoard/Indicators");
+      fs::create_directories(format("{}/BackBoard/Sources", main_directory));
+    }
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
-    Logger::LogAndThrowError("폴더 생성 중 에러가 발생했습니다.", __FILE__,
-                             __LINE__);
+    logger_->Log(ERROR_L,
+                 "백테스팅 결과 저장 폴더 생성 중 에러가 발생했습니다.",
+                 __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -182,6 +187,7 @@ void Analyzer::SaveIndicatorData() {
       for (int symbol_idx = 0; symbol_idx < num_symbols; symbol_idx++) {
         estimated_size += trading_bar_data->GetNumBars(symbol_idx);
       }
+
       time_vector.reserve(estimated_size);
 
       // 모든 심볼의 모든 바를 순회하며 open_time 값을 수집
@@ -224,6 +230,9 @@ void Analyzer::SaveIndicatorData() {
 
     // 모든 전략의 각 지표를 순회하며 저장
     for (const auto& indicator : indicators) {
+      // 백테스팅 중지 요청 시 중지
+      RET_IF_STOP_REQUESTED()
+
       // OHLCV와 플롯하지 않는 지표는 저장하지 않음
       const auto& indicator_name = indicator->GetIndicatorName();
       if (indicator_name == strategy->open.GetIndicatorName() ||
@@ -426,29 +435,34 @@ void Analyzer::SaveIndicatorData() {
       }
 
       // 테이블을 parquet로 저장
-      TableToParquet(
-          table,
-          format("{}/BackBoard/Indicators/{}", main_directory_, indicator_name),
-          indicator_name + ".parquet", true, false);
+      const string& indicators_base =
+          Backtesting::IsServerMode()
+              ? format("{}/Indicators", main_directory_)
+              : format("{}/BackBoard/Indicators", main_directory_);
+
+      TableToParquet(table, format("{}/{}", indicators_base, indicator_name),
+                     indicator_name + ".parquet", true, false);
     }
 
     logger_->Log(INFO_L, "지표 데이터가 저장되었습니다.", __FILE__, __LINE__,
                  true);
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
-    Logger::LogAndThrowError("지표 데이터를 저장하는 중 오류가 발생했습니다.",
-                             __FILE__, __LINE__);
+    logger_->Log(ERROR_L, "지표 데이터를 저장하는 중 오류가 발생했습니다.",
+                 __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
 void Analyzer::SaveTradeList() const {
-  const auto& file_path = main_directory_ + "/BackBoard/trade_list.json";
+  const auto& file_path = Backtesting::IsServerMode()
+                              ? main_directory_ + "/trade_list.json"
+                              : main_directory_ + "/BackBoard/trade_list.json";
 
   ofstream trade_list_file(file_path);
   if (!trade_list_file.is_open()) {
-    Logger::LogAndThrowError(
-        format("거래 내역 [{}]을(를) 생성할 수 없습니다.", file_path), __FILE__,
-        __LINE__);
+    throw runtime_error(
+        format("거래 내역 파일 [{}]을 생성할 수 없습니다.", file_path));
   }
 
   ordered_json trade_list_json = json::array();  // JSON 배열로 시작
@@ -456,6 +470,9 @@ void Analyzer::SaveTradeList() const {
       engine_->strategy_->GetStrategyName();  // 전략 이름 캐싱
 
   for (const auto& trade : trade_list_) {
+    // 백테스팅 중지 요청 시 중지
+    RET_IF_STOP_REQUESTED()
+
     const auto trade_num = trade.GetTradeNumber();
     const ordered_json& trade_json = {
         {"거래 번호", trade_num},
@@ -523,9 +540,11 @@ void Analyzer::SaveConfig() {
   const int num_symbols = trading_bar_data->GetNumSymbols();
 
   // 공통 경로 캐싱
-  const string backboard_path = format("{}/BackBoard", main_directory_);
-  const string sources_path = format("{}/Sources", backboard_path);
-  const string indicators_path = format("{}/Indicators", backboard_path);
+  const string& main_directory = Backtesting::IsServerMode()
+                                     ? main_directory_
+                                     : format("{}/BackBoard", main_directory_);
+  const string& indicators_path = format("{}/Indicators", main_directory);
+  const string& sources_path = format("{}/Sources", main_directory);
 
   // 심볼 배열 예약
   config["심볼"] = ordered_json::array();
@@ -554,10 +573,10 @@ void Analyzer::SaveConfig() {
             {"가격 소수점 정밀도", symbol_info.GetPricePrecision()},
             {"수량 최소 단위", symbol_info.GetQtyStep()},
             {"수량 소수점 정밀도", symbol_info.GetQtyPrecision()},
-            {"지정가 최대 수량", symbol_info.GetLimitMaxQty()},
-            {"지정가 최소 수량", symbol_info.GetLimitMinQty()},
             {"시장가 최대 수량", symbol_info.GetMarketMaxQty()},
             {"시장가 최소 수량", symbol_info.GetMarketMinQty()},
+            {"지정가 최대 수량", symbol_info.GetLimitMaxQty()},
+            {"지정가 최소 수량", symbol_info.GetLimitMinQty()},
             {"최소 명목 가치", symbol_info.GetMinNotionalValue()},
             {"강제 청산 수수료율", symbol_info.GetLiquidationFeeRate()}};
 
@@ -578,54 +597,6 @@ void Analyzer::SaveConfig() {
                {"유지 마진율", maintenance_margin_rate},
                {"유지 금액", maintenance_amount}});
         }
-
-        // 펀딩 비율 저장
-        const auto& funding_rates = symbol_info.GetFundingRates();
-        int positive_funding_count = 0, negative_funding_count = 0;
-        double max_funding_rate = 0, min_funding_rate = 0;
-        double total_funding_rate = 0;
-
-        for (const auto& funding_info : funding_rates) {
-          const auto funding_rate = funding_info.funding_rate;
-          total_funding_rate += funding_rate;
-
-          if (funding_rate > 0) {
-            positive_funding_count++;
-
-            if (funding_rate > max_funding_rate) {
-              max_funding_rate = funding_rate;
-            }
-          } else if (funding_rate < 0) {
-            negative_funding_count++;
-
-            if (funding_rate < min_funding_rate) {
-              min_funding_rate = funding_rate;
-            }
-          }
-        }
-
-        // 평균 펀딩 비율 계산 (소수점 8자리에서 반올림)
-        // -> 백보드에서는 100을 곱하므로 6자리로 보임
-        double average_funding_rate = 0;
-        if (!funding_rates.empty()) {
-          average_funding_rate =
-              total_funding_rate / static_cast<double>(funding_rates.size());
-          average_funding_rate = round(average_funding_rate * 1e8) / 1e8;
-        }
-
-        symbol["펀딩 비율"] = {
-            {"데이터 경로", symbol_info.GetFundingRatesPath()},
-            {"데이터 기간",
-             {{"시작",
-               UtcTimestampToUtcDatetime(funding_rates.front().funding_time)},
-              {"종료",
-               UtcTimestampToUtcDatetime(funding_rates.back().funding_time)}}},
-            {"합계 펀딩 횟수", funding_rates.size()},
-            {"양수 펀딩 횟수", positive_funding_count},
-            {"음수 펀딩 횟수", negative_funding_count},
-            {"평균 펀딩 비율", average_funding_rate},
-            {"최고 펀딩 비율", max_funding_rate},
-            {"최저 펀딩 비율", min_funding_rate}};
 
         // 트레이딩 바 정보 저장
         const auto trading_num_bars = trading_bar_data->GetNumBars(symbol_idx);
@@ -725,6 +696,54 @@ void Analyzer::SaveConfig() {
             {"누락된 바",
              {{"개수", mark_price_missing_count},
               {"시간", mark_price_missing_times}}}};
+
+        // 펀딩 비율 저장
+        const auto& funding_rates = symbol_info.GetFundingRates();
+        int positive_funding_count = 0, negative_funding_count = 0;
+        double max_funding_rate = 0, min_funding_rate = 0;
+        double total_funding_rate = 0;
+
+        for (const auto& funding_info : funding_rates) {
+          const auto funding_rate = funding_info.funding_rate;
+          total_funding_rate += funding_rate;
+
+          if (funding_rate > 0) {
+            positive_funding_count++;
+
+            if (funding_rate > max_funding_rate) {
+              max_funding_rate = funding_rate;
+            }
+          } else if (funding_rate < 0) {
+            negative_funding_count++;
+
+            if (funding_rate < min_funding_rate) {
+              min_funding_rate = funding_rate;
+            }
+          }
+        }
+
+        // 평균 펀딩 비율 계산 (소수점 8자리에서 반올림)
+        // -> BackBoard에서는 100을 곱하므로 6자리로 보임
+        double average_funding_rate = 0;
+        if (!funding_rates.empty()) {
+          average_funding_rate =
+              total_funding_rate / static_cast<double>(funding_rates.size());
+          average_funding_rate = round(average_funding_rate * 1e8) / 1e8;
+        }
+
+        symbol["펀딩 비율"] = {
+            {"데이터 경로", symbol_info.GetFundingRatesPath()},
+            {"데이터 기간",
+             {{"시작",
+               UtcTimestampToUtcDatetime(funding_rates.front().funding_time)},
+              {"종료",
+               UtcTimestampToUtcDatetime(funding_rates.back().funding_time)}}},
+            {"합계 펀딩 횟수", funding_rates.size()},
+            {"양수 펀딩 횟수", positive_funding_count},
+            {"음수 펀딩 횟수", negative_funding_count},
+            {"평균 펀딩 비율", average_funding_rate},
+            {"최고 펀딩 비율", max_funding_rate},
+            {"최저 펀딩 비율", min_funding_rate}};
       });
 
   // 병렬 처리 결과를 메인 config에 추가
@@ -808,20 +827,21 @@ void Analyzer::SaveConfig() {
   }
 
   // 검사 옵션들 추가
-  config["엔진 설정"]["지정가 최대 수량 검사"] =
-      *config_->GetCheckLimitMaxQty() ? "활성화" : "비활성화";
-  config["엔진 설정"]["지정가 최소 수량 검사"] =
-      *config_->GetCheckLimitMinQty() ? "활성화" : "비활성화";
   config["엔진 설정"]["시장가 최대 수량 검사"] =
       *config_->GetCheckMarketMaxQty() ? "활성화" : "비활성화";
   config["엔진 설정"]["시장가 최소 수량 검사"] =
       *config_->GetCheckMarketMinQty() ? "활성화" : "비활성화";
+  config["엔진 설정"]["지정가 최대 수량 검사"] =
+      *config_->GetCheckLimitMaxQty() ? "활성화" : "비활성화";
+  config["엔진 설정"]["지정가 최소 수량 검사"] =
+      *config_->GetCheckLimitMinQty() ? "활성화" : "비활성화";
   config["엔진 설정"]["최소 명목 가치 검사"] =
       *config_->GetCheckMinNotionalValue() ? "활성화" : "비활성화";
+
+  // 심볼 간 바 데이터 중복 검사 설정
   config["엔진 설정"]["마크 가격 바 데이터와 목표 바 데이터 중복 검사"] =
       config_->GetCheckSameBarDataWithTarget() ? "활성화" : "비활성화";
 
-  // 심볼 간 바 데이터 중복 검사 설정
   const vector<string> bar_data_type_str = {
       "트레이딩 바 데이터", "돋보기 바 데이터", "참조 바 데이터",
       "마크 가격 바 데이터"};
@@ -834,7 +854,7 @@ void Analyzer::SaveConfig() {
   }
 
   // 파일로 저장
-  ofstream config_file(format("{}/config.json", backboard_path));
+  ofstream config_file(format("{}/config.json", main_directory));
   config_file << setw(4) << config << endl;
   config_file.close();
 
@@ -847,6 +867,12 @@ void Analyzer::SaveSourcesAndHeaders() {
     const auto& strategy = engine_->strategy_;
     const auto& strategy_class_name = strategy->GetStrategyClassName();
     set<string> saved_indicator_classes;  // 이미 저장한 지표 클래스명 집합
+
+    // 공통 경로 캐싱
+    const string main_directory = Backtesting::IsServerMode()
+                                      ? main_directory_
+                                      : format("{}/BackBoard", main_directory_);
+    const string sources_path = format("{}/Sources", main_directory);
 
     // 전략 소스 파일 저장
     const auto& source_path = strategy->GetSourcePath();
@@ -864,8 +890,7 @@ void Analyzer::SaveSourcesAndHeaders() {
 
     if (!source_path_to_copy.empty()) {
       fs::copy(source_path_to_copy,
-               format("{}/BackBoard/Sources/{}.cpp", main_directory_,
-                      strategy_class_name));
+               format("{}/{}.cpp", sources_path, strategy_class_name));
     }
 
     // 전략 헤더 파일 저장
@@ -884,8 +909,7 @@ void Analyzer::SaveSourcesAndHeaders() {
 
     if (!header_path_to_copy.empty()) {
       fs::copy(header_path_to_copy,
-               format("{}/BackBoard/Sources/{}.hpp", main_directory_,
-                      strategy_class_name));
+               format("{}/{}.hpp", sources_path, strategy_class_name));
     }
 
     // 전략에서 사용하는 지표 소스 코드 저장
@@ -925,8 +949,7 @@ void Analyzer::SaveSourcesAndHeaders() {
 
       if (!indicator_source_path_to_copy.empty()) {
         fs::copy(indicator_source_path_to_copy,
-                 format("{}/BackBoard/Sources/{}.cpp", main_directory_,
-                        indicator_class_name));
+                 format("{}/{}.cpp", sources_path, indicator_class_name));
       }
 
       // 헤더 파일 저장
@@ -945,19 +968,19 @@ void Analyzer::SaveSourcesAndHeaders() {
 
       if (!indicator_header_path_to_copy.empty()) {
         fs::copy(indicator_header_path_to_copy,
-                 format("{}/BackBoard/Sources/{}.hpp", main_directory_,
-                        indicator_class_name));
+                 format("{}/{}.hpp", sources_path, indicator_class_name));
       }
     }
 
     logger_->Log(INFO_L, "전략과 지표의 헤더 및 소스 파일이 저장되었습니다.",
                  __FILE__, __LINE__, true);
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
-    Logger::LogAndThrowError(
-        "전략과 지표의 헤더 및 소스 파일을 저장하는 중 오류가 "
-        "발생했습니다.",
-        __FILE__, __LINE__);
+    logger_->Log(ERROR_L,
+                 "전략과 지표의 헤더 및 소스 파일을 저장하는 중 오류가 "
+                 "발생했습니다.",
+                 __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -978,17 +1001,20 @@ void Analyzer::SaveBackBoard() const {
       // 패키지가 없으면 GitHub 릴리즈에서 다운로드
       logger_->Log(
           WARN_L,
-          "로컬 저장소에서 백보드를 찾을 수 없어 GitHub에서 다운로드합니다.",
+          format("[{}]에서 BackBoard를 찾을 수 없어 GitHub에서 다운로드합니다.",
+                 backboard_package_path),
           __FILE__, __LINE__, true);
 
       DownloadBackBoardFromGitHub();
     }
 
-    logger_->Log(INFO_L, "백보드가 저장되었습니다.", __FILE__, __LINE__, true);
+    logger_->Log(INFO_L, "BackBoard가 저장되었습니다.", __FILE__, __LINE__,
+                 true);
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
-    Logger::LogAndThrowError("백보드를 저장하는 중 오류가 발생했습니다.",
-                             __FILE__, __LINE__);
+    logger_->Log(ERROR_L, "BackBoard를 저장하는 중 오류가 발생했습니다.",
+                 __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -998,12 +1024,27 @@ void Analyzer::SaveBacktestingLog() const {
     logger_->backtesting_log_.close();
 
     fs::rename(logger_->backtesting_log_temp_path_,
-               main_directory_ + "/BackBoard/backtesting.log");
+               Backtesting::IsServerMode()
+                   ? main_directory_ + "/backtesting.log"
+                   : main_directory_ + "/BackBoard/backtesting.log");
   } catch (const exception& e) {
-    Logger::LogAndThrowError(
-        "백테스팅 로그 파일을 저장하는 데 오류가 발생했습니다.: " +
-            string(e.what()),
-        __FILE__, __LINE__);
+    logger_->Log(ERROR_L,
+                 "백테스팅 로그 파일을 저장하는 데 오류가 발생했습니다.",
+                 __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
+  }
+}
+
+void Analyzer::ResetAnalyzer() {
+  lock_guard lock(mutex_);
+
+  config_.reset();
+  symbol_info_.clear();
+
+  if (instance_) {
+    instance_.reset();
+    instance_ = shared_ptr<Analyzer>(new Analyzer(), Deleter());
   }
 }
 
@@ -1250,10 +1291,9 @@ void Analyzer::DownloadBackBoardFromGitHub() const {
 
       if (int fallback_result = system(fallback_exe_cmd.c_str());
           fallback_result != 0) {
-        Logger::LogAndThrowError(
+        throw runtime_error(
             "BackBoard.exe를 다운로드하는 데 실패했습니다. "
-            "네트워크 연결을 확인하고 다시 시도해주세요.",
-            __FILE__, __LINE__);
+            "네트워크 연결을 확인하고 다시 시도해주세요.");
       }
     }
 
@@ -1283,24 +1323,21 @@ void Analyzer::DownloadBackBoardFromGitHub() const {
 
       if (int zip_fallback_result = system(fallback_zip_cmd.c_str());
           zip_fallback_result != 0) {
-        Logger::LogAndThrowError(
+        throw runtime_error(
             "BackBoard.zip을 다운로드하는 데 실패했습니다. "
-            "네트워크 연결을 확인하고 다시 시도해주세요.",
-            __FILE__, __LINE__);
+            "네트워크 연결을 확인하고 다시 시도해주세요.");
       }
     }
 
     // 다운로드된 파일 크기 확인
     if (!fs::exists(exe_temp_path) || fs::file_size(exe_temp_path) == 0) {
-      Logger::LogAndThrowError(
-          "BackBoard.exe 파일이 올바르게 다운로드되지 않았습니다.", __FILE__,
-          __LINE__);
+      throw runtime_error(
+          "BackBoard.exe 파일이 올바르게 다운로드되지 않았습니다.");
     }
 
     if (!fs::exists(zip_temp_path) || fs::file_size(zip_temp_path) == 0) {
-      Logger::LogAndThrowError(
-          "BackBoard.zip 파일이 올바르게 다운로드되지 않았습니다.", __FILE__,
-          __LINE__);
+      throw runtime_error(
+          "BackBoard.zip 파일이 올바르게 다운로드되지 않았습니다.");
     }
 
     // ZIP 파일 압축 해제
@@ -1314,8 +1351,7 @@ void Analyzer::DownloadBackBoardFromGitHub() const {
         zip_temp_path, extract_temp_path);
 
     if (system(extract_cmd.c_str()) != 0) {
-      Logger::LogAndThrowError("BackBoard.zip 압축 해제에 실패했습니다.",
-                               __FILE__, __LINE__);
+      throw runtime_error("BackBoard.zip 압축 해제에 실패했습니다.");
     }
 
     // BackBoard.exe 복사
@@ -1374,14 +1410,16 @@ void Analyzer::DownloadBackBoardFromGitHub() const {
                    __FILE__, __LINE__, true);
     }
 
-    logger_->Log(INFO_L, "GitHub에서 백보드가 성공적으로 다운로드되었습니다.",
+    logger_->Log(INFO_L,
+                 "GitHub에서 BackBoard가 성공적으로 다운로드되었습니다.",
                  __FILE__, __LINE__, true);
 
   } catch (const exception& e) {
-    logger_->Log(ERROR_L, e.what(), __FILE__, __LINE__, true);
-    Logger::LogAndThrowError(
-        "GitHub에서 백보드를 다운로드하는 중 오류가 발생했습니다.", __FILE__,
-        __LINE__);
+    logger_->Log(ERROR_L,
+                 "GitHub에서 BackBoard를 다운로드하는 중 오류가 발생했습니다.",
+                 __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 

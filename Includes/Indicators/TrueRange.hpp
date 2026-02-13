@@ -4,7 +4,7 @@
 #include "Engines/Indicator.hpp"
 
 /// True Range
-class TrueRange final : public Indicator {
+class BACKTESTING_API TrueRange final : public Indicator {
  public:
   explicit TrueRange(const string& name, const string& timeframe,
                      const Plot& plot);

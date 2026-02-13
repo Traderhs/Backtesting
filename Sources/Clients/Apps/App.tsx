@@ -3,9 +3,11 @@ import {useWebSocket, WebSocketProvider} from '@/Components/Server/WebSocketCont
 import ServerAlert from "@/Components/Server/ServerAlert.tsx";
 import {TradeFilterProvider} from "@/Components/TradeFilter/TradeFilterProvider.tsx";
 import {LogoProvider, useLogo} from "@/Contexts/LogoContext";
+import {ResultsProvider, useResults} from '@/Contexts/ResultsContext';
 import Sidebar from "@/Components/Sidebar/Sidebar";
 import TitleBar from "@/Components/Window/TitleBar";
 import LoadingSpinner from '@/Components/Common/LoadingSpinner';
+import {clearChartGlobals} from "./Utils/clearChartGlobals";
 
 // Plotly 미리 로딩 (앱 시작 시)
 const plotlyPreloadPromise = import('react-plotly.js').then(module => {
@@ -60,6 +62,7 @@ function AppContent() {
     const [prevTab, setPrevTab] = useState("StrategyEditor");
     const [animationDirection, setAnimationDirection] = useState<"" | "slide-in-left" | "slide-in-right">("");
     const [isAnimating, setIsAnimating] = useState(false);
+    const {selectedResult, isSelectingResult} = useResults();
 
     // 탭 순서 정의
     const tabOrder = ["StrategyEditor", "Overview", "Performance", "Plot", "Chart", "TradeList", "Config", "Log"];
@@ -87,6 +90,10 @@ function AppContent() {
     } | null>(null);
     const [isChartLoading, setIsChartLoading] = useState(false);
     const [config, setConfig] = useState<any>(null);
+    const [configResult, setConfigResult] = useState<string | null>(null);
+
+    // StrategyEditor가 내부 준비 되었는지 여부
+    const [isStrategyEditorReady, setIsStrategyEditorReady] = useState(false);
 
     // 분석 그래프(Plot) 탭의 활성 플롯 타입 상태 추가
     const [activePlotType, setActivePlotType] = useState<string>("equity-drawdown");
@@ -299,6 +306,25 @@ function AppContent() {
         });
     };
 
+    // 외부에서 프로그래밍 방식으로 탭 전환을 요청할 수 있도록 전역 이벤트 수신기 등록
+    useEffect(() => {
+        const onSelectTabRequest = (ev: Event) => {
+            try {
+                const detail = (ev as CustomEvent)?.detail as any;
+                if (!detail || typeof detail.tab !== 'string') {
+                    return;
+                }
+
+                handleSelectTab(detail.tab, detail.config as any, detail.direction as any);
+            } catch (err) {
+                // 무시
+            }
+        };
+
+        window.addEventListener('backboard.selectTab', onSelectTabRequest as EventListener);
+        return () => window.removeEventListener('backboard.selectTab', onSelectTabRequest as EventListener);
+    }, [handleSelectTab]);
+
     // 차트 로딩 완료 처리 함수
     const handleChartLoaded = () => {
         setIsChartLoading(false);
@@ -355,13 +381,28 @@ function AppContent() {
     useEffect(() => {
         let cancelled = false;
 
+        // result 전환 시 이전 result의 차트 전역 변수들을 초기화
+        if (typeof window !== 'undefined') {
+            clearChartGlobals();
+        }
+
+        setConfig(null);
+        setConfigResult(null);
+
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
         const loadConfigWithRetries = async (maxAttempts = 3) => {
+            if (!selectedResult) {
+                setConfig(null);
+                setConfigResult(null);
+                return;
+            }
+
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
-                    const res = await fetch('/api/config');
-                    const data = await res.json();
+                    const data = await (window.__resultsFetchParsed
+                        ? window.__resultsFetchParsed(`/api/config?result=${encodeURIComponent(selectedResult)}`)
+                        : (await (await fetch(`/api/config?result=${encodeURIComponent(selectedResult)}`)).json()));
 
                     if (cancelled) {
                         return;
@@ -369,6 +410,7 @@ function AppContent() {
 
                     // 성공 시 상태 업데이트
                     setConfig(data);
+                    setConfigResult(selectedResult);
 
                     // config 로딩 후 window.indicatorPaths 전역 공유
                     (window as any).indicatorPaths = {};
@@ -395,6 +437,7 @@ function AppContent() {
 
                     // 모든 시도 실패: 오류 표시를 내리지 않고 조용히 처리
                     if (cancelled) {
+                        setConfigResult(null);
                         return;
                     }
 
@@ -409,7 +452,7 @@ function AppContent() {
         return () => {
             cancelled = true;
         };
-    }, []);
+    }, [selectedResult]);
 
     // 초기 설정 (줌 방지 등)
     useEffect(() => {
@@ -498,8 +541,9 @@ function AppContent() {
                 boxSizing: "border-box"
             }}
         >
-            {/* 이미지 로딩 중일 때 전체 화면 로딩 스피너 표시 */}
-            {isGlobalLoading && <LoadingSpinner/>}
+            {/* 이미지 로딩 중이거나 StrategyEditor가 활성화되어 있지만 아직 준비되지 않은 경우 전체 화면 로딩 스피너 표시 */}
+            {(isGlobalLoading || isSelectingResult || (tab === 'StrategyEditor' && !isStrategyEditorReady)) &&
+                <LoadingSpinner/>}
 
             {/* StarField 컴포넌트는 항상 렌더링하되, Chart 탭에서는 opacity로 숨김 처리 */}
             <div style={{
@@ -554,7 +598,10 @@ function AppContent() {
                         {/* StrategyEditor는 방문한 경우에만 렌더링, 이후에는 display로 제어 */}
                         {visitedTabs["StrategyEditor"] && (
                             <Suspense fallback={<div/>}>
-                                <StrategyEditor isActive={tab === "StrategyEditor"}/>
+                                <StrategyEditor
+                                    isActive={tab === "StrategyEditor"}
+                                    onFullyLoaded={() => setIsStrategyEditorReady(true)}
+                                />
                             </Suspense>
                         )}
                     </div>
@@ -603,19 +650,32 @@ function AppContent() {
                         style={getTabStyle("Chart")}
                         data-tab="Chart"
                     >
-                        {/* Chart 탭은 방문한 경우에만 렌더링하고 chartConfig가 있을 때만, 이후에는 display로 제어 */}
-                        {visitedTabs["Chart"] && chartConfig && (
+                        {/* Chart 탭은 방문한 경우에만 렌더링하고 chartConfig와 config가 있고, 현재 선택된 result와 config의 result가 일치할 때만 렌더링 */}
+                        {visitedTabs["Chart"] && chartConfig && config && configResult === (selectedResult || '') && (
                             <Suspense fallback={<div/>}>
                                 <Chart
-                                    key={chartConfig.symbol} // 심볼 변경 시 강제 리마운트
+                                    key={`${chartConfig.symbol}::${selectedResult || 'no-result'}`} // 심볼혹은 Result 변경 시 강제 리마운트
                                     symbol={chartConfig.symbol}
                                     timeframe={chartConfig.timeframe}
                                     priceStep={chartConfig.priceStep}
                                     pricePrecision={chartConfig.pricePrecision}
-                                    config={config || {}} // config 추가
+                                    config={config}
+                                    result={selectedResult || ''}
                                     onChartLoaded={handleChartLoaded}
                                 />
                             </Suspense>
+                        )}
+
+                        {/* Chart가 완전 언마운트 되는 동안 또는 config 로딩 중일 때 로딩 표시 */}
+                        {visitedTabs["Chart"] && chartConfig && !config && (
+                            <div style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                height: '100%'
+                            }}>
+                                <LoadingSpinner/>
+                            </div>
                         )}
                     </div>
 
@@ -666,11 +726,13 @@ function AppContent() {
 function App() {
     return (
         <WebSocketProvider>
-            <TradeFilterProvider>
-                <LogoProvider>
-                    <AppContent/>
-                </LogoProvider>
-            </TradeFilterProvider>
+            <ResultsProvider>
+                <TradeFilterProvider>
+                    <LogoProvider>
+                        <AppContent/>
+                    </LogoProvider>
+                </TradeFilterProvider>
+            </ResultsProvider>
         </WebSocketProvider>
     );
 }

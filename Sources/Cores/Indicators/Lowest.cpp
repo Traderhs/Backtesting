@@ -8,17 +8,15 @@ Lowest::Lowest(const string& name, const string& timeframe, const Plot& plot,
                Indicator& source, const double period)
     : Indicator(name, timeframe, plot),
       source_(source),
+      sizet_period_(static_cast<size_t>(period)),
+      double_period_(period),
       count_(0),
       can_calculate_(false),
       current_idx_(0) {
   if (period <= 0) {
-    Logger::LogAndThrowError(
-        format("Lowest 지표의 Period [{}]은(는) 0보다 커야 합니다.", period),
-        __FILE__, __LINE__);
+    throw runtime_error(
+        format("Lowest 지표의 Period [{}]은(는) 0보다 커야 합니다.", period));
   }
-
-  double_period_ = period;
-  sizet_period_ = static_cast<size_t>(period);
 }
 
 void Lowest::Initialize() {

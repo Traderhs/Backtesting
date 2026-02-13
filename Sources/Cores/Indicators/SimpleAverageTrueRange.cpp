@@ -14,25 +14,21 @@ SimpleAverageTrueRange::SimpleAverageTrueRange(const string& name,
                                                const double period)
     : Indicator(name, timeframe, plot),
       symbol_idx_(-1),
+      sizet_period_(static_cast<size_t>(period)),
+      double_period_(period),
       prev_close_(0.0),
       first_bar_(true),
       count_(0),
       sum_(0.0),
       can_calculate_(false),
+      buffer_(sizet_period_, 0.0),
       buffer_idx_(0) {
   if (period <= 0) {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("SimpleAverageTrueRange 지표의 Period [{}]은(는) 0보다 커야 "
                "합니다.",
-               period),
-        __FILE__, __LINE__);
+               period));
   }
-
-  // 타입 안정성과 속도를 위해 미리 변환
-  double_period_ = period;
-  sizet_period_ = static_cast<size_t>(period);
-
-  buffer_.assign(sizet_period_, 0.0);
 }
 
 void SimpleAverageTrueRange::Initialize() {

@@ -29,6 +29,7 @@
 
 // 내부 헤더
 #include "Engines/Config.hpp"
+#include "Engines/Exception.hpp"
 #include "Engines/Logger.hpp"
 
 // 네임 스페이스
@@ -125,7 +126,7 @@ shared_ptr<arrow::Table> ReadParquet(const string& file_path,
     ranges::replace(log_path, '\\', '/');
 
     throw runtime_error(
-        format("[{}] 경로의 Parquet 파일을 열 수 없습니다.", log_path));
+        format("Parquet 파일 [{}]을(를) 열 수 없습니다.", log_path));
   }
 
   const auto& random_access_file = memory_mapped_result.ValueOrDie();
@@ -227,9 +228,9 @@ any GetCellValue(const shared_ptr<arrow::Table>& table,
   // 열 인덱스 찾기
   const int column_index = table->schema()->GetFieldIndex(column_name);
   if (column_index == -1) {
-    Logger::LogAndThrowError("해당되는 열 이름이 없습니다: " + column_name,
-                             __FILE__, __LINE__);
-    return nullptr;
+    throw runtime_error(format(
+        "테이블 셀 값을 얻기 위해 주어진 열 이름 [{}]이(가) 존재하지 않습니다.",
+        column_name));
   }
 
   return GetCellValue(table, column_index, row_index);
@@ -238,10 +239,10 @@ any GetCellValue(const shared_ptr<arrow::Table>& table,
 any GetCellValue(const shared_ptr<arrow::Table>& table, const int column_index,
                  const int64_t row_index) {
   if (column_index < 0 || column_index >= table->num_columns()) {
-    Logger::LogAndThrowError(
-        "잘못된 열 인덱스입니다: " + to_string(column_index), __FILE__,
-        __LINE__);
-    return nullptr;
+    throw runtime_error(
+        format("테이블 셀 값을 얻기 위해 주어진 열 인덱스 [{}]이(가) 존재하지 "
+               "않습니다.",
+               to_string(column_index)));
   }
 
   // 열 데이터 가져오기
@@ -265,10 +266,10 @@ any GetScalarValue(const shared_ptr<arrow::Scalar>& scalar) {
     case arrow::Type::STRING:
       return dynamic_pointer_cast<arrow::StringScalar>(scalar)->ToString();
     [[unlikely]] default:
-      Logger::LogAndThrowError(
-          "스칼라 값을 얻기 위해 일치하는 타입이 없습니다.: " + type, __FILE__,
-          __LINE__);
-      return nullptr;
+      throw runtime_error(
+          format("스칼라 값을 얻기 위해 주어진 타입 [{}]이(가) 엔진에 존재하지 "
+                 "않습니다.",
+                 to_string(type)));
   }
 }
 
@@ -285,16 +286,12 @@ double GetDoubleFromJson(const json& data, const string& key) {
     if (value.is_number()) {
       return value.get<double>();
     }
-
-    // 그 외의 경우에는 오류 처리
-    Logger::LogAndThrowError("유효하지 않은 값이 존재합니다.", __FILE__,
-                             __LINE__);
-  } catch ([[maybe_unused]] const exception& e) {
-    Logger::LogAndThrowError(format("[{}] 키에서 오류가 발생했습니다.", key),
-                             __FILE__, __LINE__);
-    throw;
+  } catch ([[maybe_unused]] const std::exception& e) {
+    throw runtime_error(format(
+        "Json에서 Double 값을 얻는 중 [{}] 키에서 오류가 발생했습니다.", key));
   }
 
+  // 지정된 타입 외의 타입은 NAN 반환
   return NAN;
 }
 
@@ -315,12 +312,13 @@ void TableToParquet(const shared_ptr<arrow::Table>& table,
 
   // ※ 전체 저장
   // 파일 열기
-  auto result =
-      arrow::io::FileOutputStream::Open(directory_path + "/" + file_name);
+  const string& file_path = directory_path + "/" + file_name;
+  auto result = arrow::io::FileOutputStream::Open(file_path);
+
   if (!result.ok()) {
-    Logger::LogAndThrowError(
-        "파일을 여는 데 실패했습니다.: " + result.status().ToString(), __FILE__,
-        __LINE__);
+    throw runtime_error(
+        format("Parquet 저장을 위해 [{}] 파일을 여는 데 실패했습니다. {}",
+               file_path, result.status().ToString()));
   }
 
   // outfile를 지역 변수로 보관
@@ -330,16 +328,14 @@ void TableToParquet(const shared_ptr<arrow::Table>& table,
   const auto write_result = parquet::arrow::WriteTable(
       *table, arrow::default_memory_pool(), outfile, table->num_rows());
   if (!write_result.ok()) {
-    Logger::LogAndThrowError(
-        "테이블을 저장하는 데 실패했습니다.: " + write_result.ToString(),
-        __FILE__, __LINE__);
+    throw runtime_error(format("[{}] 파일을 저장하는 데 실패했습니다. {}",
+                               file_path, write_result.ToString()));
   }
 
   // 파일 스트림 닫기
   if (const auto close_status = outfile->Close(); !close_status.ok()) {
-    Logger::LogAndThrowError(
-        "파일을 닫는 데 실패했습니다.: " + close_status.ToString(), __FILE__,
-        __LINE__);
+    throw runtime_error(format("[{}] 파일을 닫는 데 실패했습니다. {}",
+                               file_path, close_status.ToString()));
   }
 
   if (!save_split_files) {
@@ -365,9 +361,12 @@ void TableToParquet(const shared_ptr<arrow::Table>& table,
     auto first_chunk = open_time_column->chunk(0);
     auto first_scalar_result = first_chunk->GetScalar(0);
     if (!first_scalar_result.ok()) {
-      cerr << "Error getting first scalar value." << endl;
+      cerr << "Parquet 분할 저장을 위해 첫 번째 청크의 첫 번째 값을 얻는 데 "
+              "실패했습니다."
+           << endl;
       continue;
     }
+
     const auto& first_scalar = first_scalar_result.ValueOrDie();
 
     // 마지막 청크의 마지막 값
@@ -376,9 +375,12 @@ void TableToParquet(const shared_ptr<arrow::Table>& table,
     int64_t last_index = last_chunk->length() - 1;
     auto last_scalar_result = last_chunk->GetScalar(last_index);
     if (!last_scalar_result.ok()) {
-      cerr << "Error getting last scalar value." << endl;
+      cerr << "Parquet 분할 저장을 위해 마지막 청크의 마지막 값을 얻는 데 "
+              "실패했습니다."
+           << endl;
       continue;
     }
+
     const auto& last_scalar = last_scalar_result.ValueOrDie();
 
     // Open Time 값은 Int64Scalar라고 가정하고, ms 단위를 second로 변환
@@ -398,9 +400,11 @@ void TableToParquet(const shared_ptr<arrow::Table>& table,
     // FileOutputStream 열기 (append false: 덮어쓰기)
     auto out_result = arrow::io::FileOutputStream::Open(out_file, false);
     if (!out_result.ok()) {
-      Logger::LogAndThrowError("파일을 여는 데 실패했습니다.: " + out_file,
-                               __FILE__, __LINE__);
+      throw runtime_error(
+          format("Parquet 저장을 위해 [{}] 파일을 여는 데 실패했습니다. {}",
+                 out_file, out_result.status().ToString()));
     }
+
     const auto& split_file = *out_result;
 
     // 테이블 청크를 Parquet 파일로 저장
@@ -408,15 +412,15 @@ void TableToParquet(const shared_ptr<arrow::Table>& table,
     auto write_status =
         parquet::arrow::WriteTable(*table_chunk, arrow::default_memory_pool(),
                                    split_file, current_chunk_size);
+
     if (!write_status.ok()) {
-      Logger::LogAndThrowError("파일을 저장하는 데 실패했습니다.: " + out_file,
-                               __FILE__, __LINE__);
+      throw runtime_error(format("[{}] 파일을 저장하는 데 실패했습니다. {}",
+                                 out_file, write_status.ToString()));
     }
 
     if (const auto close_status = split_file->Close(); !close_status.ok()) {
-      Logger::LogAndThrowError(
-          "파일을 닫는 데 실패했습니다.: " + close_status.ToString(), __FILE__,
-          __LINE__);
+      throw runtime_error(format("[{}] 파일을 닫는 데 실패했습니다. {}",
+                                 out_file, close_status.ToString()));
     }
   }
 }
@@ -426,8 +430,8 @@ void JsonToFile(future<json> data, const string& file_path) {
     file << data.get().dump(4);  // 4는 들여쓰기를 위한 인자
     file.close();
   } else {
-    Logger::LogAndThrowError(format("{} 파일을 열 수 없습니다.", file_path),
-                             __FILE__, __LINE__);
+    throw exception::InvalidValue(
+        format("[{}] 파일을 열 수 없습니다.", file_path));
   }
 }
 
@@ -454,10 +458,10 @@ pair<shared_ptr<arrow::Table>, shared_ptr<arrow::Table>> SplitTable(
 
 double RoundToStep(const double value, const double step) {
   if (IsLessOrEqual(step, 0.0)) {
-    Logger::LogAndThrowError(
-        format("반올림을 위하여 주어진 스텝 [{}]은(는) 0보다 커야합니다.",
-               to_string(step)),
-        __FILE__, __LINE__);
+    throw runtime_error(
+        format("최소 스텝 크기로 반올림하기 위하여 주어진 스텝 [{}]은(는) "
+               "0보다 커야합니다.",
+               to_string(step)));
   }
 
   const double result = round(value / step) * step;
@@ -599,63 +603,8 @@ string GetEnvVariable(const string& env_var) {
   }
 
   // 환경 변수가 없을 경우 예외 처리
-  Logger::LogAndThrowError(
-      format("환경 변수 [{}]이(가) 존재하지 않습니다.", env_var), __FILE__,
-      __LINE__);
-
-  return {};  // 환경 변수가 없으면 빈 문자열 반환
-}
-
-void RunPythonScript(const string& script_path, const vector<string>& args) {
-  const string& python_exe =
-      Config::GetProjectDirectory() + "/Sources/py/Anaconda/python.exe";
-
-  // 경로 확인
-  if (!filesystem::exists(script_path)) {
-    Logger::LogAndThrowError(
-        format("파이썬 스크립트 [{}]을(를) 찾을 수 없습니다.", script_path),
-        __FILE__, __LINE__);
-  }
-  if (!filesystem::exists(python_exe)) {
-    Logger::LogAndThrowError(
-        format("파이썬 인터프리터 [{}]을(를) 찾을 수 없습니다.", python_exe),
-        __FILE__, __LINE__);
-  }
-
-  ostringstream command;
-  command << "cmd /c \"\"" << python_exe << "\" \"" << script_path << "\"";
-
-  for (const auto& arg : args) {
-    command << " \"" << arg << "\"";
-  }
-  command << "\"";  // 마지막 닫는 따옴표
-
-  if (const int ret = system(command.str().c_str()); ret != 0) {
-    Logger::LogAndThrowError(format("파이썬 스크립트 [{}]을(를) 실행하는 중 "
-                                    "오류가 발생했습니다. 반환 코드 [{}]",
-                                    script_path, ret),
-                             __FILE__, __LINE__);
-  }
-}
-
-string OpenHtml(const string& html_path) {
-  ifstream html(html_path);
-
-  if (!html.is_open()) {
-    throw runtime_error(
-        format("[{}]이(가) 존재하지 않거나 열 수 없습니다.", html_path));
-  }
-
-  string html_str((istreambuf_iterator(html)), istreambuf_iterator<char>());
-
-  return html_str;
-}
-
-string RemoveParquetExtension(const string& file_path) {
-  constexpr size_t extension_length = 8;  // ".parquet" 의 길이는 8
-
-  // .parquet를 제거한 경로 반환
-  return file_path.substr(0, file_path.length() - extension_length);
+  throw invalid_argument(
+      format("환경 변수 [{}]이(가) 존재하지 않습니다.", env_var));
 }
 
 }  // namespace backtesting::utils

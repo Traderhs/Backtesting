@@ -359,3 +359,33 @@
 .chart-loading-disabled:not(.active) {
     background-color: rgb(17 17 17 / 100%) !important;
 }
+
+/* ===== Results가 없을 때 StrategyEditor만 표시 ===== */
+.sidebar-editor-only .main-button-container {
+    display: none;
+}
+
+/* 전략 에디터 컨테이너가 없을 때를 대비한 안전 폴백: 첫 번째 main-button-container는 보이게 함 */
+.sidebar-editor-only .main-button-container:first-of-type {
+    display: block;
+}
+
+.sidebar-editor-only .strategy-editor-container {
+    display: block;
+}
+
+.sidebar-editor-only .sub-section-container,
+.sidebar-editor-only .bottom-nav-section,
+.sidebar-editor-only .symbol-button-container,
+.sidebar-editor-only .last-button {
+    display: none !important;
+}
+
+.sidebar-editor-only .sidebar-button {
+    width: 100%;
+    margin-left: 0;
+}
+
+.sidebar-editor-only .sidebar-content {
+    padding-bottom: 1.5rem;
+}

@@ -44,13 +44,19 @@ interface IndicatorSeriesContainerProps {
     indicatorDataMap: { [indicatorName: string]: IndicatorDataPoint[] };
     priceStep: number;
     pricePrecision: number;
+    config: any;
+    isCandleSeriesReady: boolean;
+    onPanesCreated?: (paneCount: number) => void;
 }
 
 const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
                                                                                chart,
                                                                                indicatorDataMap,
                                                                                priceStep,
-                                                                               pricePrecision
+                                                                               pricePrecision,
+                                                                               config: initialConfig,
+                                                                               isCandleSeriesReady,
+                                                                               onPanesCreated
                                                                            }) => {
     const [config, setConfig] = useState<any>(null);
     const [seriesComponents, setSeriesComponents] = useState<JSX.Element[]>([]);
@@ -132,32 +138,19 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
         };
     }, [seriesComponents]);
 
+    // config가 변경되면 설정 정보 업데이트
     useEffect(() => {
-        fetch("/api/config")
-            .then(res => res.json())
-            .then(data => {
-                setConfig(data);
-                window.indicatorPaths = {};
+        if (!initialConfig) {
+            return;
+        }
 
-                let indicatorCount = 0;
-
-                data["지표"]?.forEach((indicator: any) => {
-                    const indicatorName = indicator["지표 이름"] || "unknown_indicator";
-                    const indicatorPath = indicator["데이터 경로"] || "";
-                    const plotType = indicator["플롯"]?.["플롯 종류"];
-
-                    // 플롯 종류가 비활성화인 지표는 제외
-                    if (plotType !== "비활성화") {
-                        window.indicatorPaths[indicatorName] = indicatorPath.replace(/\/[^\/]*$/, "");
-                        indicatorCount++;
-                    }
-                });
-            })
-            .catch(err => console.error("config 로딩 오류:", err));
-    }, []);
+        setConfig(initialConfig);
+    }, [initialConfig]);
 
     useEffect(() => {
-        if (!chart || !config) {
+        // 캔들 시리즈가 준비되지 않았으면 지표 시리즈 생성하지 않음
+        // (pane 0이 먼저 생성되어야 pane 1, 2, ...가 올바른 순서로 생성됨)
+        if (!chart || !config || !isCandleSeriesReady) {
             return;
         }
 
@@ -166,7 +159,7 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
 
         // 페인 카운트 초기화: 컴포넌트 재생성 시 중복 카운트 방지
         if (typeof window !== 'undefined') {
-            window.paneCount = undefined;
+            window.paneCount = 0;
         }
 
         const paneMapping: { [paneName: string]: number } = {};
@@ -200,9 +193,7 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
                 if (!paneMapping[paneName]) {
                     paneMapping[paneName] = nextPaneIndex++;
 
-                    if (typeof window.paneCount === 'undefined') {
-                        window.paneCount = 1;
-                    } else if (window.paneCount) {
+                    if (window.paneCount !== undefined) {
                         window.paneCount++;
                     }
                 }
@@ -311,7 +302,22 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
         return () => {
             cleanupPaneCount();
         };
-    }, [chart, config, indicatorDataMap, priceStep, pricePrecision]);
+    }, [chart, config, indicatorDataMap, priceStep, pricePrecision, isCandleSeriesReady]);
+
+    // 시리즈가 실제로 생성된 후 stretchFactor 설정
+    useEffect(() => {
+        if (seriesComponents.length > 0 && chart && onPanesCreated && window.paneCount !== undefined) {
+            // 시리즈 생성이 완료될 때까지 대기 (다음 프레임 + 추가 지연)
+            const timerId = setTimeout(() => {
+                requestAnimationFrame(() => {
+                    // window.paneCount가 0일 수도 있으므로 기본값 처리 주의
+                    onPanesCreated(window.paneCount ?? 0);
+                });
+            }, 50);
+
+            return () => clearTimeout(timerId);
+        }
+    }, [seriesComponents, chart, onPanesCreated]);
 
     return <div style={{opacity: isVisible ? 1 : 0, transition: 'opacity 0.3s ease'}}>
         {seriesComponents}

@@ -29,26 +29,30 @@ Indicator::Indicator(const string& name, const string& timeframe,
       cached_ref_bar_idx_(SIZE_MAX) {
   try {
     if (name.empty()) {
-      Logger::LogAndThrowError("지표 이름이 비어있습니다.", __FILE__, __LINE__);
+      throw runtime_error("지표 이름이 비어있습니다.");
     }
 
     if (timeframe.empty()) {
-      Logger::LogAndThrowError(
-          format("[{}] 지표의 타임프레임이 비어있습니다.", name), __FILE__,
-          __LINE__);
+      throw runtime_error(
+          format("[{}] 지표의 타임프레임이 비어있습니다.", name));
     }
-  } catch ([[maybe_unused]] const exception& e) {
-    throw runtime_error("지표를 추가하는 중 오류가 발생했습니다.");
+  } catch (const exception& e) {
+    logger_->Log(ERROR_L, "지표를 추가하는 중 오류가 발생했습니다.", __FILE__,
+                 __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 
   // 증가 카운터는 AddIndicator 함수로만 증가하는데 AddIndicator 없이 직접
   // 생성자 호출로 전 증가 카운터가 현재 증가 카운터와 같다면 오류 발생
   if (pre_creation_counter_ == creation_counter_) {
     logger_->Log(ERROR_L,
-                 "지표의 추가는 AddIndicator 함수의 호출로만 가능합니다.",
+                 format("[{} {}] 지표를 추가하는 중 오류가 발생했습니다.", name,
+                        timeframe),
                  __FILE__, __LINE__, true);
-    throw runtime_error(format(
-        "[{} {}] 지표를 추가하는 중 에러가 발생했습니다.", name, timeframe));
+
+    throw runtime_error(
+        "지표의 추가는 AddIndicator 함수의 호출로만 가능합니다.");
   }
 
   // 정상적으로 AddIndicator 함수를 통했다면 전 증가 가운터에 현재 카운터를 대입
@@ -63,16 +67,18 @@ Indicator::Indicator(const string& name, const string& timeframe,
 }
 Indicator::~Indicator() = default;
 
-shared_ptr<Analyzer>& Indicator::analyzer_ = Analyzer::GetAnalyzer();
-shared_ptr<BarHandler>& Indicator::bar_ = BarHandler::GetBarHandler();
-shared_ptr<Engine>& Indicator::engine_ = Engine::GetEngine();
-shared_ptr<Logger>& Indicator::logger_ = Logger::GetLogger();
-size_t Indicator::creation_counter_;
-size_t Indicator::pre_creation_counter_;
-bool Indicator::is_calculating_ = false;
-string Indicator::calculating_name_;
-string Indicator::calculating_timeframe_;
-vector<string> Indicator::saved_indicator_classes_;
+BACKTESTING_API shared_ptr<Analyzer>& Indicator::analyzer_ =
+    Analyzer::GetAnalyzer();
+BACKTESTING_API shared_ptr<BarHandler>& Indicator::bar_ =
+    BarHandler::GetBarHandler();
+BACKTESTING_API shared_ptr<Engine>& Indicator::engine_ = Engine::GetEngine();
+BACKTESTING_API shared_ptr<Logger>& Indicator::logger_ = Logger::GetLogger();
+BACKTESTING_API size_t Indicator::creation_counter_ = 0;
+BACKTESTING_API size_t Indicator::pre_creation_counter_ = 0;
+BACKTESTING_API bool Indicator::is_calculating_ = false;
+BACKTESTING_API string Indicator::calculating_name_;
+BACKTESTING_API string Indicator::calculating_timeframe_;
+BACKTESTING_API vector<string> Indicator::saved_indicator_classes_;
 
 Numeric<double> Indicator::operator[](const size_t index) {
   // =========================================================================
@@ -82,20 +88,18 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // 지표 계산 전 참조 호출 시 에러 발생
   // 특정 지표 계산 중 다른 지표 참조하는데 참조 지표의 정의 순서가 더 늦는 경우
   if (!is_calculated_) [[unlikely]] {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("[{} {}] 지표가 계산되지 않았으므로 참조할 수 없습니다.", name_,
-               timeframe_),
-        __FILE__, __LINE__);
+               timeframe_));
   }
 
   // 다른 지표 계산 중 해당 지표와 다른 타임프레임의 이 지표를 사용 시 에러 발생
   if (is_calculating_ && timeframe_ != calculating_timeframe_) [[unlikely]] {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("[{} {}] 지표 계산에 사용하는 [{} {}] 지표의 타임프레임은 "
                "[{} {}] 지표의 타임프레임과 동일해야 합니다.",
                calculating_name_, calculating_timeframe_, name_, timeframe_,
-               calculating_name_, calculating_timeframe_),
-        __FILE__, __LINE__);
+               calculating_name_, calculating_timeframe_));
   }
 
   // AFTER 전략에서 현재 인덱스 값 참조 시 에러 발생
@@ -104,12 +108,10 @@ Numeric<double> Indicator::operator[](const size_t index) {
   // (current_strategy_type의 초기값은 ON_CLOSE이므로 계산 중에는 관계 없음)
   if (index == 0 && engine_->GetCurrentStrategyType() != ON_CLOSE)
       [[unlikely]] {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("AfterEntry/AfterExit 전략에서는 [0]을 이용하여 [{} {}] 지표의 "
                "현재 인덱스의 값을 참조할 수 없습니다.",
-               name_, timeframe_),
-        __FILE__, __LINE__);
-    throw;
+               name_, timeframe_));
   }
 
   // 음수 index는 size_t 타입이므로 검사하지 않음
@@ -282,10 +284,9 @@ void Indicator::CalculateIndicator() {
   try {
     // 엔진이 초기화되기 전 지표를 계산하면 모든 심볼의 계산이 어려우므로 에러
     if (!engine_->IsEngineInitialized()) [[unlikely]] {
-      Logger::LogAndThrowError(
-          format("엔진 초기화 전 [{} {}] 지표 계산을 시도했습니다.", name_,
-                 timeframe_),
-          __FILE__, __LINE__);
+      throw runtime_error(
+          format("엔진 초기화 전 [{} {}] 지표 계산을 할 수 없습니다.", name_,
+                 timeframe_));
     }
 
     // 바 데이터 설정
@@ -360,12 +361,17 @@ void Indicator::CalculateIndicator() {
     is_calculated_ = true;
     is_calculating_ = false;
 
-    logger_->Log(INFO_L, format("[{} {}] 지표 계산 완료", name_, timeframe_),
-                 __FILE__, __LINE__, true);
-  } catch ([[maybe_unused]] const exception& e) {
-    Logger::LogAndThrowError(
+    logger_->Log(
+        INFO_L,
+        format("[{} {}] 지표 계산이 완료되었습니다.", name_, timeframe_),
+        __FILE__, __LINE__, true);
+  } catch (const exception& e) {
+    logger_->Log(
+        ERROR_L,
         format("[{} {}] 지표 계산 중 오류가 발생했습니다.", name_, timeframe_),
-        __FILE__, __LINE__);
+        __FILE__, __LINE__, true);
+
+    throw runtime_error(e.what());
   }
 }
 
@@ -373,37 +379,13 @@ void Indicator::SetTimeframe(const string& timeframe) {
   if (!is_calculated_) {
     timeframe_ = timeframe;
   } else {
-    Logger::LogAndThrowError(
-        format("[{}] 지표가 계산되었으므로 타임프레임 변경을 할 수 없습니다.",
-               name_),
-        __FILE__, __LINE__);
+    throw runtime_error(format(
+        "[{}] 지표가 계산되었으므로 타임프레임 변경을 할 수 없습니다.", name_));
   }
 }
 
 void Indicator::SetHigherTimeframeIndicator() {
   is_higher_timeframe_indicator_ = true;
-}
-
-void Indicator::SetSourcePath(const string& source_path) {
-  if (!fs::exists(source_path)) {
-    Logger::LogAndThrowError(
-        format("[{}] 지표의 소스 파일 경로 [{}]이(가) 존재하지 않습니다.",
-               name_, source_path),
-        __FILE__, __LINE__);
-  }
-
-  cpp_file_path_ = source_path;
-}
-
-void Indicator::SetHeaderPath(const string& header_path) {
-  if (!fs::exists(header_path)) {
-    Logger::LogAndThrowError(
-        format("[{}] 지표의 헤더 파일 경로 [{}]이(가) 존재하지 않습니다.",
-               name_, header_path),
-        __FILE__, __LINE__);
-  }
-
-  header_file_path_ = header_path;
 }
 
 string Indicator::GetIndicatorName() const { return name_; }
@@ -412,9 +394,9 @@ string Indicator::GetIndicatorClassName() const { return class_name_; }
 
 string Indicator::GetTimeframe() const { return timeframe_; }
 
-string Indicator::GetSourcePath() { return cpp_file_path_; }
+string Indicator::GetSourcePath() { return source_path_; }
 
-string Indicator::GetHeaderPath() { return header_file_path_; }
+string Indicator::GetHeaderPath() { return header_path_; }
 
 bool Indicator::IsIndicatorClassSaved(const string& class_name) {
   return ranges::find(saved_indicator_classes_, class_name) !=
@@ -427,62 +409,17 @@ void Indicator::AddSavedIndicatorClass(const string& class_name) {
   }
 }
 
+void Indicator::ResetIndicator() {
+  creation_counter_ = 0;
+  pre_creation_counter_ = 0;
+
+  saved_indicator_classes_.clear();
+
+  is_calculating_ = false;
+  calculating_name_.clear();
+  calculating_timeframe_.clear();
+}
+
 void Indicator::IncreaseCreationCounter() { creation_counter_++; }
-
-bool Indicator::SetFilePath(const string& path, const bool is_cpp) {
-  if (fs::exists(path)) {
-    if (is_cpp) {
-      cpp_file_path_ = path;
-    } else {
-      header_file_path_ = path;
-    }
-
-    return true;
-  }
-
-  // 파일 경로 감지 실패
-  if (is_cpp) {
-    logger_->Log(
-        ERROR_L,
-        format("[{}] 지표의 소스 파일 경로 감지가 실패했습니다.", name_),
-        __FILE__, __LINE__, true);
-    Logger::LogAndThrowError(
-        format("지표의 클래스명과 소스 파일명은 동일해야 하며, "
-               "[프로젝트 폴더//Sources/cpp/Indicators/{}.cpp] 경로에 "
-               "존재해야 합니다.",
-               class_name_),
-        __FILE__, __LINE__);
-  } else {
-    logger_->Log(
-        ERROR_L,
-        format("[{}] 지표의 헤더 파일 경로 감지가 실패했습니다.", name_),
-        __FILE__, __LINE__, true);
-    Logger::LogAndThrowError(
-        format("지표의 클래스명과 헤더 파일명은 동일해야 하며, "
-               "[프로젝트 폴더/Includes/Indicators/{}.hpp] 경로에 "
-               "존재해야 합니다.",
-               class_name_),
-        __FILE__, __LINE__);
-  }
-
-  return false;
-}
-
-string Indicator::FindFileInParent(const string& filename) {
-  try {
-    const fs::path parent =
-        fs::path(Config::GetProjectDirectory()).parent_path();
-
-    for (const auto& entry : fs::recursive_directory_iterator(parent)) {
-      if (entry.is_regular_file() && entry.path().filename() == filename) {
-        return entry.path().string();
-      }
-    }
-  } catch (...) {
-    // 검색 중 오류 발생 시 빈 문자열 반환
-  }
-
-  return {};
-}
 
 }  // namespace backtesting::indicator

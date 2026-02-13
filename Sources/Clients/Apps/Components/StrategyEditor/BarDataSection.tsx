@@ -1,60 +1,66 @@
-import React, {useEffect, useState} from 'react';
-import {Button} from '@/Components/UI/Button.tsx';
+import React, {useRef, useState} from 'react';
+import {FolderOpen} from 'lucide-react';
 import {BarDataConfig, BarDataType, TimeframeUnit} from '@/Types/BarData.ts';
-import {Select, SelectContent, SelectItem, SelectTrigger, SelectValue} from '@/Components/UI/Select.tsx';
-import {Input} from '@/Components/UI/Input.tsx';
+import {useStrategy} from './StrategyContext';
+import PathResetButton from './PathResetButton';
+import './StrategyEditor.css';
 
-interface BarDataSectionProps {
-    barDataConfigs: BarDataConfig[];
-    setBarDataConfigs: React.Dispatch<React.SetStateAction<BarDataConfig[]>>;
-    useBarMagnifier: boolean;
-    setUseBarMagnifier: React.Dispatch<React.SetStateAction<boolean>>;
-    projectDirectory: string;
-    configLoaded: boolean;
-}
+// 타임프레임 단위 옵션
+const TIMEFRAME_UNIT_OPTIONS = [
+    {value: TimeframeUnit.SECOND, label: '초'},
+    {value: TimeframeUnit.MINUTE, label: '분'},
+    {value: TimeframeUnit.HOUR, label: '시간'},
+    {value: TimeframeUnit.DAY, label: '일'},
+    {value: TimeframeUnit.WEEK, label: '주'},
+    {value: TimeframeUnit.MONTH, label: '개월'},
+    {value: TimeframeUnit.YEAR, label: '년'}
+];
+
+// 기본 경로 상수
+const DEFAULT_CONTINUOUS_KLINES_PATH = 'Data/Continuous Klines';
+const DEFAULT_MARK_PRICE_KLINES_PATH = 'Data/Mark Price Klines';
+const DEFAULT_FUNDING_RATES_PATH = 'Data/Funding Rates';
 
 /**
  * 바 데이터 설정 섹션 컴포넌트
  * 트레이딩/돋보기/참조/마크 가격 바 데이터 설정 관리
  */
-export default function BarDataSection({
-                                           barDataConfigs,
-                                           setBarDataConfigs,
-                                           useBarMagnifier,
-                                           setUseBarMagnifier,
-                                           projectDirectory
-                                       }: BarDataSectionProps) {
-    // 바 데이터 타임프레임 Select의 열린 인덱스
-    const [openTimeframeSelectIndex, setOpenTimeframeSelectIndex] = useState<number | null>(null);
+export default function BarDataSection({onFetchOrUpdateBarData, isBacktestingRunning}: {
+    onFetchOrUpdateBarData?: (operation: 'download' | 'update') => void
+    isBacktestingRunning?: boolean
+}) {
+    const {
+        barDataConfigs,
+        setBarDataConfigs,
+        fundingRatesDirectory,
+        setFundingRatesDirectory,
+        engineConfig,
+        setEngineConfig
+    } = useStrategy();
 
-    // 바 데이터 Select가 열려 있을 때 페이지 휠 스크롤이 막히는 문제를 우회하기 위한 캡처 단계 핸들러
-    useEffect(() => {
-        if (openTimeframeSelectIndex === null) {
-            return;
+    const {projectDirectory, useBarMagnifier} = engineConfig;
+
+    // 타임프레임 단위 드롭다운 열린 인덱스
+    const [openUnitDropdownIndex, setOpenUnitDropdownIndex] = useState<number | null>(null);
+    const unitDropdownRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+    const toPosix = (p: string) => (p || '').replace(/\\/g, '/');
+
+    const joinPosix = (basePath: string, childPath: string) => {
+        const base = toPosix(basePath).replace(/\/+$/, '');
+        const child = toPosix(childPath).replace(/^\/+/, '');
+
+        if (!base) {
+            return child;
         }
 
-        const onWheelCapture = (e: WheelEvent) => {
-            try {
-                e.stopImmediatePropagation();
-            } catch (err) {
-                // 무시
-            }
-        };
-
-        document.addEventListener('wheel', onWheelCapture as EventListener, {capture: true, passive: true});
-
-        return () => {
-            document.removeEventListener('wheel', onWheelCapture as EventListener, {
-                capture: true,
-                passive: true
-            } as any);
-        };
-    }, [openTimeframeSelectIndex]);
+        return `${base}/${child}`;
+    };
 
     // 참조 바 데이터 추가
-    const handleAddReferenceBar = () => {
-        const safeProjectDir = projectDirectory ? projectDirectory.replace(/\\/g, '/') : '';
-        const defaultKlinesDir = safeProjectDir ? `${safeProjectDir}/Data/Continuous Klines` : '';
+    const handleAddReferenceBarData = () => {
+        const safeProjectDir = projectDirectory ? toPosix(projectDirectory) : '';
+        const defaultKlinesDir = safeProjectDir ? joinPosix(safeProjectDir, DEFAULT_CONTINUOUS_KLINES_PATH) : '';
 
         const newConfig: BarDataConfig = {
             timeframe: {value: null, unit: TimeframeUnit.NULL},
@@ -74,7 +80,6 @@ export default function BarDataSection({
     const handleRemoveReferenceBar = (index: number) => {
         if (barDataConfigs[index] && barDataConfigs[index].barDataType === BarDataType.REFERENCE) {
             const newConfigs = barDataConfigs.filter((_, i) => i !== index);
-
             setBarDataConfigs(newConfigs);
         }
     };
@@ -83,63 +88,228 @@ export default function BarDataSection({
     const updateBarDataConfig = (index: number, updates: Partial<BarDataConfig>) => {
         const newConfigs = [...barDataConfigs];
         newConfigs[index] = {...newConfigs[index], ...updates};
-
         setBarDataConfigs(newConfigs);
     };
 
+    // 폴더 선택 핸들러
+    const handleSelectDirectory = async (index: number) => {
+        try {
+            if (!window.electronAPI) {
+                console.error('Electron API가 사용 불가능합니다.');
+                return;
+            }
+
+            const result = await window.electronAPI.selectPath('directory');
+
+            if (result && !result.canceled && result.filePaths.length > 0) {
+                updateBarDataConfig(index, {klinesDirectory: toPosix(result.filePaths[0])});
+            }
+        } catch (error) {
+            console.error('폴더 선택 오류:', error);
+        }
+    };
+
+    // 경로 초기화 핸들러
+    const handleResetDirectory = (index: number) => {
+        const baseDir = toPosix(projectDirectory || '').replace(/\/+$/, '');
+        if (!baseDir) {
+            return;
+        }
+
+        const config = barDataConfigs[index];
+        const defaultPath = config.barDataType === BarDataType.MARK_PRICE
+            ? DEFAULT_MARK_PRICE_KLINES_PATH
+            : DEFAULT_CONTINUOUS_KLINES_PATH;
+
+        updateBarDataConfig(index, {klinesDirectory: joinPosix(baseDir, defaultPath)});
+    };
+
+    // 펀딩 비율 폴더 선택 핸들러
+    const handleSelectFundingDirectory = async () => {
+        try {
+            if (!window.electronAPI) {
+                console.error('Electron API가 사용 불가능합니다.');
+                return;
+            }
+
+            const result = await window.electronAPI.selectPath('directory');
+            if (result && !result.canceled && result.filePaths.length > 0) {
+                setFundingRatesDirectory(toPosix(result.filePaths[0]));
+            }
+        } catch (error) {
+            console.error('펀딩 폴더 선택 오류:', error);
+        }
+    };
+
+    const handleResetFundingDirectory = () => {
+        const baseDir = toPosix(projectDirectory || '').replace(/\/+$/, '');
+        if (!baseDir) {
+            return;
+        }
+
+        setFundingRatesDirectory(joinPosix(baseDir, DEFAULT_FUNDING_RATES_PATH));
+    };
+
+    // 드롭다운 외부 클릭 감지
+    React.useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (openUnitDropdownIndex !== null) {
+                const ref = unitDropdownRefs.current[openUnitDropdownIndex];
+                if (ref && !ref.contains(event.target as Node)) {
+                    setOpenUnitDropdownIndex(null);
+                }
+            }
+        };
+
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [openUnitDropdownIndex]);
+
+    // 바 데이터 타입 라벨
+    const getBarDataTypeLabel = (type: BarDataType) => {
+        switch (type) {
+            case BarDataType.TRADING:
+                return '트레이딩 바 데이터';
+            case BarDataType.MAGNIFIER:
+                return '돋보기 바 데이터';
+            case BarDataType.REFERENCE:
+                return '참조 바 데이터';
+            case BarDataType.MARK_PRICE:
+                return '마크 가격 바 데이터';
+            default:
+                return '바 데이터';
+        }
+    };
+
+    // 타임프레임 단위 라벨
+    const getUnitLabel = (unit: TimeframeUnit) => {
+        const option = TIMEFRAME_UNIT_OPTIONS.find(o => o.value === unit);
+        return option ? option.label : '단위';
+    };
+
     return (
-        <div className="bg-[#1a1a1a] rounded-lg border border-gray-700 p-4 mb-4">
-            <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-white">바 데이터 설정</h2>
-                <Button
-                    onClick={handleAddReferenceBar}
-                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 text-sm rounded-lg flex items-center gap-1"
+        <div
+            className="strategy-editor-section-container flex flex-col"
+            style={{
+                marginTop: '40px',
+                marginRight: '10px'
+            }}
+        >
+            {/* 헤더: 텍스트와 밑줄/버튼을 분리 렌더링 (클래스 외형 유지, 밑줄 간격 보존) */}
+            <div
+                style={{
+                    position: 'relative',
+                    width: '100%',
+                    marginBottom: '8px'
+                }}
+            >
+                <h2
+                    className="strategy-editor-section-header"
                 >
-                    <span className="text-lg leading-none">+</span>
-                    <span>참조 바 추가</span>
-                </Button>
+                    바 데이터 설정
+                </h2>
+
+                {/* 버튼은 헤더 우측에 한 줄로 정렬 */}
+                <div
+                    style={{
+                        position: 'absolute',
+                        right: '0%',
+                        top: '-15%',
+                        display: 'flex',
+                        gap: '8px',
+                        alignItems: 'center'
+                    }}
+                >
+                    {/* 그룹: 바 데이터 다운로드, 바 데이터 업데이트 */}
+                    <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
+                        <button
+                            onClick={() => {
+                                if (onFetchOrUpdateBarData && !isBacktestingRunning) {
+                                    onFetchOrUpdateBarData('download');
+                                }
+                            }}
+                            className="strategy-editor-button"
+                            title={"바 데이터 다운로드"}
+                            disabled={isBacktestingRunning}
+                            style={{
+                                opacity: isBacktestingRunning ? 0.5 : 1,
+                                cursor: isBacktestingRunning ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            바 데이터 다운로드
+                        </button>
+
+                        <button
+                            onClick={() => {
+                                if (onFetchOrUpdateBarData && !isBacktestingRunning) {
+                                    onFetchOrUpdateBarData('update');
+                                }
+                            }}
+                            className="strategy-editor-button"
+                            title={"바 데이터 업데이트"}
+                            disabled={isBacktestingRunning}
+                            style={{
+                                opacity: isBacktestingRunning ? 0.5 : 1,
+                                cursor: isBacktestingRunning ? 'not-allowed' : 'pointer'
+                            }}
+                        >
+                            바 데이터 업데이트
+                        </button>
+                    </div>
+
+                    {/* 참조 바 데이터 추가 */}
+                    <div style={{marginLeft: '12px'}}>
+                        <button
+                            onClick={handleAddReferenceBarData}
+                            className="strategy-editor-button"
+                            title={"참조 바 데이터 추가"}
+                        >
+                            참조 바 데이터 추가
+                        </button>
+                    </div>
+                </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* 바 데이터 카드 그리드 (2열) */}
+            <div className="strategy-editor-bardata-grid">
                 {barDataConfigs.map((config, index) => {
                     const isDisabled = config.barDataType === BarDataType.MAGNIFIER && !useBarMagnifier;
                     const canDelete = config.barDataType === BarDataType.REFERENCE;
 
-                    const barDataTypeLabel = {
-                        [BarDataType.TRADING]: '트레이딩 바 데이터',
-                        [BarDataType.MAGNIFIER]: '돋보기 바 데이터',
-                        [BarDataType.REFERENCE]: '참조 바 데이터',
-                        [BarDataType.MARK_PRICE]: '마크 가격 바 데이터'
-                    }[config.barDataType];
-
                     return (
                         <div
                             key={index}
-                            className={`bg-[#252525] rounded-lg p-4 border border-gray-600 relative ${
-                                isDisabled ? 'opacity-50' : ''
-                            }`}
+                            className={`strategy-editor-bardata-card ${isDisabled ? 'disabled' : ''}`}
                         >
-                            <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-sm font-semibold text-white">{barDataTypeLabel}</h3>
-                                <div className="flex items-center gap-2">
+                            {/* 카드 헤더 */}
+                            <div className="strategy-editor-bardata-card-header">
+                                <span className="strategy-editor-bardata-card-title">
+                                    {getBarDataTypeLabel(config.barDataType)}
+                                </span>
+
+                                <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                                     {config.barDataType === BarDataType.MAGNIFIER && (
-                                        <label className="flex items-center gap-2 text-xs text-gray-300">
+                                        <label className="checkbox-container">
                                             <input
                                                 type="checkbox"
                                                 checked={useBarMagnifier}
                                                 onChange={(e) => {
-                                                    setUseBarMagnifier(e.target.checked);
+                                                    setEngineConfig(prev => ({
+                                                        ...prev,
+                                                        useBarMagnifier: e.target.checked
+                                                    }));
                                                 }}
-                                                className="w-3.5 h-3.5"
+                                                className="custom-checkbox"
                                             />
-                                            바 돋보기 기능
+
+                                            <span className="checkbox-label">바 돋보기 기능</span>
                                         </label>
                                     )}
                                     {canDelete && (
                                         <button
                                             onClick={() => handleRemoveReferenceBar(index)}
-                                            className="text-red-500 hover:text-red-400 text-xl leading-none px-1"
-                                            title="참조 바 삭제"
+                                            className="strategy-editor-bardata-remove"
+                                            title="참조 바 데이터 삭제"
                                         >
                                             ×
                                         </button>
@@ -147,105 +317,160 @@ export default function BarDataSection({
                                 </div>
                             </div>
 
-                            <div className="space-y-3">
-                                {/* 타임프레임 */}
-                                <div>
-                                    <label className="block text-xs text-gray-400 mb-1">타임프레임</label>
-                                    <div className="grid grid-cols-2 gap-2">
-                                        <Input
-                                            type="text"
-                                            inputMode="numeric"
-                                            pattern="[0-9]*"
-                                            value={config.timeframe.value ?? ''}
-                                            onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
-                                                if (e.ctrlKey || e.metaKey) {
-                                                    return;
-                                                }
+                            {/* 카드 바디 */}
+                            <div className="strategy-editor-bardata-card-body">
+                                <div className="strategy-editor-bardata-row-horizontal">
+                                    {/* 타임프레임 */}
+                                    <div className="strategy-editor-bardata-field">
+                                        <span className="strategy-editor-bardata-label-top">타임프레임</span>
 
-                                                const allowed = /^(?:[0-9]|Backspace|Delete|ArrowLeft|ArrowRight|Tab|Home|End)$/;
-                                                if (!allowed.test(e.key)) {
-                                                    e.preventDefault();
-                                                }
-                                            }}
-                                            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                                const raw = e.target.value || '';
-                                                const digits = raw.replace(/\D/g, '');
-                                                const noLeading = digits.replace(/^0+/, '');
-
-                                                const finalValue = noLeading === '' ? null : parseInt(noLeading, 10);
-
-                                                updateBarDataConfig(index, {
-                                                    timeframe: {
-                                                        ...config.timeframe,
-                                                        value: finalValue
+                                        <div className="strategy-editor-bardata-timeframe-inputs">
+                                            {/* 숫자 입력 */}
+                                            <input
+                                                type="text"
+                                                inputMode="numeric"
+                                                value={config.timeframe.value ?? ''}
+                                                onKeyDown={(e: React.KeyboardEvent<HTMLInputElement>) => {
+                                                    if (e.ctrlKey || e.metaKey) {
+                                                        return;
                                                     }
-                                                });
-                                            }}
-                                            disabled={isDisabled}
-                                            className="bg-[#1a1a1a] border-gray-600 text-sm"
-                                        />
-                                        <Select
-                                            value={config.timeframe.unit}
-                                            onValueChange={(value: TimeframeUnit) => updateBarDataConfig(index, {
-                                                timeframe: {...config.timeframe, unit: value as TimeframeUnit}
-                                            })}
-                                            disabled={isDisabled}
-                                            open={openTimeframeSelectIndex === index}
-                                            onOpenChange={(isOpen: boolean) => {
-                                                if (isOpen) {
-                                                    setOpenTimeframeSelectIndex(index);
-                                                } else {
-                                                    setOpenTimeframeSelectIndex(prev => prev === index ? null : prev);
-                                                }
-                                            }}
-                                        >
-                                            <SelectTrigger
-                                                className="w-full bg-[#1a1a1a] border-gray-600 text-sm">
-                                                <SelectValue/>
-                                            </SelectTrigger>
-                                            <SelectContent
-                                                position="popper"
-                                                side="bottom"
-                                                sideOffset={0}
-                                                align="start"
-                                                avoidCollisions={false}
-                                                sticky="always"
-                                                hideWhenDetached={false}
-                                                onCloseAutoFocus={(e: Event) => {
-                                                    try {
+
+                                                    const allowed = /^(?:[0-9]|Backspace|Delete|ArrowLeft|ArrowRight|Tab|Home|End)$/;
+                                                    if (!allowed.test(e.key)) {
                                                         e.preventDefault();
-                                                    } catch (err) {
                                                     }
                                                 }}
-                                            >
-                                                <SelectItem value={TimeframeUnit.SECOND}>초</SelectItem>
-                                                <SelectItem value={TimeframeUnit.MINUTE}>분</SelectItem>
-                                                <SelectItem value={TimeframeUnit.HOUR}>시간</SelectItem>
-                                                <SelectItem value={TimeframeUnit.DAY}>일</SelectItem>
-                                                <SelectItem value={TimeframeUnit.WEEK}>주</SelectItem>
-                                                <SelectItem value={TimeframeUnit.MONTH}>개월</SelectItem>
-                                                <SelectItem value={TimeframeUnit.YEAR}>년</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                </div>
+                                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                                                    const raw = e.target.value || '';
+                                                    const digits = raw.replace(/\D/g, '');
+                                                    const noLeading = digits.replace(/^0+/, '');
+                                                    const finalValue = noLeading === '' ? null : parseInt(noLeading, 10);
+                                                    updateBarDataConfig(index, {
+                                                        timeframe: {...config.timeframe, value: finalValue}
+                                                    });
+                                                }}
+                                                disabled={isDisabled}
+                                                className="strategy-editor-input strategy-editor-bardata-timeframe-value"
+                                                placeholder="값"
+                                            />
 
-                                {/* 폴더 경로 */}
-                                <div>
-                                    <label className="block text-xs text-gray-400 mb-1">폴더 경로</label>
-                                    <Input
-                                        type="text"
-                                        value={config.klinesDirectory}
-                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateBarDataConfig(index, {klinesDirectory: e.target.value})}
-                                        placeholder="바 데이터 폴더 경로 입력"
-                                        disabled={isDisabled}
-                                        className="w-full bg-[#1a1a1a] border-gray-600 text-xs"
-                                    />
+                                            {/* 단위 드롭다운 */}
+                                            <div
+                                                className="strategy-editor-dropdown-field strategy-editor-bardata-timeframe-unit"
+                                                ref={el => {
+                                                    unitDropdownRefs.current[index] = el;
+                                                }}
+                                            >
+                                                <div
+                                                    className={`strategy-editor-dropdown-select ${isDisabled ? 'disabled' : ''}`}
+                                                    onClick={() => {
+                                                        if (!isDisabled) {
+                                                            setOpenUnitDropdownIndex(prev => prev === index ? null : index);
+                                                        }
+                                                    }}
+                                                >
+                                                    {getUnitLabel(config.timeframe.unit)}
+                                                </div>
+                                                {openUnitDropdownIndex === index && !isDisabled && (
+                                                    <div className="strategy-editor-dropdown-options">
+                                                        {TIMEFRAME_UNIT_OPTIONS.map(option => (
+                                                            <div
+                                                                key={option.value}
+                                                                className={`strategy-editor-dropdown-option ${config.timeframe.unit === option.value ? 'selected' : ''}`}
+                                                                onClick={() => {
+                                                                    updateBarDataConfig(index, {
+                                                                        timeframe: {
+                                                                            ...config.timeframe,
+                                                                            unit: option.value
+                                                                        }
+                                                                    });
+                                                                    setOpenUnitDropdownIndex(null);
+                                                                }}
+                                                            >
+                                                                {option.label}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 폴더 경로 */}
+                                    <div className="strategy-editor-bardata-field strategy-editor-bardata-path-field">
+                                        <span className="strategy-editor-bardata-label-top">폴더 경로</span>
+
+                                        <div className="strategy-editor-file-selector">
+                                            <input
+                                                type="text"
+                                                value={config.klinesDirectory}
+                                                readOnly
+                                                tabIndex={-1}
+                                                onFocus={(e) => e.currentTarget.blur()}
+                                                onMouseDown={(e) => e.preventDefault()}
+                                                disabled={isDisabled}
+                                                placeholder="폴더 경로"
+                                                className="strategy-editor-input strategy-editor-input-with-icon"
+                                                title={config.klinesDirectory}
+                                            />
+                                            <div className="strategy-editor-file-selector-buttons">
+                                                <PathResetButton onClick={() => handleResetDirectory(index)}/>
+                                                <button
+                                                    onClick={() => handleSelectDirectory(index)}
+                                                    className="strategy-editor-file-selector-button"
+                                                    title={`${getBarDataTypeLabel(config.barDataType)} 폴더 선택`}
+                                                    disabled={isDisabled}
+                                                >
+                                                    <FolderOpen size={20}/>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
                     );
                 })}
+
+                {/* 펀딩 비율 카드 */}
+                <div className="strategy-editor-bardata-card">
+                    <div className="strategy-editor-bardata-card-header">
+                        <span className="strategy-editor-bardata-card-title">펀딩 비율</span>
+                    </div>
+
+                    <div className="strategy-editor-bardata-card-body">
+                        <div className="strategy-editor-bardata-row-horizontal">
+                            <div className="strategy-editor-bardata-field strategy-editor-bardata-path-field">
+                                <span className="strategy-editor-bardata-label-top">폴더 경로</span>
+
+                                <div className="strategy-editor-file-selector">
+                                    <input
+                                        type="text"
+                                        value={fundingRatesDirectory}
+                                        readOnly
+                                        tabIndex={-1}
+                                        onFocus={(e) => e.currentTarget.blur()}
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        placeholder="폴더 경로"
+                                        title={fundingRatesDirectory}
+                                        className="strategy-editor-input strategy-editor-input-with-icon cursor-text"
+                                    />
+
+                                    <div className="strategy-editor-file-selector-buttons">
+                                        <PathResetButton onClick={handleResetFundingDirectory}/>
+                                        <button
+                                            onClick={handleSelectFundingDirectory}
+                                            className="strategy-editor-file-selector-button"
+                                            title="펀딩 비율 폴더 선택"
+                                        >
+                                            <FolderOpen size={20}/>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     );

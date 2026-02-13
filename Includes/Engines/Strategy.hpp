@@ -9,6 +9,7 @@
 // 내부 헤더
 #include "Engines/DataUtils.hpp"
 #include "Engines/Engine.hpp"
+#include "Engines/Export.hpp"
 #include "Engines/Logger.hpp"
 // ReSharper disable once CppUnusedIncludeDirective
 #include "Engines/Order.hpp"  // 커스텀 전략에서 사용 편의성을 위해 직접 포함
@@ -16,9 +17,21 @@
 #include "Engines/Plot.hpp"
 #include "Indicators/Indicators.hpp"  // 커스텀 전략에서 사용 편의성을 위해 직접 포함
 
+// 내부 include에서 BACKTESTING_API가 #undef 되어 빈 값으로 변경되었을 수 있고,
+// Strategy 클래스 정의에는 dllimport/dllexport 속성이 필요하므로
+// 여기서 상태를 복구
+#if defined(STRATEGY_BUILD) && !defined(BACKTESTING_EXPORTS)
+#undef BACKTESTING_API
+#define BACKTESTING_API __declspec(dllimport)
+#endif
+
 // 전방 선언
-namespace engine {
+namespace backtesting::engine {
 class Engine;
+}
+
+namespace backtesting::main {
+class Backtesting;
 }
 
 // 네임 스페이스
@@ -26,6 +39,7 @@ using namespace std;
 namespace fs = filesystem;
 namespace backtesting {
 using namespace engine;
+using namespace main;
 using namespace order;
 using namespace plot;
 using namespace utils;
@@ -37,6 +51,10 @@ namespace backtesting::strategy {
  * 백테스팅 전략을 생성하기 위한 팩토리 클래스
  *
  * ※ 커스텀 전략 생성 시 유의 사항 ※\n
+ * 0. 커스텀 전략 클래스가 DLL로 로드될 가능성이 있다면
+ *     클래스 선언에 BACKTESTING_API 매크로를 반드시 명시.
+ *    이는 런타임에 심볼을 올바르게 노출하기 위하여 필수적
+ *
  * 1. Strategy 클래스를 Public 상속 후
  *    Initialize, ExecuteOnClose, ExecuteAfterEntry, ExecuteAfterExit
  *    함수들을 오버라이드해서 제작\n
@@ -80,18 +98,22 @@ namespace backtesting::strategy {
  * 10. 부가 기능으로, 진입 잔량을 전량 청산하고 싶으면 left_size 변수를
  *     청산 수량에 사용하면 됨.\n
  */
-class Strategy {
+class BACKTESTING_API Strategy {
   // config.json 저장 시 OHLCV 지표 이름 접근용
   friend class Analyzer;
+
+  // ResetStrategy 접근용
+  friend class Backtesting;
 
  public:
   // 전략을 팩토리로 우회하여 생성하고 strategy_에 추가하고 반환하는 함수
   template <typename CustomStrategy, typename... Args>
   static void AddStrategy(const string& name, Args&&... args) {
     if (strategy_ != nullptr) {
-      Logger::LogAndThrowError(
-          "한 백테스팅은 한 개의 전략만 사용할 수 있습니다.", __FILE__,
-          __LINE__);
+      logger->Log(INFO_L, format("[{}] 전략을 추가하는 데 실패했습니다.", name),
+                  __FILE__, __LINE__, true);
+
+      throw runtime_error("한 백테스팅은 한 개의 전략만 사용할 수 있습니다.");
     }
 
     used_creation_function_ = true;
@@ -100,43 +122,22 @@ class Strategy {
       strategy_ =
           std::make_shared<CustomStrategy>(name, std::forward<Args>(args)...);
     } catch (const std::exception& e) {
-      // 지표 관련 오류면 이미 로깅 됐으므로 간단하게,
-      // 전략 생성자의 다른 오류면 상세하게
-      if (const string& error_msg = e.what();
-          error_msg.find("지표 생성자에서 오류가 발생했습니다.") !=
-          string::npos) {
-        Logger::LogAndThrowError(
-            format("[{}] 전략 생성자에서 오류가 발생했습니다.", name), __FILE__,
-            __LINE__);
-      } else {
-        Logger::LogAndThrowError(
-            format("[{}] 전략 생성자에서 오류가 발생했습니다.: {}", name,
-                   error_msg),
-            __FILE__, __LINE__);
-      }
+      logger->Log(INFO_L,
+                  format("[{}] 전략 생성자에서 오류가 발생했습니다.", name),
+                  __FILE__, __LINE__, true);
+
+      throw runtime_error(e.what());
     } catch (...) {
-      Logger::LogAndThrowError(
+      logger->Log(
+          INFO_L,
           format("[{}] 전략 생성자에서 알 수 없는 오류가 발생했습니다.", name),
-          __FILE__, __LINE__);
+          __FILE__, __LINE__, true);
+
+      throw;
     }
 
-    // 전략의 헤더 파일 및 소스 파일 경로 자동 설정
-    if (strategy_->cpp_file_path_.empty() &&
-        strategy_->header_file_path_.empty()) {
-      try {
-        strategy_->AutoDetectSourcePaths<CustomStrategy>();
-      } catch (const std::exception& e) {
-        logger->Log(
-            WARN_L,
-            format("[{}] 소스 파일 경로 자동 탐지 실패: {}", name, e.what()),
-            __FILE__, __LINE__, false);
-      } catch (...) {
-        logger->Log(
-            WARN_L,
-            format("[{}] 소스 파일 경로 자동 탐지에서 알 수 없는 오류", name),
-            __FILE__, __LINE__, false);
-      }
-    }
+    // 전략의 파일 경로 자동 설정
+    strategy_->AutoDetectSourcePaths<CustomStrategy>();
 
     logger->Log(INFO_L, format("[{}] 전략이 엔진에 추가되었습니다.", name),
                 __FILE__, __LINE__, true);
@@ -156,12 +157,6 @@ class Strategy {
 
   /// 엔진 초기화 시 trading_timeframe을 설정하는 함수
   static void SetTradingTimeframe(const string& trading_tf);
-
-  /// 전략의 소스 파일 경로를 설정하는 함수
-  void SetSourcePath(const string& source_path);
-
-  /// 전략의 헤더 파일 경로를 설정하는 함수
-  void SetHeaderPath(const string& header_path);
 
   /// 엔진에 추가된 전략을 반환하는 함수
   [[nodiscard]] static shared_ptr<Strategy>& GetStrategy();
@@ -188,12 +183,12 @@ class Strategy {
   static shared_ptr<Strategy> strategy_;      // 엔진에 추가된 전략
   vector<shared_ptr<Indicator>> indicators_;  // 해당 전략에서 사용하는 지표들
 
-  string name_;              // 전략의 이름
-  string class_name_;        // 전략의 클래스 이름
-  string cpp_file_path_;     // 커스텀 전략의 소스 파일 경로
-                             // → 백테스팅 종료 후 소스 코드 저장 목적
-  string header_file_path_;  // 커스텀 전략의 헤더 파일 경로
-                             // → 백테스팅 종료 후 소스 코드 저장 목적
+  string name_;         /// 전략의 이름
+  string class_name_;   /// 전략의 클래스 이름
+  string header_path_;  /// 커스텀 전략의 헤더 파일 경로
+                        /// → 백테스팅 종료 후 소스 코드 저장 목적
+  string source_path_;  /// 커스텀 전략의 소스 파일 경로
+                        /// → 백테스팅 종료 후 소스 코드 저장 목적
 
   // 전략을 추가하기 위해 AddStrategy 함수를 거쳤는지 검증하기 위한 플래그
   static bool used_creation_function_;
@@ -206,11 +201,16 @@ class Strategy {
 
     // 프로젝트 폴더가 설정되지 않았는지 확인
     if (project_directory.empty()) {
-      Logger::LogAndThrowError(
-          format("[{}] 전략의 소스 파일 경로를 자동 감지하기 위해서는 "
-                 "먼저 엔진 설정에서 프로젝트 폴더를 지정해야 합니다.",
+      logger->Log(
+          ERROR_L,
+          format("[{}] 전략의 헤더 및 소스 파일 경로 감지가 실패했습니다.",
                  name_),
-          __FILE__, __LINE__);
+          __FILE__, __LINE__, true);
+
+      throw runtime_error(
+          format("[{}] 전략의 헤더 및 소스 파일 경로를 자동 감지하기 위해서는 "
+                 "먼저 엔진 설정에서 프로젝트 폴더를 지정해야 합니다.",
+                 name_));
     }
 
     // typeid에서 클래스 이름 추출
@@ -221,74 +221,151 @@ class Strategy {
     class_name_ = class_name;
 
     // 헤더 파일 경로 후보들
-    const vector<string>& header_paths = {
-        format("{}/Includes/Strategies/{}.hpp", project_directory, class_name),
-        format("{}/Includes/Strategies/{}.hpp", project_directory, name_)};
+    vector<string> header_paths;
+
+    bool appointed_header_path = false;
+    const auto& strategy_header_path = Config::GetStrategyHeaderPath();
+
+    // 설정된 전략 헤더 파일 경로가 있으면 그것만 사용
+    if (!strategy_header_path.empty()) {
+      appointed_header_path = true;
+
+      header_paths.push_back(strategy_header_path);
+    } else if (const auto& configured_dirs = Config::GetStrategyHeaderDirs();
+               !configured_dirs.empty()) {
+      // 설정된 헤더 폴더가 있다면 해당 폴더들의 하위 경로들을 후보 경로로 설정
+      for (const auto& configured_dir : configured_dirs) {
+        try {
+          if (fs::exists(configured_dir)) {
+            for (const auto& entry :
+                 fs::recursive_directory_iterator(configured_dir)) {
+              if (entry.is_regular_file()) {
+                if (const auto& path = entry.path();
+                    path.extension() == ".hpp") {
+                  if (const auto& stem = path.stem().string();
+                      stem == class_name || stem == name_) {
+                    header_paths.push_back(path.string());
+                  }
+                }
+              }
+            }
+          }
+        } catch (...) {
+          // 접근 권한이 없는 폴더 등은 무시
+        }
+      }
+    } else {
+      // 설정된 헤더 경로 및 폴더가 없다면 기본 헤더 경로 사용
+      header_paths = {
+          format("{}/Includes/Strategies/{}.hpp", project_directory,
+                 class_name),
+          format("{}/Includes/Strategies/{}.hpp", project_directory, name_)};
+    }
 
     // 후보 경로에서 헤더 파일 탐색
     bool header_found = false;
-    for (const auto& path : header_paths) {
-      if (fs::exists(path)) {
-        SetFilePath(path, false);
+    for (const auto& header_path : header_paths) {
+      if (fs::exists(header_path)) {
         header_found = true;
+        header_path_ = header_path;
 
         break;
       }
     }
 
-    // 후보 경로에서 찾지 못하면 부모 폴더에서 재귀 탐색
     if (!header_found) {
-      const vector<string>& file_names = {format("{}.hpp", class_name),
-                                          format("{}.hpp", name_)};
+      logger->Log(
+          ERROR_L,
+          format("[{}] 전략의 헤더 파일 경로 감지가 실패했습니다.", name_),
+          __FILE__, __LINE__, true);
 
-      for (const auto& file_name : file_names) {
-        if (const string& found = FindFileInParent(file_name); !found.empty()) {
-          SetFilePath(found, false);
-
-          break;
-        }
+      string target_path;
+      if (appointed_header_path) {
+        target_path = strategy_header_path;
+      } else {
+        target_path = format("{}/Includes/Strategies/{}.hpp", project_directory,
+                             class_name_);
       }
+
+      throw runtime_error(
+          format("전략의 클래스명과 헤더 파일명은 동일해야 하며, "
+                 "[{}] 경로에 존재해야 합니다.",
+                 target_path));
     }
 
     // 소스 파일 경로 후보들
-    const vector<string>& source_paths = {
-        format("{}/Sources/cpp/Strategies/{}.cpp", project_directory,
-               class_name),
-        format("{}/Sources/cpp/Strategies/{}.cpp", project_directory, name_)};
+    vector<string> source_paths;
+
+    bool appointed_source_path = false;
+    const auto& strategy_source_path = Config::GetStrategySourcePath();
+
+    // 설정된 전략 소스 파일 경로가 있으면 그것만 사용
+    if (!strategy_source_path.empty()) {
+      appointed_source_path = true;
+
+      source_paths.push_back(strategy_source_path);
+    } else if (const auto& configured_dirs = Config::GetStrategySourceDirs();
+               !configured_dirs.empty()) {
+      // 설정된 소스 폴더가 있다면 해당 폴더들의 하위 경로들을 후보 경로로 설정
+      for (const auto& configured_dir : configured_dirs) {
+        try {
+          if (fs::exists(configured_dir)) {
+            for (const auto& entry :
+                 fs::recursive_directory_iterator(configured_dir)) {
+              if (entry.is_regular_file()) {
+                if (const auto& path = entry.path();
+                    path.extension() == ".cpp") {
+                  if (const auto& stem = path.stem().string();
+                      stem == class_name || stem == name_) {
+                    source_paths.push_back(path.string());
+                  }
+                }
+              }
+            }
+          }
+        } catch (...) {
+          // 접근 권한이 없는 폴더 등은 무시
+        }
+      }
+    } else {
+      // 설정된 소스 경로 및 폴더가 없다면 기본 소스 경로 사용
+      source_paths = {format("{}/Sources/Cores/Strategies/{}.cpp",
+                             project_directory, class_name),
+                      format("{}/Sources/Cores/Strategies/{}.cpp",
+                             project_directory, name_)};
+    }
 
     // 후보 경로에서 소스 파일 탐색
     bool source_found = false;
-    for (const auto& path : source_paths) {
-      if (fs::exists(path)) {
-        SetFilePath(path, true);
+    for (const auto& source_path : source_paths) {
+      if (fs::exists(source_path)) {
         source_found = true;
+        source_path_ = source_path;
 
         break;
       }
     }
 
-    // 후보 경로에서 찾지 못하면 부모 폴더에서 재귀 탐색
     if (!source_found) {
-      const vector<string>& file_names = {format("{}.cpp", class_name),
-                                          format("{}.cpp", name_)};
+      logger->Log(
+          ERROR_L,
+          format("[{}] 전략의 소스 파일 경로 감지가 실패했습니다.", name_),
+          __FILE__, __LINE__, true);
 
-      for (const auto& file_name : file_names) {
-        if (const string& found = FindFileInParent(file_name); !found.empty()) {
-          SetFilePath(found, true);
-
-          break;
-        }
+      string target_path;
+      if (appointed_source_path) {
+        target_path = strategy_source_path;
+      } else {
+        target_path = format("{}/Sources/Cores/Strategies/{}.cpp",
+                             project_directory, class_name_);
       }
+
+      throw runtime_error(
+          format("전략의 클래스명과 소스 파일명은 동일해야 하며, "
+                 "[{}] 경로에 존재해야 합니다.",
+                 target_path, class_name_));
     }
   }
-
-  /// 파일이 존재하는지 확인하고 존재하면 경로로 설정하는 함수
-  bool SetFilePath(const string& path, bool is_cpp);
-
-  /// 프로젝트 상위 폴더를 대상으로 파일을 재귀 탐색하여 경로를 반환하는 헬퍼
-  /// @param filename 찾고자 하는 파일명 (예: "MyStrategy.cpp")
-  /// @return 발견된 파일의 절대 경로 또는 빈 문자열
-  static string FindFileInParent(const string& filename);
 
  protected:
   /// 전략 생성자
@@ -319,37 +396,26 @@ class Strategy {
       indicator = std::make_shared<CustomIndicator>(
           name, timeframe, plot, std::forward<Args>(args)...);
     } catch (const std::exception& e) {
-      Logger::LogAndThrowError(
-          format("[{}] 지표 생성자에서 오류가 발생했습니다.: {}", name,
-                 e.what()),
-          __FILE__, __LINE__);
+      logger->Log(ERROR_L,
+                  format("[{}] 지표 생성자에서 오류가 발생했습니다.", name),
+                  __FILE__, __LINE__, true);
+
+      throw runtime_error(e.what());
     } catch (...) {
-      Logger::LogAndThrowError(
+      logger->Log(
+          ERROR_L,
           format("[{}] 지표 생성자에서 알 수 없는 오류가 발생했습니다.", name),
-          __FILE__, __LINE__);
+          __FILE__, __LINE__, true);
+
+      throw;
     }
 
-    // 지표의 소스 파일 경로 자동 설정
-    // (같은 클래스 이름의 지표가 저장되지 않았을 경우에만)
-    try {
-      indicator->template AutoDetectSourcePaths<CustomIndicator>();
-    } catch (const std::exception& e) {
-      logger->Log(
-          WARN_L,
-          format("[{}] 지표 소스 파일 경로 자동 탐지 실패: {}", name, e.what()),
-          __FILE__, __LINE__, false);
-    } catch (...) {
-      logger->Log(
-          WARN_L,
-          format("[{}] 지표 소스 파일 경로 자동 탐지에서 알 수 없는 오류",
-                 name),
-          __FILE__, __LINE__, false);
-    }
+    // 지표의 파일 경로 자동 설정
+    indicator->template AutoDetectSourcePaths<CustomIndicator>();
 
+    // 같은 클래스 이름의 지표가 저장되지 않았을 경우에만 저장된 지표에 추가
     if (const string& class_name = indicator->GetIndicatorClassName();
-        !Indicator::IsIndicatorClassSaved(class_name) &&
-        !indicator->GetSourcePath().empty() &&
-        !indicator->GetHeaderPath().empty()) {
+        !Indicator::IsIndicatorClassSaved(class_name)) {
       Indicator::AddSavedIndicatorClass(class_name);
     }
 
@@ -403,7 +469,19 @@ class Strategy {
   /// 엔진 내부적으로 청산 수량은 진입 잔량의 최대값으로 변환되기 때문에
   /// double 최대값으로 사용
   const double left_size = DBL_MAX;
+
+ private:
+  /// Strategy를 초기화하는 함수
+  static void ResetStrategy();
 };
 
 }  // namespace backtesting::strategy
 using namespace strategy;
+
+// 이 헤더를 include한 후 선언되는 커스텀 전략 클래스는 일반 클래스로 정의되도록
+// 매크로를 빈 값으로 재정의
+// (베이스 클래스인 Strategy는 이미 dllimport로 정의되었으므로 영향 없음)
+#if defined(STRATEGY_BUILD) && !defined(BACKTESTING_EXPORTS)
+#undef BACKTESTING_API
+#define BACKTESTING_API
+#endif

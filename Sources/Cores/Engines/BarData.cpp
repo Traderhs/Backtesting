@@ -107,11 +107,7 @@ string BarData::GetBarDataPath(const int symbol_idx) const {
 }
 
 string& BarData::GetSafeSymbolName(const int symbol_idx) {
-  try {
-    IsValidSymbolIndex(symbol_idx);
-  } catch (const IndexOutOfRange& e) {
-    Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
-  }
+  IsValidSymbolIndex(symbol_idx);
 
   return symbol_names_[symbol_idx];
 }
@@ -119,11 +115,7 @@ string& BarData::GetSafeSymbolName(const int symbol_idx) {
 int BarData::GetNumSymbols() const { return num_symbols_; }
 
 size_t BarData::GetSafeNumBars(const int symbol_idx) const {
-  try {
-    IsValidSymbolIndex(symbol_idx);
-  } catch (const IndexOutOfRange& e) {
-    Logger::LogAndThrowError(e.what(), __FILE__, __LINE__);
-  }
+  IsValidSymbolIndex(symbol_idx);
 
   return num_bars_[symbol_idx];
 }
@@ -166,7 +158,7 @@ void BarData::IsValidSettings(const string& symbol_name,
                               const int close_column, const int volume_column,
                               const int close_time_column) const {
   if (symbol_name.empty()) {
-    Logger::LogAndThrowError("심볼 이름이 비어있습니다.", __FILE__, __LINE__);
+    throw InvalidValue("심볼 이름이 비어있습니다.");
   }
 
   for (const auto& symbol : symbol_names_) {

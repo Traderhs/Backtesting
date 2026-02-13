@@ -127,6 +127,26 @@ string UtcTimestampToUtcDatetime(const int64_t timestamp_ms) {
   return ss.str();
 }
 
+string UtcTimestampToLocalDatetime(const int64_t timestamp_ms) {
+  if (timestamp_ms < 0) {
+    return "";
+  }
+
+  // timestamp ms를 time_t로 변환
+  const auto timestamp_s = seconds(timestamp_ms / 1000);
+  const system_clock::time_point tp(timestamp_s);
+  const time_t timestamp_time_t = system_clock::to_time_t(tp);
+
+  // 로컬 시간으로 변환
+  tm local_time{};
+  localtime_s(&local_time, &timestamp_time_t);
+
+  // Datetime으로 변환
+  ostringstream ss;
+  ss << put_time(&local_time, "%Y-%m-%d %H:%M:%S");
+  return ss.str();
+}
+
 int64_t UtcDatetimeToUtcTimestamp(const string& datetime,
                                   const string& format) {
   tm tm = {};
@@ -135,8 +155,7 @@ int64_t UtcDatetimeToUtcTimestamp(const string& datetime,
   // 문자열을 tm으로 파싱
   ss >> get_time(&tm, format.c_str());
   if (ss.fail()) {
-    Logger::LogAndThrowError("Datetime 문자열을 파싱하는 데 실패했습니다.",
-                             __FILE__, __LINE__);
+    throw runtime_error("Datetime 문자열을 파싱하는 데 실패했습니다.");
   }
 
   // tm 구조체를 UTC 타임스탬프로 변환
@@ -147,6 +166,24 @@ int64_t UtcDatetimeToUtcTimestamp(const string& datetime,
   return utc_timestamp * 1000;
 }
 
+int64_t LocalDatetimeToUtcTimestamp(const string& datetime,
+                                    const string& format) {
+  tm tm = {};
+  istringstream ss(datetime);
+
+  // 문자열을 tm으로 파싱
+  ss >> get_time(&tm, format.c_str());
+  if (ss.fail()) {
+    throw runtime_error("Datetime 문자열을 파싱하는 데 실패했습니다.");
+  }
+
+  // tm 구조체를 로컬 타임으로 해석하여 타임스탬프로 변환
+  tm.tm_isdst = -1;  // Daylight Saving Time 무시
+  const int64_t local_timestamp = mktime(&tm);
+
+  return local_timestamp * 1000;
+}
+
 string FormatTimeframe(const int64_t timeframe_ms) {
   const vector months = {
       28 * kDay,  // 2월
@@ -154,6 +191,11 @@ string FormatTimeframe(const int64_t timeframe_ms) {
       30 * kDay,  // 4,6,9,11월
       31 * kDay   // 1,3,5,7,8,10,12월
   };
+
+  // 연 단위 체크
+  if (timeframe_ms % kYear == 0) {
+    return to_string(timeframe_ms / kYear) + "y";
+  }
 
   // 월 단위 체크
   for (const int64_t month : months) {
@@ -165,15 +207,19 @@ string FormatTimeframe(const int64_t timeframe_ms) {
   if (timeframe_ms % kWeek == 0) {
     return to_string(timeframe_ms / kWeek) + "w";
   }
+
   if (timeframe_ms % kDay == 0) {
     return to_string(timeframe_ms / kDay) + "d";
   }
+
   if (timeframe_ms % kHour == 0) {
     return to_string(timeframe_ms / kHour) + "h";
   }
+
   if (timeframe_ms % kMinute == 0) {
     return to_string(timeframe_ms / kMinute) + "m";
   }
+
   if (timeframe_ms % kSecond == 0) {
     return to_string(timeframe_ms / kSecond) + "s";
   }
@@ -189,10 +235,8 @@ int64_t ParseTimeframe(const string& timeframe_str) {
   }
 
   if (pos == 0) {
-    Logger::LogAndThrowError(
-        format("잘못된 타임프레임 포맷 [{}]이(가) 지정되었습니다.",
-               timeframe_str),
-        __FILE__, __LINE__);
+    throw runtime_error(format(
+        "잘못된 타임프레임 포맷 [{}]이(가) 지정되었습니다.", timeframe_str));
   }
 
   // str의 숫자 부분 찾기
@@ -204,28 +248,34 @@ int64_t ParseTimeframe(const string& timeframe_str) {
     if (unit == "s") {
       return value * kSecond;
     }
+
     if (unit == "m") {
       return value * kMinute;
     }
+
     if (unit == "h") {
       return value * kHour;
     }
+
     if (unit == "d") {
       return value * kDay;
     }
+
     if (unit == "w") {
       return value * kWeek;
     }
+
     if (unit == "M") {
       return value * kMonth;
     }
 
-    Logger::LogAndThrowError(
-        format("잘못된 타임프레임 유닛 [{}]이(가) 지정되었습니다.", unit),
-        __FILE__, __LINE__);
-  }
+    if (unit == "y") {
+      return value * kYear;
+    }
 
-  return -1;
+    throw runtime_error(
+        format("잘못된 타임프레임 유닛 [{}]이(가) 지정되었습니다.", unit));
+  }
 }
 
 string FormatTimeDiff(const int64_t diff_ms) {

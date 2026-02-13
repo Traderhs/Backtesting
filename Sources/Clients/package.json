@@ -1,7 +1,7 @@
 {
-  "name": "backboard",
+  "name": "Backboard",
   "private": true,
-  "version": "1.5.0",
+  "version": "2.0.0",
   "description": "Dashboard for Backtesting Execution and Analysis",
   "author": "Haseung Ryu <dice000908@gmail.com>",
   "license": "SEE LICENSE IN LICENSE",
@@ -73,7 +73,7 @@
     "express": "^4.21.2",
     "framer-motion": "^12.7.3",
     "lightweight-charts": "^5.0.5",
-    "lodash": "^4.17.21",
+    "lodash": "4.17.23",
     "lucide-react": "^0.484.0",
     "open": "^10.1.0",
     "overlayscrollbars": "^2.11.4",

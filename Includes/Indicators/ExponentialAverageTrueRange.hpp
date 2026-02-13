@@ -4,7 +4,7 @@
 #include "Engines/Indicator.hpp"
 
 /// Exponential Average True Range
-class ExponentialAverageTrueRange final : public Indicator {
+class BACKTESTING_API ExponentialAverageTrueRange final : public Indicator {
  public:
   explicit ExponentialAverageTrueRange(const string& name,
                                        const string& timeframe,
@@ -14,8 +14,8 @@ class ExponentialAverageTrueRange final : public Indicator {
   shared_ptr<BarData> reference_bar_;
   int symbol_idx_;
 
-  double double_period_;
   size_t sizet_period_;
+  double double_period_;
 
   // TR 계산용
   double prev_close_;

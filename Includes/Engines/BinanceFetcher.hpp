@@ -1,10 +1,14 @@
 ﻿#pragma once
 
 // 표준 라이브러리
+#include <chrono>
+#include <condition_variable>
+#include <mutex>
 #include <string>
 
 // 내부 헤더
 #include "Engines/BaseFetcher.hpp"
+#include "Engines/Export.hpp"
 
 // 전방 선언
 namespace arrow {
@@ -22,7 +26,7 @@ using namespace backtesting::logger;
 namespace backtesting::fetcher {
 
 /// Binance 바 데이터의 Fetch와 Update를 담당하는 클래스
-class BinanceFetcher final : public BaseFetcher {
+class BACKTESTING_API BinanceFetcher final : public BaseFetcher {
  public:
   BinanceFetcher() = delete;
   explicit BinanceFetcher(string api_key_env_var, string api_secret_env_var);
@@ -30,70 +34,86 @@ class BinanceFetcher final : public BaseFetcher {
                           string market_data_directory);
 
   /**
-   * 지정된 심볼과 시간 프레임에 대해 연속 선물 klines 데이터를
+   * 지정된 심볼과 시간 프레임에 대한 연속 선물 klines 데이터를
    * Fetch 후 Parquet 형식으로 저장하는 함수
    *
    * @param symbol 연속 선물 캔들스틱 데이터를 가져올
    *               거래 쌍 심볼(예: "BTCUSDT")
    * @param timeframe 연속 선물 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
+   * @param continuous_klines_directory
+   *        연속 선물 캔들스틱 데이터를 저장할 폴더 경로
    */
-  void FetchContinuousKlines(const string& symbol,
-                             const string& timeframe) const;
+  void FetchContinuousKlines(
+      const string& symbol, const string& timeframe,
+      const string& continuous_klines_directory = "") const;
 
   /**
-   * 주어진 심볼과 시간 프레임에 대한 연속 선물 캔들스틱 데이터를
+   * 지정된 심볼과 시간 프레임에 대한 연속 선물 캔들스틱 데이터를
    * 업데이트하는 함수
    *
    * @param symbol 업데이트 할 연속 선물 캔들스틱 데이터의
    *               거래 쌍 심볼(예: "BTCUSDT")
    * @param timeframe 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
+   * @param continuous_klines_directory
+   *        연속 선물 캔들스틱 데이터가 저장된 폴더 경로
    */
-  void UpdateContinuousKlines(const string& symbol,
-                              const string& timeframe) const;
+  void UpdateContinuousKlines(
+      const string& symbol, const string& timeframe,
+      const string& continuous_klines_directory = "") const;
 
   /**
-   * 지정된 심볼과 시간 프레임에 대해 마크 가격 캔들스틱 데이터를
+   * 지정된 심볼과 시간 프레임에 대한 마크 가격 캔들스틱 데이터를
    * Fetch 후 Parquet 형식으로 저장하는 함수.
    *
    * @param symbol 마크 가격 캔들스틱 데이터를 가져올
    *               거래 쌍 심볼(예: "BTCUSDT")
    * @param timeframe 마크 가격 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
+   * @param mark_price_klines_directory
+   *        마크 가격 캔들스틱 데이터를 저장할 폴더 경로
    */
-  void FetchMarkPriceKlines(const string& symbol,
-                            const string& timeframe) const;
+  void FetchMarkPriceKlines(
+      const string& symbol, const string& timeframe,
+      const string& mark_price_klines_directory = "") const;
 
   /**
-   * 주어진 심볼과 시간 프레임에 대한 마크 가격 캔들스틱 데이터를
+   * 지정된 심볼과 시간 프레임에 대한 마크 가격 캔들스틱 데이터를
    * 업데이트하는 함수
    *
    * @param symbol 업데이트 할 마크 가격 캔들스틱 데이터의
    *               거래 쌍 심볼(예: "BTCUSDT")
    * @param timeframe 마크 가격 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
+   * @param mark_price_klines_directory
+   *        마크 가격 캔들스틱 데이터가 저장된 폴더 경로
    */
-  void UpdateMarkPriceKlines(const string& symbol,
-                             const string& timeframe) const;
+  void UpdateMarkPriceKlines(
+      const string& symbol, const string& timeframe,
+      const string& mark_price_klines_directory = "") const;
 
   /**
-   * 지정된 심볼에 대해 펀딩 비율 데이터를 Fetch 후 json 형식으로 저장하는 함수
+   * 지정된 심볼에 대한 펀딩 비율 데이터를 Fetch 후 json 형식으로 저장하는 함수
    *
    * @param symbol 펀딩 비율 데이터를 가져올
    *               거래 쌍 심볼(예: "BTCUSDT")
+   * @param funding_rates_directory 펀딩 비율 데이터를 저장할 폴더 경로
    */
-  void FetchFundingRates(const string& symbol) const;
+  void FetchFundingRates(const string& symbol,
+                         const string& funding_rates_directory = "") const;
 
   /**
-   * 지정된 심볼에 대해 펀딩 비율 데이터를 업데이트하는 함수
+   * 지정된 심볼에 대한 펀딩 비율 데이터를 업데이트하는 함수
    *
    * @param symbol 업데이트 할 펀딩 비율 데이터의
    *               거래 쌍 심볼(예: "BTCUSDT")
+   * @param funding_rates_directory 펀딩 비율 데이터가 저장된 폴더 경로
    */
-  void UpdateFundingRates(const string& symbol) const;
+  void UpdateFundingRates(const string& symbol,
+                          const string& funding_rates_directory = "") const;
 
   /// 바이낸스 선물 거래소 정보를 Fetch하고 json 형식으로 저장하는 함수
-  void FetchExchangeInfo() const;
+  static void FetchExchangeInfo(const string& exchange_info_path);
 
   /// 바이낸스 레버리지 구간을 Fecth하고 json 형식으로 저장하는 함수
-  void FetchLeverageBracket() const;
+  void FetchLeverageBracket(const string& leverage_bracket_path) const;
 
  private:
   static shared_ptr<Logger>& logger_;  // 로그용 객체
@@ -115,6 +135,36 @@ class BinanceFetcher final : public BaseFetcher {
   string continuous_klines_directory_;  // 연속 선물 Klines 폴더 경로
   string mark_price_klines_directory_;  // 마크 Klines 폴더 경로
   string funding_rates_directory_;      // Funding Rate 폴더 경로
+
+  // 바이낸스 REQUEST_WEIGHT 제한을 위한 토큰 버킷
+  class BACKTESTING_API TokenBucket {
+   public:
+    TokenBucket() = delete;
+
+    static TokenBucket& GetBinanceLimiter();
+
+    void Acquire(double weight = 1.0);
+
+   private:
+    /// @param capacity 최대 누적 weight
+    /// @param refill_per_sec 초당 회복량
+    TokenBucket(double capacity, double refill_per_sec);
+
+    // 내부적으로 토큰을 보충하는 함수
+    void refill();
+
+    static TokenBucket* limiter_;
+    double capacity_;     // 최대 누적 weight
+    double tokens_;       // 현재 보유 weight
+    double refill_rate_;  // 초당 회복 weight
+
+    chrono::time_point<chrono::steady_clock> last_refill_;
+    mutex mutex_;
+    condition_variable cv_;
+  };
+
+  // TokenBucket 요청 헬퍼
+  static void AcquireBinanceWeight(double weight);
 
   /**
    * Binance API를 사용하여 지정된 URL과 파라미터에 대한

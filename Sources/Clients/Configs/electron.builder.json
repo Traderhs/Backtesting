@@ -27,7 +27,15 @@
       "to": "index.html"
     },
     {
-      "from": "Icons",
+      "from": "Bundles/Cores",
+      "to": "Cores"
+    },
+    {
+      "from": "Bundles/nlohmann",
+      "to": "nlohmann"
+    },
+    {
+      "from": "Bundles/Icons",
       "to": "Icons",
       "filter": [
         "**/*.ico",
@@ -35,7 +43,7 @@
       ]
     },
     {
-      "from": "Logos",
+      "from": "Bundles/Logos",
       "to": "Logos",
       "filter": [
         "**/*.png"
@@ -51,7 +59,7 @@
         ]
       }
     ],
-    "icon": "Icons/backboard.ico"
+    "icon": "Bundles/Icons/backboard.ico"
   },
   "nsis": {
     "oneClick": false,
