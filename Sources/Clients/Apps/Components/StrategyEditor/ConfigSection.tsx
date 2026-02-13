@@ -416,7 +416,7 @@ export default function ConfigSection() {
                             onChange={(v) => setInitialBalanceInput(v)}
                             onBlur={() => {
                                 const v = initialBalanceInput.trim();
-                                handleConfigChange('initialBalance', parseFloat(v) || undefined);
+                                handleConfigChange('initialBalance', v === '' ? undefined : parseFloat(v));
                             }}
                             placeholder="초기 자금"
                             unit="$"
@@ -446,7 +446,7 @@ export default function ConfigSection() {
                                     onChange={(v) => setTakerFeeInput(v)}
                                     onBlur={() => {
                                         const v = takerFeeInput.trim();
-                                        handleConfigChange('takerFeePercentage', parseFloat(v) || undefined);
+                                        handleConfigChange('takerFeePercentage', v === '' ? undefined : parseFloat(v));
                                     }}
                                     placeholder="테이커 수수료율"
                                     unit="%"
@@ -467,7 +467,7 @@ export default function ConfigSection() {
                                     onChange={(v) => setMakerFeeInput(v)}
                                     onBlur={() => {
                                         const v = makerFeeInput.trim();
-                                        handleConfigChange('makerFeePercentage', parseFloat(v) || undefined);
+                                        handleConfigChange('makerFeePercentage', v === '' ? undefined : parseFloat(v));
                                     }}
                                     placeholder="메이커 수수료율"
                                     unit="%"
@@ -539,7 +539,7 @@ export default function ConfigSection() {
                                             onChange={(v) => setSlippageTakerInput(v)}
                                             onBlur={() => {
                                                 const v = slippageTakerInput.trim();
-                                                handleConfigChange('slippageTakerPercentage', parseFloat(v) || undefined);
+                                                handleConfigChange('slippageTakerPercentage', v === '' ? undefined : parseFloat(v));
                                             }}
                                             placeholder="테이커 슬리피지율"
                                             unit="%"
@@ -560,7 +560,7 @@ export default function ConfigSection() {
                                             onChange={(v) => setSlippageMakerInput(v)}
                                             onBlur={() => {
                                                 const v = slippageMakerInput.trim();
-                                                handleConfigChange('slippageMakerPercentage', parseFloat(v) || undefined);
+                                                handleConfigChange('slippageMakerPercentage', v === '' ? undefined : parseFloat(v));
                                             }}
                                             placeholder="메이커 슬리피지율"
                                             unit="%"
@@ -580,7 +580,7 @@ export default function ConfigSection() {
                                             onChange={(v) => setSlippageStressInput(v)}
                                             onBlur={() => {
                                                 const v = slippageStressInput.trim();
-                                                handleConfigChange('slippageStressMultiplier', parseFloat(v) || undefined);
+                                                handleConfigChange('slippageStressMultiplier', v === '' ? undefined : parseFloat(v));
                                             }}
                                             placeholder="스트레스 계수"
                                             allowedChars="0123456789."
