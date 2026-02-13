@@ -13,6 +13,7 @@
 #include "Engines/BarHandler.hpp"
 
 // 내부 헤더
+#include "Engines/Backtesting.hpp"
 #include "Engines/BarData.hpp"
 #include "Engines/DataUtils.hpp"
 #include "Engines/Exception.hpp"
@@ -116,6 +117,8 @@ void BarHandler::AddBarData(const vector<string>& symbol_names,
   for_each(execution::par_unseq, indices.begin(), indices.end(),
            [&](const size_t symbol_idx) {
              try {
+               RET_IF_STOP_REQUESTED()
+
                if (!bar_data_tables[symbol_idx]) {
                  bar_data_infos[symbol_idx].success = false;
                  bar_data_infos[symbol_idx].error_message = "파일 읽기 실패";
@@ -145,6 +148,8 @@ void BarHandler::AddBarData(const vector<string>& symbol_names,
 
   // 순차적으로 데이터 추가
   for (size_t symbol_idx = 0; symbol_idx < num_symbols; symbol_idx++) {
+    BRK_IF_STOP_REQUESTED()
+
     if (!bar_data_infos[symbol_idx].success) {
       throw runtime_error(format("[{}] {}", symbol_names[symbol_idx],
                                  bar_data_infos[symbol_idx].error_message));

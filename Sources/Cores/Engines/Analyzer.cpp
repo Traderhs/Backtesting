@@ -187,6 +187,7 @@ void Analyzer::SaveIndicatorData() {
       for (int symbol_idx = 0; symbol_idx < num_symbols; symbol_idx++) {
         estimated_size += trading_bar_data->GetNumBars(symbol_idx);
       }
+
       time_vector.reserve(estimated_size);
 
       // 모든 심볼의 모든 바를 순회하며 open_time 값을 수집
@@ -229,6 +230,9 @@ void Analyzer::SaveIndicatorData() {
 
     // 모든 전략의 각 지표를 순회하며 저장
     for (const auto& indicator : indicators) {
+      // 백테스팅 중지 요청 시 중지
+      RET_IF_STOP_REQUESTED()
+
       // OHLCV와 플롯하지 않는 지표는 저장하지 않음
       const auto& indicator_name = indicator->GetIndicatorName();
       if (indicator_name == strategy->open.GetIndicatorName() ||
@@ -466,6 +470,9 @@ void Analyzer::SaveTradeList() const {
       engine_->strategy_->GetStrategyName();  // 전략 이름 캐싱
 
   for (const auto& trade : trade_list_) {
+    // 백테스팅 중지 요청 시 중지
+    RET_IF_STOP_REQUESTED()
+
     const auto trade_num = trade.GetTradeNumber();
     const ordered_json& trade_json = {
         {"거래 번호", trade_num},

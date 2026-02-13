@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import {createPortal} from 'react-dom';
 import {motion} from 'framer-motion';
-import {FileText, Play} from 'lucide-react';
+import {FileText, Play, Square} from 'lucide-react';
 import {useWebSocket} from '../Server/WebSocketContext';
 import {BarDataType, timeframeToString, TimeframeUnit} from '@/Types/BarData.ts';
 import EditorSection from './EditorSection';
@@ -241,6 +241,8 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
     const {
         addLog,
         clearLogs,
+        isBacktestingRunning,
+        setIsBacktestingRunning,
         exchangeConfig,
         symbolConfigs,
         barDataConfigs,
@@ -257,8 +259,45 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
     // 준비 완료 신호 중복 방지를 위한 플래그
     const fullyLoadedCalledRef = useRef(false);
 
+    // 중단 요청 중복 방지를 위한 플래그
+    const stopRequestedRef = useRef(false);
+
+    // 빌드 중 여부를 추적하는 플래그
+    const isBuildingRef = useRef(false);
+
     const [isLogPanelOpen, setIsLogPanelOpen] = useState(false);
     const [logPanelHeight, setLogPanelHeight] = useState(400);
+
+    // 백테스팅 완료/실패/중지 메시지 수신 시 실행 상태 해제
+    useEffect(() => {
+        if (!ws) {
+            return;
+        }
+
+        const handleMessage = (event: MessageEvent) => {
+            try {
+                const data = JSON.parse(event.data);
+
+                if (data.action === 'backtestingSuccess' ||
+                    data.action === 'backtestingFailed' ||
+                    data.action === 'backtestingStopped' ||
+                    data.action === 'fetchSuccess' ||
+                    data.action === 'fetchFailed' ||
+                    data.action === 'fetchStopped') {
+                    setIsBacktestingRunning(false);
+                    stopRequestedRef.current = false;
+                }
+            } catch {
+                // JSON 파싱 실패 시 무시
+            }
+        };
+
+        ws.addEventListener('message', handleMessage);
+
+        return () => {
+            ws.removeEventListener('message', handleMessage);
+        };
+    }, [ws, setIsBacktestingRunning]);
 
     // 바 데이터 설정 해시 계산 (심볼 리스트 + 바 데이터 설정 + 바 돋보기 상태)
     const calculateConfigHash = () => {
@@ -402,6 +441,11 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
                 return;
             }
 
+            // 빌드 시작 전 실행 상태 설정
+            setIsBacktestingRunning(true);
+            stopRequestedRef.current = false;
+            isBuildingRef.current = true;
+
             try {
                 const buildResponse = await fetch('/api/strategy/build', {
                     method: 'POST',
@@ -418,12 +462,28 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
 
                 if (buildResult.success) {
                     addLog("SEPARATOR", "");
+                    isBuildingRef.current = false;
+
+                    // 빌드 중 중단 요청이 있었으면 C++를 실행하지 않고 중지
+                    if (stopRequestedRef.current) {
+                        addLog('INFO', '백테스팅이 중지되었습니다.');
+
+                        setIsBacktestingRunning(false);
+                        stopRequestedRef.current = false;
+                        return;
+                    }
                 } else {
-                    // 오류 로그는 서버에서 기록
+                    isBuildingRef.current = false;
+                    setIsBacktestingRunning(false);
+                    stopRequestedRef.current = false;
                     return;
                 }
             } catch (err: any) {
                 addLog('ERROR', `빌드 요청 실패: ${err.message}`);
+
+                isBuildingRef.current = false;
+                setIsBacktestingRunning(false);
+                stopRequestedRef.current = false;
                 return;
             }
         } else {
@@ -460,6 +520,29 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
 
         // 현재 해시값 저장
         previousConfigHash.current = currentHash;
+    };
+
+    // 백테스팅 중지
+    const handleStopBacktesting = () => {
+        if (stopRequestedRef.current) {
+            return;
+        }
+
+        stopRequestedRef.current = true;
+
+        // 빌드 중이면 플래그만 설정하고 명령은 보내지 않음 (빌드 완료 후 체크)
+        if (isBuildingRef.current) {
+            return;
+        }
+
+        // 빌드 중이 아니면 즉시 C++에 중지 명령 전송
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            setIsBacktestingRunning(false);
+            stopRequestedRef.current = false;
+            return;
+        }
+
+        ws.send(JSON.stringify({action: 'stopSingleBacktesting'}));
     };
 
     // 데이터 다운로드 / 업데이트
@@ -538,6 +621,10 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
             return;
         }
 
+        // 페치를 시작하면 시작 버튼을 중지 버튼으로 변경
+        setIsBacktestingRunning(true);
+        stopRequestedRef.current = false;
+
         ws.send(JSON.stringify({
             action: 'fetchOrUpdateBarData',
             operation: operation === 'download' ? 'download' : 'update',
@@ -606,12 +693,12 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
                     >
                         <button
                             type="button"
-                            onClick={handleRunSingleBacktesting}
-                            title="백테스팅 실행"
-                            aria-label="백테스팅 실행"
-                            className="strategy-editor-action-button play"
+                            onClick={isBacktestingRunning ? handleStopBacktesting : handleRunSingleBacktesting}
+                            title={isBacktestingRunning ? '백테스팅 중지' : '백테스팅 실행'}
+                            aria-label={isBacktestingRunning ? '백테스팅 중지' : '백테스팅 실행'}
+                            className={`strategy-editor-action-button ${isBacktestingRunning ? 'stop' : 'play'}`}
                         >
-                            <Play size={16}/>
+                            {isBacktestingRunning ? <Square size={16}/> : <Play size={16}/>}
                         </button>
 
                         <button
@@ -642,7 +729,10 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
                     </div>
 
                     {/* 바 데이터 설정 */}
-                    <BarDataSection onFetchOrUpdateBarData={handleFetchOrUpdateBarData}/>
+                    <BarDataSection
+                        onFetchOrUpdateBarData={handleFetchOrUpdateBarData}
+                        isBacktestingRunning={isBacktestingRunning}
+                    />
 
                     <div
                         className="grid grid-cols-1 lg:grid-cols-2 gap-4"

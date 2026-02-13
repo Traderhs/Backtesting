@@ -72,6 +72,7 @@ shared_ptr<Engine>& Engine::GetEngine() {
 void Engine::Backtesting() {
   LogSeparator(true);
   Initialize();
+  RET_IF_STOP_REQUESTED()
 
   LogSeparator(true);
   logger_->Log(INFO_L, std::format("백테스팅을 시작합니다."), __FILE__,
@@ -86,29 +87,37 @@ void Engine::Backtesting() {
                  __LINE__, true);
   }
 
+  RET_IF_STOP_REQUESTED()
+
   LogSeparator(true);
   logger_->Log(INFO_L, "백테스팅 결과 저장을 시작합니다.", __FILE__, __LINE__,
                true);
 
   // 이번 백테스팅 결과 저장 폴더 생성
   analyzer_->CreateDirectories();
+  RET_IF_STOP_REQUESTED()
 
   // 지표 데이터 저장
   analyzer_->SaveIndicatorData();
+  RET_IF_STOP_REQUESTED()
 
   // 거래 내역 저장
   analyzer_->SaveTradeList();
+  RET_IF_STOP_REQUESTED()
 
   // 백테스팅 설정 저장
   analyzer_->SaveConfig();
+  RET_IF_STOP_REQUESTED()
 
   // 전략 및 지표의 코드 저장
   analyzer_->SaveSourcesAndHeaders();
+  RET_IF_STOP_REQUESTED()
 
   // 서버 모드가 아닌 경우 BackBoard 저장
   if (!Backtesting::IsServerMode()) {
     analyzer_->SaveBackBoard();
   }
+  RET_IF_STOP_REQUESTED()
 
   LogSeparator(true);
   logger_->Log(INFO_L, "백테스팅이 완료되었습니다.", __FILE__, __LINE__, true);
@@ -168,20 +177,42 @@ void Engine::ResetEngine() {
 }
 
 void Engine::Initialize() {
+  RET_IF_STOP_REQUESTED()
+
   // 유효성 검증
   IsValidConfig();
+  RET_IF_STOP_REQUESTED()
+
   IsValidBarData();
+  RET_IF_STOP_REQUESTED()
+
   IsValidDateRange();
+  RET_IF_STOP_REQUESTED()
+
   IsValidSymbolInfo();
+  RET_IF_STOP_REQUESTED()
+
   IsValidStrategy();
+  RET_IF_STOP_REQUESTED()
+
   IsValidIndicators();
+  RET_IF_STOP_REQUESTED()
 
   // 초기화
   LogSeparator(true);
+  RET_IF_STOP_REQUESTED()
+
   InitializeEngine();
+  RET_IF_STOP_REQUESTED()
+
   InitializeSymbolInfo();
+  RET_IF_STOP_REQUESTED()
+
   InitializeStrategy();
+  RET_IF_STOP_REQUESTED()
+
   InitializeIndicators();
+  RET_IF_STOP_REQUESTED()
 }
 
 void Engine::IsValidConfig() {
@@ -1198,6 +1229,9 @@ void Engine::InitializeIndicators() const {
   // 전략에서 trading_timeframe을 사용하여 타임프레임이 공란이면
   // 트레이딩 바의 타임프레임을 사용
   for (const auto& indicator : indicators_) {
+    // 백테스팅 중지 요청 시 중지
+    RET_IF_STOP_REQUESTED()
+
     if (indicator->GetTimeframe() == "TRADING_TIMEFRAME") {
       indicator->SetTimeframe(trading_bar_timeframe_);
     }
@@ -1217,6 +1251,11 @@ void Engine::InitializeIndicators() const {
 
 void Engine::BacktestingMain() {
   while (true) {
+    // =========================================================================
+    // [백테스팅 중지 요청 확인]
+    // =========================================================================
+    RET_IF_STOP_REQUESTED()
+
     // =========================================================================
     // [진행 시간 로그]
     // =========================================================================

@@ -37,6 +37,30 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir, staticD
     // 성능을 위한 NO_PARSE 모드
     const NO_PARSE = process.env.LAUNCH_NO_PARSE === '1' || process.env.BACKBOARD_NO_PARSE === '1';
 
+    // 백테스팅 실패를 전파
+    const notifyAllClientsBacktestingFailed = () => {
+        if (activeClients && activeClients.size) {
+            activeClients.forEach((c) => {
+                try {
+                    if (c && c.readyState === 1) {
+                        c.send(JSON.stringify({action: 'backtestingFailed'}));
+                    }
+                } catch (e) {
+                    // 무시
+                }
+            });
+        }
+
+        try {
+            const requester = _pendingBacktestRequesters.shift();
+            if (requester && requester.readyState === 1) {
+                requester.send(JSON.stringify({action: 'backtestingFailed'}));
+            }
+        } catch (e) {
+            // 무시
+        }
+    };
+
     try {
         backtestingEngine = spawn(exePath, ["--server"], {
             cwd: projectDir, stdio: ['pipe', 'pipe', 'pipe'], windowsHide: false
@@ -160,6 +184,86 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir, staticD
                     return;
                 }
 
+                if (cleaned.includes('백테스팅이 중지되었습니다.')) {
+                    broadcastLog('INFO', '백테스팅이 중지되었습니다.', null, null);
+
+                    if (activeClients && activeClients.size) {
+                        activeClients.forEach((c) => {
+                            try {
+                                if (c && c.readyState === 1) {
+                                    c.send(JSON.stringify({action: 'backtestingStopped'}));
+                                }
+                            } catch (e) {
+                                // 무시
+                            }
+                        });
+                    }
+
+                    return;
+                }
+
+                // 백테스팅 오류를 즉시 클라이언트에 전파하여 UI가 고착되지 않도록 처리
+                if (cleaned.includes('단일 백테스팅 실행 중 오류가 발생했습니다.')) {
+                    broadcastLog('ERROR', '단일 백테스팅 실행 중 오류가 발생했습니다.', null, null);
+                    notifyAllClientsBacktestingFailed();
+                    return;
+                }
+
+                if (cleaned.includes('바 데이터 다운로드가 중지되었습니다.') || cleaned.includes('바 데이터 업데이트가 중지되었습니다.')) {
+                    broadcastLog('INFO', cleaned, null, null);
+
+                    if (activeClients && activeClients.size) {
+                        activeClients.forEach((c) => {
+                            try {
+                                if (c && c.readyState === 1) {
+                                    c.send(JSON.stringify({action: 'fetchStopped'}));
+                                }
+                            } catch (e) {
+                                // 무시
+                            }
+                        });
+                    }
+
+                    return;
+                }
+
+                if (cleaned.includes('바 데이터 다운로드가 완료되었습니다.') || cleaned.includes('바 데이터 업데이트가 완료되었습니다.')) {
+                    const message = cleaned.includes('다운로드') ? '바 데이터 다운로드가 완료되었습니다.' : '바 데이터 업데이트가 완료되었습니다.';
+                    broadcastLog('INFO', message, null, null);
+
+                    if (activeClients && activeClients.size) {
+                        activeClients.forEach((c) => {
+                            try {
+                                if (c && c.readyState === 1) {
+                                    c.send(JSON.stringify({action: 'fetchSuccess'}));
+                                }
+                            } catch (e) {
+                                // 무시
+                            }
+                        });
+                    }
+
+                    return;
+                }
+
+                if (cleaned.includes('바 데이터 다운로드/업데이트가 실패했습니다.')) {
+                    broadcastLog('ERROR', '바 데이터 다운로드/업데이트가 실패했습니다.', null, null);
+
+                    if (activeClients && activeClients.size) {
+                        activeClients.forEach((c) => {
+                            try {
+                                if (c && c.readyState === 1) {
+                                    c.send(JSON.stringify({action: 'fetchFailed'}));
+                                }
+                            } catch (e) {
+                                // 무시
+                            }
+                        });
+                    }
+
+                    return;
+                }
+
                 if (cleaned.startsWith('업데이트 완료')) {
                     try {
                         const payloadText = cleaned.substring('업데이트 완료'.length).trim();
@@ -195,8 +299,7 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir, staticD
                                         activeClients.forEach(client => {
                                             if (client.readyState === 1) {
                                                 client.send(JSON.stringify({
-                                                    action: "lastDataUpdates",
-                                                    lastDataUpdates: ts
+                                                    action: "lastDataUpdates", lastDataUpdates: ts
                                                 }));
                                             }
                                         });
@@ -245,6 +348,9 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir, staticD
         backtestingEngine.on('error', (err) => {
             broadcastLog("ERROR", `백테스팅 엔진 실행 실패: ${err.message}`, null, null);
 
+            // 프로세스 실행 오류인 경우에도 클라이언트 상태 해제
+            notifyAllClientsBacktestingFailed();
+
             backtestingEngine = null;
             backtestingEngineReady = false;
         });
@@ -254,6 +360,11 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir, staticD
             const signalInfo = signal ? ` (시그널: ${signal})` : '';
 
             broadcastLog(level, `백테스팅 엔진 종료 (코드: ${code})${signalInfo}`, null, null);
+
+            // 비정상 종료시 클라이언트에게 실패 알림 전파
+            if (code !== 0) {
+                notifyAllClientsBacktestingFailed();
+            }
 
             backtestingEngine = null;
             backtestingEngineReady = false;
@@ -358,6 +469,14 @@ function fetchOrUpdateBarData(ws, operation, editorConfig, symbolConfigs, barDat
 
     const command = `fetchOrUpdateBarData ${JSON.stringify(config)}\n`;
     backtestingEngine.stdin.write(command);
+}
+
+function stopSingleBacktesting() {
+    if (!backtestingEngine || !backtestingEngineReady) {
+        return;
+    }
+
+    backtestingEngine.stdin.write("stopSingleBacktesting\n");
 }
 
 function stopBacktestingEngine() {
@@ -1306,6 +1425,7 @@ function setEditorConfigLoading(loading) {
 module.exports = {
     startBacktestingEngine: startBacktestingEngine,
     runSingleBacktesting,
+    stopSingleBacktesting,
     fetchOrUpdateBarData,
     stopBacktestingEngine: stopBacktestingEngine,
     loadOrCreateEditorConfig,
