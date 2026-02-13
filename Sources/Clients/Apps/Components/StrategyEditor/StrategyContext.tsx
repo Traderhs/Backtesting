@@ -77,6 +77,10 @@ interface StrategyContextType {
     configLoaded: boolean;
     setConfigLoaded: React.Dispatch<React.SetStateAction<boolean>>;
 
+    // 백테스팅 실행 상태
+    isBacktestingRunning: boolean;
+    setIsBacktestingRunning: React.Dispatch<React.SetStateAction<boolean>>;
+
     logs: LogEntry[];
     addLog: (level: string, message: string, timestamp?: string | null, fileInfo?: string | null) => void;
     clearLogs: () => void;
@@ -120,6 +124,7 @@ const StrategyContext = createContext<StrategyContextType | undefined>(undefined
 export function StrategyProvider({children}: { children: ReactNode }) {
     // 에디터 설정
     const [configLoaded, setConfigLoaded] = useState(false);
+    const [isBacktestingRunning, setIsBacktestingRunning] = useState(false);
     const [logs, setLogs] = useState<LogEntry[]>([]);
 
     // 거래소 설정
@@ -296,6 +301,9 @@ export function StrategyProvider({children}: { children: ReactNode }) {
     const value = {
         configLoaded,
         setConfigLoaded,
+
+        isBacktestingRunning,
+        setIsBacktestingRunning,
 
         logs,
         addLog,

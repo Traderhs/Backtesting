@@ -1,6 +1,7 @@
 #pragma once
 
 // 표준 라이브러리
+#include <atomic>
 #include <string>
 
 // 내부 헤더
@@ -17,6 +18,28 @@ using namespace fetcher;
 
 namespace backtesting::main {
 
+// 백테스팅 중지 요청을 받았는지 확인하고 Return하는 매크로
+#define RET_IF_STOP_REQUESTED(...)                                  \
+  if (backtesting::main::Backtesting::IsStopRequested()) {          \
+    const std::string stop_message = std::string(__VA_ARGS__);      \
+    if (!stop_message.empty()) {                                    \
+      logger_->Log(INFO_L, stop_message, __FILE__, __LINE__, true); \
+    }                                                               \
+                                                                    \
+    return;                                                         \
+  }
+
+// 백테스팅 중지 요청을 받았는지 확인하고 Break하는 매크로
+#define BRK_IF_STOP_REQUESTED(...)                                  \
+  if (backtesting::main::Backtesting::IsStopRequested()) {          \
+    const std::string stop_message = std::string(__VA_ARGS__);      \
+    if (!stop_message.empty()) {                                    \
+      logger_->Log(INFO_L, stop_message, __FILE__, __LINE__, true); \
+    }                                                               \
+                                                                    \
+    break;                                                          \
+  }
+
 class BACKTESTING_API Backtesting {
  public:
   Backtesting() = delete;
@@ -27,6 +50,9 @@ class BACKTESTING_API Backtesting {
 
   /// 서버 모드 여부를 반환하는 함수
   static bool IsServerMode();
+
+  /// 백테스팅 중지 요청 여부를 반환하는 함수
+  static bool IsStopRequested();
 
   /// 백테스팅을 실행하는 함수
   static void RunBacktesting();
@@ -210,6 +236,9 @@ class BACKTESTING_API Backtesting {
 
   // 서버 모드 플래그
   static bool server_mode_;
+
+  // 중지 요청 플래그
+  static atomic<bool> stop_requested_;
 
   // DLL 로더 저장소
   static vector<shared_ptr<StrategyLoader>> dll_loaders_;

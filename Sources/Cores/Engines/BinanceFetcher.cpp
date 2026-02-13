@@ -16,6 +16,7 @@
 #include "Engines/BinanceFetcher.hpp"
 
 // 내부 헤더
+#include "Engines/Backtesting.hpp"
 #include "Engines/DataUtils.hpp"
 #include "Engines/Engine.hpp"
 #include "Engines/Logger.hpp"
@@ -177,6 +178,8 @@ void BinanceFetcher::AcquireBinanceWeight(const double weight) {
 void BinanceFetcher::FetchContinuousKlines(
     const string& symbol, const string& timeframe,
     const string& continuous_klines_directory) const {
+  RET_IF_STOP_REQUESTED()
+
   const auto& start = chrono::high_resolution_clock::now();
 
   ParseTimeframe(timeframe);
@@ -207,6 +210,8 @@ void BinanceFetcher::FetchContinuousKlines(
                       symbol, timeframe_filename),
                __FILE__, __LINE__, true);
 
+  RET_IF_STOP_REQUESTED()
+
   const unordered_map<string, string>& params = {{"pair", symbol},
                                                  {"contractType", "PERPETUAL"},
                                                  {"interval", timeframe},
@@ -215,8 +220,12 @@ void BinanceFetcher::FetchContinuousKlines(
 
   const auto& klines = FetchKlines(continuous_klines_url_, params, true).get();
 
+  RET_IF_STOP_REQUESTED()
+
   // 캔들스틱 데이터 변환
   const auto& transformed_klines = TransformKlines(klines, true);
+
+  RET_IF_STOP_REQUESTED()
 
   // 선물 데이터가 비어있으면 처리 중단
   if (transformed_klines.empty()) {
@@ -226,6 +235,8 @@ void BinanceFetcher::FetchContinuousKlines(
     Engine::LogSeparator(true);
     return;
   }
+
+  RET_IF_STOP_REQUESTED()
 
   // 저장
   SaveKlines(transformed_klines, save_directory,
@@ -254,6 +265,8 @@ void BinanceFetcher::FetchContinuousKlines(
 void BinanceFetcher::UpdateContinuousKlines(
     const string& symbol, const string& timeframe,
     const string& continuous_klines_directory) const {
+  RET_IF_STOP_REQUESTED()
+
   const auto& start = chrono::high_resolution_clock::now();
 
   ParseTimeframe(timeframe);
@@ -303,11 +316,17 @@ void BinanceFetcher::UpdateContinuousKlines(
                                                  {"startTime", start_time},
                                                  {"limit", "1000"}};
 
+  RET_IF_STOP_REQUESTED()
+
   const auto& futures_klines =
       FetchKlines(continuous_klines_url_, params, true).get();
 
+  RET_IF_STOP_REQUESTED()
+
   if (const auto& transformed_klines = TransformKlines(futures_klines, true);
       !transformed_klines.empty()) {
+    RET_IF_STOP_REQUESTED()
+
     // 업데이트된 데이터가 있다면 Array에 저장
     const auto& arrays = GetArraysAddedKlines(transformed_klines);
 
@@ -355,6 +374,8 @@ void BinanceFetcher::UpdateContinuousKlines(
 void BinanceFetcher::FetchMarkPriceKlines(
     const string& symbol, const string& timeframe,
     const string& mark_price_klines_directory) const {
+  RET_IF_STOP_REQUESTED()
+
   const auto& start = chrono::high_resolution_clock::now();
 
   // 타임프레임 유효성 검사
@@ -386,6 +407,8 @@ void BinanceFetcher::FetchMarkPriceKlines(
                       symbol, timeframe_filename),
                __FILE__, __LINE__, true);
 
+  RET_IF_STOP_REQUESTED()
+
   const unordered_map<string, string>& params = {{"symbol", symbol},
                                                  {"interval", timeframe},
                                                  {"startTime", "0"},
@@ -397,8 +420,12 @@ void BinanceFetcher::FetchMarkPriceKlines(
 
   const auto& klines = FetchKlines(mark_price_klines_url_, params, true).get();
 
+  RET_IF_STOP_REQUESTED()
+
   // 캔들스틱 데이터 변환
   const auto& transformed_klines = TransformKlines(klines, true);
+
+  RET_IF_STOP_REQUESTED()
 
   // 저장
   SaveKlines(transformed_klines, save_directory,
@@ -427,6 +454,8 @@ void BinanceFetcher::FetchMarkPriceKlines(
 void BinanceFetcher::UpdateMarkPriceKlines(
     const string& symbol, const string& timeframe,
     const string& mark_price_klines_directory) const {
+  RET_IF_STOP_REQUESTED()
+
   const auto& start = chrono::high_resolution_clock::now();
 
   // 타임프레임 유효성 검사
@@ -475,11 +504,17 @@ void BinanceFetcher::UpdateMarkPriceKlines(
                                                  {"startTime", start_time},
                                                  {"limit", "1000"}};
 
+  RET_IF_STOP_REQUESTED()
+
   const auto& mark_price_klines =
       FetchKlines(mark_price_klines_url_, params, true).get();
 
+  RET_IF_STOP_REQUESTED()
+
   if (const auto& transformed_klines = TransformKlines(mark_price_klines, true);
       !transformed_klines.empty()) {
+    RET_IF_STOP_REQUESTED()
+
     // 업데이트된 데이터가 있다면 Array에 저장
     const auto& arrays = GetArraysAddedKlines(transformed_klines);
 
@@ -526,6 +561,8 @@ void BinanceFetcher::UpdateMarkPriceKlines(
 
 void BinanceFetcher::FetchFundingRates(
     const string& symbol, const string& funding_rates_directory) const {
+  RET_IF_STOP_REQUESTED()
+
   const auto& start = chrono::high_resolution_clock::now();
 
   const string& save_directory = funding_rates_directory.empty()
@@ -609,6 +646,10 @@ void BinanceFetcher::FetchFundingRates(
 
 void BinanceFetcher::UpdateFundingRates(
     const string& symbol, const string& funding_rates_directory) const {
+  if (main::Backtesting::IsStopRequested()) {
+    return;
+  }
+
   const auto& start = chrono::high_resolution_clock::now();
 
   const string& save_directory = funding_rates_directory.empty()
@@ -666,8 +707,16 @@ void BinanceFetcher::UpdateFundingRates(
   const unordered_map<string, string>& params = {
       {"symbol", symbol}, {"startTime", start_time}, {"limit", "1000"}};
 
+  if (main::Backtesting::IsStopRequested()) {
+    return;
+  }
+
   const auto& fetch_result =
       FetchContinuousFundingRates(funding_rates_url_, params).get();
+
+  if (main::Backtesting::IsStopRequested()) {
+    return;
+  }
 
   if (!fetch_result.empty()) {
     // 기존 데이터에 새로운 데이터 추가 (fundingRate를 double로 변환)
@@ -773,6 +822,11 @@ future<vector<json>> BinanceFetcher::FetchKlines(
     auto param = params;
 
     while (true) {
+      // 중지 요청 확인
+      if (Backtesting::IsStopRequested()) {
+        break;
+      }
+
       try {
         AcquireBinanceWeight(5.0);
 
@@ -781,6 +835,11 @@ future<vector<json>> BinanceFetcher::FetchKlines(
 
         // Fetch 대기
         const auto& fetched_data = fetched_future.get();
+
+        // 중지 요청 확인
+        if (Backtesting::IsStopRequested()) {
+          break;
+        }
 
         // fetch 해온 데이터가 비어있거나 잘못된 데이터면 종료
         if (fetched_data.empty() ||
@@ -845,6 +904,9 @@ future<vector<json>> BinanceFetcher::FetchContinuousFundingRates(
     auto param = params;
 
     while (true) {
+      // 중지 요청 확인
+      BRK_IF_STOP_REQUESTED()
+
       try {
         AcquireBinanceWeight(1.0);
 
@@ -853,6 +915,9 @@ future<vector<json>> BinanceFetcher::FetchContinuousFundingRates(
 
         // Fetch 대기
         const auto& fetched_data = fetched_future.get();
+
+        // 중지 요청 확인
+        BRK_IF_STOP_REQUESTED()
 
         // fetch 해온 데이터가 비어있거나 잘못된 데이터면 종료
         if (fetched_data.empty() ||
@@ -920,6 +985,9 @@ vector<json> BinanceFetcher::TransformKlines(const vector<json>& klines,
 
 #pragma omp parallel for
   for (int i = 0; i < size; i++) {
+    // 중지 요청 확인
+    BRK_IF_STOP_REQUESTED()
+
     const auto& kline = klines[i];
 
     try {

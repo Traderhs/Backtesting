@@ -59,6 +59,7 @@
 #include <iostream>
 #include <sstream>
 #include <string>
+#include <thread>
 #include <vector>
 
 // 외부 라이브러리
@@ -82,6 +83,7 @@ BACKTESTING_API shared_ptr<BarHandler>& Backtesting::bar_ =
 BACKTESTING_API shared_ptr<Logger>& Backtesting::logger_ = Logger::GetLogger();
 
 BACKTESTING_API bool Backtesting::server_mode_ = false;
+BACKTESTING_API atomic<bool> Backtesting::stop_requested_ = false;
 BACKTESTING_API vector<shared_ptr<StrategyLoader>> Backtesting::dll_loaders_;
 BACKTESTING_API string Backtesting::market_data_directory_;
 BACKTESTING_API string Backtesting::api_key_env_var_;
@@ -92,6 +94,8 @@ void Backtesting::SetServerMode(const bool server_mode) {
 }
 
 bool Backtesting::IsServerMode() { return server_mode_; }
+
+bool Backtesting::IsStopRequested() { return stop_requested_.load(); }
 
 void Backtesting::RunBacktesting() {
   try {
@@ -107,12 +111,59 @@ void Backtesting::RunBacktesting() {
 void Backtesting::RunServer() {
   // 서버 모드로 진입했음을 알리는 로그를 출력하여 Js가 준비 상태를 감지
   cout << "백테스팅 엔진 준비 완료" << endl;
-  string line;
 
-  // stdin 명령 루프
-  while (getline(cin, line)) {
-    if (line.empty()) {
-      continue;
+  atomic should_exit(false);
+  string pending_command;
+  mutex command_mutex;
+  condition_variable command_cv;
+
+  // stdin 읽기 전용 스레드
+  thread stdin_thread([&] {
+    string line;
+    while (getline(cin, line)) {
+      if (line.empty()) {
+        continue;
+      }
+
+      istringstream iss(line);
+      string cmd;
+      iss >> cmd;
+
+      if (cmd == "stopSingleBacktesting") {
+        // 중지 플래그 설정
+        stop_requested_.store(true);
+      } else if (cmd == "shutdown") {
+        should_exit.store(true);
+
+        command_cv.notify_one();
+        break;
+      } else {
+        // 다른 명령은 큐에 추가
+        {
+          lock_guard lock(command_mutex);
+          pending_command = line;
+        }
+
+        command_cv.notify_one();
+      }
+    }
+  });
+
+  // 메인 루프: 명령 처리
+  while (!should_exit.load()) {
+    string line;
+
+    {
+      unique_lock lock(command_mutex);
+      command_cv.wait(
+          lock, [&] { return !pending_command.empty() || should_exit.load(); });
+
+      if (should_exit.load()) {
+        break;
+      }
+
+      line = pending_command;
+      pending_command.clear();
     }
 
     istringstream iss(line);
@@ -131,8 +182,6 @@ void Backtesting::RunServer() {
         getline(iss, json_str);
 
         FetchOrUpdateBarData(json_str);
-      } else if (cmd == "shutdown") {
-        break;
       } else {
         cout << "알 수 없는 명령어: " << cmd << endl;
       }
@@ -140,10 +189,17 @@ void Backtesting::RunServer() {
       // 무시하고 다음 루프 진행
     }
   }
+
+  if (stdin_thread.joinable()) {
+    stdin_thread.join();
+  }
 }
 
 void Backtesting::RunSingleBacktesting(const string& json_str) {
   try {
+    // 중지 플래그 초기화
+    stop_requested_.store(false);
+
     if (!server_mode_) {
       throw runtime_error(
           "RunSingleBacktesting 함수는 서버 모드에서만 실행 가능합니다.");
@@ -191,6 +247,8 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     SetApiEnvVars(json_config.at("apiKeyEnvVar").get<string>(),
                   json_config.at("apiSecretEnvVar").get<string>());
 
+    RET_IF_STOP_REQUESTED("백테스팅이 중지되었습니다.")
+
     bool updated = false;
 
     // 거래소 정보 파일이 존재하지 않을 때
@@ -204,6 +262,8 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
       updated = true;
     }
 
+    RET_IF_STOP_REQUESTED("백테스팅이 중지되었습니다.")
+
     // 레버리지 구간 파일이 존재하지 않을 때
     const auto exist_leverage_bracket =
         filesystem::exists(leverage_bracket_path);
@@ -215,6 +275,8 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
       FetchLeverageBracket(leverage_bracket_path);
       updated = true;
     }
+
+    RET_IF_STOP_REQUESTED("백테스팅이 중지되었습니다.")
 
     const auto now = chrono::duration_cast<chrono::milliseconds>(
                          chrono::system_clock::now().time_since_epoch())
@@ -268,9 +330,14 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
         need_update = true;
       }
 
+      RET_IF_STOP_REQUESTED("백테스팅이 중지되었습니다.")
+
       if (need_update) {
         FetchExchangeInfo(exchange_info_path);
+        RET_IF_STOP_REQUESTED("백테스팅이 중지되었습니다.")
+
         FetchLeverageBracket(leverage_bracket_path);
+        RET_IF_STOP_REQUESTED("백테스팅이 중지되었습니다.")
 
         updated = true;
       } else {
@@ -290,9 +357,14 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
       cout << "업데이트 완료" << payload.dump() << endl;
     }
 
+    RET_IF_STOP_REQUESTED("백테스팅이 중지되었습니다.")
+
     // 데이터 추가
     AddExchangeInfo(exchange_info_path);
+    RET_IF_STOP_REQUESTED("백테스팅이 중지되었습니다.")
+
     AddLeverageBracket(leverage_bracket_path);
+    RET_IF_STOP_REQUESTED("백테스팅이 중지되었습니다.")
 
     // =========================================================================
     // 바 데이터 설정
@@ -384,6 +456,15 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
             AddBarData(symbol_names, timeframe, klines_directory,
                        bar_data_type);
           }
+
+          if (IsStopRequested()) {
+            // 바 데이터 추가 중 중지는 오류로 간주하여 다음 실행 시 재추가
+            bar_data_adding_error_occurred = true;
+            cout << "백테스팅이 중지되었습니다." << endl;
+            ResetCores();
+
+            return;
+          }
         }
       } catch (const std::exception& e) {
         // 바 데이터 추가 중 발생한 오류는 다음 실행 때
@@ -397,11 +478,15 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
                    __FILE__, __LINE__, true);
     }
 
+    RET_IF_STOP_REQUESTED("백테스팅이 중지되었습니다.")
+
     // =======================================================================
     // 펀딩 비율 설정
     // =======================================================================
     AddFundingRates(symbol_names,
                     json_config.at("fundingRatesDirectory").get<string>());
+
+    RET_IF_STOP_REQUESTED("백테스팅이 중지되었습니다.")
 
     // =======================================================================
     // 엔진 설정
@@ -474,6 +559,8 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
       config_builder.DisableSameBarDataCheck(MARK_PRICE);
     }
 
+    RET_IF_STOP_REQUESTED("백테스팅이 중지되었습니다.")
+
     // =======================================================================
     // 전략 설정
     // =======================================================================
@@ -520,6 +607,8 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     config_builder.SetStrategySourcePath(
         strategy_config.at("strategySourcePath").get<string>());
 
+    RET_IF_STOP_REQUESTED("백테스팅이 중지되었습니다.")
+
     // 새 로더 생성
     const auto loader = make_shared<StrategyLoader>();
     string error;
@@ -541,6 +630,12 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
     // 백테스팅 실행
     RunBacktesting();
 
+    // 백테스팅 중지 요청이 있었으면 로깅
+    // ResetCores를 실행하기 위해 매크로를 사용하지 않음
+    if (IsStopRequested()) {
+      cout << "백테스팅이 중지되었습니다." << endl;
+    }
+
     // 엔진 코어 초기화
     ResetCores();
   } catch (const std::exception& e) {
@@ -559,6 +654,9 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
 
 void Backtesting::FetchOrUpdateBarData(const string& json_str) {
   try {
+    // 중지 플래그 초기화
+    stop_requested_.store(false);
+
     if (!server_mode_) {
       throw runtime_error(
           "FetchOrUpdateBarData 함수는 서버 모드에서만 실행 가능합니다.");
@@ -609,6 +707,15 @@ void Backtesting::FetchOrUpdateBarData(const string& json_str) {
     for (const auto& symbol_name : symbol_names) {
       // 바 데이터 처리
       for (const auto& bar_data_config : bar_data_configs) {
+        if (IsStopRequested()) {
+          const string& msg = operation == "download"
+                                  ? "바 데이터 다운로드가 중지되었습니다."
+                                  : "바 데이터 업데이트가 중지되었습니다.";
+          cout << msg << endl;
+          ResetCores();
+          return;
+        }
+
         const auto& timeframe = get<0>(bar_data_config);
         const auto& klines_directory = get<1>(bar_data_config);
         const auto& bar_data_type = get<2>(bar_data_config);
@@ -686,6 +793,12 @@ void Backtesting::FetchOrUpdateBarData(const string& json_str) {
 
     // 엔진 코어 초기화
     ResetCores();
+
+    if (operation == "download") {
+      cout << "바 데이터 다운로드가 완료되었습니다." << endl;
+    } else {
+      cout << "바 데이터 업데이트가 완료되었습니다." << endl;
+    }
   } catch (const std::exception& e) {
     logger_->Log(
         ERROR_L,
@@ -697,6 +810,8 @@ void Backtesting::FetchOrUpdateBarData(const string& json_str) {
 
     // 엔진 코어 초기화
     ResetCores();
+
+    cout << "바 데이터 다운로드/업데이트가 실패했습니다." << endl;
 
     throw;
   }
@@ -793,6 +908,8 @@ void Backtesting::AddBarData(const vector<string>& symbol_names,
   file_paths.reserve(symbol_names.size());
 
   for (const string& symbol_name : symbol_names) {
+    RET_IF_STOP_REQUESTED()
+
     string file_path;
 
     if (bar_data_type == MARK_PRICE) {

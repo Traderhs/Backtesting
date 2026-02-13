@@ -25,8 +25,9 @@ const DEFAULT_FUNDING_RATES_PATH = 'Data/Funding Rates';
  * 바 데이터 설정 섹션 컴포넌트
  * 트레이딩/돋보기/참조/마크 가격 바 데이터 설정 관리
  */
-export default function BarDataSection({onFetchOrUpdateBarData}: {
+export default function BarDataSection({onFetchOrUpdateBarData, isBacktestingRunning}: {
     onFetchOrUpdateBarData?: (operation: 'download' | 'update') => void
+    isBacktestingRunning?: boolean
 }) {
     const {
         barDataConfigs,
@@ -223,24 +224,34 @@ export default function BarDataSection({onFetchOrUpdateBarData}: {
                     <div style={{display: 'flex', gap: '12px', alignItems: 'center'}}>
                         <button
                             onClick={() => {
-                                if (onFetchOrUpdateBarData) {
+                                if (onFetchOrUpdateBarData && !isBacktestingRunning) {
                                     onFetchOrUpdateBarData('download');
                                 }
                             }}
                             className="strategy-editor-button"
                             title={"바 데이터 다운로드"}
+                            disabled={isBacktestingRunning}
+                            style={{
+                                opacity: isBacktestingRunning ? 0.5 : 1,
+                                cursor: isBacktestingRunning ? 'not-allowed' : 'pointer'
+                            }}
                         >
                             바 데이터 다운로드
                         </button>
 
                         <button
                             onClick={() => {
-                                if (onFetchOrUpdateBarData) {
+                                if (onFetchOrUpdateBarData && !isBacktestingRunning) {
                                     onFetchOrUpdateBarData('update');
                                 }
                             }}
                             className="strategy-editor-button"
                             title={"바 데이터 업데이트"}
+                            disabled={isBacktestingRunning}
+                            style={{
+                                opacity: isBacktestingRunning ? 0.5 : 1,
+                                cursor: isBacktestingRunning ? 'not-allowed' : 'pointer'
+                            }}
                         >
                             바 데이터 업데이트
                         </button>
