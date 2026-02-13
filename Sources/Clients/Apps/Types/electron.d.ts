@@ -14,6 +14,9 @@ export interface ElectronAPI {
 
     // 파일/폴더 선택
     selectPath: (mode: 'file' | 'directory') => Promise<{ canceled: boolean; filePaths: string[] }>;
+
+    // 프로젝트 폴더 재선택
+    resetProjectFolder: () => Promise<{ success: boolean; error?: string }>;
 }
 
 declare global {

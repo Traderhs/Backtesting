@@ -1,5 +1,6 @@
 const {app, BrowserWindow, ipcMain, dialog, Menu} = require('electron');
 const path = require('path');
+const fs = require('fs');
 const net = require('net');
 const {autoUpdater} = require('electron-updater');
 
@@ -17,10 +18,11 @@ if (!process.env.NODE_ENV) {
 }
 
 // 개발/프로덕션 인스턴스 간 Chromium 캐시 충돌 방지
+const baseUserData = app.getPath('userData'); // 설정 파일용 기본 경로
+
 try {
     // DEV와 EXE를 구분해 고유 태그 사용
-    const baseUserData = app.getPath('userData');
-    const instanceTag = isDev ? `dev-${process.pid}` : `exe-${process.pid}`;
+    const instanceTag = isDev ? 'dev' : 'exe';
     const instanceUserData = path.join(baseUserData, instanceTag);
 
     app.setPath('userData', instanceUserData);
@@ -210,20 +212,52 @@ app.whenReady().then(async () => {
         console.warn('Failed to hide application menu:', e);
     }
 
-    // 프로젝트 폴더 선택
-    const result = await dialog.showOpenDialog({
-        properties: ['openDirectory'],
-        title: 'Select Project Directory',
-        buttonLabel: 'Select Project Folder',
-        message: 'Select the project folder where BackBoard/ directory is located.'
-    });
+    // 저장된 프로젝트 폴더 경로 확인
+    const configPath = path.join(baseUserData, 'config.json');
+    let savedProjectDir = null;
 
-    if (result.canceled || result.filePaths.length === 0) {
-        app.quit();
-        return;
+    // 저장된 설정 읽기
+    try {
+        if (fs.existsSync(configPath)) {
+            const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+            savedProjectDir = config.projectDirectory;
+
+            // 저장된 경로가 유효한지 확인
+            if (savedProjectDir && fs.existsSync(savedProjectDir)) {
+                process.env.PROJECT_DIR = savedProjectDir;
+                projectDirectory = savedProjectDir; // 전역 변수에도 설정
+            } else {
+                savedProjectDir = null;
+            }
+        }
+    } catch (e) {
+        savedProjectDir = null;
     }
 
-    process.env.PROJECT_DIR = result.filePaths[0];
+    // 저장된 경로가 없을 때만 프로젝트 폴더 선택 다이얼로그 표시
+    if (!savedProjectDir) {
+        const result = await dialog.showOpenDialog({
+            properties: ['openDirectory'],
+            title: '프로젝트 폴더 선택',
+            buttonLabel: '폴더 선택'
+        });
+
+        if (result.canceled || result.filePaths.length === 0) {
+            app.quit();
+            return;
+        }
+
+        process.env.PROJECT_DIR = result.filePaths[0];
+        projectDirectory = result.filePaths[0];
+
+        // 선택한 프로젝트 폴더 저장
+        try {
+            const config = {projectDirectory: result.filePaths[0]};
+            fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf8');
+        } catch (e) {
+            // 무시
+        }
+    }
 
     // 사용 가능한 포트 찾기 (기본 7777부터 시작)
     try {
@@ -293,6 +327,26 @@ ipcMain.handle('select-path', async (event, mode) => {
     return await dialog.showOpenDialog(mainWindow, {
         properties: properties
     });
+});
+
+// 저장된 설정 초기화 후 앱 재시작 시 프로젝트 폴더 재선택
+ipcMain.handle('reset-project-folder', async () => {
+    try {
+        const configPath = path.join(baseUserData, 'config.json');
+
+        // 설정 파일 삭제
+        if (fs.existsSync(configPath)) {
+            fs.unlinkSync(configPath);
+        }
+
+        // 앱 재시작
+        app.relaunch();
+        app.quit();
+
+        return {success: true};
+    } catch (e) {
+        return {success: false, error: e.message};
+    }
 });
 
 // 간단한 네이티브 확인(Yes/No) 다이얼로그
