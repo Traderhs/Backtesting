@@ -116,16 +116,20 @@ After a run completes, open the newest folder under `Results/` and point BackBoa
 ## Repository Layout
 
 - **C++ Engine (headers):** `Includes/Engines/`, `Includes/Indicators/`, `Includes/Strategies/`
-- **C++ Engine (implementation):** `Sources/cpp/Engines/`, `Sources/cpp/Indicators/`, `Sources/cpp/Strategies/`
-- **BackBoard (Node + React):** `Sources/js/`
-    - Entry shim: `Sources/js/launch.js`
-    - Server: `Sources/js/server/launch.js` (Express + WebSocket)
+- **C++ Engine (implementation):** `Sources/Cores/Engines/`, `Sources/Cores/Indicators/`, `Sources/Cores/Strategies/`
+- **BackBoard (Electron + React + TypeScript):** `Sources/Clients/`
+    - Main entry: `Sources/Clients/launch.js`
+    - Electron process: `Sources/Clients/Electron/Main.js`
+    - Server: `Sources/Clients/Servers/Launch.js` (Express + WebSocket)
+    - React application: `Sources/Clients/Apps/` (TypeScript + Vite)
+    - Strategy Editor: `Sources/Clients/Apps/Components/StrategyEditor/`
 - **Market data:** `Data/`
     - `Continuous Klines/` (OHLCV Parquet)
     - `Mark Price Klines/` (mark price Parquet)
     - `Funding Rates/` (JSON)
     - `exchange_info.json`, `leverage_bracket.json`
 - **Backtest outputs:** `Results/<YYYYMMDD_HHMMSS>/`
+- **BackBoard runtime directory:** `BackBoard/` (stores config, logs, trade data for active sessions)
 
 ---
 
@@ -198,8 +202,91 @@ Notes:
 - `BackBoard/trade_list.json` is exported as UTF-8 with BOM for compatibility.
 - `BackBoard/Indicators/*` stores indicator time series for plotted (non-OHLCV) indicators.
 - `BackBoard/Sources/*` stores copies of the strategy/indicator source/header files when paths are available.
-- If a local BackBoard package is present at `Sources/js/BackBoard Package`, it is copied into the run directory;
+- If a local BackBoard package is present at `Sources/Clients/BackBoard Package`, it is copied into the run directory;
   otherwise, the engine can fetch a packaged BackBoard from a GitHub release as a fallback.
+
+---
+
+## BackBoard: Visualization & Strategy Editor
+
+BackBoard is an **Electron-based desktop application** that serves two main purposes:
+
+1. **Results Visualization**: Interactive analysis of backtesting results
+2. **Strategy Editor**: Integrated development environment for creating and running backtests
+
+### Results Viewer
+
+After a backtest completes, BackBoard provides:
+
+- **Overview**: Equity curve, Sharpe ratio, max drawdown, and key performance metrics
+- **Performance Analysis**: Detailed statistics (win rate, profit factor, average trade duration, etc.)
+- **Symbol Performance**: Per-symbol breakdown with individual equity curves
+- **Chart View**: Interactive price charts with indicators and executed trades
+- **Trade List**: Comprehensive trade history with filtering and sorting capabilities
+- **Config & Logs**: Run configuration and execution logs
+
+### Strategy Editor
+
+The Strategy Editor is a complete IDE for backtesting, accessible directly from BackBoard. It provides:
+
+#### Core Features
+
+- **Symbol Management**
+    - Configure trading symbols (BTCUSDT, ETHUSDT, etc.)
+    - Auto-detect available symbols from data directory
+    - Custom symbol pair selection
+
+- **Bar Data Configuration**
+    - Configure multiple timeframes (Trading, Magnifier, Reference, Mark Price)
+    - Support for standard timeframes (1m, 5m, 15m, 1h, 4h, 1d, etc.)
+    - Automatic data path detection from `Data/Continuous Klines/`
+
+- **Exchange Settings**
+    - Exchange info and leverage bracket configuration
+    - Funding rates directory selection
+    - Last data update tracking
+
+- **Engine Configuration**
+    - Project directory selection
+    - Backtest period (start/end dates or full range)
+    - Bar magnifier toggle
+    - Initial balance
+    - Fee configuration (taker/maker)
+    - Slippage models (Percentage or Market Impact)
+    - Quantity validation settings
+    - Bar data duplication checks
+
+- **Strategy Selection**
+    - Browse and select strategy DLLs
+    - Configure header/source directory paths for strategies and indicators
+    - Automatic source file detection
+
+- **Backtest Execution**
+    - One-click backtest launch
+    - Real-time log streaming
+    - Progress monitoring
+    - Stop/restart capabilities
+    - Automatic result directory creation
+
+#### Technical Architecture
+
+The Strategy Editor is implemented as a React/TypeScript application with:
+
+- **State Management**: Context-based architecture (`StrategyContext`) managing all configuration state
+- **WebSocket Communication**: Real-time bidirectional communication between UI and C++ engine
+- **Configuration Persistence**: Settings saved to `BackBoard/editor.json`
+- **Process Management**: Direct integration with backtesting engine via WebSocket server
+
+#### Workflow
+
+1. Open BackBoard and switch to "Strategy Editor" tab
+2. Configure symbols, bar data, exchange settings, and engine parameters
+3. Select or create a strategy DLL
+4. Click "Run Backtest" to launch
+5. Monitor real-time logs during execution
+6. View results automatically in the Results Viewer upon completion
+
+The editor eliminates the need for manual configuration files or command-line compilation, providing a seamless development and testing experience.
 
 ---
 
@@ -258,7 +345,7 @@ class BACKTESTING_API SimpleMovingAverage final : public Indicator {
 ```
 
 ```cpp
-// Sources/cpp/Indicators/SimpleMovingAverage.cpp
+// Sources/Cores/Indicators/SimpleMovingAverage.cpp
 #include "Indicators/SimpleMovingAverage.hpp"
 #include <algorithm>
 
@@ -328,7 +415,7 @@ This minimal example follows the same pattern used in the codebase (see `TestStr
 Source path auto-detection (used for saving sources into `Results/<run>/BackBoard/Sources/`) expects:
 
 - `Includes/Strategies/<ClassName>.hpp`
-- `Sources/cpp/Strategies/<ClassName>.cpp`
+- `Sources/Cores/Strategies/<ClassName>.cpp`
 
 ```cpp
 // Includes/Strategies/SmaStrategy.hpp
@@ -352,7 +439,7 @@ class BACKTESTING_API SmaStrategy final : public Strategy {
 ```
 
 ```cpp
-// Sources/cpp/Strategies/SmaStrategy.cpp
+// Sources/Cores/Strategies/SmaStrategy.cpp
 #include "Strategies/SmaStrategy.hpp"
 
 SmaStrategy::SmaStrategy(const string& name)
@@ -390,7 +477,7 @@ Important:
 
 - The engine allows **one** strategy per backtest run.
 - Constraint: Automatic source detection requires the **file name** and **class name** to match and be placed under
-  `Includes/Strategies/` + `Sources/cpp/Strategies/` or `Includes/Indicators/` + `Sources/cpp/Indicators/`.
+  `Includes/Strategies/` + `Sources/Cores/Strategies/` or `Includes/Indicators/` + `Sources/Cores/Indicators/`.
 - This follows the principle of isolating strategies into separate accounts; aggregation of multi-strategy (
   multi-account) results will be supported in BackBoard in a future release.
 
