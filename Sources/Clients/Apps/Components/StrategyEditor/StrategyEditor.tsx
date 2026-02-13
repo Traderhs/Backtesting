@@ -399,33 +399,38 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
             return;
         }
 
+        if (engineConfig.initialBalance == 0) {
+            addLog('ERROR', '초기 자금을 0보다 큰 값으로 입력해 주세요.');
+            return;
+        }
+
         if (!engineConfig.initialBalance) {
             addLog('ERROR', '초기 자금을 입력해 주세요.');
             return;
         }
 
-        if (!engineConfig.takerFeePercentage) {
+        if (engineConfig.takerFeePercentage == null) {
             addLog('ERROR', '테이커 수수료율을 입력해 주세요.');
             return;
         }
 
-        if (!engineConfig.makerFeePercentage) {
+        if (engineConfig.makerFeePercentage == null) {
             addLog('ERROR', '메이커 수수료율을 입력해 주세요.');
             return;
         }
 
         if (engineConfig.slippageModel == 'PercentageSlippage') {
-            if (!engineConfig.slippageTakerPercentage) {
+            if (engineConfig.slippageTakerPercentage == null) {
                 addLog('ERROR', '테이커 슬리피지율을 입력해 주세요.');
                 return;
             }
 
-            if (!engineConfig.slippageMakerPercentage) {
+            if (engineConfig.slippageMakerPercentage == null) {
                 addLog('ERROR', '메이커 슬리피지율을 입력해 주세요.');
                 return;
             }
         } else if (engineConfig.slippageModel == 'MarketImpactSlippage') {
-            if (!engineConfig.slippageStressMultiplier) {
+            if (engineConfig.slippageStressMultiplier == null) {
                 addLog('ERROR', '슬리피지 스트레스 계수를 입력해 주세요.');
                 return;
             }
