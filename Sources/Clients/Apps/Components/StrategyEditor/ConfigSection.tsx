@@ -413,7 +413,26 @@ export default function ConfigSection() {
                         <NumericInput
                             id="initial-balance"
                             value={initialBalanceInput}
-                            onChange={(v) => setInitialBalanceInput(v)}
+                            onChange={(v) => {
+                                setInitialBalanceInput(v);
+
+                                const trimmed = v.trim();
+                                // 빈 문자열은 undefined로 즉시 반영
+                                if (trimmed === '') {
+                                    handleConfigChange('initialBalance', undefined);
+                                    return;
+                                }
+
+                                // 입력 중 상태('-', '12.')는 반영하지 않음
+                                if (trimmed === '-' || trimmed.endsWith('.')) {
+                                    return;
+                                }
+
+                                const num = parseFloat(trimmed);
+                                if (!isNaN(num)) {
+                                    handleConfigChange('initialBalance', num);
+                                }
+                            }}
                             onBlur={() => {
                                 const v = initialBalanceInput.trim();
                                 handleConfigChange('initialBalance', v === '' ? undefined : parseFloat(v));
@@ -443,7 +462,24 @@ export default function ConfigSection() {
                                 <NumericInput
                                     id="taker-fee"
                                     value={takerFeeInput}
-                                    onChange={(v) => setTakerFeeInput(v)}
+                                    onChange={(v) => {
+                                        setTakerFeeInput(v);
+
+                                        const trimmed = v.trim();
+                                        if (trimmed === '') {
+                                            handleConfigChange('takerFeePercentage', undefined);
+                                            return;
+                                        }
+
+                                        if (trimmed === '-' || trimmed.endsWith('.')) {
+                                            return;
+                                        }
+
+                                        const num = parseFloat(trimmed);
+                                        if (!isNaN(num)) {
+                                            handleConfigChange('takerFeePercentage', num);
+                                        }
+                                    }}
                                     onBlur={() => {
                                         const v = takerFeeInput.trim();
                                         handleConfigChange('takerFeePercentage', v === '' ? undefined : parseFloat(v));
@@ -464,7 +500,24 @@ export default function ConfigSection() {
                                 <NumericInput
                                     id="maker-fee"
                                     value={makerFeeInput}
-                                    onChange={(v) => setMakerFeeInput(v)}
+                                    onChange={(v) => {
+                                        setMakerFeeInput(v);
+
+                                        const trimmed = v.trim();
+                                        if (trimmed === '') {
+                                            handleConfigChange('makerFeePercentage', undefined);
+                                            return;
+                                        }
+
+                                        if (trimmed === '-' || trimmed.endsWith('.')) {
+                                            return;
+                                        }
+
+                                        const num = parseFloat(trimmed);
+                                        if (!isNaN(num)) {
+                                            handleConfigChange('makerFeePercentage', num);
+                                        }
+                                    }}
                                     onBlur={() => {
                                         const v = makerFeeInput.trim();
                                         handleConfigChange('makerFeePercentage', v === '' ? undefined : parseFloat(v));
@@ -536,7 +589,24 @@ export default function ConfigSection() {
                                         <NumericInput
                                             id="slippage-taker"
                                             value={slippageTakerInput}
-                                            onChange={(v) => setSlippageTakerInput(v)}
+                                            onChange={(v) => {
+                                                setSlippageTakerInput(v);
+
+                                                const trimmed = v.trim();
+                                                if (trimmed === '') {
+                                                    handleConfigChange('slippageTakerPercentage', undefined);
+                                                    return;
+                                                }
+
+                                                if (trimmed === '-' || trimmed.endsWith('.')) {
+                                                    return;
+                                                }
+
+                                                const num = parseFloat(trimmed);
+                                                if (!isNaN(num)) {
+                                                    handleConfigChange('slippageTakerPercentage', num);
+                                                }
+                                            }}
                                             onBlur={() => {
                                                 const v = slippageTakerInput.trim();
                                                 handleConfigChange('slippageTakerPercentage', v === '' ? undefined : parseFloat(v));
@@ -557,7 +627,24 @@ export default function ConfigSection() {
                                         <NumericInput
                                             id="slippage-maker"
                                             value={slippageMakerInput}
-                                            onChange={(v) => setSlippageMakerInput(v)}
+                                            onChange={(v) => {
+                                                setSlippageMakerInput(v);
+
+                                                const trimmed = v.trim();
+                                                if (trimmed === '') {
+                                                    handleConfigChange('slippageMakerPercentage', undefined);
+                                                    return;
+                                                }
+
+                                                if (trimmed === '-' || trimmed.endsWith('.')) {
+                                                    return;
+                                                }
+
+                                                const num = parseFloat(trimmed);
+                                                if (!isNaN(num)) {
+                                                    handleConfigChange('slippageMakerPercentage', num);
+                                                }
+                                            }}
                                             onBlur={() => {
                                                 const v = slippageMakerInput.trim();
                                                 handleConfigChange('slippageMakerPercentage', v === '' ? undefined : parseFloat(v));
@@ -577,7 +664,24 @@ export default function ConfigSection() {
                                         <NumericInput
                                             id="slippage-stress"
                                             value={slippageStressInput}
-                                            onChange={(v) => setSlippageStressInput(v)}
+                                            onChange={(v) => {
+                                                setSlippageStressInput(v);
+
+                                                const trimmed = v.trim();
+                                                if (trimmed === '') {
+                                                    handleConfigChange('slippageStressMultiplier', undefined);
+                                                    return;
+                                                }
+
+                                                if (trimmed === '-' || trimmed.endsWith('.')) {
+                                                    return;
+                                                }
+
+                                                const num = parseFloat(trimmed);
+                                                if (!isNaN(num)) {
+                                                    handleConfigChange('slippageStressMultiplier', num);
+                                                }
+                                            }}
                                             onBlur={() => {
                                                 const v = slippageStressInput.trim();
                                                 handleConfigChange('slippageStressMultiplier', v === '' ? undefined : parseFloat(v));
