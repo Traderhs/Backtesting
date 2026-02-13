@@ -319,7 +319,7 @@ export default function EditorSection({
             action: 'saveEditorConfig',
             config: {
                 '에디터 설정': {
-                    '로그 패널 열림': isLogPanelOpen,
+                    '로그 패널 열림': isLogPanelOpen ? "열림" : "닫힘",
                     '로그 패널 높이': logPanelHeight,
                 },
                 '거래소 설정': {
