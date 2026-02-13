@@ -7,6 +7,7 @@
 
 // 내부 헤더
 #include "Engines/BaseEngine.hpp"
+#include "Engines/Export.hpp"
 #include "Engines/Slippage.hpp"
 
 // 전방 선언
@@ -32,7 +33,7 @@ namespace backtesting::engine {
 
 /// 백테스팅 기간을 지정하는 구조체.\n
 /// Start와 End 시간을 지정하지 않으면 캔들 범위 전체로 백테스팅 진행
-struct Period {
+struct BACKTESTING_API Period {
   Period() = default;
   explicit Period(const string& start_time, const string& end_time,
                   const string& format) {
@@ -52,7 +53,7 @@ struct Period {
 };
 
 /// 엔진의 사전 설정값을 담당하는 빌더 클래스
-class Config final {
+class BACKTESTING_API Config final {
  public:
   Config();
   ~Config();
@@ -74,6 +75,24 @@ class Config final {
 
   // 프로젝트 폴더를 설정하는 함수
   Config& SetProjectDirectory(const string& project_directory);
+
+  // 전략 헤더 폴더를 설정하는 함수
+  Config& SetStrategyHeaderDirs(const vector<string>& strategy_header_dirs);
+
+  // 전략 소스 폴더를 설정하는 함수
+  Config& SetStrategySourceDirs(const vector<string>& strategy_source_dirs);
+
+  // 지표 헤더 폴더를 설정하는 함수
+  Config& SetIndicatorHeaderDirs(const vector<string>& indicator_header_dirs);
+
+  // 지표 소스 폴더를 설정하는 함수
+  Config& SetIndicatorSourceDirs(const vector<string>& indicator_source_dirs);
+
+  // 전략 헤더 파일 경로를 설정하는 함수
+  Config& SetStrategyHeaderPath(const string& strategy_header_path);
+
+  // 전략 소스 파일 경로를 설정하는 함수
+  Config& SetStrategySourcePath(const string& strategy_source_path);
 
   /// 백테스팅 기간을 설정하는 함수.\n
   /// Start와 End 시간을 지정하지 않으면 캔들 범위 전체로 백테스팅을 진행
@@ -110,41 +129,47 @@ class Config final {
     return *this;
   }
 
-  // 지정가 최대 수량 검사를 하는지 여부를 설정하는 함수
-  Config& SetCheckLimitMaxQty(bool check_limit_max_qty);
-
-  // 지정가 최소 수량 검사를 하는지 여부를 설정하는 함수
-  Config& SetCheckLimitMinQty(bool check_limit_min_qty);
-
   // 시장가 최대 수량 검사를 하는지 여부를 설정하는 함수
   Config& SetCheckMarketMaxQty(bool check_market_max_qty);
 
   // 시장가 최소 수량 검사를 하는지 여부를 설정하는 함수
   Config& SetCheckMarketMinQty(bool check_market_min_qty);
 
+  // 지정가 최대 수량 검사를 하는지 여부를 설정하는 함수
+  Config& SetCheckLimitMaxQty(bool check_limit_max_qty);
+
+  // 지정가 최소 수량 검사를 하는지 여부를 설정하는 함수
+  Config& SetCheckLimitMinQty(bool check_limit_min_qty);
+
   // 최소 명목 가치 검사를 하는지 여부를 설정하는 함수
   Config& SetCheckMinNotionalValue(bool check_min_notional_value);
-
-  // 심볼 간 바 데이터 중복 검사를 비활성화하는 함수
-  Config& DisableSameBarDataCheck(BarDataType bar_data_type);
 
   // 마크 가격 바 데이터와 목표 바 데이터의 중복 검사를 비활성화하는 함수
   Config& DisableSameBarDataWithTargetCheck();
 
+  // 심볼 간 바 데이터 중복 검사를 비활성화하는 함수
+  Config& DisableSameBarDataCheck(BarDataType bar_data_type);
+
   [[nodiscard]] static string GetProjectDirectory();
+  [[nodiscard]] static vector<string> GetStrategyHeaderDirs();
+  [[nodiscard]] static vector<string> GetStrategySourceDirs();
+  [[nodiscard]] static vector<string> GetIndicatorHeaderDirs();
+  [[nodiscard]] static vector<string> GetIndicatorSourceDirs();
+  [[nodiscard]] static string GetStrategyHeaderPath();
+  [[nodiscard]] static string GetStrategySourcePath();
   [[nodiscard]] optional<Period> GetBacktestPeriod() const;
   [[nodiscard]] optional<bool> GetUseBarMagnifier() const;
   [[nodiscard]] double GetInitialBalance() const;
   [[nodiscard]] double GetTakerFeePercentage() const;
   [[nodiscard]] double GetMakerFeePercentage() const;
   [[nodiscard]] shared_ptr<Slippage> GetSlippage() const;
-  [[nodiscard]] optional<bool> GetCheckLimitMaxQty() const;
-  [[nodiscard]] optional<bool> GetCheckLimitMinQty() const;
   [[nodiscard]] optional<bool> GetCheckMarketMaxQty() const;
   [[nodiscard]] optional<bool> GetCheckMarketMinQty() const;
+  [[nodiscard]] optional<bool> GetCheckLimitMaxQty() const;
+  [[nodiscard]] optional<bool> GetCheckLimitMinQty() const;
   [[nodiscard]] optional<bool> GetCheckMinNotionalValue() const;
-  [[nodiscard]] vector<bool> GetCheckSameBarData() const;
   [[nodiscard]] bool GetCheckSameBarDataWithTarget() const;
+  [[nodiscard]] vector<bool> GetCheckSameBarData() const;
 
  private:
   static shared_ptr<Logger>& logger_;
@@ -152,11 +177,30 @@ class Config final {
   // 설정값 생성 시 SetConfig 함수 사용을 강제하기 위한 목적
   // 생성 카운터
   static size_t creation_counter_;
+
   // 전 생성 카운터
   static size_t pre_creation_counter_;
 
   /// 프로젝트 폴더
   static string project_directory_;
+
+  /// 전략 헤더 폴더
+  static vector<string> strategy_header_dirs_;
+
+  /// 전략 소스 폴더
+  static vector<string> strategy_source_dirs_;
+
+  /// 지표 헤더 폴더
+  static vector<string> indicator_header_dirs_;
+
+  /// 지표 소스 폴더
+  static vector<string> indicator_source_dirs_;
+
+  /// 전략 헤더 파일 경로
+  static string strategy_header_path_;
+
+  /// 전략 소스 파일 경로
+  static string strategy_source_path_;
 
   /// 백테스팅 기간
   optional<Period> backtest_period_;
@@ -180,20 +224,20 @@ class Config final {
   /// 슬리피지 계산 모델
   shared_ptr<Slippage> slippage_;
 
-  optional<bool> check_limit_max_qty_;       // 지정가 최대 수량 검사 여부
-  optional<bool> check_limit_min_qty_;       // 지정가 최소 수량 검사 여부
   optional<bool> check_market_max_qty_;      // 시장가 최대 수량 검사 여부
   optional<bool> check_market_min_qty_;      // 시장가 최소 수량 검사 여부
+  optional<bool> check_limit_max_qty_;       // 지정가 최대 수량 검사 여부
+  optional<bool> check_limit_min_qty_;       // 지정가 최소 수량 검사 여부
   optional<bool> check_min_notional_value_;  // 최소 명목 가치 검사 여부
+
+  /// 마크 가격 바 데이터에서 목표 바 데이터와의 중복된 바 데이터 검사를 하는지
+  /// 여부를 결정하는 플래그.
+  bool check_same_bar_data_with_target_;
 
   /// 심볼 간 중복된 바 데이터 검사를 하는지 여부를 결정하는 플래그.
   ///
   /// 바 데이터 유형마다 분리하여 작동.
   vector<bool> check_same_bar_data_;
-
-  /// 마크 가격 바 데이터에서 목표 바 데이터와의 중복된 바 데이터 검사를 하는지
-  /// 여부를 결정하는 플래그.
-  bool check_same_bar_data_with_target_;
 };
 
 }  // namespace backtesting::engine

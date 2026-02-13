@@ -11,16 +11,16 @@ Config::Config()
     : initial_balance_(NAN),
       taker_fee_percentage_(NAN),
       maker_fee_percentage_(NAN),
-      check_same_bar_data_(4, true),
-      check_same_bar_data_with_target_(true) {
+      check_same_bar_data_with_target_(true),
+      check_same_bar_data_(4, true) {
   // 증가 카운터는 SetConfig 함수로만 증가하는데 SetConfig 없이 직접 생성자
   // 호출로 전 증가 카운터가 현재 증가 카운터와 같다면 오류 발생
   if (pre_creation_counter_ == creation_counter_) {
-    logger_->Log(ERROR_L,
-                 "엔진의 사전 설정은 SetConfig 함수의 호출로만 가능합니다.",
+    logger_->Log(ERROR_L, "엔진을 사전 설정하는 중 에러가 발생했습니다.",
                  __FILE__, __LINE__, true);
-    Logger::LogAndThrowError("엔진을 사전 설정하는 중 에러가 발생했습니다.",
-                             __FILE__, __LINE__);
+
+    throw runtime_error(
+        "엔진의 사전 설정은 SetConfig 함수의 호출로만 가능합니다.");
   }
 
   // 정상적으로 AddStrategy 함수를 통했다면 전 증가 가운터에 현재 카운터를 대입
@@ -28,10 +28,16 @@ Config::Config()
 }
 Config::~Config() = default;
 
-shared_ptr<Logger>& Config::logger_ = Logger::GetLogger();
-size_t Config::creation_counter_;
-size_t Config::pre_creation_counter_;
-string Config::project_directory_;
+BACKTESTING_API shared_ptr<Logger>& Config::logger_ = Logger::GetLogger();
+BACKTESTING_API size_t Config::creation_counter_;
+BACKTESTING_API size_t Config::pre_creation_counter_;
+BACKTESTING_API string Config::project_directory_;
+BACKTESTING_API vector<string> Config::strategy_header_dirs_;
+BACKTESTING_API vector<string> Config::strategy_source_dirs_;
+BACKTESTING_API vector<string> Config::indicator_header_dirs_;
+BACKTESTING_API vector<string> Config::indicator_source_dirs_;
+BACKTESTING_API string Config::strategy_header_path_;
+BACKTESTING_API string Config::strategy_source_path_;
 
 Config& Config::SetProjectDirectory(const string& project_directory) {
   project_directory_ = project_directory;
@@ -39,6 +45,40 @@ Config& Config::SetProjectDirectory(const string& project_directory) {
   // 프로젝트 폴더 설정 시 로그 폴더도 함께 설정
   Logger::SetLogDirectory(project_directory + "/Logs");
 
+  return *this;
+}
+
+Config& Config::SetStrategyHeaderDirs(
+    const vector<string>& strategy_header_dirs) {
+  strategy_header_dirs_ = strategy_header_dirs;
+  return *this;
+}
+
+Config& Config::SetStrategySourceDirs(
+    const vector<string>& strategy_source_dirs) {
+  strategy_source_dirs_ = strategy_source_dirs;
+  return *this;
+}
+
+Config& Config::SetIndicatorHeaderDirs(
+    const vector<string>& indicator_header_dirs) {
+  indicator_header_dirs_ = indicator_header_dirs;
+  return *this;
+}
+
+Config& Config::SetIndicatorSourceDirs(
+    const vector<string>& indicator_source_dirs) {
+  indicator_source_dirs_ = indicator_source_dirs;
+  return *this;
+}
+
+Config& Config::SetStrategyHeaderPath(const string& strategy_header_path) {
+  strategy_header_path_ = strategy_header_path;
+  return *this;
+}
+
+Config& Config::SetStrategySourcePath(const string& strategy_source_path) {
+  strategy_source_path_ = strategy_source_path;
   return *this;
 }
 
@@ -69,16 +109,6 @@ Config& Config::SetMakerFeePercentage(const double maker_fee_percentage) {
   return *this;
 }
 
-Config& Config::SetCheckLimitMaxQty(bool check_limit_max_qty) {
-  check_limit_max_qty_ = check_limit_max_qty;
-  return *this;
-}
-
-Config& Config::SetCheckLimitMinQty(bool check_limit_min_qty) {
-  check_limit_min_qty_ = check_limit_min_qty;
-  return *this;
-}
-
 Config& Config::SetCheckMarketMaxQty(bool check_market_max_qty) {
   check_market_max_qty_ = check_market_max_qty;
   return *this;
@@ -89,13 +119,18 @@ Config& Config::SetCheckMarketMinQty(bool check_market_min_qty) {
   return *this;
 }
 
-Config& Config::SetCheckMinNotionalValue(bool check_min_notional_value) {
-  check_min_notional_value_ = check_min_notional_value;
+Config& Config::SetCheckLimitMaxQty(bool check_limit_max_qty) {
+  check_limit_max_qty_ = check_limit_max_qty;
   return *this;
 }
 
-Config& Config::DisableSameBarDataCheck(BarDataType bar_data_type) {
-  check_same_bar_data_[static_cast<size_t>(bar_data_type)] = false;
+Config& Config::SetCheckLimitMinQty(bool check_limit_min_qty) {
+  check_limit_min_qty_ = check_limit_min_qty;
+  return *this;
+}
+
+Config& Config::SetCheckMinNotionalValue(bool check_min_notional_value) {
+  check_min_notional_value_ = check_min_notional_value;
   return *this;
 }
 
@@ -104,33 +139,48 @@ Config& Config::DisableSameBarDataWithTargetCheck() {
   return *this;
 }
 
+Config& Config::DisableSameBarDataCheck(BarDataType bar_data_type) {
+  check_same_bar_data_[static_cast<size_t>(bar_data_type)] = false;
+  return *this;
+}
+
 string Config::GetProjectDirectory() { return project_directory_; }
+vector<string> Config::GetStrategyHeaderDirs() { return strategy_header_dirs_; }
+vector<string> Config::GetStrategySourceDirs() { return strategy_source_dirs_; }
+vector<string> Config::GetIndicatorHeaderDirs() {
+  return indicator_header_dirs_;
+}
+vector<string> Config::GetIndicatorSourceDirs() {
+  return indicator_source_dirs_;
+}
+string Config::GetStrategyHeaderPath() { return strategy_header_path_; }
+string Config::GetStrategySourcePath() { return strategy_source_path_; }
 optional<Period> Config::GetBacktestPeriod() const { return backtest_period_; }
 optional<bool> Config::GetUseBarMagnifier() const { return use_bar_magnifier_; }
 double Config::GetInitialBalance() const { return initial_balance_; }
 double Config::GetTakerFeePercentage() const { return taker_fee_percentage_; }
 double Config::GetMakerFeePercentage() const { return maker_fee_percentage_; }
 shared_ptr<Slippage> Config::GetSlippage() const { return slippage_; }
-optional<bool> Config::GetCheckLimitMaxQty() const {
-  return check_limit_max_qty_;
-}
-optional<bool> Config::GetCheckLimitMinQty() const {
-  return check_limit_min_qty_;
-}
 optional<bool> Config::GetCheckMarketMaxQty() const {
   return check_market_max_qty_;
 }
 optional<bool> Config::GetCheckMarketMinQty() const {
   return check_market_min_qty_;
 }
+optional<bool> Config::GetCheckLimitMaxQty() const {
+  return check_limit_max_qty_;
+}
+optional<bool> Config::GetCheckLimitMinQty() const {
+  return check_limit_min_qty_;
+}
 optional<bool> Config::GetCheckMinNotionalValue() const {
   return check_min_notional_value_;
 }
-vector<bool> Config::GetCheckSameBarData() const {
-  return check_same_bar_data_;
-}
 bool Config::GetCheckSameBarDataWithTarget() const {
   return check_same_bar_data_with_target_;
+}
+vector<bool> Config::GetCheckSameBarData() const {
+  return check_same_bar_data_;
 }
 
 }  // namespace backtesting::engine

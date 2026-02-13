@@ -3,13 +3,16 @@
 // 표준 라이브러리
 #include <string>
 
+// 내부 헤더
+#include "Engines/Export.hpp"
+
 // 네임 스페이스
 using namespace std;
 
 namespace backtesting::analyzer {
 
 /// 하나의 청산된 주문 정보를 저장하는 빌더 클래스
-class Trade final {
+class BACKTESTING_API Trade final {
  public:
   Trade();
   ~Trade();

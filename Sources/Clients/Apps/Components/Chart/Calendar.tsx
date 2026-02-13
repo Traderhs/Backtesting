@@ -12,9 +12,11 @@ interface CalendarProps {
     lastSelectedDate: Date | null; // props로 이전 선택 날짜 받기
     lastSelectedTime: string; // props로 이전 선택 시간 받기
     onDateTimeSelected: (date: Date, time: string) => void; // 날짜/시간 선택 시 부모에게 알리는 콜백
-    symbol: string; // symbol 정보 추가
+    symbol: string;
+    result: string;
     onLoadingStart: () => void; // 캘린더 로딩 시작 콜백
     onLoadingEnd: () => void; // 캘린더 로딩 종료 콜백
+    config: any;
 }
 
 // 타임프레임에 따른 시간 간격 생성 함수
@@ -99,9 +101,38 @@ const generateTimeOptions = (timeframe: string | undefined): string[] => {
 
 // timeframe 파싱 함수
 const isDailyOrHigherTimeframe = (timeframe: string | undefined): boolean => {
-    if (!timeframe) return false;
-    // 1d, 3d, 1w, 1M 등의 일일 이상 타임프레임 확인
-    return /^[0-9]+[dwM]$/.test(timeframe);
+    if (!timeframe) {
+        return false;
+    }
+
+    const timeframe_str = String(timeframe).trim();
+    if (!timeframe_str) {
+        return false;
+    }
+
+    const rawUnit = timeframe_str[timeframe_str.length - 1];
+
+    // 일/주/월 명시자
+    if (rawUnit === 'd' || rawUnit === 'w' || rawUnit === 'M') return true;
+
+    const num = parseFloat(timeframe_str.slice(0, -1));
+    if (Number.isNaN(num)) {
+        return false;
+    }
+
+    let multiplier = 0;
+    if (rawUnit === 's') {
+        multiplier = 1;
+    } else if (rawUnit === 'm') {
+        multiplier = 60;
+    } else if (rawUnit === 'h') {
+        multiplier = 3600;
+    } else {
+        return false;
+    }
+
+    const seconds = num * multiplier;
+    return seconds >= 24 * 3600;
 };
 
 // 날짜 포맷팅 함수를 먼저 정의
@@ -122,8 +153,10 @@ const Calendar: React.FC<CalendarProps> = ({
                                                lastSelectedTime,
                                                onDateTimeSelected,
                                                symbol,
+                                               result,
                                                onLoadingStart,
-                                               onLoadingEnd
+                                               onLoadingEnd,
+                                               config
                                            }) => {
     const {ws} = useWebSocket();
     const now = new Date();
@@ -139,6 +172,7 @@ const Calendar: React.FC<CalendarProps> = ({
 
             // 타임프레임에 맞는 시간 포맷팅
             let timeStr = '00:00';
+
             // 일일 이상이 아닌 경우만 시간 표시
             if (!isDailyOrHigherTimeframe(timeframe)) {
                 const hours = date.getUTCHours(); // UTC 시간 사용
@@ -165,6 +199,7 @@ const Calendar: React.FC<CalendarProps> = ({
         if (isDailyOrHigherTimeframe(timeframe)) {
             return '00:00';
         }
+
         return lastSelectedTime || initialTimeData.timeStr;
     };
 
@@ -919,11 +954,16 @@ const Calendar: React.FC<CalendarProps> = ({
             }
 
             // 3. 요청한 시간이 포함된 파일로부터 과거로 5개 파일 요청
-            const indicatorsToLoad = (window as any).indicatorPaths ? Object.keys((window as any).indicatorPaths) : [];
+            const indicatorsToLoad = config?.['지표']
+                ? config['지표']
+                    .filter((i: any) => i['플롯']?.['플롯 종류'] !== '비활성화' && i['데이터 경로'])
+                    .map((i: any) => i['지표 이름'])
+                : [];
 
             const requestPayload = {
                 action: "loadChartData",
                 symbol: symbol,
+                result: result,
                 indicators: indicatorsToLoad,
                 fileRequest: {
                     type: "date",

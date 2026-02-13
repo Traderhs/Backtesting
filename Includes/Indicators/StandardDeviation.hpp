@@ -4,7 +4,7 @@
 #include "Engines/Indicator.hpp"
 
 /// 표준 편차
-class StandardDeviation final : public Indicator {
+class BACKTESTING_API StandardDeviation final : public Indicator {
  public:
   explicit StandardDeviation(const string& name, const string& timeframe,
                              const Plot& plot, Indicator& source,
@@ -12,8 +12,8 @@ class StandardDeviation final : public Indicator {
 
  private:
   Indicator& source_;
-  double double_period_;
   size_t sizet_period_;
+  double double_period_;
 
   size_t count_;
   double sum_;

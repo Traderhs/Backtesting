@@ -12,24 +12,19 @@ StandardDeviation::StandardDeviation(const string& name,
                                      Indicator& source, const double period)
     : Indicator(name, timeframe, plot),
       source_(source),
+      sizet_period_(static_cast<size_t>(period)),
+      double_period_(period),
       count_(0),
       sum_(0.0),
       sum_sq_(0.0),
       can_calc_(false),
-      buffer_(static_cast<size_t>(period), 0.0),
+      buffer_(sizet_period_, 0.0),
       buffer_idx_(0) {
   if (period <= 0) {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("StandardDeviation 지표의 Period [{}]은(는) 0보다 커야 합니다.",
-               period),
-        __FILE__, __LINE__);
+               period));
   }
-
-  double_period_ = period;
-  sizet_period_ = static_cast<size_t>(period);
-
-  buffer_.assign(sizet_period_, 0.0);
-  buffer_idx_ = 0;
 }
 
 void StandardDeviation::Initialize() {

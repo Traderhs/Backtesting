@@ -9,6 +9,7 @@
 #include "Engines/BarHandler.hpp"  // BarHandler에서 이 헤더 include 금지 (순환 참조)
 #include "Engines/Config.hpp"
 #include "Engines/DataUtils.hpp"
+#include "Engines/Export.hpp"
 #include "Engines/Order.hpp"
 #include "Engines/Slippage.hpp"
 #include "Engines/SymbolInfo.hpp"
@@ -59,7 +60,7 @@ namespace backtesting::order {
 enum class OrderSignal { LIQUIDATION, EXIT, ENTRY };
 
 // 진입, 청산, 강제 청산해야 하는 주문의 정보를 담은 구조체
-struct FillInfo {
+struct BACKTESTING_API FillInfo {
   shared_ptr<Order> order;   // 주문 객체
   OrderSignal order_signal;  // 진입 or 청산 or 강제 청산을 지칭
   double fill_price;         // 슬리피지를 미반영한 체결 가격
@@ -70,7 +71,7 @@ struct FillInfo {
 enum class CancelType { TOTAL, ENTRY, EXIT };
 
 /// 주문, 포지션 등과 관련된 기본적인 작업을 처리하는 클래스
-class BaseOrderHandler {
+class BACKTESTING_API BaseOrderHandler {
   // 기타 함수 접근용
   friend class Engine;
 
@@ -164,20 +165,18 @@ class BaseOrderHandler {
   static shared_ptr<Config>& config_;
   static shared_ptr<Engine>& engine_;
   static shared_ptr<Logger>& logger_;
+  static vector<SymbolInfo> symbol_info_;
 
   // 엔진 설정들
   double initial_balance_;         // 초기 자금
   shared_ptr<Slippage> slippage_;  // 슬리피지 계산 방법
   double taker_fee_percentage_;    // 테이커 수수료율
   double maker_fee_percentage_;    // 메이커 수수료율
-  bool check_limit_max_qty_;       // 지정가 최대 수량 검사 여부
-  bool check_limit_min_qty_;       // 지정가 최소 수량 검사 여부
   bool check_market_max_qty_;      // 시장가 최대 수량 검사 여부
   bool check_market_min_qty_;      // 시장가 최소 수량 검사 여부
+  bool check_limit_max_qty_;       // 지정가 최대 수량 검사 여부
+  bool check_limit_min_qty_;       // 지정가 최소 수량 검사 여부
   bool check_min_notional_value_;  // 최소 명목 가치 검사 여부
-
-  // 심볼 정보
-  static vector<SymbolInfo> symbol_info_;
 
   // 심볼 이름들
   vector<string> symbol_names_;
@@ -213,6 +212,9 @@ class BaseOrderHandler {
   /// 리버스 청산을 진행할 때 청산 가격을 지정하기 위한 변수.
   /// MarketExit은 청산 가격의 별도 지정이 불가능하기 때문에 클래스 변수를 사용
   double reverse_exit_price_;
+
+  /// BaseOrderHandler를 초기화하는 함수
+  void ResetBaseOrderHandler();
 
   /// 현재 심볼의 레버리지를 변경하는 함수
   ///

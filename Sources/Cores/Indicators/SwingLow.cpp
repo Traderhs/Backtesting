@@ -8,16 +8,14 @@ SwingLow::SwingLow(const string& name, const string& timeframe,
                    const Plot& plot, const double period)
     : Indicator(name, timeframe, plot),
       symbol_idx_(-1),
+      period_(static_cast<size_t>(period)),
       count_(0),
       can_calculate_(false),
       last_swing_low_(NAN) {
   if (period <= 0) {
-    Logger::LogAndThrowError(
-        format("SwingLow 지표의 Period [{}]은(는) 0보다 커야 합니다.", period),
-        __FILE__, __LINE__);
+    throw runtime_error(
+        format("SwingLow 지표의 Period [{}]은(는) 0보다 커야 합니다.", period));
   }
-
-  period_ = static_cast<size_t>(period);
 }
 
 void SwingLow::Initialize() {

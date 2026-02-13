@@ -80,8 +80,37 @@ const generateTimeOptions = (timeframe: string | undefined): string[] => {
 
 // 일일 이상 타임프레임 확인 함수
 const isDailyOrHigherTimeframe = (timeframe: string | undefined): boolean => {
-    if (!timeframe) return false;
-    return /^[0-9]+[dwM]$/.test(timeframe);
+    if (!timeframe) {
+        return false;
+    }
+
+    const timeframe_str = String(timeframe).trim();
+    if (!timeframe_str) {
+        return false;
+    }
+
+    const rawUnit = timeframe_str[timeframe_str.length - 1];
+    // 일/주/월 명시자
+    if (rawUnit === 'd' || rawUnit === 'w' || rawUnit === 'M') return true;
+
+    const num = parseFloat(timeframe_str.slice(0, -1));
+    if (Number.isNaN(num)) {
+        return false;
+    }
+
+    let multiplier = 0;
+    if (rawUnit === 's') {
+        multiplier = 1;
+    } else if (rawUnit === 'm') {
+        multiplier = 60;
+    } else if (rawUnit === 'h') {
+        multiplier = 3600;
+    } else {
+        return false;
+    }
+
+    const seconds = num * multiplier;
+    return seconds >= 24 * 3600;
 };
 
 // 날짜 포맷팅 함수
@@ -111,6 +140,7 @@ const FilterCalendar: React.FC<FilterCalendarProps> = ({
         if (isDailyOrHigherTimeframe(timeframe)) {
             return '00:00';
         }
+
         return lastSelectedTime || '00:00';
     };
 

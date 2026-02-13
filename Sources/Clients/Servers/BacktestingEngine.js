@@ -15,33 +15,51 @@ function toPosix(p) {
 // =====================================================================================================================
 // C++ 백테스팅 엔진 관리
 // =====================================================================================================================
-
 let backtestingEngine = null;
 let backtestingEngineReady = false;
 
-function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
+let _projectDirForEngine = null;
+const _pendingBacktestRequesters = [];
+
+function startBacktestingEngine(activeClients, broadcastLog, projectDir, staticDir) {
     if (backtestingEngine) {
         return;
     }
 
-    const possiblePaths = [path.join(path.dirname(process.execPath), 'Backtesting.exe'), path.join(path.dirname(process.execPath), 'BackBoard', 'Backtesting.exe'), path.join('d:', 'Programming', 'Backtesting', 'Builds', 'Release', 'Release', 'Backtesting.exe')];
+    // 프로젝트 경로를 보관
+    _projectDirForEngine = projectDir;
 
-    // 세 후보 경로 중에서 매칭 시도
-    let exePath = null;
-    for (const tryPath of possiblePaths) {
-        if (fs.existsSync(tryPath)) {
-            exePath = tryPath;
-            break;
-        }
-    }
-
-    if (!exePath) {
-        broadcastLog("ERROR", `Backtesting.exe 파일을 찾을 수 없습니다.`, null, null);
+    const exePath = path.join(staticDir, 'Cores', 'Backtesting.exe');
+    if (!fs.existsSync(exePath)) {
         return;
     }
 
     // 성능을 위한 NO_PARSE 모드
     const NO_PARSE = process.env.LAUNCH_NO_PARSE === '1' || process.env.BACKBOARD_NO_PARSE === '1';
+
+    // 백테스팅 실패를 전파
+    const notifyAllClientsBacktestingFailed = () => {
+        if (activeClients && activeClients.size) {
+            activeClients.forEach((c) => {
+                try {
+                    if (c && c.readyState === 1) {
+                        c.send(JSON.stringify({action: 'backtestingFailed'}));
+                    }
+                } catch (e) {
+                    // 무시
+                }
+            });
+        }
+
+        try {
+            const requester = _pendingBacktestRequesters.shift();
+            if (requester && requester.readyState === 1) {
+                requester.send(JSON.stringify({action: 'backtestingFailed'}));
+            }
+        } catch (e) {
+            // 무시
+        }
+    };
 
     try {
         backtestingEngine = spawn(exePath, ["--server"], {
@@ -57,7 +75,7 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
             const ansiRegex = /\x1b\[[0-9;]*[mGKHF]/g;
             const lines = output.split('\n');
 
-            lines.forEach(line => {
+            lines.forEach(async (line) => {
                 if (!line || !line.trim()) {
                     return;
                 }
@@ -69,9 +87,234 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
                     return;
                 }
 
-                if (cleaned.includes('백테스팅 엔진이 준비되었습니다.')) {
+                if (cleaned.includes('백테스팅 엔진 준비 완료')) {
                     backtestingEngineReady = true;
                     broadcastLog("INFO", `백테스팅 엔진이 준비되었습니다.`, null, null);
+                    return;
+                }
+
+                // 백테스팅이 정상적으로 완료되었을 때, 해당 작업을 요청한 클라이언트에게만 성공 알림을 보냄
+                if (cleaned.includes('백테스팅이 완료되었습니다.')) {
+                    const parsed = cleaned.match(/^\[([^\]]+)]\s*\[([^\]]+?)]\s*(?:\[([^\]]+)]\s*)?\|\s*(.*)$/);
+                    if (parsed) {
+                        const [, timestamp, level, fileInfo, message] = parsed;
+                        const formattedTimestamp = timestamp ? timestamp.replace(/-(?=\d{2}:\d{2}:\d{2}$)/, ' ') : null;
+                        broadcastLog(level || 'INFO', message || '', formattedTimestamp, fileInfo || null);
+                    } else {
+                        // 포맷이 다를 경우 안전하게 전체 문자열을 INFO로 전파
+                        broadcastLog('INFO', cleaned, null, null);
+                    }
+
+                    try {
+                        // 가장 최신의 결과 폴더를 찾아 응답자에게 송신
+                        let latestName = null;
+                        const resultsDir = path.join(_projectDirForEngine || process.cwd(), 'Results');
+
+                        try {
+                            const entries = await fsPromises.readdir(resultsDir, {withFileTypes: true});
+                            const dirs = entries.filter(e => e.isDirectory()).map(d => d.name);
+                            const stats = await Promise.all(dirs.map(async (d) => {
+                                try {
+                                    const p = path.join(resultsDir, d);
+                                    const st = await fsPromises.stat(p);
+
+                                    return {name: d, mtime: st.mtimeMs};
+                                } catch (e) {
+                                    return null;
+                                }
+                            }));
+
+                            const valid = stats.filter(Boolean).sort((a, b) => (b.mtime - a.mtime));
+                            if (valid.length > 0) {
+                                latestName = valid[0].name;
+                            }
+                        } catch (e) {
+                            latestName = null;
+                        }
+
+                        // 큐에서 요청자(ws)를 꺼내 해당 클라이언트에만 알림 전송
+                        async function ensureLogReady(name) {
+                            if (!name) {
+                                return false;
+                            }
+
+                            const p = path.join(resultsDir, name, 'backtesting.log');
+                            const deadline = Date.now() + 3000; // 최대 3s 대기
+                            while (Date.now() < deadline) {
+                                try {
+                                    const st = await fsPromises.stat(p);
+                                    if (st.isFile() && st.size > 0) {
+                                        return true;
+                                    }
+                                } catch (err) {
+                                    // 파일이 아직 없으면 무시하고 재시도
+                                }
+
+                                await new Promise(r => setTimeout(r, 200));
+                            }
+                            return false;
+                        }
+
+                        const requester = _pendingBacktestRequesters.shift();
+                        if (requester && requester.readyState === 1) {
+                            const payload = {action: 'backtestingSuccess'};
+
+                            if (latestName) {
+                                const ready = await ensureLogReady(latestName).catch(() => false);
+                                if (ready) {
+                                    payload.resultName = latestName;
+                                } else {
+                                    // 로그가 준비되지 않았더라도 결과는 존재할 수 있으므로 경고 후 이름을 포함
+                                    broadcastLog('WARN', `백테스팅 로그가 아직 준비되지 않았습니다`);
+                                    payload.resultName = latestName;
+                                }
+                            }
+
+                            try {
+                                requester.send(JSON.stringify(payload));
+                            } catch (e) {
+                                // 무시
+                            }
+                        }
+                    } catch (e) {
+                        // 안전하게 무시
+                        broadcastLog("WARN", `백테스팅 완료 후 알림 처리 중 오류: ${e && e.message ? e.message : e}`, null, null);
+                    }
+
+                    return;
+                }
+
+                if (cleaned.includes('백테스팅이 중지되었습니다.')) {
+                    broadcastLog('INFO', '백테스팅이 중지되었습니다.', null, null);
+
+                    if (activeClients && activeClients.size) {
+                        activeClients.forEach((c) => {
+                            try {
+                                if (c && c.readyState === 1) {
+                                    c.send(JSON.stringify({action: 'backtestingStopped'}));
+                                }
+                            } catch (e) {
+                                // 무시
+                            }
+                        });
+                    }
+
+                    return;
+                }
+
+                // 백테스팅 오류를 즉시 클라이언트에 전파하여 UI가 고착되지 않도록 처리
+                if (cleaned.includes('단일 백테스팅 실행 중 오류가 발생했습니다.')) {
+                    broadcastLog('ERROR', '단일 백테스팅 실행 중 오류가 발생했습니다.', null, null);
+                    notifyAllClientsBacktestingFailed();
+                    return;
+                }
+
+                if (cleaned.includes('바 데이터 다운로드가 중지되었습니다.') || cleaned.includes('바 데이터 업데이트가 중지되었습니다.')) {
+                    broadcastLog('INFO', cleaned, null, null);
+
+                    if (activeClients && activeClients.size) {
+                        activeClients.forEach((c) => {
+                            try {
+                                if (c && c.readyState === 1) {
+                                    c.send(JSON.stringify({action: 'fetchStopped'}));
+                                }
+                            } catch (e) {
+                                // 무시
+                            }
+                        });
+                    }
+
+                    return;
+                }
+
+                if (cleaned.includes('바 데이터 다운로드가 완료되었습니다.') || cleaned.includes('바 데이터 업데이트가 완료되었습니다.')) {
+                    const message = cleaned.includes('다운로드') ? '바 데이터 다운로드가 완료되었습니다.' : '바 데이터 업데이트가 완료되었습니다.';
+                    broadcastLog('INFO', message, null, null);
+
+                    if (activeClients && activeClients.size) {
+                        activeClients.forEach((c) => {
+                            try {
+                                if (c && c.readyState === 1) {
+                                    c.send(JSON.stringify({action: 'fetchSuccess'}));
+                                }
+                            } catch (e) {
+                                // 무시
+                            }
+                        });
+                    }
+
+                    return;
+                }
+
+                if (cleaned.includes('바 데이터 다운로드/업데이트가 실패했습니다.')) {
+                    broadcastLog('ERROR', '바 데이터 다운로드/업데이트가 실패했습니다.', null, null);
+
+                    if (activeClients && activeClients.size) {
+                        activeClients.forEach((c) => {
+                            try {
+                                if (c && c.readyState === 1) {
+                                    c.send(JSON.stringify({action: 'fetchFailed'}));
+                                }
+                            } catch (e) {
+                                // 무시
+                            }
+                        });
+                    }
+
+                    return;
+                }
+
+                if (cleaned.startsWith('업데이트 완료')) {
+                    try {
+                        const payloadText = cleaned.substring('업데이트 완료'.length).trim();
+                        const ts = JSON.parse(payloadText);
+
+                        if (typeof ts !== 'string') {
+                            return;
+                        }
+
+                        if (editorConfig && editorConfig.projectDirectory) {
+                            // '마지막 데이터 업데이트' 항목만 갱신
+                            try {
+                                const editorConfigPath = getEditorConfigPath(editorConfig.projectDirectory);
+                                const loaded = readSignedConfigWithRecovery(editorConfigPath, editorConfig.projectDirectory, broadcastLog);
+                                let obj;
+
+                                if (loaded && loaded.obj) {
+                                    obj = loaded.obj;
+                                } else {
+                                    // 파일이 없거나 손상되었으면 기본 config로 채움
+                                    obj = configToObj(createDefaultConfig(editorConfig.projectDirectory));
+                                }
+
+                                obj['거래소 설정'] = obj['거래소 설정'] || {};
+                                obj['거래소 설정']['마지막 데이터 업데이트'] = ts;
+
+                                if (writeSignedFileAtomic(editorConfigPath, obj, editorConfig.projectDirectory, broadcastLog)) {
+                                    const newConfig = objToConfig(obj);
+                                    setEditorConfig(newConfig);
+
+                                    // 전체 설정을 전파하면 사용자 UI 상태가 덮어써질 수 있으므로 변경된 필드만 전파
+                                    if (activeClients) {
+                                        activeClients.forEach(client => {
+                                            if (client.readyState === 1) {
+                                                client.send(JSON.stringify({
+                                                    action: "lastDataUpdates", lastDataUpdates: ts
+                                                }));
+                                            }
+                                        });
+                                    }
+                                } else {
+                                    broadcastLog("ERROR", `editor.json 저장 실패 (마지막 데이터 업데이트 갱신)`, null, null);
+                                }
+                            } catch (e) {
+                                broadcastLog("WARN", `마지막 데이터 업데이트 저장 중 오류: ${e && e.message ? e.message : e}`, null, null);
+                            }
+                        }
+                    } catch (e) {
+                        broadcastLog("WARN", `업데이트 완료 파싱 실패: ${e && e.message ? e.message : e}`, null, null);
+                    }
+
                     return;
                 }
 
@@ -105,6 +348,9 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
         backtestingEngine.on('error', (err) => {
             broadcastLog("ERROR", `백테스팅 엔진 실행 실패: ${err.message}`, null, null);
 
+            // 프로세스 실행 오류인 경우에도 클라이언트 상태 해제
+            notifyAllClientsBacktestingFailed();
+
             backtestingEngine = null;
             backtestingEngineReady = false;
         });
@@ -115,6 +361,11 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
 
             broadcastLog(level, `백테스팅 엔진 종료 (코드: ${code})${signalInfo}`, null, null);
 
+            // 비정상 종료시 클라이언트에게 실패 알림 전파
+            if (code !== 0) {
+                notifyAllClientsBacktestingFailed();
+            }
+
             backtestingEngine = null;
             backtestingEngineReady = false;
         });
@@ -123,22 +374,109 @@ function startBacktestingEngine(activeClients, broadcastLog, projectDir) {
     }
 }
 
-function runSingleBacktesting(ws, symbolConfigs, barDataConfigs, useBarMagnifier, clearAndAddBarData, editorConfig, broadcastLog) {
+function runSingleBacktesting(ws, backtestingStartTime, editorConfig, symbolConfigs, barDataConfigs, useBarMagnifier, clearAndAddBarData, fundingRatesDirectory, strategyConfig, broadcastLog) {
     if (!backtestingEngine || !backtestingEngineReady) {
         broadcastLog("ERROR", "백테스팅 엔진이 준비되지 않았습니다. 잠시 후 다시 시도해주세요.", null, null);
         return;
     }
 
     const config = {
-        projectDirectory: (editorConfig && editorConfig.projectDirectory) ? editorConfig.projectDirectory : "",
-        useBarMagnifier: useBarMagnifier === undefined ? true : useBarMagnifier,
-        clearAndAddBarData: clearAndAddBarData === undefined ? true : clearAndAddBarData,
+        backtestingStartTime: backtestingStartTime,
+
+        apiKeyEnvVar: (editorConfig && editorConfig.apiKeyEnvVar) ? editorConfig.apiKeyEnvVar : "",
+        apiSecretEnvVar: (editorConfig && editorConfig.apiSecretEnvVar) ? editorConfig.apiSecretEnvVar : "",
+
+        exchangeInfoPath: (editorConfig && editorConfig.exchangeInfoPath) ? toPosix(editorConfig.exchangeInfoPath) : "",
+        leverageBracketPath: (editorConfig && editorConfig.leverageBracketPath) ? toPosix(editorConfig.leverageBracketPath) : "",
+        lastDataUpdates: (editorConfig && typeof editorConfig.lastDataUpdates === 'string') ? editorConfig.lastDataUpdates : "",
+
+        clearAndAddBarData: clearAndAddBarData !== undefined ? clearAndAddBarData : true,
+
         symbolConfigs: symbolConfigs || [],
+
         barDataConfigs: barDataConfigs || [],
+
+        fundingRatesDirectory: fundingRatesDirectory,
+
+        projectDirectory: (editorConfig && editorConfig.projectDirectory) ? editorConfig.projectDirectory : "",
+
+        useBacktestPeriodStart: (editorConfig && typeof editorConfig.useBacktestPeriodStart === 'boolean') ? editorConfig.useBacktestPeriodStart : true,
+        useBacktestPeriodEnd: (editorConfig && typeof editorConfig.useBacktestPeriodEnd === 'boolean') ? editorConfig.useBacktestPeriodEnd : true,
+        backtestPeriodStart: (editorConfig && editorConfig.backtestPeriodStart) ? editorConfig.backtestPeriodStart : "",
+        backtestPeriodEnd: (editorConfig && editorConfig.backtestPeriodEnd) ? editorConfig.backtestPeriodEnd : "",
+        backtestPeriodFormat: (editorConfig && editorConfig.backtestPeriodFormat) ? editorConfig.backtestPeriodFormat : "%Y-%m-%d %H:%M:%S",
+
+        useBarMagnifier: useBarMagnifier !== undefined ? useBarMagnifier : true,
+
+        initialBalance: (editorConfig && typeof editorConfig.initialBalance === 'number') ? editorConfig.initialBalance : undefined,
+
+        takerFeePercentage: (editorConfig && typeof editorConfig.takerFeePercentage === 'number') ? editorConfig.takerFeePercentage : undefined,
+        makerFeePercentage: (editorConfig && typeof editorConfig.makerFeePercentage === 'number') ? editorConfig.makerFeePercentage : undefined,
+
+        slippageModel: (editorConfig && editorConfig.slippageModel) ? editorConfig.slippageModel : "MarketImpactSlippage",
+        slippageTakerPercentage: (editorConfig && typeof editorConfig.slippageTakerPercentage === 'number') ? editorConfig.slippageTakerPercentage : undefined,
+        slippageMakerPercentage: (editorConfig && typeof editorConfig.slippageMakerPercentage === 'number') ? editorConfig.slippageMakerPercentage : undefined,
+        slippageStressMultiplier: (editorConfig && typeof editorConfig.slippageStressMultiplier === 'number') ? editorConfig.slippageStressMultiplier : undefined,
+
+        checkMarketMaxQty: (editorConfig && typeof editorConfig.checkMarketMaxQty === 'boolean') ? editorConfig.checkMarketMaxQty : true,
+        checkMarketMinQty: (editorConfig && typeof editorConfig.checkMarketMinQty === 'boolean') ? editorConfig.checkMarketMinQty : true,
+        checkLimitMaxQty: (editorConfig && typeof editorConfig.checkLimitMaxQty === 'boolean') ? editorConfig.checkLimitMaxQty : true,
+        checkLimitMinQty: (editorConfig && typeof editorConfig.checkLimitMinQty === 'boolean') ? editorConfig.checkLimitMinQty : true,
+        checkMinNotionalValue: (editorConfig && typeof editorConfig.checkMinNotionalValue === 'boolean') ? editorConfig.checkMinNotionalValue : true,
+
+        checkSameBarDataWithTarget: (editorConfig && typeof editorConfig.checkSameBarDataWithTarget === 'boolean') ? editorConfig.checkSameBarDataWithTarget : true,
+        checkSameBarDataTrading: (editorConfig && typeof editorConfig.checkSameBarDataTrading === 'boolean') ? editorConfig.checkSameBarDataTrading : true,
+        checkSameBarDataMagnifier: (editorConfig && typeof editorConfig.checkSameBarDataMagnifier === 'boolean') ? editorConfig.checkSameBarDataMagnifier : true,
+        checkSameBarDataReference: (editorConfig && typeof editorConfig.checkSameBarDataReference === 'boolean') ? editorConfig.checkSameBarDataReference : true,
+        checkSameBarDataMarkPrice: (editorConfig && typeof editorConfig.checkSameBarDataMarkPrice === 'boolean') ? editorConfig.checkSameBarDataMarkPrice : true,
+
+        strategyConfig: strategyConfig || null
     };
+
+    // 요청자(ws)를 대기열에 추가
+    try {
+        if (ws && ws.send && typeof ws.send === 'function') {
+            _pendingBacktestRequesters.push(ws);
+        }
+    } catch (e) {
+        // 무시
+    }
 
     const command = `runSingleBacktesting ${JSON.stringify(config)}\n`;
     backtestingEngine.stdin.write(command);
+}
+
+function fetchOrUpdateBarData(ws, operation, editorConfig, symbolConfigs, barDataConfigs, fundingRatesDirectory, broadcastLog) {
+    if (!backtestingEngine || !backtestingEngineReady) {
+        broadcastLog("ERROR", "백테스팅 엔진이 준비되지 않았습니다. 잠시 후 다시 시도해주세요.", null, null);
+        return;
+    }
+
+    const config = {
+        operation: operation,
+
+        apiKeyEnvVar: (editorConfig && editorConfig.apiKeyEnvVar) ? editorConfig.apiKeyEnvVar : "",
+        apiSecretEnvVar: (editorConfig && editorConfig.apiSecretEnvVar) ? editorConfig.apiSecretEnvVar : "",
+
+        symbolConfigs: symbolConfigs || [],
+
+        barDataConfigs: barDataConfigs || [],
+
+        fundingRatesDirectory: fundingRatesDirectory,
+
+        projectDirectory: (editorConfig && editorConfig.projectDirectory) ? editorConfig.projectDirectory : "",
+    };
+
+    const command = `fetchOrUpdateBarData ${JSON.stringify(config)}\n`;
+    backtestingEngine.stdin.write(command);
+}
+
+function stopSingleBacktesting() {
+    if (!backtestingEngine || !backtestingEngineReady) {
+        return;
+    }
+
+    backtestingEngine.stdin.write("stopSingleBacktesting\n");
 }
 
 function stopBacktestingEngine() {
@@ -432,73 +770,193 @@ function readSignedConfigWithRecovery(editorConfigPath, projectDir, broadcastLog
 }
 
 function configToObj(config) {
+    const hasSelectedStrategy = !!(config?.strategyConfig && config.strategyConfig.name);
+
     return {
         "에디터 설정": {
             "서명": "",
-            "로그 패널 열림": (config && config.logPanelOpen) ? "열림" : "닫힘",
-            "로그 패널 높이": (config && config.logPanelHeight !== undefined) ? config.logPanelHeight : 400,
+            "로그 패널 열림": config?.logPanelOpen ? "열림" : "닫힘",
+            "로그 패널 높이": config?.logPanelHeight ?? 400,
         },
-        "엔진 설정": {
-            "프로젝트 폴더": config ? (config.projectDirectory || "") : "",
-            "바 돋보기 기능": (config && config.useBarMagnifier) ? "활성화" : "비활성화",
+        "거래소 설정": {
+            "API 키 환경 변수": config?.apiKeyEnvVar ?? "",
+            "API 시크릿 환경 변수": config?.apiSecretEnvVar ?? "",
+
+            "거래소 정보 파일 경로": config?.exchangeInfoPath ?? "",
+            "레버리지 구간 파일 경로": config?.leverageBracketPath ?? "",
+            "마지막 데이터 업데이트": config?.lastDataUpdates ?? "",
         },
         "심볼 설정": {
-            "심볼": Array.isArray(config && config.symbolConfigs) ? config.symbolConfigs : ((config && config.symbolConfigs) || []),
+            "심볼": config?.symbolConfigs ?? [],
             "페어": {
-                "선택된 페어": config ? (config.selectedPair || "") : "",
-                "커스텀 페어": Array.isArray(config && config.customPairs) ? config.customPairs : ((config && config.customPairs) || [])
+                "선택된 페어": config?.selectedPair ?? "",
+                "커스텀 페어": config?.customPairs ?? []
             }
         },
-        "바 데이터 설정": (config && Array.isArray(config.barDataConfigs)) ? config.barDataConfigs.map((bar_cfg) => ({
-            "타임프레임": bar_cfg.timeframe, "바 데이터 폴더": bar_cfg.klinesDirectory, "바 데이터 유형": bar_cfg.barDataType,
-        })) : [],
+        "바 데이터 설정": (config?.barDataConfigs ?? []).map((bar_cfg) => ({
+            "타임프레임": bar_cfg.timeframe,
+            "바 데이터 폴더": bar_cfg.klinesDirectory,
+            "바 데이터 유형": bar_cfg.barDataType,
+        })),
+        "펀딩 비율 설정": {
+            "펀딩 비율 폴더": config?.fundingRatesDirectory ?? "",
+        },
+        "엔진 설정": {
+            "프로젝트 폴더": config?.projectDirectory ?? "",
+
+            "백테스팅 기간 처음부터": config?.useBacktestPeriodStart ? "사용" : "미사용",
+            "백테스팅 기간 끝까지": config?.useBacktestPeriodEnd ? "사용" : "미사용",
+            "백테스팅 기간 시작": config?.backtestPeriodStart ?? "",
+            "백테스팅 기간 종료": config?.backtestPeriodEnd ?? "",
+            "백테스팅 기간 형식": config?.backtestPeriodFormat ?? "%Y-%m-%d %H:%M:%S",
+
+            "바 돋보기 기능": config?.useBarMagnifier ? "활성화" : "비활성화",
+
+            "초기 자금": config?.initialBalance ?? undefined,
+
+            "테이커 수수료율": config?.takerFeePercentage ?? undefined,
+            "메이커 수수료율": config?.makerFeePercentage ?? undefined,
+
+            "슬리피지 모델": config?.slippageModel ?? "MarketImpactSlippage",
+            "테이커 슬리피지율": config?.slippageTakerPercentage ?? undefined,
+            "메이커 슬리피지율": config?.slippageMakerPercentage ?? undefined,
+            "슬리피지 스트레스 계수": config?.slippageStressMultiplier ?? undefined,
+
+            "시장가 최대 수량 검사": config?.checkMarketMaxQty ? "활성화" : "비활성화",
+            "시장가 최소 수량 검사": config?.checkMarketMinQty ? "활성화" : "비활성화",
+            "지정가 최대 수량 검사": config?.checkLimitMaxQty ? "활성화" : "비활성화",
+            "지정가 최소 수량 검사": config?.checkLimitMinQty ? "활성화" : "비활성화",
+            "최소 명목 가치 검사": config?.checkMinNotionalValue ? "활성화" : "비활성화",
+
+            "마크 가격 바 데이터와 목표 바 데이터 중복 검사": config?.checkSameBarDataWithTarget ? "활성화" : "비활성화",
+            "심볼 간 트레이딩 바 데이터 중복 검사": config?.checkSameBarDataTrading ? "활성화" : "비활성화",
+            "심볼 간 돋보기 바 데이터 중복 검사": config?.checkSameBarDataMagnifier ? "활성화" : "비활성화",
+            "심볼 간 참조 바 데이터 중복 검사": config?.checkSameBarDataReference ? "활성화" : "비활성화",
+            "심볼 간 마크 가격 바 데이터 중복 검사": config?.checkSameBarDataMarkPrice ? "활성화" : "비활성화"
+        },
+        "전략 설정": {
+            "전략 헤더 폴더": config?.strategyConfig?.strategyHeaderDirs,
+            "전략 소스 폴더": config?.strategyConfig?.strategySourceDirs,
+            "지표 헤더 폴더": config?.strategyConfig?.indicatorHeaderDirs,
+            "지표 소스 폴더": config?.strategyConfig?.indicatorSourceDirs,
+
+            "선택된 전략": hasSelectedStrategy ? {
+                "이름": config.strategyConfig.name,
+                "DLL 파일 경로": config.strategyConfig.dllPath,
+                "헤더 파일 경로": config.strategyConfig.strategyHeaderPath,
+                "소스 파일 경로": config.strategyConfig.strategySourcePath,
+            } : null
+        }
     };
 }
 
-function isOn(value) {
-    return value === "켜짐";
-}
-
 function objToConfig(obj) {
-    const cfg = {};
+    // 각 섹션 먼저 추출
+    const editor = obj?.['에디터 설정'];
+    const exchange = obj?.['거래소 설정'];
+    const symSection = obj?.['심볼 설정'];
+    const fundingRatesSection = obj?.['펀딩 비율 설정'];
+    const engine = obj?.['엔진 설정'];
+    const strategySection = obj?.['전략 설정'];
+    const selectedStrategy = strategySection?.['선택된 전략'];
 
-    const editor = obj && typeof obj === 'object' ? obj["에디터 설정"] : null;
-    cfg.logPanelOpen = editor && (editor["로그 패널 열림"] === "열림");
-    cfg.logPanelHeight = editor && (editor["로그 패널 높이"] !== undefined) ? editor["로그 패널 높이"] : 400;
+    const strategyHeaderDirs = strategySection?.['전략 헤더 폴더'] ?? [];
+    const strategySourceDirs = strategySection?.['전략 소스 폴더'] ?? [];
+    const indicatorHeaderDirs = strategySection?.['지표 헤더 폴더'] ?? [];
+    const indicatorSourceDirs = strategySection?.['지표 소스 폴더'] ?? [];
 
-    const engine = obj && typeof obj === 'object' ? obj["엔진 설정"] : null;
-    cfg.projectDirectory = engine && (engine["프로젝트 폴더"] !== undefined) ? engine["프로젝트 폴더"] : "";
-    cfg.useBarMagnifier = engine && isOn(engine?.["바 돋보기 기능"]);
+    return {
+        // 에디터 설정
+        logPanelOpen: editor?.['로그 패널 열림'] === '열림',
+        logPanelHeight: editor?.['로그 패널 높이'] ?? 400,
 
-    const symSection = obj && typeof obj === 'object' ? obj["심볼 설정"] : null;
+        // 거래소 설정
+        apiKeyEnvVar: exchange?.['API 키 환경 변수'] ?? '',
+        apiSecretEnvVar: exchange?.['API 시크릿 환경 변수'] ?? '',
 
-    if (symSection && typeof symSection === 'object') {
-        cfg.symbolConfigs = Array.isArray(symSection["심볼"]) ? symSection["심볼"] : [];
+        exchangeInfoPath: exchange?.['거래소 정보 파일 경로'] ?? '',
+        leverageBracketPath: exchange?.['레버리지 구간 파일 경로'] ?? '',
+        lastDataUpdates: exchange?.['마지막 데이터 업데이트'] ?? '',
 
-        const pairCfgInner = symSection["페어"] || {};
+        // 심볼 설정
+        symbolConfigs: symSection?.['심볼'] ?? [],
+        selectedPair: symSection?.['페어']?.['선택된 페어'] ?? '',
+        customPairs: symSection?.['페어']?.['커스텀 페어'] ?? [],
 
-        cfg.selectedPair = typeof pairCfgInner["선택된 페어"] === 'string' ? pairCfgInner["선택된 페어"] : '';
-        cfg.customPairs = Array.isArray(pairCfgInner["커스텀 페어"]) ? pairCfgInner["커스텀 페어"] : [];
-    }
+        // 바 데이터 설정
+        barDataConfigs: (obj?.['바 데이터 설정'] ?? []).map((bar_data_config) => ({
+            timeframe: bar_data_config['타임프레임'],
+            klinesDirectory: bar_data_config['바 데이터 폴더'],
+            barDataType: bar_data_config['바 데이터 유형'],
+        })),
 
-    cfg.barDataConfigs = (obj["바 데이터 설정"] || []).map((bar_data_config) => ({
-        timeframe: bar_data_config["타임프레임"],
-        klinesDirectory: bar_data_config["바 데이터 폴더"],
-        barDataType: bar_data_config["바 데이터 유형"],
-    }));
+        // 펀딩 비율 설정
+        fundingRatesDirectory: fundingRatesSection?.['펀딩 비율 폴더'] ?? '',
 
-    return cfg;
+        // 엔진 설정
+        projectDirectory: engine?.['프로젝트 폴더'] ?? '',
+
+        useBacktestPeriodStart: engine?.['백테스팅 기간 처음부터'] === '사용',
+        useBacktestPeriodEnd: engine?.['백테스팅 기간 끝까지'] === '사용',
+        backtestPeriodStart: engine?.['백테스팅 기간 시작'] ?? '',
+        backtestPeriodEnd: engine?.['백테스팅 기간 종료'] ?? '',
+        backtestPeriodFormat: engine?.['백테스팅 기간 형식'] ?? '%Y-%m-%d %H:%M:%S',
+
+        useBarMagnifier: engine?.['바 돋보기 기능'] === '활성화',
+
+        initialBalance: engine?.['초기 자금'] ?? undefined,
+
+        takerFeePercentage: engine?.['테이커 수수료율'] ?? undefined,
+        makerFeePercentage: engine?.['메이커 수수료율'] ?? undefined,
+
+        slippageModel: engine?.['슬리피지 모델'] ?? 'MarketImpactSlippage',
+        slippageTakerPercentage: engine?.['테이커 슬리피지율'] ?? undefined,
+        slippageMakerPercentage: engine?.['메이커 슬리피지율'] ?? undefined,
+        slippageStressMultiplier: engine?.['슬리피지 스트레스 계수'] ?? undefined,
+
+        checkMarketMaxQty: engine?.['시장가 최대 수량 검사'] === '활성화',
+        checkMarketMinQty: engine?.['시장가 최소 수량 검사'] === '활성화',
+        checkLimitMaxQty: engine?.['지정가 최대 수량 검사'] === '활성화',
+        checkLimitMinQty: engine?.['지정가 최소 수량 검사'] === '활성화',
+        checkMinNotionalValue: engine?.['최소 명목 가치 검사'] === '활성화',
+
+        checkSameBarDataWithTarget: engine?.['마크 가격 바 데이터와 목표 바 데이터 중복 검사'] === '활성화',
+        checkSameBarDataTrading: engine?.['심볼 간 트레이딩 바 데이터 중복 검사'] === '활성화',
+        checkSameBarDataMagnifier: engine?.['심볼 간 돋보기 바 데이터 중복 검사'] === '활성화',
+        checkSameBarDataReference: engine?.['심볼 간 참조 바 데이터 중복 검사'] === '활성화',
+        checkSameBarDataMarkPrice: engine?.['심볼 간 마크 가격 바 데이터 중복 검사'] === '활성화',
+
+        // 전략 설정
+        strategyConfig: {
+            strategyHeaderDirs: Array.isArray(strategyHeaderDirs) ? strategyHeaderDirs : [],
+            strategySourceDirs: Array.isArray(strategySourceDirs) ? strategySourceDirs : [],
+            indicatorHeaderDirs: Array.isArray(indicatorHeaderDirs) ? indicatorHeaderDirs : [],
+            indicatorSourceDirs: Array.isArray(indicatorSourceDirs) ? indicatorSourceDirs : [],
+
+            name: selectedStrategy?.['이름'] ?? '',
+            dllPath: selectedStrategy?.['DLL 파일 경로'] ?? null,
+            strategyHeaderPath: selectedStrategy?.['헤더 파일 경로'] ?? null,
+            strategySourcePath: selectedStrategy?.['소스 파일 경로'] ?? null
+        }
+    };
 }
 
 function createDefaultConfig(projectDirectory) {
     return {
         logPanelOpen: false,
         logPanelHeight: 400,
-        projectDirectory: projectDirectory,
-        useBarMagnifier: true,
+
+        apiKeyEnvVar: "",
+        apiSecretEnvVar: "",
+
+        exchangeInfoPath: toPosix(path.join(projectDirectory, 'Data', 'exchange_info.json')),
+        leverageBracketPath: toPosix(path.join(projectDirectory, 'Data', 'leverage_bracket.json')),
+        lastDataUpdates: "",
+
         symbolConfigs: [],
         selectedPair: 'USDT',
         customPairs: [],
+
         barDataConfigs: [{
             timeframe: null,
             klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Continuous Klines')),
@@ -515,72 +973,273 @@ function createDefaultConfig(projectDirectory) {
             timeframe: null,
             klinesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Mark Price Klines')),
             barDataType: '마크 가격'
-        }]
+        }],
+
+        fundingRatesDirectory: toPosix(path.join(projectDirectory, 'Data', 'Funding Rates')),
+
+        projectDirectory: projectDirectory,
+
+        useBacktestPeriodStart: true,
+        useBacktestPeriodEnd: true,
+        backtestPeriodStart: "",
+        backtestPeriodEnd: "",
+        backtestPeriodFormat: "%Y-%m-%d %H:%M:%S",
+
+        useBarMagnifier: true,
+
+        initialBalance: undefined,
+
+        takerFeePercentage: undefined,
+        makerFeePercentage: undefined,
+
+        slippageModel: "MarketImpactSlippage",
+        slippageTakerPercentage: undefined,
+        slippageMakerPercentage: undefined,
+        slippageStressMultiplier: undefined,
+
+        checkMarketMaxQty: true,
+        checkMarketMinQty: true,
+        checkLimitMaxQty: true,
+        checkLimitMinQty: true,
+        checkMinNotionalValue: true,
+
+        checkSameBarDataWithTarget: true,
+        checkSameBarDataTrading: true,
+        checkSameBarDataMagnifier: true,
+        checkSameBarDataReference: true,
+        checkSameBarDataMarkPrice: true,
+
+        // 전략 설정 기본값은 절대 경로로 생성
+        strategyConfig: {
+            strategyHeaderDirs: [toPosix(path.join(projectDirectory, 'Includes', 'Strategies'))],
+            strategySourceDirs: [toPosix(path.join(projectDirectory, 'Sources', 'Cores', 'Strategies'))],
+            indicatorHeaderDirs: [toPosix(path.join(projectDirectory, 'Includes', 'Indicators'))],
+            indicatorSourceDirs: [toPosix(path.join(projectDirectory, 'Sources', 'Cores', 'Indicators'))],
+
+            name: '',
+            dllPath: null,
+            strategyHeaderPath: null,
+            strategySourcePath: null
+        }
     };
 }
 
 function configToWs(config) {
+    const hasSelectedStrategy = !!(config?.strategyConfig && config.strategyConfig.name);
+
     return {
         "에디터 설정": {
-            "로그 패널 열림": !!(config && config.logPanelOpen),
-            "로그 패널 높이": (config && typeof config.logPanelHeight === 'number') ? config.logPanelHeight : 400,
+            "로그 패널 열림": config?.logPanelOpen ? "열림" : "닫힘",
+            "로그 패널 높이": config?.logPanelHeight ?? 400,
         },
-        "엔진 설정": {
-            "프로젝트 폴더": (config && config.projectDirectory) ? toPosix(config.projectDirectory) : "",
-            "바 돋보기 기능": !!(config && config.useBarMagnifier),
+        "거래소 설정": {
+            "API 키 환경 변수": config?.apiKeyEnvVar ?? "",
+            "API 시크릿 환경 변수": config?.apiSecretEnvVar ?? "",
+
+            "거래소 정보 파일 경로": config?.exchangeInfoPath ?? "",
+            "레버리지 구간 파일 경로": config?.leverageBracketPath ?? "",
+            "마지막 데이터 업데이트": config?.lastDataUpdates ?? "",
         },
         "심볼 설정": {
-            "심볼": (config && Array.isArray(config.symbolConfigs)) ? config.symbolConfigs : [],
+            "심볼": config?.symbolConfigs ?? [],
             "페어": {
-                "선택된 페어": (config && typeof config.selectedPair === 'string') ? config.selectedPair : '',
-                "커스텀 페어": (config && Array.isArray(config.customPairs)) ? config.customPairs : []
+                "선택된 페어": config?.selectedPair ?? '',
+                "커스텀 페어": config?.customPairs ?? []
             }
         },
-        "바 데이터 설정": (config && Array.isArray(config.barDataConfigs)) ? config.barDataConfigs.map((b) => ({
+        "바 데이터 설정": (config?.barDataConfigs ?? []).map((b) => ({
             ...b, klinesDirectory: b.klinesDirectory ? toPosix(b.klinesDirectory) : b.klinesDirectory
-        })) : [],
-    };
+        })),
+        "펀딩 비율 설정": {
+            "펀딩 비율 폴더": config?.fundingRatesDirectory ? toPosix(config.fundingRatesDirectory) : "",
+        },
+        "엔진 설정": {
+            "프로젝트 폴더": config?.projectDirectory ? toPosix(config.projectDirectory) : "",
+
+            "백테스팅 기간 처음부터": config?.useBacktestPeriodStart ? "사용" : "미사용",
+            "백테스팅 기간 끝까지": config?.useBacktestPeriodEnd ? "사용" : "미사용",
+            "백테스팅 기간 시작": config?.backtestPeriodStart ?? "",
+            "백테스팅 기간 종료": config?.backtestPeriodEnd ?? "",
+            "백테스팅 기간 형식": config?.backtestPeriodFormat ?? "%Y-%m-%d %H:%M:%S",
+
+            "바 돋보기 기능": config?.useBarMagnifier ? "활성화" : "비활성화",
+
+            "초기 자금": config?.initialBalance ?? undefined,
+
+            "테이커 수수료율": config?.takerFeePercentage ?? undefined,
+            "메이커 수수료율": config?.makerFeePercentage ?? undefined,
+
+            "슬리피지 모델": config?.slippageModel ?? "MarketImpactSlippage",
+            "테이커 슬리피지율": config?.slippageTakerPercentage ?? undefined,
+            "메이커 슬리피지율": config?.slippageMakerPercentage ?? undefined,
+            "슬리피지 스트레스 계수": config?.slippageStressMultiplier ?? undefined,
+
+            "시장가 최대 수량 검사": config?.checkMarketMaxQty ? "활성화" : "비활성화",
+            "시장가 최소 수량 검사": config?.checkMarketMinQty ? "활성화" : "비활성화",
+            "지정가 최대 수량 검사": config?.checkLimitMaxQty ? "활성화" : "비활성화",
+            "지정가 최소 수량 검사": config?.checkLimitMinQty ? "활성화" : "비활성화",
+            "최소 명목 가치 검사": config?.checkMinNotionalValue ? "활성화" : "비활성화",
+
+            "마크 가격 바 데이터와 목표 바 데이터 중복 검사": config?.checkSameBarDataWithTarget ? "활성화" : "비활성화",
+            "심볼 간 트레이딩 바 데이터 중복 검사": config?.checkSameBarDataTrading ? "활성화" : "비활성화",
+            "심볼 간 돋보기 바 데이터 중복 검사": config?.checkSameBarDataMagnifier ? "활성화" : "비활성화",
+            "심볼 간 참조 바 데이터 중복 검사": config?.checkSameBarDataReference ? "활성화" : "비활성화",
+            "심볼 간 마크 가격 바 데이터 중복 검사": config?.checkSameBarDataMarkPrice ? "활성화" : "비활성화"
+        },
+        "전략 설정": {
+            "전략 헤더 폴더": config?.strategyConfig?.strategyHeaderDirs,
+            "전략 소스 폴더": config?.strategyConfig?.strategySourceDirs,
+            "지표 헤더 폴더": config?.strategyConfig?.indicatorHeaderDirs,
+            "지표 소스 폴더": config?.strategyConfig?.indicatorSourceDirs,
+
+            "선택된 전략": hasSelectedStrategy ? {
+                "이름": config.strategyConfig.name,
+                "DLL 파일 경로": config.strategyConfig.dllPath,
+                "헤더 파일 경로": config.strategyConfig.strategyHeaderPath,
+                "소스 파일 경로": config.strategyConfig.strategySourcePath
+            } : null
+        }
+    }
 }
 
 function wsToConfig(wsConfig) {
     if (!wsConfig || typeof wsConfig !== 'object') {
         return {
-            logPanelOpen: false, logPanelHeight: 400,
-
+            logPanelOpen: false,
+            logPanelHeight: 400,
             useBarMagnifier: true,
-
-            symbolConfigs: [], barDataConfigs: []
+            symbolConfigs: [],
+            barDataConfigs: []
         };
     }
 
-    if (wsConfig["에디터 설정"] || wsConfig["엔진 설정"] || wsConfig["심볼 설정"] || wsConfig["바 데이터 설정"]) {
+    const editor = wsConfig["에디터 설정"];
+    const exchange = wsConfig["거래소 설정"];
+    const symSection = wsConfig["심볼 설정"];
+    const fundingRateSection = wsConfig["펀딩 비율 설정"];
+    const engine = wsConfig["엔진 설정"];
+    const strategySection = wsConfig["전략 설정"];
+    const selectedStrategy = strategySection?.["선택된 전략"];
+
+    if (editor || exchange || symSection || engine) {
         return {
-            logPanelOpen: !!wsConfig["에디터 설정"]?.["로그 패널 열림"],
-            logPanelHeight: (typeof wsConfig["에디터 설정"]?.["로그 패널 높이"] === 'number') ? wsConfig["에디터 설정"]["로그 패널 높이"] : 400,
+            logPanelOpen: editor?.["로그 패널 열림"] === "열림",
+            logPanelHeight: editor?.["로그 패널 높이"] ?? 400,
 
-            projectDirectory: wsConfig["엔진 설정"]?.["프로젝트 폴더"] || "",
-            useBarMagnifier: !!wsConfig["엔진 설정"]?.["바 돋보기 기능"],
+            apiKeyEnvVar: exchange?.["API 키 환경 변수"] ?? engine?.["API 키 환경 변수"] ?? '',
+            apiSecretEnvVar: exchange?.["API 시크릿 환경 변수"] ?? engine?.["API 시크릿 환경 변수"] ?? '',
 
-            symbolConfigs: Array.isArray(wsConfig["심볼 설정"]?.["심볼"]) ? wsConfig["심볼 설정"]["심볼"] : [],
-            selectedPair: (wsConfig["심볼 설정"] && wsConfig["심볼 설정"]["페어"] && typeof wsConfig["심볼 설정"]["페어"]["선택된 페어"] === 'string') ? wsConfig["심볼 설정"]["페어"]["선택된 페어"] : '',
-            customPairs: (wsConfig["심볼 설정"] && wsConfig["심볼 설정"]["페어"] && Array.isArray(wsConfig["심볼 설정"]["페어"]["커스텀 페어"])) ? wsConfig["심볼 설정"]["페어"]["커스텀 페어"] : [],
+            exchangeInfoPath: exchange?.["거래소 정보 파일 경로"] ?? engine?.["거래소 정보 파일 경로"] ?? '',
+            leverageBracketPath: exchange?.["레버리지 구간 파일 경로"] ?? engine?.["레버리지 구간 파일 경로"] ?? '',
+            lastDataUpdates: exchange?.["마지막 데이터 업데이트"] ?? engine?.["마지막 데이터 업데이트"] ?? '',
 
-            barDataConfigs: Array.isArray(wsConfig["바 데이터 설정"]) ? wsConfig["바 데이터 설정"] : []
+            symbolConfigs: symSection?.["심볼"] ?? [],
+            selectedPair: symSection?.["페어"]?.["선택된 페어"] ?? '',
+            customPairs: symSection?.["페어"]?.["커스텀 페어"] ?? [],
+
+            barDataConfigs: wsConfig["바 데이터 설정"] ?? [],
+
+            fundingRatesDirectory: fundingRateSection?.['펀딩 비율 폴더'] ?? '',
+
+            projectDirectory: engine?.["프로젝트 폴더"] ?? "",
+
+            useBacktestPeriodStart: engine?.["백테스팅 기간 처음부터"] === "사용",
+            useBacktestPeriodEnd: engine?.["백테스팅 기간 끝까지"] === "사용",
+            backtestPeriodStart: engine?.["백테스팅 기간 시작"] ?? "",
+            backtestPeriodEnd: engine?.["백테스팅 기간 종료"] ?? "",
+            backtestPeriodFormat: engine?.["백테스팅 기간 형식"] ?? "%Y-%m-%d %H:%M:%S",
+
+            useBarMagnifier: engine?.["바 돋보기 기능"] === "활성화",
+
+            initialBalance: engine?.["초기 자금"] ?? undefined,
+
+            takerFeePercentage: engine?.["테이커 수수료율"] ?? undefined,
+            makerFeePercentage: engine?.["메이커 수수료율"] ?? undefined,
+
+            slippageModel: engine?.["슬리피지 모델"] ?? "MarketImpactSlippage",
+            slippageTakerPercentage: engine?.["테이커 슬리피지율"] ?? undefined,
+            slippageMakerPercentage: engine?.["메이커 슬리피지율"] ?? undefined,
+            slippageStressMultiplier: engine?.["슬리피지 스트레스 계수"] ?? undefined,
+
+            checkMarketMaxQty: engine?.["시장가 최대 수량 검사"] === "활성화",
+            checkMarketMinQty: engine?.["시장가 최소 수량 검사"] === "활성화",
+            checkLimitMaxQty: engine?.["지정가 최대 수량 검사"] === "활성화",
+            checkLimitMinQty: engine?.["지정가 최소 수량 검사"] === "활성화",
+            checkMinNotionalValue: engine?.["최소 명목 가치 검사"] === "활성화",
+
+            checkSameBarDataWithTarget: engine?.["마크 가격 바 데이터와 목표 바 데이터 중복 검사"] === "활성화",
+            checkSameBarDataTrading: engine?.["심볼 간 트레이딩 바 데이터 중복 검사"] === "활성화",
+            checkSameBarDataMagnifier: engine?.["심볼 간 돋보기 바 데이터 중복 검사"] === "활성화",
+            checkSameBarDataReference: engine?.["심볼 간 참조 바 데이터 중복 검사"] === "활성화",
+            checkSameBarDataMarkPrice: engine?.["심볼 간 마크 가격 바 데이터 중복 검사"] === "활성화",
+
+            strategyConfig: {
+                strategyHeaderDirs: strategySection?.["전략 헤더 폴더"] ?? [],
+                strategySourceDirs: strategySection?.["전략 소스 폴더"] ?? [],
+                indicatorHeaderDirs: strategySection?.["지표 헤더 폴더"] ?? [],
+                indicatorSourceDirs: strategySection?.["지표 소스 폴더"] ?? [],
+
+                name: selectedStrategy?.["이름"] ?? '',
+                dllPath: selectedStrategy?.["DLL 파일 경로"] ?? null,
+                strategyHeaderPath: selectedStrategy?.["헤더 파일 경로"] ?? null,
+                strategySourcePath: selectedStrategy?.["소스 파일 경로"] ?? null
+            }
         };
     }
 
+    // 영어 키 형식
     return {
         logPanelOpen: wsConfig.logPanelOpen ?? false,
         logPanelHeight: wsConfig.logPanelHeight ?? 400,
 
-        projectDirectory: wsConfig.projectDirectory || "",
+        apiKeyEnvVar: wsConfig.apiKeyEnvVar ?? '',
+        apiSecretEnvVar: wsConfig.apiSecretEnvVar ?? '',
+
+        exchangeInfoPath: wsConfig.exchangeInfoPath ?? '',
+        leverageBracketPath: wsConfig.leverageBracketPath ?? '',
+        lastDataUpdates: wsConfig.lastDataUpdates ?? '',
+
+        symbolConfigs: wsConfig.symbolConfigs ?? [],
+        selectedPair: wsConfig.selectedPair ?? '',
+        customPairs: wsConfig.customPairs ?? [],
+
+        barDataConfigs: wsConfig.barDataConfigs ?? [],
+
+        fundingRatesDirectory: wsConfig.fundingRatesDirectory ?? '',
+
+        projectDirectory: wsConfig.projectDirectory ?? "",
+
+        useBacktestPeriodStart: wsConfig.useBacktestPeriodStart ?? true,
+        useBacktestPeriodEnd: wsConfig.useBacktestPeriodEnd ?? true,
+        backtestPeriodStart: wsConfig.backtestPeriodStart ?? "",
+        backtestPeriodEnd: wsConfig.backtestPeriodEnd ?? "",
+        backtestPeriodFormat: wsConfig.backtestPeriodFormat ?? "%Y-%m-%d %H:%M:%S",
+
         useBarMagnifier: wsConfig.useBarMagnifier ?? true,
 
-        symbolConfigs: Array.isArray(wsConfig.symbolConfigs) ? wsConfig.symbolConfigs : [],
-        selectedPair: typeof wsConfig.selectedPair === 'string' ? wsConfig.selectedPair : '',
-        customPairs: Array.isArray(wsConfig.customPairs) ? wsConfig.customPairs : [],
+        initialBalance: wsConfig.initialBalance ?? undefined,
 
-        barDataConfigs: Array.isArray(wsConfig.barDataConfigs) ? wsConfig.barDataConfigs : []
+        takerFeePercentage: wsConfig.takerFeePercentage ?? undefined,
+        makerFeePercentage: wsConfig.makerFeePercentage ?? undefined,
+
+        slippageModel: wsConfig.slippageModel ?? "MarketImpactSlippage",
+        slippageTakerPercentage: wsConfig.slippageTakerPercentage ?? undefined,
+        slippageMakerPercentage: wsConfig.slippageMakerPercentage ?? undefined,
+        slippageStressMultiplier: wsConfig.slippageStressMultiplier ?? undefined,
+
+        checkMarketMaxQty: wsConfig.checkMarketMaxQty ?? true,
+        checkMarketMinQty: wsConfig.checkMarketMinQty ?? true,
+        checkLimitMaxQty: wsConfig.checkLimitMaxQty ?? true,
+        checkLimitMinQty: wsConfig.checkLimitMinQty ?? true,
+        checkMinNotionalValue: wsConfig.checkMinNotionalValue ?? true,
+
+        checkSameBarDataWithTarget: wsConfig.checkSameBarDataWithTarget ?? true,
+        checkSameBarDataTrading: wsConfig.checkSameBarDataTrading ?? true,
+        checkSameBarDataMagnifier: wsConfig.checkSameBarDataMagnifier ?? true,
+        checkSameBarDataReference: wsConfig.checkSameBarDataReference ?? true,
+        checkSameBarDataMarkPrice: wsConfig.checkSameBarDataMarkPrice ?? true,
+
+        strategyConfig: wsConfig.strategyConfig || null
     };
 }
 
@@ -611,23 +1270,15 @@ async function createProjectStructure(projectDir) {
 
     const continuousDir = path.join(projectDir, 'Data', 'Continuous Klines');
     const markPriceDir = path.join(projectDir, 'Data', 'Mark Price Klines');
+    const fundingRatesDir = path.join(projectDir, 'Data', 'Funding Rates');
 
-    return await ensureDirectory(continuousDir) && await ensureDirectory(markPriceDir) && await ensureDirectory(backboardDir);
+    return await ensureDirectory(backboardDir) && await ensureDirectory(continuousDir) && await ensureDirectory(markPriceDir) && await ensureDirectory(fundingRatesDir);
 }
 
 function getEditorConfigPath(projectDir) {
     return path.join(projectDir, 'BackBoard', 'editor.json');
 }
 
-async function validateBackBoardExe(projectDir) {
-    const backboardExePath = path.join(projectDir, 'BackBoard.exe');
-
-    if (await fileExists(backboardExePath)) {
-        return backboardExePath;
-    }
-
-    return null;
-}
 
 async function validateProjectDirectoryConfig(cfg, broadcastLog) {
     let projectDirectory = cfg.projectDirectory || null;
@@ -648,11 +1299,6 @@ async function validateProjectDirectoryConfig(cfg, broadcastLog) {
 
     projectDirectory = path.resolve(projectDirectory);
 
-    if (!(await validateBackBoardExe(projectDirectory))) {
-        broadcastLog("ERROR", `필수 파일이 없습니다: ${toPosix(path.join(projectDirectory, 'BackBoard.exe'))}`, null, null);
-
-        return false;
-    }
 
     if (!(await createProjectStructure(projectDirectory))) {
         return false;
@@ -676,7 +1322,7 @@ async function validateProjectDirectoryConfig(cfg, broadcastLog) {
     return true;
 }
 
-async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFromClients, broadcastLog, projectDir) {
+async function loadOrCreateEditorConfig(activeClients, broadcastLog, projectDir) {
     try {
         const defaultEditorPath = getEditorConfigPath(projectDir);
 
@@ -702,75 +1348,39 @@ async function loadOrCreateEditorConfig(activeClients, requestProjectDirectoryFr
             // 무시
         }
 
-        if (activeClients && activeClients.size > 0) {
-            while (true) {
-                broadcastLog("INFO", `BackBoard/editor.json이 없습니다. 프로젝트 폴더 입력을 요청합니다.`, null, null);
-
-                const provided = await requestProjectDirectoryFromClients();
-                if (!provided || typeof provided !== 'string' || provided.trim() === '') {
-                    broadcastLog("WARN", `프로젝트 폴더가 입력되지 않았습니다.`, null, null);
-
-                    try {
-                        activeClients.forEach(c => c.send(JSON.stringify({
-                            action: 'projectDirectoryInvalid', reason: '프로젝트 폴더를 입력해주세요.'
-                        })));
-                    } catch (e) {
-                        // 무시
-                    }
-
-                    continue;
-                }
-
-                const resolvedRoot = path.resolve(provided);
-                const backboardExe = await validateBackBoardExe(resolvedRoot);
-
-                if (!backboardExe) {
-                    broadcastLog("WARN", `BackBoard.exe 파일을 찾을 수 없습니다: ${toPosix(resolvedRoot)}`, null, null);
-
-                    try {
-                        activeClients.forEach(c => c.send(JSON.stringify({
-                            action: 'projectDirectoryInvalid', reason: 'BackBoard.exe 파일을 찾을 수 없습니다.'
-                        })));
-                    } catch (e) {
-                        // 무시
-                    }
-                    continue;
-                }
-
-                if (await createProjectStructure(resolvedRoot)) {
-                    const defaultConfig = createDefaultConfig(resolvedRoot);
-                    const editorConfigPath = getEditorConfigPath(resolvedRoot);
-
-                    try {
-                        const obj = configToObj(defaultConfig);
-                        if (!writeSignedFileAtomic(editorConfigPath, obj, projectDir, broadcastLog)) {
-                            broadcastLog("ERROR", '서명 파일 저장 실패');
-
-                            return;
-                        }
-
-                        return defaultConfig;
-                    } catch (err) {
-                        broadcastLog("ERROR", `editor.json 생성 실패: ${err.message}`, null, null);
-
-                        try {
-                            activeClients.forEach(c => c.send(JSON.stringify({
-                                action: 'projectDirectoryInvalid', reason: `설정 파일 생성 실패: ${err.message}`
-                            })));
-                        } catch (e) {
-                            // 무시
-                        }
-                    }
-                } else {
-                    try {
-                        activeClients.forEach(c => c.send(JSON.stringify({
-                            action: 'projectDirectoryInvalid', reason: '프로젝트 폴더 구조 생성 실패'
-                        })));
-                    } catch (e) {
-                        // 무시
-                    }
-                }
+        // 서버를 시작할 때 전달된 프로젝트 폴더를 기본으로 사용하여 설정 파일을 자동 생성
+        try {
+            const resolvedRoot = projectDir ? path.resolve(projectDir) : null;
+            if (!resolvedRoot) {
+                broadcastLog("ERROR", `프로젝트 폴더 정보가 없습니다.`, null, null);
+                return;
             }
+
+            if (await createProjectStructure(resolvedRoot)) {
+                const defaultConfig = createDefaultConfig(resolvedRoot);
+                const editorConfigPath = getEditorConfigPath(resolvedRoot);
+
+                try {
+                    const obj = configToObj(defaultConfig);
+                    // HMAC 키/파일 작업은 프로젝트 루트를 기준으로 수행
+                    if (!writeSignedFileAtomic(editorConfigPath, obj, resolvedRoot, broadcastLog)) {
+                        broadcastLog("ERROR", '서명 파일 저장 실패', null, null);
+                        return;
+                    }
+
+
+                    broadcastLog("INFO", `기본 editor.json을 생성했습니다: ${toPosix(editorConfigPath)}`, null, null);
+                    return defaultConfig;
+                } catch (err) {
+                    broadcastLog("ERROR", `editor.json 생성 실패: ${err.message}`, null, null);
+
+                }
+            } else {
+                broadcastLog("ERROR", `프로젝트 폴더 구조 생성에 실패했습니다: ${toPosix(resolvedRoot)}`, null, null);
+
+            }
+        } catch (e) {
+            // 무시
         }
     } catch (e) {
         // 무시
@@ -795,70 +1405,6 @@ function saveEditorConfig(config, broadcastLog) {
     }
 }
 
-async function handleProvideProjectDirectory(ws, projectDir, activeClients, broadcastLog) {
-    if (projectDir && typeof projectDir === 'string') {
-        const resolvedRoot = path.resolve(projectDir);
-        const backboardExe = await validateBackBoardExe(resolvedRoot);
-        const editorConfigPath = getEditorConfigPath(resolvedRoot);
-
-        if (!backboardExe) {
-            ws.send(JSON.stringify({
-                action: "projectDirectoryInvalid", reason: `BackBoard.exe 파일을 찾을 수 없습니다.`
-            }));
-        } else if (await createProjectStructure(resolvedRoot)) {
-            try {
-                const defaultConfig = createDefaultConfig(resolvedRoot);
-
-                if (await fileExists(editorConfigPath)) {
-                    try {
-                        const loaded = readSignedConfigWithRecovery(editorConfigPath, resolvedRoot, broadcastLog);
-
-                        if (loaded) {
-                            editorConfig = objToConfig(loaded.obj);
-                        } else {
-                            deleteConfigAndBak(editorConfigPath);
-                            const obj = configToObj(defaultConfig);
-                            writeSignedFileAtomic(editorConfigPath, obj, resolvedRoot, broadcastLog);
-
-                            editorConfig = defaultConfig;
-                        }
-                    } catch (e) {
-                        broadcastLog("WARN", `editor.json 파싱 실패: ${e.message}`, null, null);
-
-                        deleteConfigAndBak(editorConfigPath);
-                        const obj = configToObj(defaultConfig);
-                        writeSignedFileAtomic(editorConfigPath, obj, resolvedRoot, broadcastLog);
-
-                        editorConfig = defaultConfig;
-                    }
-                } else {
-                    const obj = configToObj(defaultConfig);
-                    writeSignedFileAtomic(editorConfigPath, obj, resolvedRoot, broadcastLog);
-                    editorConfig = defaultConfig;
-                }
-
-                // 프로젝트 디렉터리 설정 후 백테스팅 엔진이 아직 시작되지 않았으면 시작
-                try {
-                    startBacktestingEngine(activeClients, broadcastLog, resolvedRoot);
-                } catch (e) {
-                    broadcastLog("ERROR", `백테스팅 엔진 시작 실패: ${e.message}`, null, null);
-                }
-
-                ws.send(JSON.stringify({
-                    action: "editorConfigLoaded", config: configToWs(editorConfig)
-                }));
-            } catch (err) {
-                ws.send(JSON.stringify({
-                    action: "projectDirectoryInvalid", reason: `설정 파일 생성 실패: ${err.message}`
-                }));
-            }
-        } else {
-            ws.send(JSON.stringify({
-                action: "projectDirectoryInvalid", reason: `프로젝트 폴더 구조 생성 실패`
-            }));
-        }
-    }
-}
 
 function getEditorConfig() {
     return editorConfig;
@@ -879,6 +1425,8 @@ function setEditorConfigLoading(loading) {
 module.exports = {
     startBacktestingEngine: startBacktestingEngine,
     runSingleBacktesting,
+    stopSingleBacktesting,
+    fetchOrUpdateBarData,
     stopBacktestingEngine: stopBacktestingEngine,
     loadOrCreateEditorConfig,
     saveEditorConfig,
@@ -888,6 +1436,5 @@ module.exports = {
     setEditorConfig,
     isEditorConfigLoading,
     setEditorConfigLoading,
-    validateProjectDirectoryConfig,
-    handleProvideProjectDirectory
+    validateProjectDirectoryConfig
 };

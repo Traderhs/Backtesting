@@ -1,13 +1,16 @@
 #pragma once
 
 // 표준 라이브러리
+#include <atomic>
 #include <string>
 
 // 내부 헤더
 #include "Engines/BaseBarHandler.hpp"
 #include "Engines/BinanceFetcher.hpp"
+#include "Engines/Export.hpp"
 #include "Engines/Logger.hpp"
 #include "Engines/Strategy.hpp"
+#include "Engines/StrategyLoader.hpp"
 
 // 네임 스페이스
 using namespace backtesting;
@@ -15,22 +18,53 @@ using namespace fetcher;
 
 namespace backtesting::main {
 
-class Backtesting {
+// 백테스팅 중지 요청을 받았는지 확인하고 Return하는 매크로
+#define RET_IF_STOP_REQUESTED(...)                                  \
+  if (backtesting::main::Backtesting::IsStopRequested()) {          \
+    const std::string stop_message = std::string(__VA_ARGS__);      \
+    if (!stop_message.empty()) {                                    \
+      logger_->Log(INFO_L, stop_message, __FILE__, __LINE__, true); \
+    }                                                               \
+                                                                    \
+    return;                                                         \
+  }
+
+// 백테스팅 중지 요청을 받았는지 확인하고 Break하는 매크로
+#define BRK_IF_STOP_REQUESTED(...)                                  \
+  if (backtesting::main::Backtesting::IsStopRequested()) {          \
+    const std::string stop_message = std::string(__VA_ARGS__);      \
+    if (!stop_message.empty()) {                                    \
+      logger_->Log(INFO_L, stop_message, __FILE__, __LINE__, true); \
+    }                                                               \
+                                                                    \
+    break;                                                          \
+  }
+
+class BACKTESTING_API Backtesting {
  public:
   Backtesting() = delete;
   ~Backtesting() = delete;
 
+  /// 서버 모드를 설정하는 함수
+  static void SetServerMode(bool server_mode);
+
+  /// 서버 모드 여부를 반환하는 함수
+  static bool IsServerMode();
+
+  /// 백테스팅 중지 요청 여부를 반환하는 함수
+  static bool IsStopRequested();
+
   /// 백테스팅을 실행하는 함수
   static void RunBacktesting();
 
-  // 로컬용 메인 실행
-  static void RunLocal();
-
-  // 서버용 메인 실행
+  /// 서버용 메인 실행
   static void RunServer();
 
-  // 서버용 단일 백테스팅 실행
+  /// 서버용 단일 백테스팅 실행 함수
   static void RunSingleBacktesting(const string& json_str);
+
+  /// 서버용 바 데이터 다운로드/업데이트 함수
+  static void FetchOrUpdateBarData(const string& json_str);
 
   /// 엔진에 설정값을 추가하는 함수.
   ///
@@ -54,69 +88,86 @@ class Backtesting {
   static void SetMarketDataDirectory(const string& market_data_directory);
 
   /**
-   * 지정된 심볼과 시간 프레임에 대해 연속 선물 klines 데이터를
+   * 지정된 심볼과 시간 프레임에 대한 연속 선물 klines 데이터를
    * Fetch 후 Parquet 형식으로 저장하는 함수
    *
    * @param symbol 연속 선물 캔들스틱 데이터를 가져올
    *               거래 쌍 심볼(예: "BTCUSDT")
    * @param timeframe 연속 선물 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
+   * @param continuous_klines_directory
+   *        연속 선물 캔들스틱 데이터를 저장할 폴더 경로
    */
-  static void FetchContinuousKlines(const string& symbol,
-                                    const string& timeframe);
+  static void FetchContinuousKlines(
+      const string& symbol, const string& timeframe,
+      const string& continuous_klines_directory = "");
 
   /**
-   * 주어진 심볼과 시간 프레임에 대한 연속 선물 캔들스틱 데이터를
+   * 지정된 심볼과 시간 프레임에 대한 연속 선물 캔들스틱 데이터를
    * 업데이트하는 함수
    *
    * @param symbol 업데이트 할 연속 선물 캔들스틱 데이터의
    *               거래 쌍 심볼(예: "BTCUSDT")
    * @param timeframe 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
+   * @param continuous_klines_directory
+   *        연속 선물 캔들스틱 데이터가 저장된 폴더 경로
    */
-  static void UpdateContinuousKlines(const string& symbol,
-                                     const string& timeframe);
+  static void UpdateContinuousKlines(
+      const string& symbol, const string& timeframe,
+      const string& continuous_klines_directory = "");
 
   /**
-   * 지정된 심볼과 시간 프레임에 대해 마크 가격 캔들스틱 데이터를
+   * 지정된 심볼과 시간 프레임에 대한 마크 가격 캔들스틱 데이터를
    * Fetch 후 Parquet 형식으로 저장하는 함수.
    *
    * @param symbol 마크 가격 캔들스틱 데이터를 가져올
    *               거래 쌍 심볼(예: "BTCUSDT")
    * @param timeframe 마크 가격 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
+   * @param mark_price_klines_directory
+   *        마크 가격 캔들스틱 데이터를 저장할 폴더 경로
    */
-  static void FetchMarkPriceKlines(const string& symbol,
-                                   const string& timeframe);
+  static void FetchMarkPriceKlines(
+      const string& symbol, const string& timeframe,
+      const string& mark_price_klines_directory = "");
 
   /**
-   * 주어진 심볼과 시간 프레임에 대한 마크 가격 캔들스틱 데이터를
+   * 지정된 심볼과 시간 프레임에 대한 마크 가격 캔들스틱 데이터를
    * 업데이트하는 함수
    *
    * @param symbol 업데이트 할 마크 가격 캔들스틱 데이터의
    *               거래 쌍 심볼(예: "BTCUSDT")
    * @param timeframe 마크 가격 캔들스틱 데이터의 타임프레임(예: "1m", "1h")
+   * @param mark_price_klines_directory
+   *        마크 가격 캔들스틱 데이터가 저장된 폴더 경로
    */
-  static void UpdateMarkPriceKlines(const string& symbol,
-                                    const string& timeframe);
+  static void UpdateMarkPriceKlines(
+      const string& symbol, const string& timeframe,
+      const string& mark_price_klines_directory = "");
+
   /**
-   * 지정된 심볼에 대해 펀딩 비율 데이터를 Fetch 후 json 형식으로 저장하는 함수
+   * 지정된 심볼에 대한 펀딩 비율 데이터를 Fetch 후 json 형식으로 저장하는 함수
    *
    * @param symbol 펀딩 비율 데이터를 가져올
    *               거래 쌍 심볼(예: "BTCUSDT")
+   * @param funding_rates_directory 펀딩 비율 데이터를 저장할 폴더 경로
    */
-  static void FetchFundingRates(const string& symbol);
+  static void FetchFundingRates(const string& symbol,
+                                const string& funding_rates_directory = "");
 
   /**
-   * 주어진 심볼에 대한 펀딩 비율 데이터를 업데이트하는 함수
+   * 지정된 심볼에 대한 펀딩 비율 데이터를 업데이트하는 함수
    *
    * @param symbol 업데이트 할 펀딩 비율 데이터의
    *               거래 쌍 심볼(예: "BTCUSDT")
+   * @param funding_rates_directory 펀딩 비율 데이터가 저장된 폴더 경로
    */
-  static void UpdateFundingRates(const string& symbol);
+  static void UpdateFundingRates(const string& symbol,
+                                 const string& funding_rates_directory = "");
 
   /// 바이낸스 선물 거래소 정보를 Fetch하고 저장하는 함수
-  static void FetchExchangeInfo();
+  static void FetchExchangeInfo(const string& exchange_info_path);
 
   /// 바이낸스 레버리지 구간을 Fecth하고 저장하는 함수
-  static void FetchLeverageBracket();
+  static void FetchLeverageBracket(const string& leverage_bracket_path);
 
   /// 주어진 데이터 폴더에서 각 심볼들의 폴더를 찾아 Parquet 데이터를 읽고
   /// 지정된 바 데이터 유형으로 처리하여 바 핸들러에 추가하는 함수
@@ -167,11 +218,12 @@ class Backtesting {
   static void AddStrategy(const string& name, Args&&... args) {
     try {
       Strategy::AddStrategy<CustomStrategy>(name, std::forward<Args>(args)...);
-    } catch (...) {
-      // 하위에서 이미 상세 로그를 남겼으므로 여기서는 간단하게
-      Logger::LogAndThrowError(
-          format("[{}] 전략을 엔진에 추가하는 데 실패했습니다.", name),
-          __FILE__, __LINE__);
+    } catch (const exception& e) {
+      logger_->Log(ERROR_L,
+                   format("[{}] 전략을 엔진에 추가하는 데 실패했습니다.", name),
+                   __FILE__, __LINE__, true);
+
+      throw runtime_error(e.what());
     }
   }
 
@@ -182,9 +234,21 @@ class Backtesting {
   static shared_ptr<BarHandler>& bar_;
   static shared_ptr<Logger>& logger_;
 
+  // 서버 모드 플래그
+  static bool server_mode_;
+
+  // 중지 요청 플래그
+  static atomic<bool> stop_requested_;
+
+  // DLL 로더 저장소
+  static vector<shared_ptr<StrategyLoader>> dll_loaders_;
+
   static string market_data_directory_;
   static string api_key_env_var_;
   static string api_secret_env_var_;
+
+  /// 엔진 코어를 초기화하는 함수
+  static void ResetCores();
 };
 
 }  // namespace backtesting::main

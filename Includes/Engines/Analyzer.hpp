@@ -9,12 +9,9 @@
 #include "nlohmann/json_fwd.hpp"
 
 // 내부 헤더
+#include "Engines/Export.hpp"
 #include "Engines/Logger.hpp"
-
-// 전방 선언
-namespace backtesting::analyzer {
-class Trade;
-}
+#include "Engines/Trade.hpp"
 
 namespace backtesting::bar {
 class BarData;
@@ -25,6 +22,10 @@ namespace backtesting::engine {
 class Config;
 class Engine;
 }  // namespace backtesting::engine
+
+namespace backtesting::main {
+class Backtesting;
+}
 
 namespace backtesting::order {
 class Order;
@@ -58,6 +59,7 @@ namespace backtesting {
 using namespace bar;
 using namespace engine;
 using namespace logger;
+using namespace main;
 using namespace indicator;
 using namespace strategy;
 using namespace order;
@@ -67,7 +69,9 @@ using namespace plot;
 namespace backtesting::analyzer {
 
 /// 거래 통계를 생성하는 분석기 클래스
-class Analyzer {
+class BACKTESTING_API Analyzer {
+  friend class Backtesting;
+
  public:
   static shared_ptr<Analyzer>& GetAnalyzer();
 
@@ -126,6 +130,7 @@ class Analyzer {
   static shared_ptr<Config>& config_;
   static shared_ptr<Engine>& engine_;
   static shared_ptr<Logger>& logger_;
+  static vector<SymbolInfo> symbol_info_;
 
   /// 이번 백테스팅의 결과가 저장될 메인 폴더
   string main_directory_;
@@ -134,14 +139,14 @@ class Analyzer {
   string begin_open_time_;
   string end_close_time_;
 
-  /// 심볼 정보
-  static vector<SymbolInfo> symbol_info_;
-
   /// 거래 목록
   vector<Trade> trade_list_;
 
   /// 마지막 거래 번호
   int trade_num_;
+
+  /// Analyzer의 싱글톤 인스턴스를 초기화하는 함수
+  static void ResetAnalyzer();
 
   /// 주어진 바 데이터에서 누락된 바들의 개수와
   /// 해당되는 바 범위의 Open Time 문자열 벡터를 반환하는 함수

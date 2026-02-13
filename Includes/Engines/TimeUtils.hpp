@@ -5,6 +5,7 @@
 #include <string>
 
 // 내부 헤더
+#include "Engines/Export.hpp"
 #include "Engines/Logger.hpp"
 
 // 네임 스페이스
@@ -16,7 +17,7 @@ using namespace backtesting::logger;
  */
 namespace backtesting::utils {
 
-static shared_ptr<Logger>& logger = Logger::GetLogger();
+inline shared_ptr<Logger>& logger = Logger::GetLogger();
 
 constexpr int64_t kSecond = 1000;
 constexpr int64_t kMinute = 60 * kSecond;
@@ -31,21 +32,21 @@ constexpr int64_t kYear = 12 * kMonth;
  *
  * @return 현재 로컬 타임스탬프
  */
-[[nodiscard]] int64_t GetCurrentLocalTimestamp();
+[[nodiscard]] BACKTESTING_API int64_t GetCurrentLocalTimestamp();
 
 /**
  * UTC 시간대를 기준으로 현재 타임스탬프를 반환하는 함수
  *
  * @return 현재 UTC 타임스탬프
  */
-[[nodiscard]] int64_t GetCurrentUtcTimestamp();
+[[nodiscard]] BACKTESTING_API int64_t GetCurrentUtcTimestamp();
 
 /**
  * 현재 시스템의 로컬 시간대를 기준으로 현재 날짜와 시간을 반환하는 함수
  *
  * @return 현재 로컬 날짜와 시간의 문자열
  */
-[[nodiscard]] string GetCurrentLocalDatetime();
+[[nodiscard]] BACKTESTING_API string GetCurrentLocalDatetime();
 
 /**
  * 최적화된 현재 시간 포맷팅 함수 (로그용)
@@ -54,7 +55,7 @@ constexpr int64_t kYear = 12 * kMonth;
  * @param buffer 출력 버퍼
  * @return 포맷된 시간 문자열의 길이
  */
-[[nodiscard]] size_t FormatCurrentTimeFast(char* buffer);
+[[nodiscard]] BACKTESTING_API size_t FormatCurrentTimeFast(char* buffer);
 
 /**
  * 주어진 타임스탬프(밀리초 기준)를 유닉스 에포크 시간대부터 UTC 날짜-시간
@@ -63,7 +64,18 @@ constexpr int64_t kYear = 12 * kMonth;
  * @param timestamp_ms 변환할 밀리초 단위의 타임스탬프
  * @return UTC 날짜와 시간의 문자열 표현
  */
-[[nodiscard]] string UtcTimestampToUtcDatetime(int64_t timestamp_ms);
+[[nodiscard]] BACKTESTING_API string
+UtcTimestampToUtcDatetime(int64_t timestamp_ms);
+
+/**
+ * 주어진 타임스탬프(밀리초 기준)를 유닉스 에포크 시간대부터 로컬 날짜-시간
+ * 문자열로 변환하여 반환하는 함수
+ *
+ * @param timestamp_ms 변환할 밀리초 단위의 타임스탬프
+ * @return 로컬 날짜와 시간의 문자열 표현
+ */
+[[nodiscard]] BACKTESTING_API string
+UtcTimestampToLocalDatetime(int64_t timestamp_ms);
 
 /**
  * 주어진 UTC 날짜 및 시간 문자열을 UTC 타임스탬프로 변환하여 반환하는 함수
@@ -72,8 +84,18 @@ constexpr int64_t kYear = 12 * kMonth;
  * @param format datetime 문자열의 포맷을 지정하는 형식 문자열
  * @return 밀리초 단위의 UTC 타임스탬프
  */
-[[nodiscard]] int64_t UtcDatetimeToUtcTimestamp(const string& datetime,
-                                                const string& format);
+[[nodiscard]] BACKTESTING_API int64_t
+UtcDatetimeToUtcTimestamp(const string& datetime, const string& format);
+
+/**
+ * 주어진 로컬 날짜 및 시간 문자열을 UTC 타임스탬프로 변환하여 반환하는 함수
+ *
+ * @param datetime 변환할 로컬 날짜 및 시간의 문자열
+ * @param format datetime 문자열의 포맷을 지정하는 형식 문자열
+ * @return 밀리초 단위의 UTC 타임스탬프
+ */
+[[nodiscard]] BACKTESTING_API int64_t
+LocalDatetimeToUtcTimestamp(const string& datetime, const string& format);
 
 /**
  * 주어진 타임프레임(밀리초 기준)을 사람이 읽을 수 있는
@@ -82,18 +104,19 @@ constexpr int64_t kYear = 12 * kMonth;
  * @param timeframe_ms 밀리초 단위로 주어진 타임프레임
  * @return 사람이 읽을 수 있는 시간 단위로 변환된 문자열
  */
-[[nodiscard]] string FormatTimeframe(int64_t timeframe_ms);
+[[nodiscard]] BACKTESTING_API string FormatTimeframe(int64_t timeframe_ms);
 
 /// 타임프레임 문자열을 타임스탬프로 변환하여 반환하는 함수
-int64_t ParseTimeframe(const string& timeframe_str);
+BACKTESTING_API int64_t ParseTimeframe(const string& timeframe_str);
 
 /// 타임스탬프 차이를 보기 쉬운 시간으로 포맷하여 반환하는 함수
-[[nodiscard]] string FormatTimeDiff(int64_t diff_ms);
+[[nodiscard]] BACKTESTING_API string FormatTimeDiff(int64_t diff_ms);
 
 /// 타임스탬프 값이 ms 단위인지 검사하는 함수
-[[nodiscard]] bool IsTimestampMs(int64_t timestamp);
+[[nodiscard]] BACKTESTING_API bool IsTimestampMs(int64_t timestamp);
 
 /// 주어진 타임스탬프에서 다음 월 경계 시간을 계산하는 함수
-[[nodiscard]] int64_t CalculateNextMonthBoundary(int64_t timestamp_ms);
+[[nodiscard]] BACKTESTING_API int64_t
+CalculateNextMonthBoundary(int64_t timestamp_ms);
 
 }  // namespace backtesting::utils

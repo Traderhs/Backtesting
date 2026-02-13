@@ -13,26 +13,21 @@ ExponentialAverageTrueRange::ExponentialAverageTrueRange(
     const double period)
     : Indicator(name, timeframe, plot),
       symbol_idx_(-1),
+      sizet_period_(static_cast<size_t>(period)),
+      double_period_(period),
       prev_close_(0.0),
       first_bar_(true),
       count_(0),
       sum_(0.0),
       can_calculate_(false),
       prev_atr_(0.0),
-      alpha_(0.0) {
+      alpha_(2.0 / (period + 1.0)) {
   if (period <= 0) {
-    Logger::LogAndThrowError(
+    throw runtime_error(
         format("ExponentialAverageTrueRange 지표의 Period [{}]은(는) 0보다 "
                "커야 합니다.",
-               period),
-        __FILE__, __LINE__);
+               period));
   }
-
-  // 타입 안정성과 속도를 위해 미리 변환
-  double_period_ = period;
-  sizet_period_ = static_cast<size_t>(period);
-  // EMA alpha: 2 / (N + 1)
-  alpha_ = 2.0 / (double_period_ + 1.0);
 }
 
 void ExponentialAverageTrueRange::Initialize() {

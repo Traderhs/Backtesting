@@ -21,16 +21,25 @@
 #include <string>
 #include <thread>
 
+// 내부 헤더
+#include "Engines/Export.hpp"
+
 // 전방 선언
 namespace backtesting::analyzer {
 class Analyzer;
 }
 
+namespace backtesting::main {
+class Backtesting;
+}
+
 // 네임 스페이스
 using namespace std;
+
 namespace backtesting {
 using namespace analyzer;
-}
+using namespace main;
+}  // namespace backtesting
 
 namespace backtesting::logger {
 
@@ -73,9 +82,9 @@ using enum LogLevel;
  * 하드웨어 레벨 최적화된 고성능 비동기 로깅 버퍼
  * 멀티 버퍼링과 캐시 라인 정렬을 통한 극한 성능 최적화
  */
-struct alignas(64) FastLogBuffer {
+struct BACKTESTING_API alignas(64) FastLogBuffer {
   static constexpr size_t buffer_size =
-      8 * 1024 * 1024;                      // 8MB 버퍼 (더 큰 배치 처리)
+      8 * 1024 * 1024;  // 8MB 버퍼 (더 큰 배치 처리)
   static constexpr size_t max_buffers = 2;  // 더블 버퍼링
   static constexpr size_t flush_threshold =
       buffer_size * 3 / 4;  // 버퍼 75% 찼을 때 플러시 고려
@@ -83,7 +92,7 @@ struct alignas(64) FastLogBuffer {
   /**
    * 개별 버퍼 구조체 - 캐시 라인 정렬 및 하드웨어 최적화
    */
-  struct alignas(64) Buffer {
+  struct BACKTESTING_API alignas(64) Buffer {
     char data[buffer_size];
     alignas(64) atomic<size_t> write_pos{0};
     alignas(64) atomic<bool> ready_to_flush{false};
@@ -142,8 +151,8 @@ struct alignas(64) FastLogBuffer {
    * @param len 메시지 길이
    * @return 성공 여부
    */
-  [[nodiscard]] FORCE_INLINE bool write_message(const char* RESTRICT msg,
-                                                const size_t len) noexcept {
+  [[nodiscard]] bool write_message(const char* RESTRICT msg,
+                                   const size_t len) noexcept {
     const size_t buf_idx = current_buffer.load(memory_order_relaxed);
     Buffer& buffer = buffers[buf_idx];
 
@@ -170,8 +179,10 @@ struct alignas(64) FastLogBuffer {
  * 싱글톤 패턴을 사용하여 전역 로깅을 관리
  * 하드웨어 레벨 최적화된 비동기 로깅 시스템
  */
-class Logger final {
+class BACKTESTING_API Logger final {
+  // FlushAllBuffers 접근용
   friend class Analyzer;
+  friend class Backtesting;
 
  public:
   // 싱글톤 특성 유지
@@ -222,15 +233,6 @@ class Logger final {
                    bool log_to_console = false);
 
   /**
-   * 에러를 로깅하고 Throw하는 함수
-   * @param message 오류에 대한 설명 메시지
-   * @param file __FILE__로 지정
-   * @param line __LINE__으로 지정
-   */
-  static void LogAndThrowError(const string& message, const string& file,
-                               int line);
-
-  /**
    * 로거 소멸자 - 백그라운드 쓰레드 정리
    */
   ~Logger();
@@ -278,30 +280,25 @@ class Logger final {
   atomic<bool> stop_logging_;
   thread logging_thread_;
 
-  // 고성능 쓰기를 위한 내부 구조체
-  struct LogMessage {
-    LogLevel level;
-    string message;
-    string file;
-    int line;
-    bool log_to_console;
-    bool is_formatted;
+  /// Logger의 리소스를 안전하게 해제하는 함수
+  void Shutdown();
 
-    LogMessage(const LogLevel l, const string&& msg, const string&& f,
-               const int ln, const bool console, const bool fmt)
-        : level(l),
-          message(msg),
-          file(f),
-          line(ln),
-          log_to_console(console),
-          is_formatted(fmt) {}
-  };
+  /**
+   * Logger의 싱글톤 인스턴스를 초기화하는 함수
+   *
+   * @param debug_log_name 디버그 수준 로그를 저장할 파일 이름
+   * @param info_log_name 정보 수준 로그를 저장할 파일 이름
+   * @param warn_log_name 경고 수준 로그를 저장할 파일 이름
+   * @param error_log_name 오류 수준 로그를 저장할 파일 이름
+   * @param backtesting_log_name 각 백테스팅 폴더에 로그를 저장할 파일 이름
+   */
+  static void ResetLogger(
+      const string& debug_log_name = "debug.log",
+      const string& info_log_name = "info.log",
+      const string& warn_log_name = "warn.log",
+      const string& error_log_name = "error.log",
+      const string& backtesting_log_name = "backtesting.log");
 
-  // 스레드 로컬 캐시
-  thread_local static char format_cache_[2048];  // 시간 추가로 인한 크기 증가
-  thread_local static char filename_cache_[256];
-
-  // 핵심 성능 최적화 함수들
   /**
    * 멀티 버퍼를 처리하는 백그라운드 스레드 함수
    */
@@ -329,18 +326,6 @@ class Logger final {
   void FlushAllBuffers();
 
   /**
-   * 강제로 모든 버퍼를 플러시하는 함수
-   */
-  void ForceFlushAll();
-
-  /**
-   * 특정 버퍼를 강제로 플러시하는 함수
-   * @param buffer 플러시할 버퍼
-   * @param file 쓰기할 파일 스트림
-   */
-  static void ForceFlushBuffer(FastLogBuffer& buffer, ofstream& file);
-
-  /**
    * 지정된 버퍼 인덱스의 버퍼를 플러시하는 함수
    * @param buffer 플러시할 버퍼
    * @param buffer_idx 버퍼 인덱스
@@ -349,7 +334,6 @@ class Logger final {
   static void FlushBuffer(FastLogBuffer& buffer, size_t buffer_idx,
                           ofstream& file);
 
-  // 정적 유틸리티 함수들
   /**
    * 빠른 메시지 포맷팅 함수
    * @param buffer 포맷팅 결과를 저장할 버퍼

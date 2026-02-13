@@ -112,6 +112,19 @@ const AreaSeriesTemplate = forwardRef<AreaSeriesHandle, AreaSeriesProps>((props,
                 }
             }
         }
+
+        // 컴포넌트 언마운트 시 시리즈 제거
+        return () => {
+            if (seriesRef.current && chart) {
+                try {
+                    chart.removeSeries(seriesRef.current);
+                } catch (e) {
+                    // 차트가 이미 제거된 경우 무시
+                }
+
+                seriesRef.current = null;
+            }
+        };
     }, [
         chart,
         paneIndex,

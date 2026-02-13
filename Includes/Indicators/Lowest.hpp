@@ -7,7 +7,7 @@
 #include "Engines/Indicator.hpp"
 
 /// 주어진 기간 내 최저값
-class Lowest final : public Indicator {
+class BACKTESTING_API Lowest final : public Indicator {
  public:
   explicit Lowest(const string& name, const string& timeframe, const Plot& plot,
                   Indicator& source, double period);

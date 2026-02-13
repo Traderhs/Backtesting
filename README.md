@@ -83,23 +83,23 @@ using namespace backtesting::main;
 int main() {
   const vector<string> symbols = {"BTCUSDT", "ETHUSDT", "SOLUSDT"};
 
-  Backtesting::SetMarketDataDirectory("D:/Programming/Backtesting/Data");
+  Backtesting::SetMarketDataDirectory("D:/Dev/Backtesting/Data");
 
   // Core engine settings (project directory is used for outputs and source auto-detection)
   Backtesting::SetConfig()
-      .SetProjectDirectory("D:/Programming/Backtesting")
+      .SetProjectDirectory("D:/Dev/Backtesting")
       .SetBacktestPeriod()  // empty = full available range
       .SetUseBarMagnifier(true);
 
   // Bar streams
-  Backtesting::AddBarData(symbols, "1h", "D:/Programming/Backtesting/Data/Continuous Klines", TRADING);
-  Backtesting::AddBarData(symbols, "1m", "D:/Programming/Backtesting/Data/Continuous Klines", MAGNIFIER);
-  Backtesting::AddBarData(symbols, "1m", "D:/Programming/Backtesting/Data/Mark Price Klines", MARK_PRICE);
+  Backtesting::AddBarData(symbols, "1h", "D:/Dev/Backtesting/Data/Continuous Klines", TRADING);
+  Backtesting::AddBarData(symbols, "1m", "D:/Dev/Backtesting/Data/Continuous Klines", MAGNIFIER);
+  Backtesting::AddBarData(symbols, "1m", "D:/Dev/Backtesting/Data/Mark Price Klines", MARK_PRICE);
 
   // Exchange metadata (optional but recommended)
-  Backtesting::AddExchangeInfo("D:/Programming/Backtesting/Data/exchange_info.json");
-  Backtesting::AddLeverageBracket("D:/Programming/Backtesting/Data/leverage_bracket.json");
-  Backtesting::AddFundingRates(symbols, "D:/Programming/Backtesting/Data/Funding Rates");
+  Backtesting::AddExchangeInfo("D:/Dev/Backtesting/Data/exchange_info.json");
+  Backtesting::AddLeverageBracket("D:/Dev/Backtesting/Data/leverage_bracket.json");
+  Backtesting::AddFundingRates(symbols, "D:/Dev/Backtesting/Data/Funding Rates");
 
   // Strategy (one per run)
   // Backtesting::AddStrategy<MyStrategy>("My Strategy");
@@ -116,16 +116,20 @@ After a run completes, open the newest folder under `Results/` and point BackBoa
 ## Repository Layout
 
 - **C++ Engine (headers):** `Includes/Engines/`, `Includes/Indicators/`, `Includes/Strategies/`
-- **C++ Engine (implementation):** `Sources/cpp/Engines/`, `Sources/cpp/Indicators/`, `Sources/cpp/Strategies/`
-- **BackBoard (Node + React):** `Sources/js/`
-    - Entry shim: `Sources/js/launch.js`
-    - Server: `Sources/js/server/launch.js` (Express + WebSocket)
+- **C++ Engine (implementation):** `Sources/Cores/Engines/`, `Sources/Cores/Indicators/`, `Sources/Cores/Strategies/`
+- **BackBoard (Electron + React + TypeScript):** `Sources/Clients/`
+    - Main entry: `Sources/Clients/launch.js`
+    - Electron process: `Sources/Clients/Electron/Main.js`
+    - Server: `Sources/Clients/Servers/Launch.js` (Express + WebSocket)
+    - React application: `Sources/Clients/Apps/` (TypeScript + Vite)
+    - Strategy Editor: `Sources/Clients/Apps/Components/StrategyEditor/`
 - **Market data:** `Data/`
     - `Continuous Klines/` (OHLCV Parquet)
     - `Mark Price Klines/` (mark price Parquet)
     - `Funding Rates/` (JSON)
     - `exchange_info.json`, `leverage_bracket.json`
 - **Backtest outputs:** `Results/<YYYYMMDD_HHMMSS>/`
+- **BackBoard runtime directory:** `BackBoard/` (stores config, logs, trade data for active sessions)
 
 ---
 
@@ -145,6 +149,8 @@ After a run completes, open the newest folder under `Results/` and point BackBoa
 - **Single-strategy constraint per run**
     - The engine runs **one** `Strategy` per backtest execution.
     - BackBoard can be used to compare/compose results across multiple independent runs.
+- **DLL-based Strategy/Indicator Loading**
+  - Strategies and indicators are compiled into separate DLLs and loaded by the backtesting engine at runtime.
 
 ---
 
@@ -196,8 +202,91 @@ Notes:
 - `BackBoard/trade_list.json` is exported as UTF-8 with BOM for compatibility.
 - `BackBoard/Indicators/*` stores indicator time series for plotted (non-OHLCV) indicators.
 - `BackBoard/Sources/*` stores copies of the strategy/indicator source/header files when paths are available.
-- If a local BackBoard package is present at `Sources/js/BackBoard Package`, it is copied into the run directory;
+- If a local BackBoard package is present at `Sources/Clients/BackBoard Package`, it is copied into the run directory;
   otherwise, the engine can fetch a packaged BackBoard from a GitHub release as a fallback.
+
+---
+
+## BackBoard: Visualization & Strategy Editor
+
+BackBoard is an **Electron-based desktop application** that serves two main purposes:
+
+1. **Results Visualization**: Interactive analysis of backtesting results
+2. **Strategy Editor**: Integrated development environment for creating and running backtests
+
+### Results Viewer
+
+After a backtest completes, BackBoard provides:
+
+- **Overview**: Equity curve, Sharpe ratio, max drawdown, and key performance metrics
+- **Performance Analysis**: Detailed statistics (win rate, profit factor, average trade duration, etc.)
+- **Symbol Performance**: Per-symbol breakdown with individual equity curves
+- **Chart View**: Interactive price charts with indicators and executed trades
+- **Trade List**: Comprehensive trade history with filtering and sorting capabilities
+- **Config & Logs**: Run configuration and execution logs
+
+### Strategy Editor
+
+The Strategy Editor is a complete IDE for backtesting, accessible directly from BackBoard. It provides:
+
+#### Core Features
+
+- **Symbol Management**
+    - Configure trading symbols (BTCUSDT, ETHUSDT, etc.)
+    - Auto-detect available symbols from data directory
+    - Custom symbol pair selection
+
+- **Bar Data Configuration**
+    - Configure multiple timeframes (Trading, Magnifier, Reference, Mark Price)
+    - Support for standard timeframes (1m, 5m, 15m, 1h, 4h, 1d, etc.)
+    - Automatic data path detection from `Data/Continuous Klines/`
+
+- **Exchange Settings**
+    - Exchange info and leverage bracket configuration
+    - Funding rates directory selection
+    - Last data update tracking
+
+- **Engine Configuration**
+    - Project directory selection
+    - Backtest period (start/end dates or full range)
+    - Bar magnifier toggle
+    - Initial balance
+    - Fee configuration (taker/maker)
+    - Slippage models (Percentage or Market Impact)
+    - Quantity validation settings
+    - Bar data duplication checks
+
+- **Strategy Selection**
+    - Browse and select strategy DLLs
+    - Configure header/source directory paths for strategies and indicators
+    - Automatic source file detection
+
+- **Backtest Execution**
+    - One-click backtest launch
+    - Real-time log streaming
+    - Progress monitoring
+    - Stop/restart capabilities
+    - Automatic result directory creation
+
+#### Technical Architecture
+
+The Strategy Editor is implemented as a React/TypeScript application with:
+
+- **State Management**: Context-based architecture (`StrategyContext`) managing all configuration state
+- **WebSocket Communication**: Real-time bidirectional communication between UI and C++ engine
+- **Configuration Persistence**: Settings saved to `BackBoard/editor.json`
+- **Process Management**: Direct integration with backtesting engine via WebSocket server
+
+#### Workflow
+
+1. Open BackBoard and switch to "Strategy Editor" tab
+2. Configure symbols, bar data, exchange settings, and engine parameters
+3. Select or create a strategy DLL
+4. Click "Run Backtest" to launch
+5. Monitor real-time logs during execution
+6. View results automatically in the Results Viewer upon completion
+
+The editor eliminates the need for manual configuration files or command-line compilation, providing a seamless development and testing experience.
 
 ---
 
@@ -231,7 +320,8 @@ SMA indicator code (based on the repository implementation):
 #include "Engines/Logger.hpp"
 
 /// Simple Moving Average (SMA)
-class SimpleMovingAverage final : public Indicator {
+// Note: If this indicator is built/loaded as a DLL, the build system automatically handles proper linkage
+class BACKTESTING_API SimpleMovingAverage final : public Indicator {
  public:
   explicit SimpleMovingAverage(const string& name, const string& timeframe,
                                const Plot& plot, Indicator& source,
@@ -255,7 +345,7 @@ class SimpleMovingAverage final : public Indicator {
 ```
 
 ```cpp
-// Sources/cpp/Indicators/SimpleMovingAverage.cpp
+// Sources/Cores/Indicators/SimpleMovingAverage.cpp
 #include "Indicators/SimpleMovingAverage.hpp"
 #include <algorithm>
 
@@ -325,7 +415,7 @@ This minimal example follows the same pattern used in the codebase (see `TestStr
 Source path auto-detection (used for saving sources into `Results/<run>/BackBoard/Sources/`) expects:
 
 - `Includes/Strategies/<ClassName>.hpp`
-- `Sources/cpp/Strategies/<ClassName>.cpp`
+- `Sources/Cores/Strategies/<ClassName>.cpp`
 
 ```cpp
 // Includes/Strategies/SmaStrategy.hpp
@@ -333,7 +423,7 @@ Source path auto-detection (used for saving sources into `Results/<run>/BackBoar
 
 #include "Engines/Strategy.hpp"
 
-class SmaStrategy final : public Strategy {
+class BACKTESTING_API SmaStrategy final : public Strategy {
  public:
   explicit SmaStrategy(const string& name);
   ~SmaStrategy() override;
@@ -349,7 +439,7 @@ class SmaStrategy final : public Strategy {
 ```
 
 ```cpp
-// Sources/cpp/Strategies/SmaStrategy.cpp
+// Sources/Cores/Strategies/SmaStrategy.cpp
 #include "Strategies/SmaStrategy.hpp"
 
 SmaStrategy::SmaStrategy(const string& name)
@@ -386,8 +476,36 @@ void SmaStrategy::ExecuteAfterExit() {}
 Important:
 
 - The engine allows **one** strategy per backtest run.
+- Constraint: Automatic source detection requires the **file name** and **class name** to match and be placed under
+  `Includes/Strategies/` + `Sources/Cores/Strategies/` or `Includes/Indicators/` + `Sources/Cores/Indicators/`.
 - This follows the principle of isolating strategies into separate accounts; aggregation of multi-strategy (
   multi-account) results will be supported in BackBoard in a future release.
+
+### DLL Export / BACKTESTING_API (Windows DLL requirement)
+
+- When compiling **Strategies** or **Indicators** as DLLs that the engine will load at runtime, the class declaration *
+  *must** be annotated with the `BACKTESTING_API` macro so symbols are exported/imported correctly on Windows (MSVC).
+  Example:
+
+```cpp
+// Includes/Strategies/MyStrategy.hpp
+class BACKTESTING_API MyStrategy final : public Strategy {
+  // ...
+};
+```
+
+- The same applies to indicators:
+
+```cpp
+// Includes/Indicators/MyIndicator.hpp
+class BACKTESTING_API MyIndicator final : public Indicator {
+  // ...
+};
+```
+
+- The `BACKTESTING_API` macro is defined in `Includes/Engines/Export.hpp` and resolves to `__declspec(dllexport)` when
+  `BACKTESTING_EXPORTS` is defined (building the DLL) and to `__declspec(dllimport)` when consuming it. Omitting the
+  macro can cause unresolved symbols or runtime DLL load failures.
 
 ---
 

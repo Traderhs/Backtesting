@@ -10,7 +10,7 @@ namespace backtesting::numeric {
 
 /// 부동소숫점 오류를 방지하기 위한 연산자를 지원하는 템플릿 숫자 클래스
 template <typename T>
-class Numeric final {
+class BACKTESTING_API Numeric final {
  public:
   // 생성자
   Numeric() : value_(T{}) {}

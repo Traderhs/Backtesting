@@ -28,12 +28,12 @@ BaseOrderHandler::BaseOrderHandler()
     : initial_balance_(NAN),
       taker_fee_percentage_(NAN),
       maker_fee_percentage_(NAN),
-      check_limit_max_qty_(true),
-      check_limit_min_qty_(true),
       check_market_max_qty_(true),
       check_market_min_qty_(true),
+      check_limit_max_qty_(true),
+      check_limit_min_qty_(true),
       check_min_notional_value_(true),
-      current_position_size_(0),
+      current_position_size_(0.0),
       just_entered_(false),
       just_exited_(false),
       is_reverse_exit_(false),
@@ -41,12 +41,17 @@ BaseOrderHandler::BaseOrderHandler()
       is_initialized_(false) {}
 BaseOrderHandler::~BaseOrderHandler() = default;
 
-shared_ptr<Analyzer>& BaseOrderHandler::analyzer_ = Analyzer::GetAnalyzer();
-shared_ptr<BarHandler>& BaseOrderHandler::bar_ = BarHandler::GetBarHandler();
-shared_ptr<Config>& BaseOrderHandler::config_ = Engine::GetConfig();
-shared_ptr<Engine>& BaseOrderHandler::engine_ = Engine::GetEngine();
-shared_ptr<Logger>& BaseOrderHandler::logger_ = Logger::GetLogger();
-vector<SymbolInfo> BaseOrderHandler::symbol_info_;
+BACKTESTING_API shared_ptr<Analyzer>& BaseOrderHandler::analyzer_ =
+    Analyzer::GetAnalyzer();
+BACKTESTING_API shared_ptr<BarHandler>& BaseOrderHandler::bar_ =
+    BarHandler::GetBarHandler();
+BACKTESTING_API shared_ptr<Config>& BaseOrderHandler::config_ =
+    Engine::GetConfig();
+BACKTESTING_API shared_ptr<Engine>& BaseOrderHandler::engine_ =
+    Engine::GetEngine();
+BACKTESTING_API shared_ptr<Logger>& BaseOrderHandler::logger_ =
+    Logger::GetLogger();
+BACKTESTING_API vector<SymbolInfo> BaseOrderHandler::symbol_info_;
 
 void BaseOrderHandler::Cancel(const string& order_name,
                               const CancelType cancel_type,
@@ -273,6 +278,47 @@ double BaseOrderHandler::CalculateLiquidationPrice(
   }
 }
 
+void BaseOrderHandler::ResetBaseOrderHandler() {
+  config_.reset();
+  symbol_info_.clear();
+
+  initial_balance_ = NAN;
+  slippage_.reset();
+  taker_fee_percentage_ = NAN;
+  maker_fee_percentage_ = NAN;
+  check_market_max_qty_ = true;
+  check_market_min_qty_ = true;
+  check_limit_max_qty_ = true;
+  check_limit_min_qty_ = true;
+  check_min_notional_value_ = true;
+
+  symbol_names_.clear();
+
+  pending_entries_.clear();
+  filled_entries_.clear();
+  pending_exits_.clear();
+
+  should_fill_orders_.clear();
+
+  current_position_size_ = 0.0;
+
+  just_entered_ = false;
+  just_exited_ = false;
+
+  last_entry_bar_indices_.clear();
+  last_exit_bar_indices_.clear();
+
+  last_entry_prices_.clear();
+  last_exit_prices_.clear();
+
+  is_reverse_exit_ = false;
+  reverse_exit_price_ = NAN;
+
+  is_initialized_ = false;
+
+  leverages_.clear();
+}
+
 optional<string> BaseOrderHandler::AdjustLeverage(const int leverage,
                                                   const int symbol_idx) {
   const auto current_leverage = leverages_[symbol_idx];
@@ -425,9 +471,10 @@ double BaseOrderHandler::CalculateTradingFee(const OrderType order_type,
     }
 
     [[unlikely]] case ORDER_NONE: {
-      Logger::LogAndThrowError("수수료 계산 오류: 주문 타입이 NONE으로 지정됨.",
-                               __FILE__, __LINE__);
-      return NAN;
+      logger_->Log(ERROR_L, "수수료 계산 중 엔진 오류가 발생했습니다.",
+                   __FILE__, __LINE__, true);
+
+      throw runtime_error("주문 유형은 ORDER_NONE으로 지정할 수 없습니다.");
     }
   }
 
@@ -448,11 +495,12 @@ LeverageBracket BaseOrderHandler::GetLeverageBracket(
     }
   }
 
-  [[unlikely]] Logger::LogAndThrowError(
-      format("엔진 오류: 명목 가치 [{}]에 해당되는 레버리지 구간 미존재",
-             FormatDollar(notional_value, true)),
-      __FILE__, __LINE__);
-  [[unlikely]] throw;
+  logger_->Log(ERROR_L, "레버리지 구간을 얻는 중 엔진 오류가 발생했습니다.",
+               __FILE__, __LINE__, true);
+
+  throw runtime_error(
+      format("명목 가치 [{}]에 해당되는 레버리지 구간이 존재하지 않습니다.",
+             FormatDollar(notional_value, true)));
 }
 
 double BaseOrderHandler::CalculatePnl(const Direction entry_direction,
@@ -467,9 +515,10 @@ double BaseOrderHandler::CalculatePnl(const Direction entry_direction,
     return (entry_price - base_price) * position_size;
   }
 
-  [[unlikely]] Logger::LogAndThrowError("손익 계산 중 방향 오지정", __FILE__,
-                                        __LINE__);
-  [[unlikely]] return NAN;
+  logger_->Log(ERROR_L, "손익 계산 중 엔진 오류가 발생했습니다.", __FILE__,
+               __LINE__, true);
+
+  throw runtime_error("주문 방향은 DIRECTION_NONE으로 지정할 수 없습니다.");
 }
 
 optional<string> BaseOrderHandler::IsValidPositionSize(
@@ -551,12 +600,12 @@ optional<string> BaseOrderHandler::IsValidPositionSize(
         break;
       }
 
-      case ORDER_NONE:
-        [[unlikely]] {
-          Logger::LogAndThrowError(
-              "엔진 오류: 포지션 크기 계산 중 주문 타입 오류", __FILE__,
-              __LINE__);
-        }
+      [[unlikely]] case ORDER_NONE: {
+        logger_->Log(ERROR_L, "포지션 크기 계산 중 엔진 오류가 발생했습니다.",
+                     __FILE__, __LINE__, true);
+
+        throw runtime_error("주문 유형은 ORDER_NONE으로 지정할 수 없습니다.");
+      }
     }
   }
 
@@ -596,9 +645,8 @@ void BaseOrderHandler::UpdateLastExitBarIndex(const int symbol_idx) {
 void BaseOrderHandler::Initialize(const int num_symbols,
                                   const vector<string>& symbol_names) {
   if (is_initialized_) [[unlikely]] {
-    Logger::LogAndThrowError(
-        "주문 핸들러가 이미 초기화가 완료되어 다시 초기화할 수 없습니다.",
-        __FILE__, __LINE__);
+    throw runtime_error(
+        "OrderHandler가 이미 초기화되어 다시 초기화할 수 없습니다.");
   }
 
   // 엔진 설정 초기화
@@ -606,10 +654,10 @@ void BaseOrderHandler::Initialize(const int num_symbols,
   slippage_ = config_->GetSlippage();
   taker_fee_percentage_ = config_->GetTakerFeePercentage();
   maker_fee_percentage_ = config_->GetMakerFeePercentage();
-  check_limit_max_qty_ = *config_->GetCheckLimitMaxQty();
-  check_limit_min_qty_ = *config_->GetCheckLimitMinQty();
   check_market_max_qty_ = *config_->GetCheckMarketMaxQty();
   check_market_min_qty_ = *config_->GetCheckMarketMinQty();
+  check_limit_max_qty_ = *config_->GetCheckLimitMaxQty();
+  check_limit_min_qty_ = *config_->GetCheckLimitMinQty();
   check_min_notional_value_ = *config_->GetCheckMinNotionalValue();
 
   // 심볼 이름 초기화
@@ -650,9 +698,8 @@ void BaseOrderHandler::SetSymbolInfo(const vector<SymbolInfo>& symbol_info) {
   if (symbol_info_.empty()) {
     symbol_info_ = symbol_info;
   } else [[unlikely]] {
-    Logger::LogAndThrowError(
-        "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.", __FILE__,
-        __LINE__);
+    throw runtime_error(
+        "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.");
   }
 }
 
@@ -712,10 +759,12 @@ void BaseOrderHandler::DecreaseUsedMarginOnEntryCancel(
     }
 
     [[unlikely]] case ORDER_NONE: {
-      Logger::LogAndThrowError(
-          "진입 대기 주문 취소를 위해 예약 마진 감소 중 오류 발생: 주문 타입이 "
-          "NONE으로 지정됨.",
-          __FILE__, __LINE__);
+      logger_->Log(ERROR_L,
+                   "진입 대기 주문 취소를 위해 예약 마진 감소 중 엔진 오류가 "
+                   "발생했습니다.",
+                   __FILE__, __LINE__, true);
+
+      throw runtime_error("주문 유형은 ORDER_NONE으로 지정할 수 없습니다.");
     }
   }
 }

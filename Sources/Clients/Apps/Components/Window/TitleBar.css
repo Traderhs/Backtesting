@@ -15,22 +15,218 @@
     -webkit-app-region: drag;
 }
 
+/* Dropdown이 열렸을 때 titlebar의 드래그 영역을 일시적으로 비활성화하여
+   document-level 클릭(외부 클릭)을 정상적으로 수신할 수 있게 함. */
+.titlebar-root.titlebar-disable-drag {
+    -webkit-app-region: no-drag;
+}
+
 .titlebar-left {
     display: flex;
     align-items: center;
     gap: 10px;
 }
 
+/* Results 선택 드롭다운 스타일 */
+.results-select {
+    height: 26px;
+    padding: 4px 8px;
+    border: 1px solid rgb(255 255 255 / 6%);
+    border-radius: 4px;
+    background: transparent;
+    color: inherit;
+    font-size: 13px;
+    appearance: none;
+}
+
+.results-select:focus {
+    box-shadow: 0 0 0 3px rgb(255 215 0 / 6%);
+    outline: none;
+}
+
 .titlebar-icon {
     flex-shrink: 0;
     width: 24px;
     height: 24px;
-    background: url("/Icons/backboard.ico") center/contain no-repeat;
+    background: url("/Bundles/Icons/backboard.ico") center/contain no-repeat;
+}
+
+/* ------------------------------------------------------------------
+   TitleBar 전용 드롭다운 스타일
+   ------------------------------------------------------------------ */
+.titlebar-dropdown-field {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    transition: all 0.2s ease;
+    -webkit-app-region: no-drag;
+}
+
+.titlebar-dropdown-field .chart-loading-indicator {
+    width: 14px !important;
+    height: 14px !important;
+    margin-right: 6px;
+    border-width: 2px !important;
+    box-shadow: none !important;
+    border-top-color: rgb(255 215 0) !important;
+}
+
+.titlebar-dropdown-select {
+    position: relative;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
+    width: 100%;
+    height: 32px !important;
+    padding: 0 28px 0 8px !important;
+    overflow: hidden;
+    border: 1px solid rgb(255 215 0 / 20%) !important;
+    border-radius: 6px !important;
+    background-color: transparent !important;
+    color: inherit !important;
+    font-family: Inter, Pretendard, sans-serif !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease !important;
+    cursor: pointer !important;
+    -webkit-app-region: no-drag;
+    appearance: none;
+}
+
+.titlebar-dropdown-select.loading {
+    position: relative;
+    color: transparent;
+}
+
+.titlebar-dropdown-select.loading .dropdown-loading-wrapper {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    z-index: 210; /* 화살표 위에 표시 */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: auto;
+    height: auto;
+    transform: translate(-50%, -50%);
+    pointer-events: none; /* 로딩 중에는 클릭 무시 */
+}
+
+.titlebar-dropdown-select.loading::after {
+    right: 8px;
+}
+
+.titlebar-dropdown-select::after {
+    position: absolute;
+    top: 50%;
+    right: 8px;
+    width: 0;
+    height: 0;
+    margin-top: -3px;
+    border-top: 6px solid rgb(255 215 0 / 70%);
+    border-right: 4px solid transparent;
+    border-left: 4px solid transparent;
+    transform: none;
+    transition: transform 0.2s ease;
+    content: '';
+}
+
+.titlebar-dropdown-field:has(.titlebar-dropdown-options) .titlebar-dropdown-select::after {
+    transform: rotate(180deg);
+}
+
+.titlebar-dropdown-select:focus {
+    outline: none !important;
+}
+
+.titlebar-dropdown-select:hover {
+    border-color: rgb(255 215 0 / 80%) !important;
+    background-color: transparent;
+}
+
+.titlebar-dropdown-select:focus-visible {
+    outline: 2px solid rgb(255 215 0 / 12%);
+    outline-offset: 2px;
+}
+
+.titlebar-dropdown-field:has(.titlebar-dropdown-options) .titlebar-dropdown-select {
+    border-color: rgb(255 215 0 / 80%) !important;
+    box-shadow: 0 0 6px rgb(255 215 0 / 40%) !important;
+}
+
+.titlebar-dropdown-options {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 500;
+    width: 100%;
+    max-height: 220px;
+    margin-top: 6px;
+    overflow-y: auto;
+    border: 1px solid rgb(255 215 0 / 20%) !important;
+    border-radius: 8px !important;
+    background-color: #0f0f0f !important;
+    box-shadow: 0 6px 24px rgb(0 0 0 / 75%) !important;
+    opacity: 0;
+    transform: translateY(-6px);
+    animation: dropdown-appear-tb 0.18s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    -webkit-app-region: no-drag;
+}
+
+@keyframes dropdown-appear-tb {
+    0% {
+        opacity: 0;
+        transform: translateY(-6px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.titlebar-dropdown-option {
+    padding: 6px 8px;
+    overflow: hidden;
+    color: inherit;
+    font-size: 14px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: background-color 0.12s, color 0.12s;
+    cursor: pointer;
+}
+
+.titlebar-dropdown-option:hover {
+    background-color: rgb(255 215 0 / 12%);
+}
+
+.titlebar-dropdown-option-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    font-family: Inter, Pretendard, sans-serif;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.titlebar-dropdown-option.selected {
+    background-color: rgb(255 215 0 / 18%);
+    color: rgb(255 215 0 / 90%);
 }
 
 .titlebar-controls {
     display: flex;
-    gap: 0;
+    align-items: center;
+    gap: 8px;
+}
+
+/* 타이틀바 우측 배치용: 실행 - 로그 - 드롭다운 - 윈도우 버튼 순서에 맞춘 간격 */
+.titlebar-controls .titlebar-dropdown-field {
+    min-width: 180px;
+    margin: 0 8px;
 }
 
 .tb-btn {

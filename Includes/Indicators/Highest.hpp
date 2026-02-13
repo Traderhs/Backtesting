@@ -7,7 +7,7 @@
 #include "Engines/Indicator.hpp"
 
 /// 주어진 기간 내 최고값
-class Highest final : public Indicator {
+class BACKTESTING_API Highest final : public Indicator {
  public:
   explicit Highest(const string& name, const string& timeframe,
                    const Plot& plot, Indicator& source, double period);
