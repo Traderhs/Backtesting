@@ -1074,7 +1074,7 @@ bool OrderHandler::TrailingExit(const string& exit_name,
 
   // touch_price가 0이면 다음 시가부터 최고저가 추적을 시작
   if (IsEqual(touch_price, 0.0)) {
-    trailing_exit->SetEntryExtremePrice(base_price);
+    trailing_exit->SetExitExtremePrice(base_price);
   }
 
   // 유효성 검사
