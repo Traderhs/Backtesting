@@ -122,14 +122,14 @@ class BACKTESTING_API Strategy {
       strategy_ =
           std::make_shared<CustomStrategy>(name, std::forward<Args>(args)...);
     } catch (const std::exception& e) {
-      logger->Log(INFO_L,
+      logger->Log(ERROR_L,
                   format("[{}] 전략 생성자에서 오류가 발생했습니다.", name),
                   __FILE__, __LINE__, true);
 
       throw runtime_error(e.what());
     } catch (...) {
       logger->Log(
-          INFO_L,
+          ERROR_L,
           format("[{}] 전략 생성자에서 알 수 없는 오류가 발생했습니다.", name),
           __FILE__, __LINE__, true);
 
