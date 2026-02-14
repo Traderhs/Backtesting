@@ -470,6 +470,20 @@ double RoundToStep(const double value, const double step) {
   return round(result * 1e10) / 1e10;
 }
 
+double FloorToStep(const double value, const double step) {
+  if (IsLessOrEqual(step, 0.0)) {
+    throw runtime_error(
+        format("최소 스텝 크기로 내림하기 위하여 주어진 스텝 [{}]은(는) "
+               "0보다 커야합니다.",
+               to_string(step)));
+  }
+
+  const double result = floor(value / step) * step;
+
+  // 부동 소수점 정밀도 보정 (0.099999999999 -> 0.1 처리)
+  return round(result * 1e10) / 1e10;
+}
+
 string FormatDollar(const double price, const bool use_rounding) {
   // 음수 0 처리 - 매우 작은 값들은 0으로 처리
   double adjusted_price = price;

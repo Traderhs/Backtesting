@@ -158,6 +158,9 @@ BACKTESTING_API void JsonToFile(future<json> data, const string& file_path);
 /// 최소 스텝 크기로 값을 반올림하여 반환하는 함수
 [[nodiscard]] BACKTESTING_API double RoundToStep(double value, double step);
 
+/// 최소 스텝 크기로 값을 내림하여 반환하는 함수
+[[nodiscard]] BACKTESTING_API double FloorToStep(double value, double step);
+
 // FormatDollar에서 사용하는 공통 Locale 설정
 inline locale global_locale("en_US.UTF-8");
 
