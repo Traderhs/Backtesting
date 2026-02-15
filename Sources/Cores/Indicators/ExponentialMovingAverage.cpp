@@ -1,6 +1,8 @@
 // 파일 헤더
 #include "Indicators/ExponentialMovingAverage.hpp"
 
+#include <cmath>
+
 // 내부 헤더
 #include "Engines/Logger.hpp"
 
@@ -37,6 +39,17 @@ void ExponentialMovingAverage::Initialize() {
 Numeric<double> ExponentialMovingAverage::Calculate() {
   // 기준 지표의 현재 값을 읽음
   const double value = source_[0];
+
+  // 입력값이 유효하지 않으면
+  // 1. 값을 누적하지 않고 NaN 반환
+  // 2. 이미 계산이 가능한 상태이면 이전 EMA 값을 그대로 반환
+  if (!isfinite(value)) {
+    if (!can_calculate_) {
+      return NAN;
+    }
+
+    return prev_;
+  }
 
   // period 개의 값을 모아 SMA를 계산하여 EMA의 초기값으로 사용
   if (!can_calculate_) {
