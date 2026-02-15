@@ -1,5 +1,6 @@
 // 표준 라이브러리
 #include <algorithm>
+#include <cmath>
 
 // 파일 헤더
 #include "Indicators/SimpleMovingAverage.hpp"
@@ -39,6 +40,16 @@ void SimpleMovingAverage::Initialize() {
 Numeric<double> SimpleMovingAverage::Calculate() {
   // 현재 값 읽기
   const double value = source_[0];
+
+  // 입력값이 유효하지 않으면
+  // 1. 값을 누적하지 않고 NaN 반환
+  // 2. 이미 계산이 가능한 상태이면 이전 평균값 반환
+  if (!std::isfinite(value)) {
+    if (!can_calculate_) {
+      return NAN;
+    }
+    return sum_ / double_period_;
+  }
 
   // 원형 버퍼에서 이전 값을 제거하고 새로운 값을 추가
   const double old = buffer_[buffer_idx_];
