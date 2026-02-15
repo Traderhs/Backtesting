@@ -156,6 +156,9 @@ class BACKTESTING_API BaseOrderHandler {
       Direction entry_direction, double order_price, double position_size,
       double margin, int symbol_idx);
 
+  // 지정된 심볼의 설정된 레버리지를 반환하는 함수
+  [[nodiscard]] int GetLeverage(int symbol_idx) const;
+
  protected:
   BaseOrderHandler();
   ~BaseOrderHandler();
@@ -222,9 +225,6 @@ class BACKTESTING_API BaseOrderHandler {
   ///
   /// 실패 시 에러 문자열이 반환됨
   [[nodiscard]] optional<string> AdjustLeverage(int leverage, int symbol_idx);
-
-  // 지정된 심볼의 설정된 레버리지를 반환하는 함수
-  [[nodiscard]] int GetLeverage(int symbol_idx) const;
 
   /// 주문 정보에 따라 슬리피지를 반영한 체결 가격을 반환하는 함수.
   [[nodiscard]] __forceinline double CalculateSlippagePrice(

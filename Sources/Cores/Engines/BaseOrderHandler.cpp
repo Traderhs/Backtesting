@@ -278,6 +278,10 @@ double BaseOrderHandler::CalculateLiquidationPrice(
   }
 }
 
+int BaseOrderHandler::GetLeverage(const int symbol_idx) const {
+  return leverages_[symbol_idx];
+}
+
 void BaseOrderHandler::ResetBaseOrderHandler() {
   config_.reset();
   symbol_info_.clear();
@@ -445,10 +449,6 @@ optional<string> BaseOrderHandler::AdjustLeverage(const int leverage,
   }
 
   return nullopt;
-}
-
-int BaseOrderHandler::GetLeverage(const int symbol_idx) const {
-  return leverages_[symbol_idx];
 }
 
 double BaseOrderHandler::CalculateTradingFee(const OrderType order_type,
