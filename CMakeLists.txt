@@ -46,10 +46,12 @@ set(PRIVATE_STRATEGY_SOURCES "D:/Dev/Backtesting-Strategies/Sources")
 # Backtesting 설정
 file(GLOB HEADERS   # 해당 경로에서 hpp 파일들을 GLOB (엔진, 전략, 지표 헤더 파일들)
         "Includes/**/*.hpp"
-        "${PRIVATE_STRATEGY_INCLUDES}/Strategies/*.hpp")
+        "${PRIVATE_STRATEGY_INCLUDES}/Strategies/*.hpp"
+        "${PRIVATE_STRATEGY_INCLUDES}/Indicators/*.hpp")
 file(GLOB SOURCES  # 해당 경로에서 cpp 파일들을 GLOB (엔진, 전략, 지표 소스 파일들)
         "Sources/Cores/**/*.cpp"
-        "${PRIVATE_STRATEGY_SOURCES}/Strategies/*.cpp")
+        "${PRIVATE_STRATEGY_SOURCES}/Strategies/*.cpp"
+        "${PRIVATE_STRATEGY_SOURCES}/Indicators/*.cpp")
 
 # 실행 파일 용 Main.cpp 제외
 list(FILTER SOURCES EXCLUDE REGEX "Main.cpp$")
