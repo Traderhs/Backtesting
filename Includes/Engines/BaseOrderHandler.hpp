@@ -110,6 +110,9 @@ class BACKTESTING_API BaseOrderHandler {
   /// 현재 심볼의 마지막 청산 가격을 반환하는 함수
   [[nodiscard]] double LastExitPrice() const;
 
+  /// 현재 심볼의 포지션 사이즈 합계를 최신 상태로 업데이트하는 함수
+  void UpdateCurrentPositionSize(int symbol_idx);
+
   /// 현재 심볼의 포지션 사이즈를 단순 반환하는 함수.\n\n
   /// 전략 실횅 시점에 무조건 값을 업데이트하기 때문에 전략 내에서는 이 함수로
   /// 값을 사용하면 됨.\n\n
@@ -460,9 +463,6 @@ class BACKTESTING_API BaseOrderHandler {
 
   /// 심볼 정보를 초기화하는 함수
   static void SetSymbolInfo(const vector<SymbolInfo>& symbol_info);
-
-  /// 현재 심볼의 포지션 사이즈 합계를 최신 상태로 업데이트하는 함수
-  void UpdateCurrentPositionSize(int symbol_idx);
 
   /// 현재 심볼과 바에서 진입이 이루어졌는지를 결정하는 플래그를 초기화하는 함수
   void InitializeJustEntered();

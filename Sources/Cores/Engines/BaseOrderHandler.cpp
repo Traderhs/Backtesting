@@ -165,6 +165,22 @@ double BaseOrderHandler::LastExitPrice() const {
   return last_exit_prices_[bar_->GetCurrentSymbolIndex()];
 }
 
+void BaseOrderHandler::UpdateCurrentPositionSize(const int symbol_idx) {
+  double sum_position_size = 0;
+
+  for (const auto& filled_entry : filled_entries_[symbol_idx]) {
+    double position_size =
+        filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize();
+
+    position_size = filled_entry->GetEntryDirection() == LONG
+                        ? fabs(position_size)
+                        : -fabs(position_size);
+    sum_position_size += position_size;
+  }
+
+  current_position_size_ = sum_position_size;
+}
+
 double BaseOrderHandler::GetUnrealizedLoss(const int symbol_idx,
                                            const PriceType price_type) const {
   const auto& filled_entries = filled_entries_[symbol_idx];
@@ -701,22 +717,6 @@ void BaseOrderHandler::SetSymbolInfo(const vector<SymbolInfo>& symbol_info) {
     throw runtime_error(
         "심볼 정보가 이미 초기화되어 다시 초기화할 수 없습니다.");
   }
-}
-
-void BaseOrderHandler::UpdateCurrentPositionSize(const int symbol_idx) {
-  double sum_position_size = 0;
-
-  for (const auto& filled_entry : filled_entries_[symbol_idx]) {
-    double position_size =
-        filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize();
-
-    position_size = filled_entry->GetEntryDirection() == LONG
-                        ? fabs(position_size)
-                        : -fabs(position_size);
-    sum_position_size += position_size;
-  }
-
-  current_position_size_ = sum_position_size;
 }
 
 void BaseOrderHandler::InitializeJustEntered() { just_entered_ = false; }
