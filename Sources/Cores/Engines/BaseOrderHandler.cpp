@@ -756,6 +756,8 @@ void BaseOrderHandler::DecreaseUsedMarginOnEntryCancel(
           engine_->DecreaseUsedMargin(entry_margin);
         }
       }
+
+      return;
     }
 
     [[unlikely]] case ORDER_NONE: {
