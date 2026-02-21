@@ -46,15 +46,18 @@ Numeric<double> StandardDeviation::Calculate() {
   // 입력값이 유효하지 않으면
   // 1. 값을 누적하지 않고 NaN 반환
   // 2. 이미 계산이 가능한 상태이면 이전 표준편차값 반환
-  if (!std::isfinite(value)) {
+  if (!isfinite(value)) {
     if (!can_calc_) {
       return NAN;
     }
+
     const double mean = sum_ / double_period_;
+
     double var = sum_sq_ / double_period_ - mean * mean;
     if (var < 0 && var > -1e-12) {
       var = 0;
     }
+
     return sqrt(var);
   }
 
