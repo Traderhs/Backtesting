@@ -23,7 +23,7 @@ Config::Config()
         "엔진의 사전 설정은 SetConfig 함수의 호출로만 가능합니다.");
   }
 
-  // 정상적으로 AddStrategy 함수를 통했다면 전 증가 가운터에 현재 카운터를 대입
+  // 정상적으로 SetConfig 함수를 통했다면 전 증가 가운터에 현재 카운터를 대입
   pre_creation_counter_ = creation_counter_;
 }
 Config::~Config() = default;
