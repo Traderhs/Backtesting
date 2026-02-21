@@ -1,7 +1,8 @@
+// 표준 라이브러리
+#include <cmath>
+
 // 파일 헤더
 #include "Indicators/ExponentialMovingAverage.hpp"
-
-#include <cmath>
 
 // 내부 헤더
 #include "Engines/Logger.hpp"
