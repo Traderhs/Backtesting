@@ -366,6 +366,8 @@ void Indicator::CalculateIndicator() {
         format("[{} {}] 지표 계산이 완료되었습니다.", name_, timeframe_),
         __FILE__, __LINE__, true);
   } catch (const exception& e) {
+    is_calculating_ = false;
+
     logger_->Log(
         ERROR_L,
         format("[{} {}] 지표 계산 중 오류가 발생했습니다.", name_, timeframe_),

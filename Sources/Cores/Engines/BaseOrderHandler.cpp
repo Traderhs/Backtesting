@@ -502,21 +502,39 @@ LeverageBracket BaseOrderHandler::GetLeverageBracket(
     const double position_size) {
   const auto notional_value = order_price * position_size;
 
+  // 명목 가치를 얻지 못할 때의 로그를 위한 변수
+  int bracket_count = 0;
+  double min_notional_value = DBL_MAX;
+  double max_notional_value = DBL_MIN;
+
   for (const auto& leverage_bracket :
        symbol_info_[symbol_idx].GetLeverageBracket()) {
+    const auto min_notional_value_in_bracket =
+        leverage_bracket.min_notional_value;
+    const auto max_notional_value_in_bracket =
+        leverage_bracket.max_notional_value;
+
     // 최소 명목 가치 <= 주문의 명목 가치 < 최대 명목 가치
-    if (IsLessOrEqual(leverage_bracket.min_notional_value, notional_value) &&
-        IsLess(notional_value, leverage_bracket.max_notional_value)) {
+    if (IsLessOrEqual(min_notional_value_in_bracket, notional_value) &&
+        IsLess(notional_value, max_notional_value_in_bracket)) {
       return leverage_bracket;
     }
+
+    // 명목 가치를 얻지 못할 때의 로그를 위한 변수 업데이트
+    ++bracket_count;
+    min_notional_value = min_notional_value_in_bracket;
+    max_notional_value = max_notional_value_in_bracket;
   }
 
   logger_->Log(ERROR_L, "레버리지 구간을 얻는 중 엔진 오류가 발생했습니다.",
                __FILE__, __LINE__, true);
 
   throw runtime_error(
-      format("명목 가치 [{}]에 해당되는 레버리지 구간이 존재하지 않습니다.",
-             FormatDollar(notional_value, true)));
+      format("[{}] 명목 가치 [{}]에 해당되는 레버리지 구간이 존재하지 "
+             "않습니다. (최대 레버리지 구간 {}: [{}] - [{}])",
+             symbol_names_[symbol_idx], FormatDollar(notional_value, true),
+             bracket_count, FormatDollar(min_notional_value, true),
+             FormatDollar(max_notional_value, true)));
 }
 
 double BaseOrderHandler::CalculatePnl(const Direction entry_direction,

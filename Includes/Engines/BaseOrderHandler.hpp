@@ -155,9 +155,10 @@ class BACKTESTING_API BaseOrderHandler {
                                        int symbol_idx) const;
 
   /// 주문 정보에 따라 강제 청산 가격을 계산하여 반환하는 함수
-  [[nodiscard]] static double CalculateLiquidationPrice(
-      Direction entry_direction, double order_price, double position_size,
-      double margin, int symbol_idx);
+  [[nodiscard]] double CalculateLiquidationPrice(Direction entry_direction,
+                                                 double order_price,
+                                                 double position_size,
+                                                 double margin, int symbol_idx);
 
   // 지정된 심볼의 설정된 레버리지를 반환하는 함수
   [[nodiscard]] int GetLeverage(int symbol_idx) const;
@@ -245,9 +246,9 @@ class BACKTESTING_API BaseOrderHandler {
                                            double filled_size) const;
 
   /// 지정된 심볼과 명목 가치에 해당되는 레버리지 구간을 찾아 반환하는 함수
-  [[nodiscard]] static LeverageBracket GetLeverageBracket(int symbol_idx,
-                                                          double order_price,
-                                                          double position_size);
+  [[nodiscard]] LeverageBracket GetLeverageBracket(int symbol_idx,
+                                                   double order_price,
+                                                   double position_size);
 
   /// 진입 정보에 따라 PnL을 계산하는 함수
   [[nodiscard]] static double CalculatePnl(Direction entry_direction,
@@ -304,7 +305,7 @@ class BACKTESTING_API BaseOrderHandler {
 
   // 지정된 레버리지가 1 이상이고 명목 가치에 해당되는 브라켓의 최대 레버리지
   // 이하인지 확인하는 함수
-  [[nodiscard]] __forceinline static optional<string> IsValidLeverage(
+  [[nodiscard]] __forceinline optional<string> IsValidLeverage(
       const int leverage, const double order_price, const double position_size,
       const int symbol_idx) {
     if (const auto max_leverage =
