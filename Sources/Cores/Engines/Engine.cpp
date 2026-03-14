@@ -895,7 +895,7 @@ void Engine::IsValidIndicators() {
     logger_->Log(INFO_L, "지표 유효성 검증이 완료되었습니다.", __FILE__,
                  __LINE__, true);
   } catch (const std::exception& e) {
-    logger_->Log(INFO_L, "지표 유효성 검증이 실패했습니다.", __FILE__, __LINE__,
+    logger_->Log(ERROR_L, "지표 유효성 검증이 실패했습니다.", __FILE__, __LINE__,
                  true);
 
     throw runtime_error(e.what());

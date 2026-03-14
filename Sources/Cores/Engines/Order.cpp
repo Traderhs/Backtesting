@@ -287,7 +287,7 @@ string Order::OrderTypeToString(const OrderType order_type) {
     }
   }
 
-  return string();
+  return {};
 }
 
 // ===========================================================================
