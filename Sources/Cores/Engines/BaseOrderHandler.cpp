@@ -61,7 +61,7 @@ void BaseOrderHandler::Cancel(const string& order_name,
   bool cancel_in_exit = false;
 
   switch (cancel_type) {
-    case CancelType::TOTAL: {
+    case CancelType::BOTH: {
       cancel_in_entry = true;
       cancel_in_exit = true;
       break;
