@@ -63,7 +63,7 @@ enum class OrderSignal { LIQUIDATION, EXIT, ENTRY };
 struct BACKTESTING_API FillInfo {
   shared_ptr<Order> order;   // 주문 객체
   OrderSignal order_signal;  // 진입 or 청산 or 강제 청산을 지칭
-  double fill_price;       // 슬리피지를 미반영한 체결 가격
+  double fill_price;         // 슬리피지를 미반영한 체결 가격
 };
 
 // 어느 대기 주문에서 취소할 지 결정하는 열거형 클래스
