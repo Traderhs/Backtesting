@@ -150,8 +150,12 @@ void MarketImpactSlippage::Initialize() {
                              ? false
                              : ParseTimeframe(magnifier_tf) <= parsed_15_min_tf;
 
-  // 심볼별 스프레드 저장 벡터 초기화
-  previous_spread_bps_.resize(trading_bar_data->GetNumSymbols(), 0.0);
+  // 심볼별 배열 크기 초기화
+  const size_t num_symbols = trading_bar_data->GetNumSymbols();
+  previous_spread_bps_.resize(num_symbols, 0.0);
+  previous_spread_bar_idx_.resize(num_symbols, SIZE_MAX);
+  intra_bar_cumulative_size_.resize(num_symbols, 0.0);
+  intra_bar_idx_.resize(num_symbols, SIZE_MAX);
 }
 
 double MarketImpactSlippage::CalculateSlippagePrice(
@@ -222,8 +226,11 @@ double MarketImpactSlippage::CalculateSlippagePrice(
     spread_smoothed = max(spread_smoothed, tick_floor_bps_);
   }
 
-  // 클램핑된 값을 이전값으로 저장
-  previous_spread_bps_[symbol_idx] = spread_smoothed;
+  // 같은 봉 내 중복 갱신 방지
+  if (bar_idx != previous_spread_bar_idx_[symbol_idx]) {
+    previous_spread_bps_[symbol_idx] = spread_smoothed;
+    previous_spread_bar_idx_[symbol_idx] = bar_idx;
+  }
 
   // 2. 변동성 추정
   double volatility =
@@ -235,9 +242,18 @@ double MarketImpactSlippage::CalculateSlippagePrice(
       CalculateRollingVolume(symbol_idx, bar_idx, bar_data);
   const double safe_volume = max(rolling_volume, epsilon_);
 
+  // 시장 충격 - 같은 봉 내 주문 크기 누적 반영
+  if (bar_idx != intra_bar_idx_[symbol_idx]) {
+    intra_bar_cumulative_size_[symbol_idx] = order_size;
+    intra_bar_idx_[symbol_idx] = bar_idx;
+  } else {
+    intra_bar_cumulative_size_[symbol_idx] += order_size;
+  }
+
   // 4. 시장 충격 계산: k * σ * (Q/V)^β
   // PR 캡: 극저유동성 구간에서 Q/V 폭주 방지
-  double participation_rate = order_size / safe_volume;
+  double participation_rate =
+      intra_bar_cumulative_size_[symbol_idx] / safe_volume;
   participation_rate = min(participation_rate, participation_rate_cap_);
 
   const double market_impact_bps = impact_coefficient_ * volatility *

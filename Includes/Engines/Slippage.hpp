@@ -220,6 +220,11 @@ class BACKTESTING_API MarketImpactSlippage final : public Slippage {
 
   // 심볼별 이전 스프레드 (EMA용)
   mutable vector<double> previous_spread_bps_;
+  mutable vector<size_t> previous_spread_bar_idx_;
+
+  // 봉 내 누적 주문 사이즈 (시장 충격용)
+  mutable vector<double> intra_bar_cumulative_size_;
+  mutable vector<size_t> intra_bar_idx_;
 
   /// EDGE 스프레드 추정 (Ardia-Guidotti-Kröncke)
   [[nodiscard]] double EstimateSpreadEdge(
