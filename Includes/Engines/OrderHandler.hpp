@@ -192,6 +192,20 @@ class BACKTESTING_API OrderHandler final : public BaseOrderHandler {
                     double touch_price, double trail_point, double order_size);
 
   // ===========================================================================
+  /// 지정된 체결된 진입 주문의 잔여 마진을 반환하는 함수
+  /// 주문이 존재하지 않을 시 0.0을 반환
+  ///
+  /// @param entry_name 잔여 마진을 찾을 체결된 진입 이름
+  /// @return 잔여 마진
+  [[nodiscard]] double GetLeftMargin(const string& entry_name) const;
+
+  /// 체결된 진입 주문에 사용 가능 자금을 추가하여 마진을 증가시키는 함수
+  ///
+  /// @param entry_name 마진을 추가할 체결된 진입 이름
+  /// @param increase_margin 추가할 마진 양
+  /// @return 마진 추가 성공 여부
+  bool IncreaseMargin(const string& entry_name, double increase_margin);
+
   /// 현재 사용 중인 심볼 인덱스의 모든 진입 및 청산 대기 주문을 취소하는 함수
   void CancelAll(const string& cancellation_reason);
 

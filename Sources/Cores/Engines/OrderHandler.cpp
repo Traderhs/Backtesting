@@ -1115,6 +1115,91 @@ bool OrderHandler::TrailingExit(const string& exit_name,
   return true;
 }
 
+double OrderHandler::GetLeftMargin(const string& entry_name) const {
+  if (const auto& result =
+          FindFilledEntryOrder(entry_name, bar_->GetCurrentSymbolIndex())) {
+    return result->first->GetLeftMargin();
+  }
+
+  return 0.0;
+}
+
+bool OrderHandler::IncreaseMargin(const string& entry_name,
+                                  const double increase_margin) {
+  if (IsLessOrEqual(increase_margin, 0.0)) {
+    warn_msg =
+        format("[{}] 마진 추가 실패 (지정된 증가 마진이 [{}]이(가) 0 이하)",
+               entry_name, FormatDollar(increase_margin, true));
+
+    WARN_AND_RET_FALSE()
+  }
+
+  const int symbol_idx = bar_->GetCurrentSymbolIndex();
+  auto& filled_entries = filled_entries_[symbol_idx];
+
+  const auto it = ranges::find_if(
+      filled_entries, [&entry_name](const shared_ptr<Order>& filled_entry) {
+        return filled_entry->GetEntryName() == entry_name;
+      });
+
+  if (it == filled_entries.end()) {
+    warn_msg =
+        format("[{}] 마진 추가 실패 (체결된 진입 주문 없음)", entry_name);
+
+    WARN_AND_RET_FALSE()
+  }
+
+  RET_FALSE_IF_INVALID(HasEnoughBalance(engine_->GetAvailableBalance(),
+                                        increase_margin, "사용 가능",
+                                        "추가 마진"))
+
+  // 자금 사용 업데이트
+  engine_->IncreaseUsedMargin(increase_margin);
+
+  const auto& filled_entry = *it;
+
+  // 잔여 마진 재계산
+  const auto old_left_margin = filled_entry->GetLeftMargin();
+  const auto adjusted_margin = old_left_margin + increase_margin;
+
+  // 강제 청산 가격 재계산
+  const auto old_liquidation_price = filled_entry->GetLiquidationPrice();
+  const auto adjusted_liquidation_price = CalculateLiquidationPrice(
+      filled_entry->GetEntryDirection(), filled_entry->GetEntryFilledPrice(),
+      filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize(),
+      adjusted_margin, symbol_idx);
+
+  // 진입 주문 및 청산 대기 주문의 잔여 마진, 강제 청산 가격 재설정
+  filled_entry->SetEntryMargin(filled_entry->GetEntryMargin() + increase_margin)
+      .SetLeftMargin(adjusted_margin)
+      .SetLiquidationPrice(adjusted_liquidation_price);
+
+  for (const auto& pending_exit : pending_exits_[symbol_idx]) {
+    if (pending_exit->GetEntryName() == entry_name) {
+      pending_exit
+          ->SetEntryMargin(pending_exit->GetEntryMargin() + increase_margin)
+          .SetLeftMargin(adjusted_margin)
+          .SetLiquidationPrice(adjusted_liquidation_price);
+    }
+  }
+
+  const auto price_precision = symbol_info_[symbol_idx].GetPricePrecision();
+  LogFormattedInfo(
+      INFO_L,
+      format("[{}] 마진 추가 (추가된 마진 {} | 할당 마진 {} → {} | 강제 청산 "
+             "가격 {} → {})",
+             entry_name, FormatDollar(increase_margin, true),
+             FormatDollar(old_left_margin, true),
+             FormatDollar(adjusted_margin, true),
+             ToFixedString(old_liquidation_price, price_precision),
+             ToFixedString(adjusted_liquidation_price, price_precision)),
+      __FILE__, __LINE__);
+
+  engine_->LogBalance();
+
+  return true;
+}
+
 void OrderHandler::CancelAll(const string& cancellation_reason) {
   const auto symbol_idx = bar_->GetCurrentSymbolIndex();
 
@@ -1446,6 +1531,7 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
   // ※ 펀딩비 부족 시 강제 청산될 수 있고, 강제 청산된 주문은 진입 체결 주문에서
   //    삭제되므로 역순으로 조회
   const auto& symbol_info = symbol_info_[symbol_idx];
+  const auto price_precision = symbol_info.GetPricePrecision();
   const auto qty_precision = symbol_info.GetQtyPrecision();
 
   const auto& filled_entries = filled_entries_[symbol_idx];
@@ -1483,85 +1569,97 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
     const double abs_actual_funding = fabs(actual_funding_amount);
     const auto adjusted_margin = old_left_margin + actual_funding_amount;
 
-    // 펀딩비 수령
-    if (IsGreater(actual_funding_amount, 0.0)) {
-      // 격리 마진에서 펀딩비 증감은 포지션 마진에만 영향을 주므로
-      // 전체 가용 자금을 유지하기 위해 WalletBalance와 UsedMargin 모두 증가시킴
-      engine_->IncreaseWalletBalance(abs_actual_funding);
-      engine_->IncreaseUsedMargin(abs_actual_funding);
+    // 펀딩비 수령 또는 지불 정산
+    if (IsGreater(abs_actual_funding, 0.0)) {
+      // 강제 청산 가격 재계산
+      const auto old_liquidation_price = filled_entry->GetLiquidationPrice();
+      const auto adjusted_liquidation_price = CalculateLiquidationPrice(
+          entry_direction, filled_entry->GetEntryFilledPrice(),
+          left_position_size, adjusted_margin, symbol_idx);
 
-      const auto received_funding_amount =
-          filled_entry->GetReceivedFundingAmount() + abs_actual_funding;
+      // 펀딩비 수령
+      if (IsGreater(actual_funding_amount, 0.0)) {
+        // 격리 마진에서 펀딩비 증감은 포지션 마진에만 영향을 주므로
+        // 전체 가용 자금을 유지하기 위해 WalletBalance와 UsedMargin 모두
+        // 증가시킴
+        engine_->IncreaseWalletBalance(abs_actual_funding);
+        engine_->IncreaseUsedMargin(abs_actual_funding);
 
-      // 진입 주문에 펀딩비 정산
-      filled_entry->AddReceivedFundingCount().SetReceivedFundingAmount(
-          received_funding_amount);
+        const auto received_funding_amount =
+            filled_entry->GetReceivedFundingAmount() + abs_actual_funding;
 
-      // 해당 진입 주문을 목표로 하는 청산 대기 주문에 펀딩비 정산
-      for (const auto& pending_exit : pending_exits_[symbol_idx]) {
-        if (pending_exit->GetEntryName() == entry_name) {
-          pending_exit->AddReceivedFundingCount().SetReceivedFundingAmount(
-              received_funding_amount);
+        // 진입 주문에 펀딩비 정산
+        filled_entry->SetLeftMargin(adjusted_margin)
+            .SetLiquidationPrice(adjusted_liquidation_price)
+            .AddReceivedFundingCount()
+            .SetReceivedFundingAmount(received_funding_amount);
+
+        // 해당 진입 주문을 목표로 하는 청산 대기 주문에 펀딩비 정산
+        for (const auto& pending_exit : pending_exits_[symbol_idx]) {
+          if (pending_exit->GetEntryName() == entry_name) {
+            pending_exit->SetLeftMargin(adjusted_margin)
+                .SetLiquidationPrice(adjusted_liquidation_price)
+                .AddReceivedFundingCount()
+                .SetReceivedFundingAmount(received_funding_amount);
+          }
         }
-      }
 
-      LogFormattedInfo(
-          INFO_L,
-          format("[{}] 펀딩비 [{}] 수령 (펀딩 시간 {} | 펀딩 비율 "
-                 "{} | 펀딩 가격 {} | 포지션 수량 {} | 할당 마진 [{}] → [{}])",
-                 entry_name, FormatDollar(abs_actual_funding, true),
-                 funding_time, FormatPercentage(funding_rate * 100, false),
-                 funding_price,  // 펀딩 가격은 소수점 정밀도 상관없이 전부 출력
-                 ToFixedString(left_position_size, qty_precision),
-                 FormatDollar(old_left_margin, true),
-                 FormatDollar(adjusted_margin, true)),
-          __FILE__, __LINE__);
-    } else if (IsLess(actual_funding_amount, 0.0)) {  // 펀딩비 지불
-      // 격리 마진에서 펀딩비 증감은 포지션 마진에만 영향을 주므로
-      // 전체 가용 자금을 유지하기 위해 WalletBalance와 UsedMargin 모두 감소시킴
-      engine_->DecreaseWalletBalance(abs_actual_funding);
-      engine_->DecreaseUsedMargin(abs_actual_funding);
+        LogFormattedInfo(
+            INFO_L,
+            format(
+                "[{}] 펀딩비 [{}] 수령 (펀딩 시간 {} | 펀딩 비율 {} | 펀딩 "
+                "가격 {} | 포지션 수량 {} | 할당 마진 {} → {} | 강제 청산 가격 "
+                "{} → {})",
+                entry_name, FormatDollar(abs_actual_funding, true),
+                funding_time, FormatPercentage(funding_rate * 100, false),
+                funding_price,  // 펀딩 가격은 소수점 정밀도 상관없이 전부 출력
+                ToFixedString(left_position_size, qty_precision),
+                FormatDollar(old_left_margin, true),
+                FormatDollar(adjusted_margin, true),
+                ToFixedString(old_liquidation_price, price_precision),
+                ToFixedString(adjusted_liquidation_price, price_precision)),
+            __FILE__, __LINE__);
+      } else {  // 펀딩비 지불
+        // 격리 마진에서 펀딩비 증감은 포지션 마진에만 영향을 주므로
+        // 전체 가용 자금을 유지하기 위해 WalletBalance와 UsedMargin 모두
+        // 감소시킴
+        engine_->DecreaseWalletBalance(abs_actual_funding);
+        engine_->DecreaseUsedMargin(abs_actual_funding);
 
-      const auto paid_funding_amount =
-          filled_entry->GetPaidFundingAmount() - abs_actual_funding;
+        const auto paid_funding_amount =
+            filled_entry->GetPaidFundingAmount() - abs_actual_funding;
 
-      // 진입 주문에 펀딩비 정산
-      filled_entry->AddPaidFundingCount().SetPaidFundingAmount(
-          paid_funding_amount);
+        // 진입 주문에 펀딩비 정산
+        filled_entry->SetLeftMargin(adjusted_margin)
+            .SetLiquidationPrice(adjusted_liquidation_price)
+            .AddPaidFundingCount()
+            .SetPaidFundingAmount(paid_funding_amount);
 
-      // 해당 진입 주문을 목표로 하는 청산 대기 주문에 펀딩비 정산
-      for (const auto& pending_exit : pending_exits_[symbol_idx]) {
-        if (pending_exit->GetEntryName() == entry_name) {
-          pending_exit->AddPaidFundingCount().SetPaidFundingAmount(
-              paid_funding_amount);
+        // 해당 진입 주문을 목표로 하는 청산 대기 주문에 펀딩비 정산
+        for (const auto& pending_exit : pending_exits_[symbol_idx]) {
+          if (pending_exit->GetEntryName() == entry_name) {
+            pending_exit->SetLeftMargin(adjusted_margin)
+                .SetLiquidationPrice(adjusted_liquidation_price)
+                .AddPaidFundingCount()
+                .SetPaidFundingAmount(paid_funding_amount);
+          }
         }
-      }
 
-      LogFormattedInfo(
-          INFO_L,
-          format("[{}] 펀딩비 [{}] 지불 (펀딩 시간 {} | 펀딩 비율 "
-                 "{} | 펀딩 가격 {} | 포지션 수량 {} | 할당 마진 [{}] → [{}])",
-                 entry_name, FormatDollar(abs_actual_funding, true),
-                 funding_time, FormatPercentage(funding_rate * 100, false),
-                 funding_price,
-                 ToFixedString(left_position_size, qty_precision),
-                 FormatDollar(old_left_margin, true),
-                 FormatDollar(adjusted_margin, true)),
-          __FILE__, __LINE__);
-    }
-
-    // 진입 주문 및 청산 대기 주문의 잔여 마진, 강제 청산 가격 재설정
-    const auto adjusted_liquidation_price = CalculateLiquidationPrice(
-        entry_direction, filled_entry->GetEntryFilledPrice(),
-        left_position_size, adjusted_margin, symbol_idx);
-
-    filled_entry->SetLeftMargin(adjusted_margin)
-        .SetLiquidationPrice(adjusted_liquidation_price);
-
-    for (const auto& pending_exit : pending_exits_[symbol_idx]) {
-      if (pending_exit->GetEntryName() == entry_name) {
-        pending_exit->SetLeftMargin(adjusted_margin)
-            .SetLiquidationPrice(adjusted_liquidation_price);
+        LogFormattedInfo(
+            INFO_L,
+            format(
+                "[{}] 펀딩비 [{}] 지불 (펀딩 시간 {} | 펀딩 비율 "
+                "{} | 펀딩 가격 {} | 포지션 수량 {} | 할당 마진 {} → {} | "
+                "강제 청산 가격 {} → {})",
+                entry_name, FormatDollar(abs_actual_funding, true),
+                funding_time, FormatPercentage(funding_rate * 100, false),
+                funding_price,  // 펀딩 가격은 소수점 정밀도 상관없이 전부 출력
+                ToFixedString(left_position_size, qty_precision),
+                FormatDollar(old_left_margin, true),
+                FormatDollar(adjusted_margin, true),
+                ToFixedString(old_liquidation_price, price_precision),
+                ToFixedString(adjusted_liquidation_price, price_precision)),
+            __FILE__, __LINE__);
       }
     }
 
