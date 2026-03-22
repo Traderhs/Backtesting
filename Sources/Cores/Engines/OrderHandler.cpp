@@ -1445,6 +1445,9 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
   // ※ 체결된 주문이 없으면 펀딩비는 없음
   // ※ 펀딩비 부족 시 강제 청산될 수 있고, 강제 청산된 주문은 진입 체결 주문에서
   //    삭제되므로 역순으로 조회
+  const auto& symbol_info = symbol_info_[symbol_idx];
+  const auto qty_precision = symbol_info.GetQtyPrecision();
+
   const auto& filled_entries = filled_entries_[symbol_idx];
   for (int order_idx = static_cast<int>(filled_entries.size() - 1);
        order_idx >= 0; order_idx--) {
@@ -1457,23 +1460,38 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
         filled_entry->GetEntryFilledSize() - filled_entry->GetExitFilledSize();
     double funding_amount =
         fabs(funding_rate * funding_price * left_position_size);
-    const double abs_funding_amount = funding_amount;
 
     // 포지션 방향에 따라 지불인지 수령인지 결정
     // 펀딩 비율 양수: 롱은 지불, 숏은 수령
     // 펀딩 비율 음수: 롱은 수령, 숏은 지불
     if ((IsGreater(funding_rate, 0.0) && entry_direction == LONG) ||
         (IsLess(funding_rate, 0.0) && entry_direction == SHORT)) {
-      funding_amount = -funding_amount;
+      funding_amount = -funding_amount;  // 지불
     }
 
+    const auto old_left_margin = filled_entry->GetLeftMargin();
+
+    // 격리 마진에서 펀딩비는 포지션 마진(left_margin)에서 직접 증감
+    // 지불할 펀딩비가 잔여 마진보다 크다면, 자신의 잔여 마진까지만 지불
+    // (부족분은 보험 기금이 충당)
+    double actual_funding_amount = funding_amount;
+    if (IsLess(actual_funding_amount, 0.0) &&
+        IsGreater(fabs(actual_funding_amount), old_left_margin)) {
+      actual_funding_amount = -old_left_margin;
+    }
+
+    const double abs_actual_funding = fabs(actual_funding_amount);
+    const auto adjusted_margin = old_left_margin + actual_funding_amount;
+
     // 펀딩비 수령
-    if (IsGreater(funding_amount, 0.0)) {
-      // 펀딩비 수령은 단순히 지갑 자금에 합산
-      engine_->IncreaseWalletBalance(funding_amount);
+    if (IsGreater(actual_funding_amount, 0.0)) {
+      // 격리 마진에서 펀딩비 증감은 포지션 마진에만 영향을 주므로
+      // 전체 가용 자금을 유지하기 위해 WalletBalance와 UsedMargin 모두 증가시킴
+      engine_->IncreaseWalletBalance(abs_actual_funding);
+      engine_->IncreaseUsedMargin(abs_actual_funding);
 
       const auto received_funding_amount =
-          filled_entry->GetReceivedFundingAmount() + abs_funding_amount;
+          filled_entry->GetReceivedFundingAmount() + abs_actual_funding;
 
       // 진입 주문에 펀딩비 정산
       filled_entry->AddReceivedFundingCount().SetReceivedFundingAmount(
@@ -1490,199 +1508,96 @@ void OrderHandler::ExecuteFunding(const double funding_rate,
       LogFormattedInfo(
           INFO_L,
           format("[{}] 펀딩비 [{}] 수령 (펀딩 시간 {} | 펀딩 비율 "
-                 "{} | 펀딩 가격 {} | 포지션 수량 {})",
-                 entry_name, FormatDollar(abs_funding_amount, true),
+                 "{} | 펀딩 가격 {} | 포지션 수량 {} | 할당 마진 [{}] → [{}])",
+                 entry_name, FormatDollar(abs_actual_funding, true),
                  funding_time, FormatPercentage(funding_rate * 100, false),
                  funding_price,  // 펀딩 가격은 소수점 정밀도 상관없이 전부 출력
-                 ToFixedString(left_position_size,
-                               symbol_info_[symbol_idx].GetQtyPrecision())),
+                 ToFixedString(left_position_size, qty_precision),
+                 FormatDollar(old_left_margin, true),
+                 FormatDollar(adjusted_margin, true)),
           __FILE__, __LINE__);
-    } else {  // 펀딩비 지불
-      // 펀딩비가 사용 가능 자금보다 적을 경우 지갑 자금에서 지불
-      if (const auto available_balance = engine_->GetAvailableBalance();
-          IsLessOrEqual(abs_funding_amount, available_balance)) {
-        engine_->DecreaseWalletBalance(abs_funding_amount);
+    } else if (IsLess(actual_funding_amount, 0.0)) {  // 펀딩비 지불
+      // 격리 마진에서 펀딩비 증감은 포지션 마진에만 영향을 주므로
+      // 전체 가용 자금을 유지하기 위해 WalletBalance와 UsedMargin 모두 감소시킴
+      engine_->DecreaseWalletBalance(abs_actual_funding);
+      engine_->DecreaseUsedMargin(abs_actual_funding);
 
-        const auto paid_funding_amount =
-            filled_entry->GetPaidFundingAmount() - abs_funding_amount;
+      const auto paid_funding_amount =
+          filled_entry->GetPaidFundingAmount() - abs_actual_funding;
 
-        // 진입 주문에 펀딩비 정산
-        filled_entry->AddPaidFundingCount().SetPaidFundingAmount(
-            paid_funding_amount);
+      // 진입 주문에 펀딩비 정산
+      filled_entry->AddPaidFundingCount().SetPaidFundingAmount(
+          paid_funding_amount);
 
-        // 해당 진입 주문을 목표로 하는 청산 대기 주문에 펀딩비 정산
-        for (const auto& pending_exit : pending_exits_[symbol_idx]) {
-          if (pending_exit->GetEntryName() == entry_name) {
-            pending_exit->AddPaidFundingCount().SetPaidFundingAmount(
-                paid_funding_amount);
-          }
+      // 해당 진입 주문을 목표로 하는 청산 대기 주문에 펀딩비 정산
+      for (const auto& pending_exit : pending_exits_[symbol_idx]) {
+        if (pending_exit->GetEntryName() == entry_name) {
+          pending_exit->AddPaidFundingCount().SetPaidFundingAmount(
+              paid_funding_amount);
         }
+      }
 
-        LogFormattedInfo(
-            INFO_L,
-            format("[{}] 펀딩비 [{}] 지불 (펀딩 시간 {} | 펀딩 비율 "
-                   "{} | 펀딩 가격 {} | 포지션 수량 {})",
-                   entry_name, FormatDollar(abs_funding_amount, true),
-                   funding_time, FormatPercentage(funding_rate * 100, false),
-                   funding_price,
-                   ToFixedString(left_position_size,
-                                 symbol_info_[symbol_idx].GetQtyPrecision())),
-            __FILE__, __LINE__);
-      } else {
-        const auto& symbol_info = symbol_info_[symbol_idx];
-        const auto price_precision = symbol_info.GetPricePrecision();
-        const auto qty_precision = symbol_info.GetQtyPrecision();
+      LogFormattedInfo(
+          INFO_L,
+          format("[{}] 펀딩비 [{}] 지불 (펀딩 시간 {} | 펀딩 비율 "
+                 "{} | 펀딩 가격 {} | 포지션 수량 {} | 할당 마진 [{}] → [{}])",
+                 entry_name, FormatDollar(abs_actual_funding, true),
+                 funding_time, FormatPercentage(funding_rate * 100, false),
+                 funding_price,
+                 ToFixedString(left_position_size, qty_precision),
+                 FormatDollar(old_left_margin, true),
+                 FormatDollar(adjusted_margin, true)),
+          __FILE__, __LINE__);
+    }
 
-        // 펀딩비가 사용 가능 자금보다 많을 경우 우선 사용 가능 자금에서 최대한
-        // 지불 후 주문 마진에서 감소
+    // 진입 주문 및 청산 대기 주문의 잔여 마진, 강제 청산 가격 재설정
+    const auto adjusted_liquidation_price = CalculateLiquidationPrice(
+        entry_direction, filled_entry->GetEntryFilledPrice(),
+        left_position_size, adjusted_margin, symbol_idx);
 
-        // 1. 우선 사용 가능 자금에서 최대한 감소
-        if (IsGreater(available_balance, 0.0)) {
-          engine_->DecreaseWalletBalance(available_balance);
+    filled_entry->SetLeftMargin(adjusted_margin)
+        .SetLiquidationPrice(adjusted_liquidation_price);
 
-          LogFormattedInfo(
-              WARN_L,
-              format("[{}] 일부 펀딩비 [{}] 지불 (펀딩 시간 {} | 펀딩 비율 "
-                     "{} | 펀딩 가격 {} | 포지션 수량 {} | 전체 펀딩비 {})",
-                     entry_name, FormatDollar(available_balance, true),
-                     funding_time, FormatPercentage(funding_rate * 100, false),
-                     funding_price,
-                     ToFixedString(left_position_size, qty_precision),
-                     FormatDollar(abs_funding_amount, true)),
-              __FILE__, __LINE__);
-
-          engine_->LogBalance();
-        }
-
-        // 2. 남은 펀딩비는 진입 주문의 잔여 마진에서 감소
-        const auto margin_deduction =
-            abs_funding_amount - available_balance;  // 마진에서 충당할 금액
-
-        // 2.1 남은 펀딩비가 잔여 마진보다 적을 경우, 잔여 마진에서 남은
-        //     펀딩비를 전부 부과
-        if (const auto left_margin = filled_entry->GetLeftMargin();
-            IsLess(margin_deduction, left_margin)) {
-          // 포지션의 잔여 마진과 강제 청산 가격 조정
-          const auto adjusted_margin = left_margin - margin_deduction;
-          const auto original_liquidation_price =
-              filled_entry->GetLiquidationPrice();
-          const auto adjusted_liquidation_price = CalculateLiquidationPrice(
-              entry_direction, filled_entry->GetEntryFilledPrice(),
-              left_position_size, adjusted_margin, symbol_idx);
-          const auto paid_funding_amount =
-              filled_entry->GetPaidFundingAmount() - abs_funding_amount;
-
-          // 진입 주문의 잔여 마진, 강제 청산 가격, 펀딩비 지불 재설정
-          filled_entry->SetLeftMargin(adjusted_margin)
-              .SetLiquidationPrice(adjusted_liquidation_price)
-              .AddPaidFundingCount()
-              .SetPaidFundingAmount(paid_funding_amount);
-
-          // 해당 진입 주문을 목표로 하는 청산 대기 주문의 잔여 마진,
-          // 강제 청산 가격, 펀딩비 지불 재설정
-          for (const auto& pending_exit : pending_exits_[symbol_idx]) {
-            if (pending_exit->GetEntryName() == entry_name) {
-              pending_exit->SetLeftMargin(adjusted_margin)
-                  .SetLiquidationPrice(adjusted_liquidation_price)
-                  .AddPaidFundingCount()
-                  .SetPaidFundingAmount(paid_funding_amount);
-            }
-          }
-
-          // Used Margin은 포지션의 Left Margin보다 무조건 같거나 많으므로,
-          // 음수는 절대 되지 않으므로 단순 감소시키면 됨
-          // ※ 사용한 마진으로 잡힌 지갑 자금을 감소시키고 펀딩비를 지불하는
-          //    것이기 때문에 사용한 마진과 지갑 자금을 둘 다 감소시켜야 함
-          engine_->DecreaseUsedMargin(margin_deduction);
-          engine_->DecreaseWalletBalance(margin_deduction);
-
-          LogFormattedInfo(
-              WARN_L,
-              format("[{}] 남은 펀딩비 [{}]를 마진 [{}]에서 지불 "
-                     "(펀딩 시간 {} | 펀딩 비율 {} | 펀딩 가격 {} | "
-                     "포지션 수량 {} | 전체 펀딩비 {})",
-                     entry_name, FormatDollar(margin_deduction, true),
-                     FormatDollar(left_margin, true), funding_time,
-                     FormatPercentage(funding_rate * 100, false), funding_price,
-                     ToFixedString(left_position_size, qty_precision),
-                     FormatDollar(abs_funding_amount, true)),
-              __FILE__, __LINE__);
-
-          LogFormattedInfo(
-              WARN_L,
-              format(
-                  "[{}] 펀딩비를 지불할 사용 가능 자금 부족으로 인해 잔여 마진 "
-                  "[{}] → [{}], 강제 청산 가격 [{}] → [{}] 조정",
-                  entry_name, FormatDollar(left_margin, true),
-                  FormatDollar(adjusted_margin, true),
-                  ToFixedString(original_liquidation_price, price_precision),
-                  ToFixedString(adjusted_liquidation_price, price_precision)),
-              __FILE__, __LINE__);
-        } else {
-          // 2.2 남은 펀딩비가 잔여 마진보다 많거나 같을 경우, 잔여 마진까지만
-          //     펀딩비가 부과되고 남은 펀딩비는 보험 기금에서 충당되며 포지션은
-          //     강제 청산 됨
-
-          // 진입 주문의 잔여 마진은 0
-          // FundingAmount에서 잔여 마진은 항상 양수이고 지불하는 것이니 빼기
-          filled_entry->SetLeftMargin(0)
-              .SetLiquidationPrice(CalculateLiquidationPrice(
-                  entry_direction, filled_entry->GetEntryFilledPrice(),
-                  left_position_size, 0, symbol_idx))
-              .AddPaidFundingCount()
-              .SetPaidFundingAmount(filled_entry->GetPaidFundingAmount() -
-                                    left_margin);
-
-          // 어차피 강제 청산 되므로 해당 진입을 목표로 하는 청산 주문은 수정할
-          // 필요가 없음 (자동으로 취소됨)
-
-          engine_->DecreaseUsedMargin(left_margin);
-          engine_->DecreaseWalletBalance(left_margin);
-
-          LogFormattedInfo(
-              WARN_L,
-              format("[{}] 남은 펀딩비 [{}]가 잔여 마진 [{}]"
-                     "보다 많거나 같으므로, 잔여 마진 전체를 펀딩비로 지불하고 "
-                     "강제 청산됩니다. (부족분은 보험 기금에서 충당됩니다.)",
-                     entry_name, FormatDollar(margin_deduction, true),
-                     FormatDollar(left_margin, true)),
-              __FILE__, __LINE__);
-
-          LogFormattedInfo(
-              WARN_L,
-              format("[{}] 남은 펀딩비 일부를 마진 [{}]로 전체 지불 "
-                     "(펀딩 시간 {} | 펀딩 비율 {} | 펀딩 가격 {} | "
-                     "포지션 수량 {} | 전체 펀딩비 {})",
-                     entry_name, FormatDollar(left_margin, true), funding_time,
-                     FormatPercentage(funding_rate * 100, false), funding_price,
-                     ToFixedString(left_position_size, qty_precision),
-                     FormatDollar(abs_funding_amount, true)),
-              __FILE__, __LINE__);
-
-          engine_->LogBalance();
-
-          // 현재 Open 가격에서 강제 청산
-          // (펀딩비는 항상 OHLC 시작 전에 정산되므로 시가에서 강제 청산이 타당)
-          // 현재 바의 Open Time이 현재 진행 시간의 Open Time과 같지 않으면
-          // 펀딩비는 부과되지 않으므로 이 함수 실행 시점에서는 단순히 Open
-          // 가격만 가져와서 사용하면 됨
-          FillLiquidation(filled_entry, "강제 청산 (펀딩비)", symbol_idx,
-                          (bar_->GetCurrentBarDataType() == TRADING
-                               ? bar_->GetBarData(TRADING, "")
-                               : bar_->GetBarData(MAGNIFIER, ""))
-                              ->GetBar(symbol_idx, bar_->GetCurrentBarIndex())
-                              .open);
-
-          // 강제 청산 시 LogBalance가 실행되므로 따로 호출할 필요가 없으므로
-          // 바로 다음 펀딩비 정산으로 넘어감
-          continue;
-        }
+    for (const auto& pending_exit : pending_exits_[symbol_idx]) {
+      if (pending_exit->GetEntryName() == entry_name) {
+        pending_exit->SetLeftMargin(adjusted_margin)
+            .SetLiquidationPrice(adjusted_liquidation_price);
       }
     }
 
-    // 펀딩비 정산 후 현재 자금 로그
-    engine_->LogBalance();
+    // 유지 마진(Maintenance Margin) 조건에 의한 강제 청산 검사
+    const auto abs_size = fabs(left_position_size);
+    const auto& leverage_bracket =
+        GetLeverageBracket(symbol_idx, funding_price, abs_size);
+    const double maintenance_margin =
+        funding_price * abs_size * leverage_bracket.maintenance_margin_rate -
+        leverage_bracket.maintenance_amount;
+
+    if (IsLess(adjusted_margin, maintenance_margin)) {
+      LogFormattedInfo(
+          WARN_L,
+          format("[{}] 펀딩비 누적으로 인해 할당 마진 [{}]이(가) 유지 마진 "
+                 "[{}] 미만으로 떨어져 강제 청산됩니다.",
+                 entry_name, FormatDollar(adjusted_margin, true),
+                 FormatDollar(maintenance_margin, true)),
+          __FILE__, __LINE__);
+
+      // 현재 Open 가격에서 강제 청산
+      // (펀딩비는 항상 OHLC 시작 전에 정산되므로 시가에서 강제 청산이 타당)
+      // 현재 바의 Open Time이 현재 진행 시간의 Open Time과 같지 않으면
+      // 펀딩비는 부과되지 않으므로 이 함수 실행 시점에서는 단순히 Open
+      // 가격만 가져와서 사용하면 됨
+      FillLiquidation(filled_entry, "강제 청산 (마진 부족)", symbol_idx,
+                      (bar_->GetCurrentBarDataType() == TRADING
+                           ? bar_->GetBarData(TRADING, "")
+                           : bar_->GetBarData(MAGNIFIER, ""))
+                          ->GetBar(symbol_idx, bar_->GetCurrentBarIndex())
+                          .open);
+    }
   }
+
+  // 펀딩비 정산 후 현재 자금 로그
+  engine_->LogBalance();
 }
 
 void OrderHandler::FillLiquidation(const shared_ptr<Order>& filled_entry,
@@ -2018,15 +1933,14 @@ void OrderHandler::ExecuteExit(const shared_ptr<Order>& exit_order,
   // 수수료는 청산 시 잔여 마진에서 실현 손실을 뺀 잔여 마진까지만 부과
   if (const auto liquidation_fee = exit_order->GetLiquidationFee();
       IsGreater(liquidation_fee, 0.0)) {
-    // 파산 포지션이거나, 잔여 마진이 0인 경우에는 강제 청산 수수료는
-    // 보험 기금에서 충당
+    // 파산 포지션이거나, 잔여 마진 + 실현 손익이 0 이하인 경우에는
+    // 강제 청산 수수료는 보험 기금에서 충당
     // -> PnL이 양수여도 펀딩비 부족으로 강제 청산 당할 수 있음
-    if (!is_bankruptcy_position && IsGreater(left_margin, 0.0)) {
-      double left_margin_after_exit;
+    if (!is_bankruptcy_position && IsGreater(left_margin + realized_pnl, 0.0)) {
       double real_liquidation_fee;
+      const double left_margin_after_exit = left_margin + realized_pnl;
 
-      if (left_margin_after_exit = left_margin - abs_realized_pnl;
-          IsGreaterOrEqual(liquidation_fee, left_margin_after_exit)) {
+      if (IsGreaterOrEqual(liquidation_fee, left_margin_after_exit)) {
         // 계산된 강제 청산 수수료가 PnL 정산 후 잔여 마진보다 많다면 잔여
         // 마진까지만 부과
         real_liquidation_fee = left_margin_after_exit;
