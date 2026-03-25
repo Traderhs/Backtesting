@@ -175,6 +175,7 @@ void BaseOrderHandler::UpdateCurrentPositionSize(const int symbol_idx) {
     position_size = filled_entry->GetEntryDirection() == LONG
                         ? fabs(position_size)
                         : -fabs(position_size);
+
     sum_position_size += position_size;
   }
 
