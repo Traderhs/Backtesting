@@ -45,7 +45,7 @@ optional<string> PercentageSlippage::ValidateTakerSlippage() const {
   }
 
   // 테이커 슬리피지율이 0~100% 범위를 벗어나면 유효하지 않음
-  if (IsGreater(taker_slippage_ratio_, 100.0) ||
+  if (IsGreater(taker_slippage_ratio_, 1.0) ||
       IsLess(taker_slippage_ratio_, 0.0)) {
     return format(
         "지정된 테이커 슬리피지 퍼센트 [{}%]는 100% 초과 혹은 "
@@ -63,7 +63,7 @@ optional<string> PercentageSlippage::ValidateMakerSlippage() const {
   }
 
   // 메이커 슬리피지율이 0~100% 범위를 벗어나면 유효하지 않음
-  if (IsGreater(maker_slippage_ratio_, 100.0) ||
+  if (IsGreater(maker_slippage_ratio_, 1.0) ||
       IsLess(maker_slippage_ratio_, 0.0)) {
     return format(
         "지정된 메이커 슬리피지 퍼센트 [{}%]는 100% 초과 혹은 "
@@ -94,12 +94,17 @@ double PercentageSlippage::CalculateSlippagePrice(
   // 방향에 따라 슬리피지 적용
   // 매수 진입: 가격이 올라가므로 불리함
   // 매도 진입: 가격이 내려가므로 불리함
-  const double slippage_price = direction == LONG
-                                    ? order_price * (1.0 + slippage_ratio)
-                                    : order_price * (1.0 - slippage_ratio);
+  double slippage_price = direction == LONG
+                              ? order_price * (1.0 + slippage_ratio)
+                              : order_price * (1.0 - slippage_ratio);
+
+  const double price_step = symbol_info_[symbol_idx].GetPriceStep();
+
+  // 숏 주문에서 과도한 슬리피지로 인해 가격이 음수가 되는 것을 원천 차단
+  slippage_price = max(slippage_price, price_step);
 
   // 가격 단위로 반올림
-  return RoundToStep(slippage_price, symbol_info_[symbol_idx].GetPriceStep());
+  return RoundToStep(slippage_price, price_step);
 }
 
 // =============================================================================
@@ -201,33 +206,37 @@ double MarketImpactSlippage::CalculateSlippagePrice(
   }
 
   // 1. 스프레드 추정 (bps)
-  double spread_raw = EstimateSpreadEdge(symbol_idx, bar_idx, bar_data);
-  spread_raw = SanitizeValue(spread_raw, tick_floor_bps_);
-  if (spread_raw < tick_floor_bps_) {
-    spread_raw = tick_floor_bps_;
-  }
+  double spread_smoothed;
 
-  double spread_smoothed = spread_raw;
+  // 같은 봉에서 다시 진입/청산이 발생할 경우 불필요한 EDGE/EMA 중복 계산을 방지
+  // (EMA 훼손 방지)
+  if (bar_idx == previous_spread_bar_idx_[symbol_idx]) {
+    spread_smoothed = previous_spread_bps_[symbol_idx];
+  } else {
+    double spread_raw = EstimateSpreadEdge(symbol_idx, bar_idx, bar_data);
+    spread_raw =
+        max(SanitizeValue(spread_raw, tick_floor_bps_), tick_floor_bps_);
 
-  // 고빈도 타임프레임(≤15분)에만 EMA 스무딩 적용
-  // 학술적 근거: 1m~15m은 마이크로스트럭처 노이즈가 크므로 평활화 필요,
-  // 30m 이상은 이미 자연 평활화되어 있어 불필요
-  const bool apply_ema_smoothing = bar_->GetCurrentBarDataType() == TRADING
-                                       ? is_trading_low_tf_
-                                       : is_magnifier_low_tf_;
+    spread_smoothed = spread_raw;
 
-  if (apply_ema_smoothing && previous_spread_bps_[symbol_idx] > 0.0) {
-    // EMA: spread_smoothed = α * spread_current + (1-α) * spread_previous
-    spread_smoothed =
-        spread_ema_alpha_ * spread_raw +
-        (1.0 - spread_ema_alpha_) * previous_spread_bps_[symbol_idx];
+    // 고빈도 타임프레임(≤15분)에만 EMA 스무딩 적용
+    // 학술적 근거: 1m~15m은 마이크로스트럭처 노이즈가 크므로 평활화 필요,
+    // 30m 이상은 이미 자연 평활화되어 있어 불필요
+    const bool apply_ema_smoothing = bar_->GetCurrentBarDataType() == TRADING
+                                         ? is_trading_low_tf_
+                                         : is_magnifier_low_tf_;
 
-    // EMA 이후 최종 바닥 재클램핑
-    spread_smoothed = max(spread_smoothed, tick_floor_bps_);
-  }
+    if (apply_ema_smoothing && previous_spread_bps_[symbol_idx] > 0.0) {
+      // EMA: spread_smoothed = α * spread_current + (1-α) * spread_previous
+      spread_smoothed =
+          spread_ema_alpha_ * spread_raw +
+          (1.0 - spread_ema_alpha_) * previous_spread_bps_[symbol_idx];
 
-  // 같은 봉 내 중복 갱신 방지
-  if (bar_idx != previous_spread_bar_idx_[symbol_idx]) {
+      // EMA 이후 최종 바닥 재클램핑
+      spread_smoothed = max(spread_smoothed, tick_floor_bps_);
+    }
+
+    // 상태 갱신
     previous_spread_bps_[symbol_idx] = spread_smoothed;
     previous_spread_bar_idx_[symbol_idx] = bar_idx;
   }
@@ -244,19 +253,25 @@ double MarketImpactSlippage::CalculateSlippagePrice(
 
   // 시장 충격 - 같은 봉 내 주문 크기 누적 반영
   if (bar_idx != intra_bar_idx_[symbol_idx]) {
-    intra_bar_cumulative_size_[symbol_idx] = order_size;
+    intra_bar_cumulative_size_[symbol_idx] = abs(order_size);
     intra_bar_idx_[symbol_idx] = bar_idx;
   } else {
-    intra_bar_cumulative_size_[symbol_idx] += order_size;
+    intra_bar_cumulative_size_[symbol_idx] += abs(order_size);
   }
 
-  // 4. 시장 충격 계산: k * σ * (Q/V)^β
-  // PR 캡: 극저유동성 구간에서 Q/V 폭주 방지
+  // 4. 시장 충격 계산: c * σ * (Q/V)^β
+  // 원래 학술 모델의 기본 계수(k=0.1)는 장기 분할 주문 TWAP에 교정된 값
+  // 따라서 백테스팅에서 단기 봉에 시장가를 일시적으로 쓸어 담는 상황에서는
+  // 기본 모델이 극도로 과소평가 됨
+  // 상식적인 오더북 슬리피지를 위해 단기 스윕에 맞게 계수를 보정
   double participation_rate =
       intra_bar_cumulative_size_[symbol_idx] / safe_volume;
-  participation_rate = min(participation_rate, participation_rate_cap_);
 
-  const double market_impact_bps = impact_coefficient_ * volatility *
+  participation_rate = min(participation_rate, 100000.0);
+
+  const double instant_impact_coeff = impact_coefficient_ * 10.0;
+
+  const double market_impact_bps = instant_impact_coeff * volatility *
                                    pow(participation_rate, impact_exponent_) *
                                    10000.0;
 
@@ -280,6 +295,9 @@ double MarketImpactSlippage::CalculateSlippagePrice(
     slippage_price = order_price + slip_ticks_adverse * price_step;
   } else {
     slippage_price = order_price - slip_ticks_adverse * price_step;
+
+    // 숏 진입 또는 롱 청산 시 과도한 슬리피지로 인해 음수 가격이 되는 것을 방어
+    slippage_price = max(slippage_price, price_step);
   }
 
   // 가격 단위로 반올림
@@ -547,13 +565,15 @@ double MarketImpactSlippage::CalculateRollingVolume(
     const int symbol_idx, const size_t bar_idx,
     const shared_ptr<BarData>& bar_data) const {
   double volume_sum = 0.0;
+  int valid_count = 0;
 
   for (size_t idx = bar_idx - rolling_window_ + 1; idx <= bar_idx; ++idx) {
     const auto& bar = bar_data->GetBar(symbol_idx, idx);
     volume_sum += bar.volume;
+    valid_count++;
   }
 
-  return volume_sum;
+  return valid_count > 0 ? volume_sum / valid_count : 0.0;
 }
 
 }  // namespace backtesting::order

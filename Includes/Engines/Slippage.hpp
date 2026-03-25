@@ -170,15 +170,13 @@ class BACKTESTING_API MarketImpactSlippage final : public Slippage {
   /// - 롤링 윈도우 10 (범용적)
   /// - 틱 플로어 1 bps (기본 최소값)
   /// - 수수료는 Config 설정 사용 (테이커/메이커 모두 양수)
-  /// - PR 캡 0.3 (극저유동성 폭주 방지)
   /// - 스프레드 EMA 스무딩 알파 0.3 (15분 이하 고빈도 데이터만)
   explicit MarketImpactSlippage(const double stress_multiplier)
       : impact_coefficient_(0.1),
         rolling_window_(10),
         tick_floor_bps_(1.0),
         impact_exponent_(0.5),
-        participation_rate_cap_(0.3),  // PR 캡 (Q/V 폭주 방지)
-        spread_ema_alpha_(0.3),        // 스프레드 EMA 스무딩 알파
+        spread_ema_alpha_(0.3),  // 스프레드 EMA 스무딩 알파
         epsilon_(1e-10),
         stress_multiplier_(stress_multiplier),
         is_trading_low_tf_(false),
@@ -209,7 +207,6 @@ class BACKTESTING_API MarketImpactSlippage final : public Slippage {
   size_t rolling_window_;          // 롤링 윈도우 크기
   mutable double tick_floor_bps_;  // 상대적 심볼 틱 플로어 크기 (bps)
   double impact_exponent_;         // β (기본 0.5)
-  double participation_rate_cap_;  // PR 캡 (Q/V 폭주 방지, 기본 0.3)
   double spread_ema_alpha_;        // 스프레드 EMA 스무딩 알파 (기본 0.3)
   double epsilon_;                 // 0으로 나누기 방지
   double stress_multiplier_;       // 스트레스 테스트 용도 슬리피지 틱 계수
