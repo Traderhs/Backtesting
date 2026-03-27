@@ -85,6 +85,9 @@ class BACKTESTING_API Analyzer {
   /// 거래 내역에 거래를 추가하는 함수
   void AddTrade(Trade& new_trade, int exit_count);
 
+  /// 마지막 거래 내역을 반환하는 함수
+  [[nodiscard]] Trade GetLastTrade() const;
+
   /// 이번 백테스팅의 결과가 저장될 메인 폴더의 경로를 반환하는 함수
   [[nodiscard]] string GetMainDirectory() const;
 

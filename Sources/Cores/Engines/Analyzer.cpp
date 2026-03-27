@@ -130,6 +130,8 @@ void Analyzer::AddTrade(Trade& new_trade, const int exit_count) {
   }
 }
 
+Trade Analyzer::GetLastTrade() const { return trade_list_.back(); }
+
 string Analyzer::GetMainDirectory() const { return main_directory_; }
 
 // =============================================================================
