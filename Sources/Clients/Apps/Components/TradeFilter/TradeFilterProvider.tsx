@@ -130,12 +130,23 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
 
     // 현재 선택된 Results 폴더
     const {selectedResult} = useResults();
+    const configRequestSeqRef = useRef(0);
+    const tradesRequestSeqRef = useRef(0);
+    const filteringRequestSeqRef = useRef(0);
 
     // 앱 시작 시 config.json 불러오기 (전략, 심볼)
     useEffect(() => {
+        const requestId = ++configRequestSeqRef.current;
+
         async function loadConfig() {
             try {
                 if (!selectedResult) {
+                    if (requestId !== configRequestSeqRef.current) {
+                        return;
+                    }
+
+                    setSymbolOptions([]);
+                    setStrategyOptions([]);
                     setLoading(false);
                     return;
                 }
@@ -152,6 +163,10 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                 const strategy = config["전략"] as Record<string, unknown>;
                 const strategies = [{name: String(strategy["전략 이름"])}];
 
+                if (requestId !== configRequestSeqRef.current) {
+                    return;
+                }
+
                 setSymbolOptions(symbols);
                 setStrategyOptions(strategies);
                 setFilter((prev) => ({
@@ -160,6 +175,10 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                     strategies: strategies.map((s: { name: string }) => s.name),
                 }));
             } catch (error) {
+                if (requestId !== configRequestSeqRef.current) {
+                    return;
+                }
+
                 console.error("config.json 로딩 실패:", error);
             }
         }
@@ -169,12 +188,29 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
 
     // trade_list.json 로드 및 "진입 이름", "청산 이름" 고유값 추출
     useEffect(() => {
+        const requestId = ++tradesRequestSeqRef.current;
+
+        setLoading(true);
+        setTradeListError(false);
+        setAllTrades([]);
+        setFilteredTrades([]);
+        setEntryOptions([]);
+        setExitOptions([]);
+        setTimeOptionsCalculated(false);
+        setHasBankruptcy(false);
+        setFilteringProgress(0);
+
         async function fetchTrades() {
             try {
                 if (!selectedResult) {
+                    if (requestId !== tradesRequestSeqRef.current) {
+                        return;
+                    }
+
                     // Results가 없으면 에러 UI를 띄우지 말고 빈 상태로 처리
                     setTradeListError(false);
                     setAllTrades([]);
+                    setFilteredTrades([]);
                     setLoading(false);
 
                     return;
@@ -185,11 +221,16 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                     ? window.__resultsFetchParsed(tlUrl)
                     : (await (await fetch(tlUrl)).json()));
 
+                if (requestId !== tradesRequestSeqRef.current) {
+                    return;
+                }
+
                 // 0행 오류 확인
                 if (data.length > 0) {
                     if (Number(data[0]["거래 번호"]) !== 0) {
                         setTradeListError(true);
                         setAllTrades([]);
+                        setFilteredTrades([]);
                         return;
                     }
 
@@ -339,10 +380,17 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                 // 초기값 계산 완료로 설정
                 setTimeOptionsCalculated(true);
             } catch (error) {
+                if (requestId !== tradesRequestSeqRef.current) {
+                    return;
+                }
+
                 console.error("trade_list API 로딩 실패:", error);
                 setAllTrades([]);
+                setFilteredTrades([]);
             } finally {
-                setLoading(false);
+                if (requestId === tradesRequestSeqRef.current) {
+                    setLoading(false);
+                }
             }
         }
 
@@ -388,8 +436,14 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
 
     // 즉시 필터링 함수 (디바운스 없음)
     const immediateFiltering = useCallback(async (currentFilter: TradeFilter, trades: TradeItem[]) => {
+        const requestId = ++filteringRequestSeqRef.current;
+
         // allTrades가 비어있으면 처리하지 않음
         if (!trades.length) {
+            if (requestId !== filteringRequestSeqRef.current) {
+                return;
+            }
+
             setFilteredTrades([]);
             setIsFiltering(false);
             return;
@@ -467,18 +521,28 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                 workerFilter
             );
 
+            if (requestId !== filteringRequestSeqRef.current) {
+                return;
+            }
+
             // 결과 적용
             setFilteredTrades(result.trades as TradeItem[]);
             setHasBankruptcy(result.hasBankruptcy); // 파산 여부 저장
             setFilteringProgress(100);
         } catch (error) {
+            if (requestId !== filteringRequestSeqRef.current) {
+                return;
+            }
+
             console.error('멀티 워커 필터링 실패:', error);
             // 에러 발생 시 빈 배열 대신 원본 데이터 유지
             setFilteredTrades(trades);
             setHasBankruptcy(false);
             setFilteringProgress(0);
         } finally {
-            setIsFiltering(false);
+            if (requestId === filteringRequestSeqRef.current) {
+                setIsFiltering(false);
+            }
         }
     }, []);
 
@@ -496,8 +560,10 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
             if (filteringTimeoutRef.current) {
                 clearTimeout(filteringTimeoutRef.current);
             }
+
+            filteringRequestSeqRef.current += 1;
         };
-    }, [filter, allTrades]);
+    }, [filter, allTrades, immediateFiltering]);
 
     // contextValue도 useMemo로 최적화하여 불필요한 재생성 방지
     const contextValue = useMemo(() => ({

@@ -28,7 +28,7 @@ interface MetricsCardProps {
 
 const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) => {
     const [fontSize, setFontSize] = useState(27);
-    const [displayValue, setDisplayValue] = useState('');
+    const [displayValue, setDisplayValue] = useState<{ sourceValue: string; value: string } | null>(null);
     const valueRef = useRef<HTMLDivElement>(null);
 
     // 지표 데이터 매핑 함수 (소수점 제거 옵션 추가)
@@ -91,18 +91,34 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
         }
     };
 
+    const rawMetricValue = getMetricValue(metric.id, metricsData);
+    const currentDisplayValue = displayValue?.sourceValue === rawMetricValue
+        ? displayValue.value
+        : rawMetricValue;
+    const currentFontSize = displayValue?.sourceValue === rawMetricValue ? fontSize : 27;
+
     // 텍스트 크기 조정 함수
     const adjustTextSize = useCallback(() => {
-        if (!valueRef.current) return;
+        const sourceValue = getMetricValue(metric.id, metricsData, false);
+
+        if (!valueRef.current) {
+            setDisplayValue(null);
+            setFontSize(27);
+            return;
+        }
 
         const container = valueRef.current.closest('div[style*="padding: 1.2rem"]');
-        if (!container) return;
+        if (!container) {
+            setDisplayValue(null);
+            setFontSize(27);
+            return;
+        }
 
         // 카드 고정 너비 (패딩 제외한 실제 텍스트 공간)
         const maxWidth = container.clientWidth - 40; // 패딩 2.4rem = 38.4px 정도
 
         // 원본 값 시도
-        let currentValue = getMetricValue(metric.id, metricsData, false);
+        let currentValue = sourceValue;
         let currentFontSize = 27; // Adjusted font size
 
         // 임시 측정용 엘리먼트 생성
@@ -139,7 +155,7 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
 
         document.body.removeChild(measureElement);
 
-        setDisplayValue(currentValue);
+        setDisplayValue({sourceValue, value: currentValue});
         setFontSize(currentFontSize);
     }, [metric.id, metricsData]);
 
@@ -329,7 +345,7 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
                         minHeight: '32px'
                     }}>
                         <div ref={valueRef} style={{
-                            fontSize: fontSize + 'px',
+                            fontSize: currentFontSize + 'px',
                             fontWeight: 700,
                             color: getMetricColor(metric.id, metricsData),
                             whiteSpace: 'nowrap',
@@ -338,7 +354,7 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
                             lineHeight: '1.2',
                             transform: 'translateY(-3px)'
                         }}>
-                            {displayValue || getMetricValue(metric.id, metricsData)}
+                            {currentDisplayValue}
                         </div>
                     </div>
                 </div>
@@ -517,11 +533,6 @@ interface OverviewProps {
 const Overview = React.memo(({}: OverviewProps) => {
     const {filteredTrades, loading} = useTradeFilter();
 
-    // 거래 데이터가 없는 경우
-    if (!filteredTrades || filteredTrades.length === 1) {
-        return <NoDataMessage message={"거래 내역이 존재하지 않습니다."}/>;
-    }
-
     const [metricsData, setMetricsData] = useState<ReturnType<typeof calculatePerformanceMetrics> | null>(null);
     const [dataLoading, setDataLoading] = useState(true);
     const [isMounted, setIsMounted] = useState(false);
@@ -537,10 +548,11 @@ const Overview = React.memo(({}: OverviewProps) => {
         try {
             // 핵심 속성들로만 해시 생성 (자금 재계산 시 변경되는 필드도 포함)
             const essentialData = filteredTrades.map(trade => ({
-                id: trade.id,
-                entryTime: trade.entryTime,
-                exitTime: trade.exitTime,
-                profitLoss: trade.profitLoss,
+                tradeNumber: trade["거래 번호"],
+                entryTime: trade["진입 시간"],
+                exitTime: trade["청산 시간"],
+                profitLoss: trade["손익"],
+                netProfitLoss: trade["순손익"],
                 currentCapital: trade["현재 자금"],  // 자금 재계산 시 변경
                 accumulatedProfitLoss: trade["누적 손익"],  // 자금 재계산 시 변경
                 maxDrawdown: trade["최고 드로우다운"]  // 자금 재계산 시 변경
@@ -651,8 +663,15 @@ const Overview = React.memo(({}: OverviewProps) => {
     }, [sharpeLoading]);
 
     // 데이터가 있을 때 추적
-    if (metricsData && !hasEverHadData) {
-        setHasEverHadData(true);
+    useEffect(() => {
+        if (metricsData && !hasEverHadData) {
+            setHasEverHadData(true);
+        }
+    }, [metricsData, hasEverHadData]);
+
+    // 거래 데이터가 없는 경우
+    if (!filteredTrades || filteredTrades.length === 1) {
+        return <NoDataMessage message={"거래 내역이 존재하지 않습니다."}/>;
     }
 
     // 초기 로딩 중이거나 실제 데이터 로딩 중이면 로딩 스피너 표시
