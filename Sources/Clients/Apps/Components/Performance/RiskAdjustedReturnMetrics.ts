@@ -12,6 +12,12 @@ export interface RiskAdjustedReturnMetricsResult {
     cacheKey?: string;
 }
 
+interface RiskAdjustedReturnMetricsOptions {
+    initialBalance: number;
+    periodStart?: Date | null;
+    periodEnd?: Date | null;
+}
+
 // 안전한 숫자 포맷팅 함수 (toFixed 버그 회피)
 // 동작 요약:
 // - 무한대/NaN/비유한 값 처리
@@ -110,52 +116,64 @@ const fetchTreasuryYield = async (): Promise<number> => {
     }
 };
 
-// 일별 포트폴리오 가치 계산 함수
-const buildDailyPortfolioValues = (actualTrades: TradeItem[]): { dates: Date[], values: number[] } => {
-    if (actualTrades.length === 0) return {dates: [], values: []};
+const toDateKey = (date: Date): string => date.toISOString().split('T')[0];
 
-    // 초기 자본금은 거래번호 0번의 '현재 자금'
-    const firstTrade = actualTrades[0];
-    const initialCapital = safeNumber(firstTrade["현재 자금"] || 10000);
+const parseTradeDate = (value: unknown): Date | null => {
+    if (!value || value === "-") return null;
+
+    const date = new Date(String(value));
+    return Number.isNaN(date.getTime()) ? null : date;
+};
+
+// 일별 포트폴리오 가치 계산 함수
+const buildDailyPortfolioValues = (
+    actualTrades: TradeItem[],
+    initialCapital: number,
+    periodStart?: Date | null,
+    periodEnd?: Date | null
+): { dates: Date[], values: number[] } => {
+    if (actualTrades.length === 0) return {dates: [], values: []};
 
     // 날짜별 자본금 변화 추적
     const dateValueMap = new Map<string, number>();
 
-    // 첫 번째 거래일 이전의 초기 자본금 설정
-    const firstTradeDate = new Date(String(firstTrade["진입 시간"] || 0));
-    const startDate = new Date(firstTradeDate.getTime() - 24 * 60 * 60 * 1000); // 하루 전
-    const startDateKey = startDate.toISOString().split('T')[0];
-    dateValueMap.set(startDateKey, initialCapital);
+    const firstTradeDate = parseTradeDate(actualTrades[0]["진입 시간"]);
+    const lastTradeDate = parseTradeDate(actualTrades[actualTrades.length - 1]["청산 시간"]);
+
+    const startDate = periodStart || firstTradeDate;
+    const endDate = periodEnd || lastTradeDate;
+
+    if (!startDate || !endDate || initialCapital <= 0) {
+        return {dates: [], values: []};
+    }
 
     // 각 거래의 청산 시점에서 자본금 업데이트
     actualTrades.forEach(trade => {
-        const exitTime = String(trade["청산 시간"] || 0);
-        if (!exitTime || exitTime === "0") return;
+        const exitDate = parseTradeDate(trade["청산 시간"]);
+        if (!exitDate) return;
 
-        const exitDate = new Date(exitTime);
-        const exitDateKey = exitDate.toISOString().split('T')[0];
         const currentCapital = safeNumber(trade["현재 자금"] || 0);
 
         // 해당 날짜의 최종 자본금으로 업데이트
-        dateValueMap.set(exitDateKey, currentCapital);
+        dateValueMap.set(toDateKey(exitDate), currentCapital);
     });
 
-    // 날짜 정렬 및 누락된 날짜 보간
-    const sortedDates = Array.from(dateValueMap.keys()).sort();
-    const allDates: Date[] = [];
-    const allValues: number[] = [];
-
-    if (sortedDates.length === 0) return {dates: [], values: []};
-
     // 시작일부터 마지막일까지 모든 날짜 생성
-    const startDateObj = new Date(sortedDates[0]);
-    const endDateObj = new Date(sortedDates[sortedDates.length - 1]);
+    const startDateObj = new Date(toDateKey(startDate));
+    const endDateObj = new Date(toDateKey(endDate));
 
+    if (startDateObj > endDateObj) {
+        return {dates: [], values: []};
+    }
+
+    // 0번 거래는 거래 표본이 아니라 첫 일별 수익률 계산을 위한 기준 자금
+    const allDates: Date[] = [new Date(startDateObj)];
+    const allValues: number[] = [initialCapital];
     let currentDate = new Date(startDateObj);
-    let lastKnownValue = dateValueMap.get(sortedDates[0]) || initialCapital;
+    let lastKnownValue = initialCapital;
 
     while (currentDate <= endDateObj) {
-        const dateKey = currentDate.toISOString().split('T')[0];
+        const dateKey = toDateKey(currentDate);
         const value = dateValueMap.get(dateKey);
 
         if (value !== undefined) {
@@ -200,15 +218,15 @@ const calculateStandardDeviation = (values: number[]): number => {
     return Math.sqrt(variance);
 };
 
-// 하방 표준편차 계산 함수 (무위험 수익률보다 낮은 수익률만 사용)
+// 하방 표준편차 계산 함수
 const calculateDownsideDeviation = (values: number[], targetReturn: number): number => {
-    const negativeReturns = values.filter(r => r < targetReturn)
-        .map(r => r - targetReturn);
-
-    const n = negativeReturns.length;
+    const n = values.length;
     if (n === 0) return 0;
 
-    const sumOfSquaredDifferences = negativeReturns.reduce((acc, r) => acc + r ** 2, 0);
+    const sumOfSquaredDifferences = values.reduce((acc, r) => {
+        const downsideReturn = Math.min(0, r - targetReturn);
+        return acc + downsideReturn ** 2;
+    }, 0);
     const downsideVariance = sumOfSquaredDifferences / n;
     return Math.sqrt(downsideVariance);
 };
@@ -218,7 +236,8 @@ const calculateAndUpdateMetrics = (
     actualTrades: TradeItem[],
     cagrStr: string,
     riskRewardMetrics: RiskRewardMetricsResult,
-    cacheKey: string
+    cacheKey: string,
+    options: RiskAdjustedReturnMetricsOptions
 ): RiskAdjustedReturnMetricsResult => {
     const riskFreeRate = cachedRiskFreeRate || DEFAULT_RISK_FREE_RATE;
 
@@ -227,7 +246,12 @@ const calculateAndUpdateMetrics = (
     const annualMdd = parseFloat(riskRewardMetrics.mdd.replace('%', '')) / 100;
 
     // 일별 포트폴리오 가치 재구성
-    const {dates, values} = buildDailyPortfolioValues(actualTrades);
+    const {dates, values} = buildDailyPortfolioValues(
+        actualTrades,
+        options.initialBalance,
+        options.periodStart,
+        options.periodEnd
+    );
 
     if (dates.length < 2) {
         return {
@@ -294,10 +318,10 @@ const calculateAndUpdateMetrics = (
     // 결과 객체 생성
     const result: RiskAdjustedReturnMetricsResult = {
         calmarRatio: calmarRatioStr,
-        sharpeRatio: actualTrades.length <= 2
+        sharpeRatio: dailyReturns.length < 2
             ? "-"
             : safeFormatNumber(annualSharpeRatio, 2),
-        sortinoRatio: actualTrades.length <= 2
+        sortinoRatio: dailyReturns.length < 2
             ? "-"
             : safeFormatNumber(annualSortinoRatio, 2),
         riskFreeRate: safeFormatNumber(riskFreeRate * 100, 2) + '%',
@@ -332,7 +356,8 @@ export const calculateRiskAdjustedReturnMetrics = (
     actualTrades: TradeItem[],
     cagrStr: string,
     riskRewardMetrics: RiskRewardMetricsResult,
-    avgMetrics: AverageProfitLossMetricsResult
+    avgMetrics: AverageProfitLossMetricsResult,
+    options: RiskAdjustedReturnMetricsOptions
 ): RiskAdjustedReturnMetricsResult => {
     // 트레이드 데이터가 없으면 기본값 반환
     if (actualTrades.length === 0) {
@@ -346,7 +371,9 @@ export const calculateRiskAdjustedReturnMetrics = (
     }
 
     // 캐시 키 생성
-    const cacheKey = `${actualTrades.length}-${cagrStr}-${riskRewardMetrics.mdd}-${avgMetrics.avgPnL}`;
+    const periodStartKey = options.periodStart?.toISOString() || "";
+    const periodEndKey = options.periodEnd?.toISOString() || "";
+    const cacheKey = `${actualTrades.length}-${cagrStr}-${riskRewardMetrics.mdd}-${avgMetrics.avgPnL}-${options.initialBalance}-${periodStartKey}-${periodEndKey}`;
     if (metricsCache?.cacheKey === cacheKey && !metricsCache.isLoading) {
         return metricsCache;
     }
@@ -372,7 +399,7 @@ export const calculateRiskAdjustedReturnMetrics = (
     }
 
     // 무위험 수익률이 있으면 메트릭 계산
-    return calculateAndUpdateMetrics(actualTrades, cagrStr, riskRewardMetrics, cacheKey);
+    return calculateAndUpdateMetrics(actualTrades, cagrStr, riskRewardMetrics, cacheKey, options);
 };
 
 // 모듈 최하단에서 초기 로드 시작
