@@ -89,7 +89,12 @@ export const calculatePerformanceMetrics = (trades: any[], config?: any): Perfor
         actualTrades,
         agrMetrics.cagr,
         riskRewardMetrics,
-        avgProfitLossMetrics
+        avgProfitLossMetrics,
+        {
+            initialBalance: balanceMetrics.initialBalance,
+            periodStart: startDate,
+            periodEnd: endDate
+        }
     );
     const tradeCountMetrics = calculateTradeCountMetrics(
         actualTrades,
