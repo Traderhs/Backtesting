@@ -1,11 +1,36 @@
+.loading-screen {
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+    height: 100%;
+    background-color: rgb(17 17 17 / 90%);
+    pointer-events: all;
+    inset: 0;
+}
+
 .loading-overlay {
+    position: absolute;
+    background-color: rgb(17 17 17 / 95%);
     transform: translateZ(0);
     transition: opacity 0.3s ease-out;
     backface-visibility: hidden;
+    inset: 0;
     will-change: opacity;
 }
 
-.chart-loading-indicator {
+.loading-spinner-frame {
+    position: relative;
+    z-index: 1010;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 42px;
+    height: 42px;
+}
+
+.loading-spinner-ring {
     width: 42px;
     height: 42px;
     margin: 0 auto;
