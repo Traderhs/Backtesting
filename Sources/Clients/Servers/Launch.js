@@ -1427,7 +1427,7 @@ extern "C" {
 
         // 컴파일/링크 공통 플래그
         // (주의: 컴파일 시 /LD나 /link 옵션은 사용하지 않음 -> 링크 단계에서 수행)
-        const commonFlags = `/O2 /Oi /Ot /GL /arch:AVX2 /fp:strict /DNDEBUG /GS- /Gy /favor:AMD64 /MD /EHsc /std:c++20 /DSTRATEGY_BUILD /DINDICATOR_BUILD /nologo /MP /bigobj /Zc:inline`;
+        const commonFlags = `/O2 /Oi /Ot /GL /arch:AVX2 /fp:strict /DNDEBUG /GS- /Gy /favor:AMD64 /MD /EHsc /std:c++20 /utf-8 /DSTRATEGY_BUILD /DINDICATOR_BUILD /nologo /MP /bigobj /Zc:inline`;
 
         let compileCmd = "";
 
