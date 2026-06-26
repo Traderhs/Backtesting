@@ -316,7 +316,7 @@ export default function Sidebar({
     };
 
     /**
-     * 분석 그래프 섹션 토글 함수
+     * 성과 분석 섹션 토글 함수
      * 그래프 섹션의 확장/축소 상태를 변경
      */
     const handlePlotToggle = () => {
@@ -332,7 +332,7 @@ export default function Sidebar({
 
     /**
      * 플롯 타입 클릭 핸들러
-     * 선택한 플롯 타입에 대한 분석 그래프를 로드하고 분석 그래프 탭으로 이동
+     * 선택한 플롯 타입에 대한 성과 분석을 로드하고 성과 분석 탭으로 이동
      *
      * @param plotType - 선택한 플롯 타입
      */
@@ -443,7 +443,7 @@ export default function Sidebar({
 
                     {hasSelectedResult && (
                         <>
-                            {/* 전체 요약 버튼 - 백테스팅 결과의 전체적인 요약 정보 제공 */}
+                            {/* 오버뷰 버튼 - 백테스팅 결과의 전체적인 요약 정보 제공 */}
                             <motion.div
                                 custom={{index: 1, isActive: activeTab === "Overview"}}
                                 variants={itemVariants}
@@ -459,7 +459,7 @@ export default function Sidebar({
                                     onClick={() => handleTabChange("Overview")}
                                 >
                                     <SidebarIcon name={'overview.ico'} alt="Overview" className="sidebar-icon"/>
-                                    <span className="ml-2 button-text">전체 요약</span>
+                                    <span className="ml-2 button-text">오버뷰</span>
                                 </Button>
                             </motion.div>
 
@@ -483,7 +483,7 @@ export default function Sidebar({
                                 </Button>
                             </motion.div>
 
-                            {/* 분석 그래프 버튼 - 백테스팅 결과를 시각화한 그래프 모음 제공 */}
+                            {/* 성과 분석 버튼 - 백테스팅 결과를 시각화한 그래프 모음 제공 */}
                             <motion.div
                                 custom={{index: 3, isActive: activeTab === "Plot"}}
                                 variants={itemVariants}
@@ -499,7 +499,7 @@ export default function Sidebar({
                                     onClick={handlePlotToggle}
                                 >
                                     <SidebarIcon name={'plot.ico'} alt="Plot" className="sidebar-icon"/>
-                                    <span className="ml-2 button-text">분석 그래프</span>
+                                    <span className="ml-2 button-text">성과 분석</span>
                                     <span
                                         className={`expand-arrow ${plotExpanded ? "expand-arrow-expanded" : "expand-arrow-collapsed"}`}>
                                 {plotExpanded ? "▼" : "▶"}
@@ -507,7 +507,7 @@ export default function Sidebar({
                                 </Button>
                             </motion.div>
 
-                            {/* 분석 그래프 유형 클릭 핸들러 */}
+                            {/* 성과 분석 유형 클릭 핸들러 */}
                             <AnimatePresence initial={false} mode="wait" onExitComplete={() => {
                             }}>
                                 {plotExpanded && (
@@ -542,7 +542,7 @@ export default function Sidebar({
                                         }}
                                         className="sub-section-container"
                                     >
-                                        {/* 자금 & 드로우다운 탭 */}
+                                        {/* 자산 & 드로우다운 탭 */}
                                         <div key="plot-equity-drawdown" className="sub-section-item">
                                             <motion.div
                                                 custom={{
@@ -561,7 +561,7 @@ export default function Sidebar({
                                                     className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "equity-drawdown" ? "active" : ""}`}
                                                     onClick={() => handlePlotTypeClick("equity-drawdown")}
                                                 >
-                                                    <span className="sub-button-text">자금 & 드로우다운</span>
+                                                    <span className="sub-button-text">자산 & 드로우다운</span>
                                                 </Button>
                                             </motion.div>
                                         </div>
@@ -585,7 +585,7 @@ export default function Sidebar({
                                                     className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "profit-loss-comparison" ? "active" : ""}`}
                                                     onClick={() => handlePlotTypeClick("profit-loss-comparison")}
                                                 >
-                                                    <span className="sub-button-text">시간별 순손익 비교</span>
+                                                    <span className="sub-button-text">시점별 순손익</span>
                                                 </Button>
                                             </motion.div>
                                         </div>
@@ -609,12 +609,12 @@ export default function Sidebar({
                                                     className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "holding-time-pnl-distribution" ? "active" : ""}`}
                                                     onClick={() => handlePlotTypeClick("holding-time-pnl-distribution")}
                                                 >
-                                                    <span className="sub-button-text">보유 시간 순손익 분포</span>
+                                                    <span className="sub-button-text">보유 시간 분포</span>
                                                 </Button>
                                             </motion.div>
                                         </div>
 
-                                        {/* 심볼별 성과 추이 탭 */}
+                                        {/* 심볼별 성과 탭 */}
                                         <div key="plot-symbol-performance" className="sub-section-item">
                                             <motion.div
                                                 custom={{
@@ -633,7 +633,7 @@ export default function Sidebar({
                                                     className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "symbol-performance" ? "active" : ""}`}
                                                     onClick={() => handlePlotTypeClick("symbol-performance")}
                                                 >
-                                                    <span className="sub-button-text">심볼별 성과 추이</span>
+                                                    <span className="sub-button-text">심볼별 성과</span>
                                                 </Button>
                                             </motion.div>
                                         </div>

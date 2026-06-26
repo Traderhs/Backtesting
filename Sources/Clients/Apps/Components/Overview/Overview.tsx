@@ -710,7 +710,7 @@ const Overview = React.memo(({}: OverviewProps) => {
                         position: 'relative',
                     }}
                 >
-                    전체 요약
+                    오버뷰
                     {/* 밑줄 */}
                     <motion.span
                         initial={{width: 0}}
