@@ -271,15 +271,15 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
     const getPlotTitle = (type: string): string => {
         switch (type) {
             case "equity-drawdown":
-                return "자금 & 드로우다운";
+                return "자산 & 드로우다운";
             case "profit-loss-comparison":
-                return "시간별 순손익 비교";
+                return "시점별 순손익";
             case "holding-time-pnl-distribution":
-                return "보유 시간 순손익 분포";
+                return "보유 시간 분포";
             case "symbol-performance":
-                return "심볼별 성과 추이";
+                return "심볼별 성과";
             default:
-                return "분석 그래프"; // 기본 제목
+                return "성과 분석"; // 기본 제목
         }
     };
 
@@ -369,7 +369,7 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
                         }}
                     >
                         {/* PlotType에 따라 다른 컴포넌트 렌더링 -> display 속성으로 제어 */}
-                        {/* 자금 & 드로우다운 */}
+                        {/* 자산 & 드로우다운 */}
                         <div style={{
                             display: plotType === 'equity-drawdown' ? 'block' : 'none',
                             width: '100%',
@@ -380,7 +380,7 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
                             )}
                         </div>
 
-                        {/* 시간별 순손익 비교 */}
+                        {/* 시점별 순손익 */}
                         <div style={{
                             display: plotType === 'profit-loss-comparison' ? 'block' : 'none',
                             width: '100%',
@@ -391,7 +391,7 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
                             )}
                         </div>
 
-                        {/* 보유 시간 순손익 분포 */}
+                        {/* 보유 시간 분포 */}
                         <div style={{
                             display: plotType === 'holding-time-pnl-distribution' ? 'block' : 'none',
                             width: '100%',
@@ -402,7 +402,7 @@ const Plot: React.FC<PlotProps> = ({plotType = "equity-drawdown", config}) => {
                             )}
                         </div>
 
-                        {/* 심볼별 성과 추이 */}
+                        {/* 심볼별 성과 */}
                         <div style={{
                             display: plotType === 'symbol-performance' ? 'block' : 'none',
                             width: '100%',

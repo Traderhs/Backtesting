@@ -95,7 +95,7 @@ function AppContent() {
     // StrategyEditor가 내부 준비 되었는지 여부
     const [isStrategyEditorReady, setIsStrategyEditorReady] = useState(false);
 
-    // 분석 그래프(Plot) 탭의 활성 플롯 타입 상태 추가
+    // 성과 분석(Plot) 탭의 활성 플롯 타입 상태 추가
     const [activePlotType, setActivePlotType] = useState<string>("equity-drawdown");
 
     // StarField 워커 참조 (전역 상태 공유를 위해)
@@ -280,7 +280,7 @@ function AppContent() {
                 setChartConfig(newChartConfig);
             }
 
-            // 분석 그래프(Plot) 관련 설정 업데이트
+            // 성과 분석(Plot) 관련 설정 업데이트
             if (needsPlotUpdate) {
                 // 플롯 타입이 있으면 그 값으로 설정
                 if (configParam.plotType) {
@@ -342,9 +342,9 @@ function AppContent() {
     useEffect(() => {
         const tabLabelMap: Record<string, string> = {
             StrategyEditor: '전략 에디터',
-            Overview: '전체 요약',
+            Overview: '오버뷰',
             Performance: '성과 지표',
-            Plot: '분석 그래프',
+            Plot: '성과 분석',
             Chart: '거래 차트',
             TradeList: '거래 내역',
             Config: '백테스팅 설정',
@@ -352,10 +352,10 @@ function AppContent() {
         };
 
         const plotTypeMap: Record<string, string> = {
-            'equity-drawdown': '자금 & 드로우다운',
-            'profit-loss-comparison': '시간별 순손익 비교',
-            'holding-time-pnl-distribution': '보유 시간 순손익 분포',
-            'symbol-performance': '심볼별 성과 추이'
+            'equity-drawdown': '자산 & 드로우다운',
+            'profit-loss-comparison': '시점별 순손익',
+            'holding-time-pnl-distribution': '보유 시간 분포',
+            'symbol-performance': '심볼별 성과'
         };
 
         let title: string;
@@ -366,7 +366,7 @@ function AppContent() {
         } else if (tab === 'Plot' && activePlotType) {
             const plotName = plotTypeMap[activePlotType] || activePlotType;
 
-            // '세부 - 분석 그래프' 형식
+            // '세부 - 성과 분석' 형식
             title = `${plotName} - ${tabLabelMap[tab]}`;
         } else {
             // 기본: 탭 레이블만
