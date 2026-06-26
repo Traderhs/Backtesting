@@ -558,9 +558,11 @@ export default function Sidebar({
                                             >
                                                 <Button
                                                     variant="ghost"
-                                                    className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "equity-drawdown" ? "active" : ""}`}
+                                                    className={`w-full justify-start symbol-button plot-sub-button ${activeTab === "Plot" && activePlotType === "equity-drawdown" ? "active" : ""}`}
                                                     onClick={() => handlePlotTypeClick("equity-drawdown")}
                                                 >
+                                                    <SidebarIcon name={'equity_drawdown.ico'} alt="Equity Drawdown"
+                                                                 className="sidebar-icon plot-sub-icon"/>
                                                     <span className="sub-button-text">자산 & 드로우다운</span>
                                                 </Button>
                                             </motion.div>
@@ -582,9 +584,11 @@ export default function Sidebar({
                                             >
                                                 <Button
                                                     variant="ghost"
-                                                    className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "profit-loss-comparison" ? "active" : ""}`}
+                                                    className={`w-full justify-start symbol-button plot-sub-button ${activeTab === "Plot" && activePlotType === "profit-loss-comparison" ? "active" : ""}`}
                                                     onClick={() => handlePlotTypeClick("profit-loss-comparison")}
                                                 >
+                                                    <SidebarIcon name={'time_net_pnl.ico'} alt="Time Net PnL"
+                                                                 className="sidebar-icon plot-sub-icon"/>
                                                     <span className="sub-button-text">시점별 순손익</span>
                                                 </Button>
                                             </motion.div>
@@ -606,9 +610,11 @@ export default function Sidebar({
                                             >
                                                 <Button
                                                     variant="ghost"
-                                                    className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "holding-time-pnl-distribution" ? "active" : ""}`}
+                                                    className={`w-full justify-start symbol-button plot-sub-button ${activeTab === "Plot" && activePlotType === "holding-time-pnl-distribution" ? "active" : ""}`}
                                                     onClick={() => handlePlotTypeClick("holding-time-pnl-distribution")}
                                                 >
+                                                    <SidebarIcon name={'holding_time_pnl.ico'} alt="Holding Time PnL"
+                                                                 className="sidebar-icon plot-sub-icon"/>
                                                     <span className="sub-button-text">보유 시간 분포</span>
                                                 </Button>
                                             </motion.div>
@@ -630,9 +636,12 @@ export default function Sidebar({
                                             >
                                                 <Button
                                                     variant="ghost"
-                                                    className={`w-full justify-center symbol-button ${activeTab === "Plot" && activePlotType === "symbol-performance" ? "active" : ""}`}
+                                                    className={`w-full justify-start symbol-button plot-sub-button ${activeTab === "Plot" && activePlotType === "symbol-performance" ? "active" : ""}`}
                                                     onClick={() => handlePlotTypeClick("symbol-performance")}
                                                 >
+                                                    <SidebarIcon name={'symbol_performance.ico'}
+                                                                 alt="Symbol Performance"
+                                                                 className="sidebar-icon plot-sub-icon"/>
                                                     <span className="sub-button-text">심볼별 성과</span>
                                                 </Button>
                                             </motion.div>
