@@ -261,6 +261,14 @@
     transition: all 0.2s ease;
 }
 
+.plot-sub-icon {
+    flex: 0 0 27px;
+}
+
+.plot-sub-button .sub-button-text {
+    letter-spacing: 0;
+}
+
 /* 활성 버튼 스타일 */
 .sidebar-button.active,
 .symbol-button.active {
