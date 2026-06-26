@@ -97,7 +97,7 @@ const COLUMN_GROUPS = [
     ["거래 번호"],
     ["전략 이름", "심볼 이름"],
     ["진입 이름", "청산 이름", "진입 방향"],
-    ["진입 시간", "청산 시간", "보유 시간"],
+    ["진입 시각", "청산 시각", "보유 시간"],
     ["레버리지"],
     ["진입 가격", "진입 수량"],
     ["청산 가격", "청산 수량"],
@@ -211,8 +211,8 @@ const getDisplayStringForMeasuring = (value: string | number | boolean | undefin
         }
         return `${formatWithCommas(value, 0)}회`;
     }
-    // 진입 시간과 청산 시간 처리
-    if (key === "진입 시간" || key === "청산 시간") {
+    // 진입 시각과 청산 시각 처리
+    if (key === "진입 시각" || key === "청산 시각") {
         if (!value || String(value) === "-") {
             return "-";
         }
@@ -302,8 +302,8 @@ const formatWithTooltip = (value: string | number | boolean | undefined, key: st
             result = <span title={display}>{display}</span>
         }
     }
-    // 진입 시간과 청산 시간 처리
-    else if (key === "진입 시간" || key === "청산 시간") {
+    // 진입 시각과 청산 시각 처리
+    else if (key === "진입 시각" || key === "청산 시각") {
         if (!value || String(value) === "-") {
             result = <span title="-">-</span>;
         } else {

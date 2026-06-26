@@ -25,7 +25,7 @@ interface TimeRange {
 const mergeTimeRanges = (ranges: TimeRange[]): TimeRange[] => {
     if (ranges.length === 0) return [];
 
-    // 시작 시간 기준으로 정렬
+    // 시작 시각 기준으로 정렬
     ranges.sort((a, b) => a.start - b.start);
 
     const merged: TimeRange[] = [ranges[0]];
@@ -157,8 +157,8 @@ export const calculateHoldingTimeMetrics = (trades: any[], config?: any): Holdin
         const timeRanges: TimeRange[] = [];
 
         tradeArray.forEach(trade => {
-            const entryTimeStr = String(trade["진입 시간"]);
-            const exitTimeStr = String(trade["청산 시간"]);
+            const entryTimeStr = String(trade["진입 시각"]);
+            const exitTimeStr = String(trade["청산 시각"]);
 
             if (entryTimeStr && exitTimeStr) {
                 const entryTime = parseDate(entryTimeStr);

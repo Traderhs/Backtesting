@@ -512,13 +512,13 @@ const FilterSection = memo(({timeframe}: FilterSectionProps) => {
                                     }}
                                 >
                                     <div>
-                                        {/* 진입 시간 필터 섹션 */}
+                                        {/* 진입 시각 필터 섹션 */}
                                         <div className={getFilterSectionClass("filter-section")}>
                                             <EntryTimeFilter timeframe={timeframe}/>
                                             <AdvancedEntryTimeFilter/>
                                         </div>
 
-                                        {/* 청산 시간 필터 섹션 */}
+                                        {/* 청산 시각 필터 섹션 */}
                                         <div className={getFilterSectionClass("filter-section")}>
                                             <ExitTimeFilter timeframe={timeframe}/>
                                             <AdvancedExitTimeFilter/>

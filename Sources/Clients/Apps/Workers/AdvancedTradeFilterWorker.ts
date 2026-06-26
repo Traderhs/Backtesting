@@ -212,14 +212,14 @@ const timeOptimizedFilter = (trades: TradeItem[], filter: TradeFilter): TradeIte
 
         // 시간 필터 확인
         if (entryTimeMin || entryTimeMax) {
-            const entryTime = fastDateParse(String(trade["진입 시간"]));
+            const entryTime = fastDateParse(String(trade["진입 시각"]));
             if (!entryTime) continue;
             if (entryTimeMin && entryTime < entryTimeMin) continue;
             if (entryTimeMax && entryTime > entryTimeMax) continue;
         }
 
         if (exitTimeMin || exitTimeMax) {
-            const exitTime = fastDateParse(String(trade["청산 시간"]));
+            const exitTime = fastDateParse(String(trade["청산 시각"]));
             if (!exitTime) continue;
             if (exitTimeMin && exitTime < exitTimeMin) continue;
             if (exitTimeMax && exitTime > exitTimeMax) continue;

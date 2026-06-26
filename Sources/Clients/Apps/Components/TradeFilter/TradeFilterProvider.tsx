@@ -295,8 +295,8 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                 let maxExitTime = undefined;
 
                 if (validTrades.length > 0) {
-                    // 진입 시간 범위 - 전체 데이터에서 실제 최소/최대값 찾기
-                    const entryTimes = validTrades.map(trade => String(trade["진입 시간"])).filter(time => time && time !== "-");
+                    // 진입 시각 범위 - 전체 데이터에서 실제 최소/최대값 찾기
+                    const entryTimes = validTrades.map(trade => String(trade["진입 시각"])).filter(time => time && time !== "-");
                     if (entryTimes.length > 0) {
                         // 전체 데이터를 순회하면서 실제 최소/최대값 찾기
                         let minEntryTimeStr = entryTimes[0];
@@ -318,8 +318,8 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                         maxEntryTime = endTime;
                     }
 
-                    // 청산 시간 범위 - 전체 데이터에서 실제 최소/최대값 찾기
-                    const exitTimes = validTrades.map(trade => String(trade["청산 시간"])).filter(time => time && time !== "-");
+                    // 청산 시각 범위 - 전체 데이터에서 실제 최소/최대값 찾기
+                    const exitTimes = validTrades.map(trade => String(trade["청산 시각"])).filter(time => time && time !== "-");
                     if (exitTimes.length > 0) {
                         // 전체 데이터를 순회하면서 실제 최소/최대값 찾기
                         let minExitTimeStr = exitTimes[0];
@@ -343,7 +343,7 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                 }
 
                 // 고급 필터 초기값도 즉시 계산
-                const computedEntryYears = getYearOptions(data, ["진입 시간", "청산 시간"]);
+                const computedEntryYears = getYearOptions(data, ["진입 시각", "청산 시각"]);
                 const computedEntryMonths = getMonthOptions();
                 const computedEntryDays = getDayOptions();
                 const computedEntryDayOfWeeks = getDayOfWeekOptions();
@@ -402,7 +402,7 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
         if (filterExpanded && !timeOptionsCalculated && allTrades.length > 0) {
             // 비동기로 처리하여 UI 블로킹 방지
             setTimeout(() => {
-                const computedEntryYears = getYearOptions(allTrades, ["진입 시간", "청산 시간"]);
+                const computedEntryYears = getYearOptions(allTrades, ["진입 시각", "청산 시각"]);
                 const computedEntryMonths = getMonthOptions();
                 const computedEntryDays = getDayOptions();
                 const computedEntryDayOfWeeks = getDayOfWeekOptions();
@@ -410,7 +410,7 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
                 const computedEntryMinutes = getMinuteSecondOptions();
                 const computedEntrySeconds = getMinuteSecondOptions();
 
-                // 청산시간도 동일한 옵션 사용
+                // 청산시각도 동일한 옵션 사용
                 setFilter((prev) => ({
                     ...prev,
                     entryYears: computedEntryYears,

@@ -137,8 +137,8 @@ const buildDailyPortfolioValues = (
     // 날짜별 자본금 변화 추적
     const dateValueMap = new Map<string, number>();
 
-    const firstTradeDate = parseTradeDate(actualTrades[0]["진입 시간"]);
-    const lastTradeDate = parseTradeDate(actualTrades[actualTrades.length - 1]["청산 시간"]);
+    const firstTradeDate = parseTradeDate(actualTrades[0]["진입 시각"]);
+    const lastTradeDate = parseTradeDate(actualTrades[actualTrades.length - 1]["청산 시각"]);
 
     const startDate = periodStart || firstTradeDate;
     const endDate = periodEnd || lastTradeDate;
@@ -149,7 +149,7 @@ const buildDailyPortfolioValues = (
 
     // 각 거래의 청산 시점에서 자본금 업데이트
     actualTrades.forEach(trade => {
-        const exitDate = parseTradeDate(trade["청산 시간"]);
+        const exitDate = parseTradeDate(trade["청산 시각"]);
         if (!exitDate) return;
 
         const currentCapital = safeNumber(trade["현재 자금"] || 0);

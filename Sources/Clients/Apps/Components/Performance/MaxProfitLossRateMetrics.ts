@@ -52,7 +52,7 @@ export const calculateMaxProfitLossRateMetrics = (
         // 숫자로 변환하여 사용
         const individualRate = safeNumber(trade["개별 순손익률"]);
         const totalRate = safeNumber(trade["전체 순손익률"]);
-        const tradeDate = parseDate(String(trade["청산 시간"]));
+        const tradeDate = parseDate(String(trade["청산 시각"]));
 
         // 최대 개별 순수익률 거래 업데이트 (0과 같거나 큰 거래만) (같은 값일 경우 더 최신 거래 선택)
         if (individualRate >= 0) {
@@ -61,8 +61,8 @@ export const calculateMaxProfitLossRateMetrics = (
                 (individualRate === maxIndividualProfitRate &&
                     tradeDate &&
                     maxIndividualProfitTrade &&
-                    parseDate(String(maxIndividualProfitTrade["청산 시간"])) !== null &&
-                    tradeDate > parseDate(String(maxIndividualProfitTrade["청산 시간"]))!)) {
+                    parseDate(String(maxIndividualProfitTrade["청산 시각"])) !== null &&
+                    tradeDate > parseDate(String(maxIndividualProfitTrade["청산 시각"]))!)) {
                 maxIndividualProfitRate = individualRate;
                 maxIndividualProfitTrade = trade;
             }
@@ -75,8 +75,8 @@ export const calculateMaxProfitLossRateMetrics = (
                 (totalRate === maxTotalProfitRate &&
                     tradeDate &&
                     maxTotalProfitTrade &&
-                    parseDate(String(maxTotalProfitTrade["청산 시간"])) !== null &&
-                    tradeDate > parseDate(String(maxTotalProfitTrade["청산 시간"]))!)) {
+                    parseDate(String(maxTotalProfitTrade["청산 시각"])) !== null &&
+                    tradeDate > parseDate(String(maxTotalProfitTrade["청산 시각"]))!)) {
                 maxTotalProfitRate = totalRate;
                 maxTotalProfitTrade = trade;
             }
@@ -87,8 +87,8 @@ export const calculateMaxProfitLossRateMetrics = (
             (individualRate === maxIndividualLossRate &&
                 tradeDate &&
                 maxIndividualLossTrade &&
-                parseDate(String(maxIndividualLossTrade["청산 시간"])) !== null &&
-                tradeDate > parseDate(String(maxIndividualLossTrade["청산 시간"]))!))) {
+                parseDate(String(maxIndividualLossTrade["청산 시각"])) !== null &&
+                tradeDate > parseDate(String(maxIndividualLossTrade["청산 시각"]))!))) {
             maxIndividualLossRate = individualRate;
             maxIndividualLossTrade = trade;
             hasNegativeIndividualRate = true;
@@ -99,8 +99,8 @@ export const calculateMaxProfitLossRateMetrics = (
             (totalRate === maxTotalLossRate &&
                 tradeDate &&
                 maxTotalLossTrade &&
-                parseDate(String(maxTotalLossTrade["청산 시간"])) !== null &&
-                tradeDate > parseDate(String(maxTotalLossTrade["청산 시간"]))!))) {
+                parseDate(String(maxTotalLossTrade["청산 시각"])) !== null &&
+                tradeDate > parseDate(String(maxTotalLossTrade["청산 시각"]))!))) {
             maxTotalLossRate = totalRate;
             maxTotalLossTrade = trade;
             hasNegativeTotalRate = true;
@@ -112,7 +112,7 @@ export const calculateMaxProfitLossRateMetrics = (
         return {
             value: `${safeNumber(trade[rateKey]).toFixed(2)}%`,
             pnl: safeNumber(trade["순손익"]).toLocaleString(),
-            time: formatDateTimeWithWeekday(parseDate(String(trade["청산 시간"]))),
+            time: formatDateTimeWithWeekday(parseDate(String(trade["청산 시각"]))),
         };
     };
 

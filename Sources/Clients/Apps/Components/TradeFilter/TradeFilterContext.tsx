@@ -53,7 +53,7 @@ export type TradeFilter = {
     entryTimeMax?: string;
     exitTimeMin?: string;
     exitTimeMax?: string;
-    // 진입시간 고급 필터 조건 (배열 형태)
+    // 진입시각 고급 필터 조건 (배열 형태)
     entryYears: number[];
     entryMonths: number[];
     entryDays: number[];
@@ -61,7 +61,7 @@ export type TradeFilter = {
     entryHours: number[];
     entryMinutes: number[];
     entrySeconds: number[];
-    // 청산시간 고급 필터 조건 (배열 형태)
+    // 청산시각 고급 필터 조건 (배열 형태)
     exitYears: number[];
     exitMonths: number[];
     exitDays: number[];

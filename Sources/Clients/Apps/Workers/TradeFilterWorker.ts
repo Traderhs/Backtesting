@@ -191,7 +191,7 @@ const recalculateBalance = (filtered: TradeItem[], allTrades: TradeItem[]): Trad
 
         // 전체 순손익률 계산을 위한 진입 시점 자금 찾기
         let entryCapital = initialBalance;
-        const currentEntryTimeStr = String(trade["진입 시간"]);
+        const currentEntryTimeStr = String(trade["진입 시각"]);
         const cacheKey = `${mappedNumber}_${currentEntryTimeStr}`;
 
         if (entryCapitalCache.has(cacheKey)) {
@@ -204,7 +204,7 @@ const recalculateBalance = (filtered: TradeItem[], allTrades: TradeItem[]): Trad
 
             for (let j = 1; j < i; j++) {
                 const prevTrade = result[j] || filtered[j];
-                const prevExitTimeStr = String(prevTrade["청산 시간"]);
+                const prevExitTimeStr = String(prevTrade["청산 시각"]);
 
                 if (prevExitTimeStr === '-') continue;
 
@@ -212,7 +212,7 @@ const recalculateBalance = (filtered: TradeItem[], allTrades: TradeItem[]): Trad
                 const prevTradeNumber = Number(prevTrade["거래 번호"]);
 
                 if (prevExitTime <= currentEntryTime && prevTradeNumber < mappedNumber) {
-                    // 더 최근의 청산 시간이거나, 같은 청산 시간이지만 더 큰 거래 번호인 경우
+                    // 더 최근의 청산 시각이거나, 같은 청산 시각이지만 더 큰 거래 번호인 경우
                     if (prevExitTime > mostRecentExitTime ||
                         (prevExitTime.getTime() === mostRecentExitTime.getTime() && prevTradeNumber > bestTradeNumber)) {
                         mostRecentExitTime = prevExitTime;
@@ -533,8 +533,8 @@ const applyAllFiltersAtOnce = (trades: TradeItem[], filter: TradeFilter): TradeI
         let exitTime: Date | undefined;
 
         if (hasEntryTimeFilter || hasExitTimeFilter || hasHoldingTimeFilter) {
-            const entryTimeStr = String(trade["진입 시간"]);
-            const exitTimeStr = String(trade["청산 시간"]);
+            const entryTimeStr = String(trade["진입 시각"]);
+            const exitTimeStr = String(trade["청산 시각"]);
 
             if (entryTimeStr === '-' || exitTimeStr === '-') {
                 if (hasEntryTimeFilter || hasExitTimeFilter || hasHoldingTimeFilter) continue;
@@ -546,7 +546,7 @@ const applyAllFiltersAtOnce = (trades: TradeItem[], filter: TradeFilter): TradeI
             }
         }
 
-        // 진입 시간 필터
+        // 진입 시각 필터
         if (hasEntryTimeFilter && entryTime) {
             // 기본 시간 범위 필터
             if ((entryTimeMinDate !== undefined && entryTime < entryTimeMinDate) ||
@@ -576,7 +576,7 @@ const applyAllFiltersAtOnce = (trades: TradeItem[], filter: TradeFilter): TradeI
             }
         }
 
-        // 청산 시간 필터
+        // 청산 시각 필터
         if (hasExitTimeFilter && exitTime) {
             // 기본 시간 범위 필터
             if ((exitTimeMinDate !== undefined && exitTime < exitTimeMinDate) ||

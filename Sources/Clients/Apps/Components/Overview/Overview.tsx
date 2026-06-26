@@ -549,8 +549,8 @@ const Overview = React.memo(({}: OverviewProps) => {
             // 핵심 속성들로만 해시 생성 (자금 재계산 시 변경되는 필드도 포함)
             const essentialData = filteredTrades.map(trade => ({
                 tradeNumber: trade["거래 번호"],
-                entryTime: trade["진입 시간"],
-                exitTime: trade["청산 시간"],
+                entryTime: trade["진입 시각"],
+                exitTime: trade["청산 시각"],
                 profitLoss: trade["손익"],
                 netProfitLoss: trade["순손익"],
                 currentCapital: trade["현재 자금"],  // 자금 재계산 시 변경

@@ -38,7 +38,7 @@ export const calculateMaxProfitLossMetrics = (
     // 모든 거래를 순회하며 최대 순수익과 최대 순손실 거래 찾기
     for (const trade of actualTrades) {
         const pnl = safeNumber(trade["순손익"]);
-        const tradeDate = parseDate(String(trade["청산 시간"]));
+        const tradeDate = parseDate(String(trade["청산 시각"]));
 
         // 최대 순수익 거래 업데이트 (0과 같거나 큰 거래만)
         if (pnl >= 0) {
@@ -47,8 +47,8 @@ export const calculateMaxProfitLossMetrics = (
                 (pnl === maxProfit &&
                     tradeDate &&
                     maxProfitTrade &&
-                    parseDate(String(maxProfitTrade["청산 시간"])) !== null &&
-                    tradeDate > parseDate(String(maxProfitTrade["청산 시간"]))!)) {
+                    parseDate(String(maxProfitTrade["청산 시각"])) !== null &&
+                    tradeDate > parseDate(String(maxProfitTrade["청산 시각"]))!)) {
                 maxProfitTrade = trade;
                 maxProfit = pnl;
             }
@@ -59,8 +59,8 @@ export const calculateMaxProfitLossMetrics = (
             (pnl === maxLoss &&
                 tradeDate &&
                 maxLossTrade &&
-                parseDate(String(maxLossTrade["청산 시간"])) !== null &&
-                tradeDate > parseDate(String(maxLossTrade["청산 시간"]))!))) {
+                parseDate(String(maxLossTrade["청산 시각"])) !== null &&
+                tradeDate > parseDate(String(maxLossTrade["청산 시각"]))!))) {
             maxLossTrade = trade;
             maxLoss = pnl;
             hasNegativeTrade = true;
@@ -80,8 +80,8 @@ export const calculateMaxProfitLossMetrics = (
     const maxLossIndividualRate = hasNegativeTrade && maxLossTrade ? String(maxLossTrade["개별 순손익률"] || '0.00%') : '-';
     const maxLossTotalRate = hasNegativeTrade && maxLossTrade ? String(maxLossTrade["전체 순손익률"] || '0.00%') : '-';
 
-    const maxProfitTime = hasPositiveTrade && maxProfitTrade ? formatDateTimeWithWeekday(parseDate(String(maxProfitTrade["청산 시간"]))) : '-';
-    const maxLossTime = hasNegativeTrade && maxLossTrade ? formatDateTimeWithWeekday(parseDate(String(maxLossTrade["청산 시간"]))) : '-';
+    const maxProfitTime = hasPositiveTrade && maxProfitTrade ? formatDateTimeWithWeekday(parseDate(String(maxProfitTrade["청산 시각"]))) : '-';
+    const maxLossTime = hasNegativeTrade && maxLossTrade ? formatDateTimeWithWeekday(parseDate(String(maxLossTrade["청산 시각"]))) : '-';
 
     return {
         maxProfit: maxProfitValue,

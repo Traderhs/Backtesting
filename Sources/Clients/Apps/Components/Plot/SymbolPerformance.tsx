@@ -328,8 +328,8 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
             symbolGroups.get(tradeNumber)!.push(trade);
 
             // 시간 수집
-            const exitTime = new Date(trade["청산 시간"] as string).getTime() / 1000;
-            const entryTime = new Date(trade["진입 시간"] as string).getTime() / 1000;
+            const exitTime = new Date(trade["청산 시각"] as string).getTime() / 1000;
+            const entryTime = new Date(trade["진입 시각"] as string).getTime() / 1000;
             exitTimeSet.add(exitTime);
             entryTimeSet.add(entryTime);
         });
@@ -347,9 +347,9 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
             const totalPnl = trades.reduce((sum: number, trade: any) => sum + (trade["순손익"] as number), 0);
             const isWin = totalPnl >= 0;
             const lastExitTime = trades.reduce((latest: string, trade: any) => {
-                const currentTime = trade["청산 시간"] as string;
+                const currentTime = trade["청산 시각"] as string;
                 return currentTime > latest ? currentTime : latest;
-            }, trades[0]["청산 시간"] as string);
+            }, trades[0]["청산 시각"] as string);
             const symbol = trades[0]["심볼 이름"] as string;
 
             tradeResults.push({symbol, exitTime: lastExitTime, totalPnl, isWin});
@@ -444,7 +444,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
 
                 symbolTrades.forEach((trade: any) => {
                     cumPnl += trade["순손익"] as number;
-                    const timestamp = new Date(trade["청산 시간"] as string).getTime() / 1000;
+                    const timestamp = new Date(trade["청산 시각"] as string).getTime() / 1000;
 
                     symbolData.data.push({
                         time: timestamp,
@@ -476,7 +476,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
 
         actualTrades.forEach((trade: any) => {
             const symbol = trade["심볼 이름"] as string;
-            const entryTime = trade["진입 시간"] as string;
+            const entryTime = trade["진입 시각"] as string;
             const tradeNumber = trade["거래 번호"] as number;
 
             // 이미 처리된 거래 번호는 건너뛰기
@@ -750,7 +750,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                 const holdingTimeStr = String(trade["보유 시간"]);
                 const holdingTimeSeconds = parseHoldingTime(holdingTimeStr);
                 if (holdingTimeSeconds !== null && holdingTimeSeconds > 0) {
-                    const timestamp = new Date(trade["청산 시간"] as string).getTime() / 1000;
+                    const timestamp = new Date(trade["청산 시각"] as string).getTime() / 1000;
                     holdingTimeSet.add(timestamp);
                 }
             });
@@ -769,13 +769,13 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
             symbolDataArray.push({symbol, data});
         });
 
-        // 심볼별 보유 시간 합계 계산 (모든 거래 청산 시간 사용, 시간 범위 겹침 제거)
+        // 심볼별 보유 시간 합계 계산 (모든 거래 청산 시각 사용, 시간 범위 겹침 제거)
         configSymbols.forEach((symbol: string) => {
             const symbolTrades = preprocessedData.tradesBySymbol.get(symbol) || [];
             const symbolData = symbolDataArray.find(item => item.symbol === symbol);
 
             if (symbolData) {
-                // 모든 거래를 청산 시간 순으로 정렬
+                // 모든 거래를 청산 시각 순으로 정렬
                 const sortedTrades = [...symbolTrades]
                     .filter(trade => {
                         const holdingTimeStr = String(trade["보유 시간"]);
@@ -783,8 +783,8 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                         return holdingTimeSeconds !== null && holdingTimeSeconds > 0;
                     })
                     .sort((a, b) => {
-                        const timeA = new Date(a["청산 시간"] as string).getTime();
-                        const timeB = new Date(b["청산 시간"] as string).getTime();
+                        const timeA = new Date(a["청산 시각"] as string).getTime();
+                        const timeB = new Date(b["청산 시각"] as string).getTime();
                         return timeA - timeB;
                     });
 
@@ -793,8 +793,8 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                 let totalHoldingTime = 0;
 
                 sortedTrades.forEach((trade: any) => {
-                    const entryTime = new Date(trade["진입 시간"] as string).getTime() / 1000;
-                    const exitTime = new Date(trade["청산 시간"] as string).getTime() / 1000;
+                    const entryTime = new Date(trade["진입 시각"] as string).getTime() / 1000;
+                    const exitTime = new Date(trade["청산 시각"] as string).getTime() / 1000;
 
                     // 새로운 시간 범위
                     const newRange = {start: entryTime, end: exitTime};
@@ -862,7 +862,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
             symbolTrades.forEach((trade: any) => {
                 const exitName = String(trade["청산 이름"] || "");
                 if (exitName.includes("강제 청산")) {
-                    const timestamp = new Date(trade["청산 시간"] as string).getTime() / 1000;
+                    const timestamp = new Date(trade["청산 시각"] as string).getTime() / 1000;
                     liquidationTimeSet.add(timestamp);
                 }
             });
@@ -871,7 +871,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
         // 시간 배열로 변환 및 정렬
         const liquidationTimes = Array.from(liquidationTimeSet).sort((a, b) => a - b);
 
-        // 강제 청산 데이터가 없으면 일반 청산 시간 사용
+        // 강제 청산 데이터가 없으면 일반 청산 시각 사용
         const allLiquidationTimes = liquidationTimes.length > 0 ?
             getTimesWithZeroPoint(liquidationTimes) :
             getTimesWithZeroPoint(preprocessedData.allExitTimes);
@@ -899,7 +899,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                     if (exitName.includes("강제 청산")) {
                         hasLiquidation = true;
                         liquidationCount += 1;
-                        const timestamp = new Date(trade["청산 시간"] as string).getTime() / 1000;
+                        const timestamp = new Date(trade["청산 시각"] as string).getTime() / 1000;
 
                         symbolData.data.push({
                             time: timestamp,
@@ -911,7 +911,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                 // 강제 청산이 없는 심볼은 0값으로 채우기
                 if (!hasLiquidation) {
                     symbolTrades.forEach((trade: any) => {
-                        const timestamp = new Date(trade["청산 시간"] as string).getTime() / 1000;
+                        const timestamp = new Date(trade["청산 시각"] as string).getTime() / 1000;
                         symbolData.data.push({
                             time: timestamp,
                             value: 0
@@ -955,9 +955,9 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
 
                 trades.forEach((trade: any) => {
                     const fundingCount = Number(trade["펀딩 횟수"] || 0);
-                    const exitTime = new Date(trade["청산 시간"] as string).getTime();
+                    const exitTime = new Date(trade["청산 시각"] as string).getTime();
 
-                    // 펀딩 횟수가 더 크거나, 같으면서 청산 시간이 더 늦을 때 업데이트
+                    // 펀딩 횟수가 더 크거나, 같으면서 청산 시각이 더 늦을 때 업데이트
                     if (fundingCount > maxFundingCount ||
                         (fundingCount === maxFundingCount && exitTime > latestExitTime)) {
                         maxFundingCount = fundingCount;
@@ -967,7 +967,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                 });
 
                 if (maxFundingCount > 0 && maxFundingTrade) {
-                    const timestamp = new Date(maxFundingTrade["청산 시간"] as string).getTime() / 1000;
+                    const timestamp = new Date(maxFundingTrade["청산 시각"] as string).getTime() / 1000;
                     fundingTimeSet.add(timestamp);
                 }
             });
@@ -1015,9 +1015,9 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
 
                     trades.forEach((trade: any) => {
                         const fundingCount = Number(trade["펀딩 횟수"] || 0);
-                        const exitTime = new Date(trade["청산 시간"] as string).getTime();
+                        const exitTime = new Date(trade["청산 시각"] as string).getTime();
 
-                        // 펀딩 횟수가 더 크거나, 같으면서 청산 시간이 더 늦을 때 업데이트
+                        // 펀딩 횟수가 더 크거나, 같으면서 청산 시각이 더 늦을 때 업데이트
                         if (fundingCount > maxFundingCount ||
                             (fundingCount === maxFundingCount && exitTime > latestExitTime)) {
                             maxFundingCount = fundingCount;
@@ -1029,8 +1029,8 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                     if (maxFundingCount > 0 && maxFundingTrade) {
                         totalFundingCount += maxFundingCount;
 
-                        // 가장 큰 펀딩 횟수를 가진 거래들 중 가장 늦은 청산 시간 사용
-                        const timestamp = new Date(maxFundingTrade["청산 시간"] as string).getTime() / 1000;
+                        // 가장 큰 펀딩 횟수를 가진 거래들 중 가장 늦은 청산 시각 사용
+                        const timestamp = new Date(maxFundingTrade["청산 시각"] as string).getTime() / 1000;
 
                         symbolData.data.push({
                             time: timestamp,
@@ -1064,10 +1064,10 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
             const symbolData = symbolDataArray.find(item => item.symbol === symbol);
 
             if (symbolData) {
-                // 청산 시간 기준으로 정렬
+                // 청산 시각 기준으로 정렬
                 const sortedTrades = [...symbolTrades].sort((a, b) => {
-                    const timeA = new Date(a["청산 시간"] as string).getTime();
-                    const timeB = new Date(b["청산 시간"] as string).getTime();
+                    const timeA = new Date(a["청산 시각"] as string).getTime();
+                    const timeB = new Date(b["청산 시각"] as string).getTime();
                     return timeA - timeB;
                 });
 
@@ -1076,7 +1076,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                 sortedTrades.forEach((trade: any) => {
                     const fundingFee = Number(trade["펀딩비"] || 0);
                     totalFundingFee += fundingFee;
-                    const timestamp = new Date(trade["청산 시간"] as string).getTime() / 1000;
+                    const timestamp = new Date(trade["청산 시각"] as string).getTime() / 1000;
 
                     symbolData.data.push({
                         time: timestamp,
@@ -1496,7 +1496,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
 
                             // 현재 시점까지의 거래만 필터링
                             const tradesUpToNow = symbolTrades.filter((trade: any) => {
-                                const exitTime = new Date(trade["청산 시간"] as string).getTime() / 1000;
+                                const exitTime = new Date(trade["청산 시각"] as string).getTime() / 1000;
                                 return exitTime <= currentTime;
                             });
 
@@ -1552,7 +1552,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
 
                                 // 현재 시점보다 이전의 가장 가까운 거래 시점 찾기
                                 const exitTimes = symbolTrades
-                                    .map((trade: any) => new Date(trade["청산 시간"] as string).getTime() / 1000)
+                                    .map((trade: any) => new Date(trade["청산 시각"] as string).getTime() / 1000)
                                     .filter((time: number) => time < currentTime)
                                     .sort((a: number, b: number) => b - a); // 내림차순 정렬
 
@@ -1561,7 +1561,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
 
                                     // 이전 시점까지의 거래만 필터링
                                     const tradesUpToPrevious = symbolTrades.filter((trade: any) => {
-                                        const exitTime = new Date(trade["청산 시간"] as string).getTime() / 1000;
+                                        const exitTime = new Date(trade["청산 시각"] as string).getTime() / 1000;
                                         return exitTime <= previousTime;
                                     });
 
@@ -1992,7 +1992,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
             // 해당 심볼의 원본 거래 데이터로부터 거래번호 매핑 생성
             const symbolTrades = preprocessedData.tradesBySymbol.get(symbol) || [];
             symbolTrades.forEach((trade: any) => {
-                const timestamp = new Date(trade["청산 시간"] as string).getTime() / 1000;
+                const timestamp = new Date(trade["청산 시각"] as string).getTime() / 1000;
                 if (!timeToTradeMap.has(timestamp)) {
                     timeToTradeMap.set(timestamp, []);
                 }

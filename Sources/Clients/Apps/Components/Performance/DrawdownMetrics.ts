@@ -39,10 +39,10 @@ export const calculateDrawdownMetrics = (
 
         const drawdown = Number(trade["드로우다운"] || 0);
 
-        // 해당 거래 번호가 없거나, 현재 항목의 청산 시간이 더 최근이면 업데이트
+        // 해당 거래 번호가 없거나, 현재 항목의 청산 시각이 더 최근이면 업데이트
         if (!tradeNumberToDrawdown[tradeNumber] ||
-            new Date(String(trade["청산 시간"])) >
-            new Date(String(tradeNumberToDrawdown[tradeNumber].trade["청산 시간"]))) {
+            new Date(String(trade["청산 시각"])) >
+            new Date(String(tradeNumberToDrawdown[tradeNumber].trade["청산 시각"]))) {
             tradeNumberToDrawdown[tradeNumber] = {trade, drawdown};
         }
     });
@@ -57,12 +57,12 @@ export const calculateDrawdownMetrics = (
     let currentDepth = 0;
     let wasInDrawdown = false;
 
-    // 청산 시간 순으로 정렬된 거래 생성
+    // 청산 시각 순으로 정렬된 거래 생성
     const sortedTrades = Object.values(tradeNumberToDrawdown)
         .map(item => item.trade)
         .sort((a, b) => {
-            const timeA = new Date(String(a["청산 시간"])).getTime();
-            const timeB = new Date(String(b["청산 시간"])).getTime();
+            const timeA = new Date(String(a["청산 시각"])).getTime();
+            const timeB = new Date(String(b["청산 시각"])).getTime();
             return timeA - timeB;
         });
 
@@ -92,13 +92,13 @@ export const calculateDrawdownMetrics = (
 
             // 드로우다운이 시작되지 않았으면 시작
             if (ddDownsideStartTime === null) {
-                ddDownsideStartTime = new Date(String(trade["청산 시간"]));
+                ddDownsideStartTime = new Date(String(trade["청산 시각"]));
             }
 
             // 현재 깊이보다 더 깊은 드로우다운이면 업데이트
             if (dd > currentDepth) {
                 currentDepth = dd;
-                ddDownsideEndTime = new Date(String(trade["청산 시간"]));
+                ddDownsideEndTime = new Date(String(trade["청산 시각"]));
             }
         }
         // 드로우다운이 0이고 이전에 드로우다운 상태였으면
@@ -114,7 +114,7 @@ export const calculateDrawdownMetrics = (
 
                 // 회복 기간 계산 (초 단위)
                 const recoveryDuration =
-                    (new Date(String(trade["청산 시간"])).getTime() - ddDownsideStartTime.getTime()) / 1000;
+                    (new Date(String(trade["청산 시각"])).getTime() - ddDownsideStartTime.getTime()) / 1000;
                 recoveryList.push(recoveryDuration);
 
                 // 변수 초기화
