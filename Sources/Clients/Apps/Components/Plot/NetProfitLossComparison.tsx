@@ -79,7 +79,7 @@ const CustomTooltip = ({active, payload, label}: any) => {
 };
 
 // 시간 기준 타입 정의
-type TimeReference = '진입 시간' | '청산 시간';
+type TimeReference = '진입 시각' | '청산 시각';
 
 // 시간 단위 타입 정의
 type TimePeriod = '연도별' | '월별' | '일별' | '요일별' | '시간별' | '분별' | '초별';
@@ -133,7 +133,7 @@ const NetProfitLossComparisonPlot = React.memo(({
 
         // 거래 번호가 0인 거래 제외
         const validTrades = filteredTrades.filter(trade => trade['거래 번호'] !== 0);
-        const timeField = timeReference === '진입 시간' ? '진입 시간' : '청산 시간';
+        const timeField = timeReference === '진입 시각' ? '진입 시각' : '청산 시각';
         const profitField = '순손익';
 
         // 데이터 그룹화 및 집계
@@ -461,7 +461,7 @@ const NetProfitLossComparison = React.memo(() => {
     const lastRenderKeyRef = useRef(`profit-loss-comparison-${filteredTrades?.length || 0}`);
 
     // 시간 기준과 시간 단위 상태 추가
-    const [timeReference, setTimeReference] = useState<TimeReference>('진입 시간');
+    const [timeReference, setTimeReference] = useState<TimeReference>('진입 시각');
     const [timePeriod, setTimePeriod] = useState<TimePeriod>('일별');
 
     // 드롭다운 열림 상태 추가
@@ -624,14 +624,14 @@ const NetProfitLossComparison = React.memo(() => {
                         '&.Mui-focused': {
                             color: isTimeReferenceOpen ? 'rgba(255, 215, 0, 0.8)' : 'white',
                         }
-                    }}>기준 시간</InputLabel>
+                    }}>기준 시각</InputLabel>
                     <Select
                         labelId="time-reference-label"
                         value={timeReference}
                         onChange={handleTimeReferenceChange}
                         onOpen={() => setIsTimeReferenceOpen(true)}
                         onClose={() => setIsTimeReferenceOpen(false)}
-                        label="기준 시간"
+                        label="기준 시각"
                         sx={{
                             backgroundColor: '#111111', // 기본 배경색 추가
                             color: 'white',
@@ -709,8 +709,8 @@ const NetProfitLossComparison = React.memo(() => {
                             }
                         }}
                     >
-                        <MenuItem value="진입 시간">진입 시간</MenuItem>
-                        <MenuItem value="청산 시간">청산 시간</MenuItem>
+                        <MenuItem value="진입 시각">진입 시각</MenuItem>
+                        <MenuItem value="청산 시각">청산 시각</MenuItem>
                     </Select>
                 </FormControl>
 

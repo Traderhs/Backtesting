@@ -63,8 +63,8 @@ export const calculatePerformanceMetrics = (trades: any[], config?: any): Perfor
 
     const firstTrade = actualTrades[0];
     const lastTrade = actualTrades[actualTrades.length - 1];
-    const startDate = firstTrade ? parseDate(String(firstTrade["진입 시간"])) : null;
-    const endDate = lastTrade ? parseDate(String(lastTrade["청산 시간"])) : null;
+    const startDate = firstTrade ? parseDate(String(firstTrade["진입 시각"])) : null;
+    const endDate = lastTrade ? parseDate(String(lastTrade["청산 시각"])) : null;
 
     const startDateString = formatDateTime(startDate);
     const endDateString = formatDateTime(endDate);
@@ -823,7 +823,7 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                                 style={{color: '#008000'}}>{metrics && formatPercent(metrics.balanceMetrics.highestBalancePercentage)}</span>
                                         </div>
                                         <div className="flex-grow text-center px-1 py-2 overflow-hidden">
-                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">달성 시간</span>
+                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">달성 시각</span>
                                             <span
                                                 className="truncate">{metrics && metrics.balanceMetrics.highestBalanceTime}</span>
                                         </div>
@@ -850,7 +850,7 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                                 style={{color: metrics && metrics.balanceMetrics.lowestBalanceValue === metrics.balanceMetrics.initialBalance ? '#008000' : '#a01722'}}>{metrics && formatPercent(metrics.balanceMetrics.lowestBalancePercentage)}</span>
                                         </div>
                                         <div className="flex-grow text-center px-1 py-2 overflow-hidden">
-                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">달성 시간</span>
+                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">달성 시각</span>
                                             <span
                                                 className="truncate">{metrics && metrics.balanceMetrics.lowestBalanceTime}</span>
                                         </div>
@@ -1102,7 +1102,7 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                             </span>
                                         </div>
                                         <div className="flex-grow text-center px-1 py-2 overflow-hidden">
-                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">청산 시간</span>
+                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">청산 시각</span>
                                             <span
                                                 className="truncate">{metrics && metrics.maxProfitLossMetrics.maxProfitTime}</span>
                                         </div>
@@ -1123,7 +1123,7 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                             </span>
                                         </div>
                                         <div className="flex-grow text-center px-1 py-2 overflow-hidden">
-                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">청산 시간</span>
+                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">청산 시각</span>
                                             <span
                                                 className="truncate">{metrics && metrics.maxProfitLossMetrics.maxLossTime}</span>
                                         </div>
@@ -1147,7 +1147,7 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                             </span>
                                         </div>
                                         <div className="flex-grow text-center px-1 py-2 overflow-hidden">
-                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">청산 시간</span>
+                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">청산 시각</span>
                                             <span
                                                 className="truncate">{metrics && metrics.maxProfitLossRateMetrics.maxIndividualProfitRate.time}</span>
                                         </div>
@@ -1171,7 +1171,7 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                             </span>
                                         </div>
                                         <div className="flex-grow text-center px-1 py-2 overflow-hidden">
-                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">청산 시간</span>
+                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">청산 시각</span>
                                             <span
                                                 className="truncate">{metrics && metrics.maxProfitLossRateMetrics.maxTotalProfitRate.time}</span>
                                         </div>
@@ -1197,7 +1197,7 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                             </span>
                                         </div>
                                         <div className="flex-grow text-center px-1 py-2 overflow-hidden">
-                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">청산 시간</span>
+                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">청산 시각</span>
                                             <span
                                                 className="truncate">{metrics && metrics.maxProfitLossRateMetrics.maxIndividualLossRate.time}</span>
                                         </div>
@@ -1223,7 +1223,7 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                             </span>
                                         </div>
                                         <div className="flex-grow text-center px-1 py-2 overflow-hidden">
-                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">청산 시간</span>
+                                            <span className="text-xs text-[#fff2b3] mb-1 block truncate header-text">청산 시각</span>
                                             <span
                                                 className="truncate">{metrics && metrics.maxProfitLossRateMetrics.maxTotalLossRate.time}</span>
                                         </div>

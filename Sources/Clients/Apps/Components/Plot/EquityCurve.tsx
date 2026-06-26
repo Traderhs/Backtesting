@@ -127,11 +127,11 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
                 ? Number(initialTrade["현재 자금"]) || 0
                 : (trades.length > 0 ? Number(trades[0]["현재 자금"]) || 0 : 0);
 
-            // 거래 번호 0 제외 및 유효한 청산 시간만 포함 (먼저 필터링하여 validTrades 계산)
+            // 거래 번호 0 제외 및 유효한 청산 시각만 포함 (먼저 필터링하여 validTrades 계산)
             const validTrades = trades.filter(trade => {
                 return trade["거래 번호"] !== 0 &&
-                    trade["청산 시간"] &&
-                    trade["청산 시간"] !== '-';
+                    trade["청산 시각"] &&
+                    trade["청산 시각"] !== '-';
             });
 
             // Lightweight Charts용 데이터 포맷 구성
@@ -152,27 +152,27 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
             let initialTimestamp: Time | null = null;
             const firstActualTrade = trades.find(trade => trade["거래 번호"] === 1);
 
-            if (firstActualTrade && firstActualTrade["진입 시간"] && firstActualTrade["진입 시간"] !== '-') {
+            if (firstActualTrade && firstActualTrade["진입 시각"] && firstActualTrade["진입 시각"] !== '-') {
                 try {
-                    const entryTimeStr = String(firstActualTrade["진입 시간"]);
+                    const entryTimeStr = String(firstActualTrade["진입 시각"]);
                     const entryDate = new Date(entryTimeStr);
                     if (!isNaN(entryDate.getTime())) {
                         initialTimestamp = entryDate.getTime() / 1000 as Time;
                     } else {
-                        console.error("거래 1번의 잘못된 진입 시간 형식:", entryTimeStr);
+                        console.error("거래 1번의 잘못된 진입 시각 형식:", entryTimeStr);
                     }
                 } catch (e) {
-                    console.error("거래 1번 진입 시간 변환 오류:", e);
+                    console.error("거래 1번 진입 시각 변환 오류:", e);
                 }
             } else if (validTrades.length > 0) {
-                // 거래 1번 또는 진입 시간이 없으면, 유효한 첫 거래의 청산 시간 사용 (약간 이전으로)
+                // 거래 1번 또는 진입 시각이 없으면, 유효한 첫 거래의 청산 시각 사용 (약간 이전으로)
                 try {
-                    const firstValidExitTimeStr = String(validTrades[0]["청산 시간"]);
+                    const firstValidExitTimeStr = String(validTrades[0]["청산 시각"]);
                     const firstValidExitDate = new Date(firstValidExitTimeStr);
                     if (!isNaN(firstValidExitDate.getTime())) {
                         initialTimestamp = (firstValidExitDate.getTime() / 1000 - 0.2) as Time; // 0.2초 빼기
                     } else {
-                        console.error("첫 유효 거래의 잘못된 청산 시간 형식:", firstValidExitTimeStr);
+                        console.error("첫 유효 거래의 잘못된 청산 시각 형식:", firstValidExitTimeStr);
                     }
                 } catch (e) {
                     console.error("Fallback 초기 시간 계산 오류:", e)
@@ -210,7 +210,7 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
             // 각 데이터 추출 (validTrades 사용)
             validTrades.forEach((trade) => {
                 try {
-                    const exitTime = String(trade["청산 시간"]);
+                    const exitTime = String(trade["청산 시각"]);
                     const dateObject = new Date(exitTime); // 먼저 Date 객체 생성
 
                     // 유효한 날짜인지 확인
@@ -240,7 +240,7 @@ const EquityCurve: React.FC<EquityCurveProps> = ({showMaxBalance = false, showDr
                     });
                 } catch (e) {
                     // 에러 로그에 원본 시간과 거래 정보 포함
-                    console.error("데이터 변환 오류", trade["청산 시간"], trade, e);
+                    console.error("데이터 변환 오류", trade["청산 시각"], trade, e);
                 }
             });
 

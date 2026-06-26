@@ -24,7 +24,7 @@ function formatValue(value: string | number, key: string, pricePrecision: number
     if (isNaN(num)) return String(value);
 
     // 이름이나 날짜 필드는 원본 값 반환 (천 단위 쉼표 제외)
-    const excludeFields = ["전략 이름", "진입 이름", "청산 이름", "진입 시간", "청산 시간", "보유 시간"];
+    const excludeFields = ["전략 이름", "진입 이름", "청산 이름", "진입 시각", "청산 시각", "보유 시간"];
     if (excludeFields.includes(key)) {
         return String(value);
     }
@@ -313,8 +313,8 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
         // 필터링된 거래 목록에서 마커 정보 추출
         for (let i = 0; i < tradesForCurrentSymbol.length; i++) {
             const trade = tradesForCurrentSymbol[i];
-            const entryTimeStr = String(trade["진입 시간"]);
-            const exitTimeStr = String(trade["청산 시간"]);
+            const entryTimeStr = String(trade["진입 시각"]);
+            const exitTimeStr = String(trade["청산 시각"]);
             const entryTimestamp = parseTimeStringToUTCSec(entryTimeStr);
             const exitTimestamp = parseTimeStringToUTCSec(exitTimeStr);
             if (entryTimestamp) entryMarkers.push({time: entryTimestamp, trade});
@@ -786,8 +786,8 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
                 let lineInfo = cachedTradeLines.get(tradeNumber);
 
                 if (!lineInfo || rangeChanged) {
-                    const entryTimeStr = String(trade["진입 시간"]);
-                    const exitTimeStr = String(trade["청산 시간"]);
+                    const entryTimeStr = String(trade["진입 시각"]);
+                    const exitTimeStr = String(trade["청산 시각"]);
                     const entryPrice = parseFloat(String(trade["진입 가격"]));
                     const exitPrice = parseFloat(String(trade["청산 가격"]));
                     const netProfitLoss = parseFloat(String(trade["순손익"]).replace(/,/g, ''));
@@ -1172,7 +1172,7 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
                                             }
 
                                             let displayValue = formatValue(value as string | number, key, pricePrecision, config, symbol);
-                                            if ((key === "진입 시간" || key === "청산 시간") && typeof value === 'string' && value !== '-') {
+                                            if ((key === "진입 시각" || key === "청산 시각") && typeof value === 'string' && value !== '-') {
                                                 try {
                                                     const date = new Date(value);
                                                     if (!isNaN(date.getTime())) { // 유효한 날짜인지 확인
@@ -1258,7 +1258,7 @@ const TradeMarkers: React.FC<TradeMarkersProps> = ({
                                             }
 
                                             let displayValue = formatValue(value as string | number, key, pricePrecision, config, symbol);
-                                            if ((key === "진입 시간" || key === "청산 시간") && typeof value === 'string' && value !== '-') {
+                                            if ((key === "진입 시각" || key === "청산 시각") && typeof value === 'string' && value !== '-') {
                                                 try {
                                                     const date = new Date(value);
                                                     if (!isNaN(date.getTime())) { // 유효한 날짜인지 확인

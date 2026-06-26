@@ -27,7 +27,7 @@ export const calculateFundingMetrics = (trades: any[]) => {
     // 각 거래 번호별로 처리
     Object.values(groupedByTradeNumber).forEach((tradeGroup) => {
         // 펀딩 횟수가 가장 많은 거래를 선택
-        // 펀딩 횟수가 같은 경우 청산 시간이 더 큰(최신) 거래를 선택
+        // 펀딩 횟수가 같은 경우 청산 시각이 더 큰(최신) 거래를 선택
         const selectedTrade = (tradeGroup as any[]).reduce((best: any, current: any) => {
             const currentFundingCount = Number(current['펀딩 횟수']) || 0;
             const bestFundingCount = Number(best['펀딩 횟수']) || 0;
@@ -35,9 +35,9 @@ export const calculateFundingMetrics = (trades: any[]) => {
             if (currentFundingCount > bestFundingCount) {
                 return current;
             } else if (currentFundingCount === bestFundingCount) {
-                // 청산 시간이 더 큰(최신) 거래를 선택
-                const currentExitTime = current['청산 시간'];
-                const bestExitTime = best['청산 시간'];
+                // 청산 시각이 더 큰(최신) 거래를 선택
+                const currentExitTime = current['청산 시각'];
+                const bestExitTime = best['청산 시각'];
 
                 return currentExitTime > bestExitTime ? current : best;
             }

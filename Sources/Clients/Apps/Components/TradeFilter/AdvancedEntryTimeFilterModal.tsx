@@ -56,7 +56,7 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
 
     // 옵션들을 메모화하여 성능 최적화
     const timeOptions = useMemo(() => ({
-        yearOptions: getYearOptions(tradeData, ["진입 시간", "청산 시간"]),
+        yearOptions: getYearOptions(tradeData, ["진입 시각", "청산 시각"]),
         monthOptions: getMonthOptions(),
         dayOptions: getDayOptions(),
         hourOptions: getHourOptions(),
@@ -491,7 +491,7 @@ const AdvancedEntryTimeFilterModal: React.FC<AdvancedEntryTimeFilterModalProps> 
                     onMouseDown={handleMouseDown}
                 >
                     <div className="advanced-filter-title-row">
-                        <h2 className="advanced-filter-title">[진입 시간] 고급 필터</h2>
+                        <h2 className="advanced-filter-title">[진입 시각] 고급 필터</h2>
                         <button
                             className="advanced-close-button"
                             onClick={handleCloseButtonClick}

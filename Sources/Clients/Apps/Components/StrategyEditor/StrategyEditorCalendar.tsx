@@ -7,7 +7,7 @@ interface CalendarProps {
     lastSelectedDate: Date | null; // props로 이전 선택 날짜 받기
     lastSelectedTime: string; // props로 이전 선택 시간 받기
     onDateTimeSelected: (date: Date, time: string) => void; // 날짜/시간 선택 시 부모에게 알리는 콜백
-    mode?: 'start' | 'end'; // 제목 표시 (시작 시간 / 종료 시간)
+    mode?: 'start' | 'end'; // 제목 표시 (시작 시각 / 종료 시각)
 }
 
 // 타임프레임에 따른 시간 간격 생성 함수
@@ -898,7 +898,7 @@ const Calendar: React.FC<CalendarProps> = ({
                     onMouseDown={handleMouseDown}
                 >
                     <div className="calendar-title-row">
-                        <h3 className="chart-calendar-title">{mode === 'start' ? '백테스팅 시작 시간' : mode === 'end' ? '백테스팅 종료 시간' : '시간'}</h3>
+                        <h3 className="chart-calendar-title">{mode === 'start' ? '백테스팅 시작 시각' : mode === 'end' ? '백테스팅 종료 시각' : '시간'}</h3>
                         <button className="close-button" onClick={handleCloseButtonClick}>×</button>
                     </div>
                     <div className="date-display">

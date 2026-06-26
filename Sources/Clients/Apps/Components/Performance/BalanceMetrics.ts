@@ -28,15 +28,15 @@ export const calculateBalanceMetrics = (
 
     filteredTrades.forEach((trade: TradeItem) => {
         const currentBalance = safeNumber(trade["현재 자금"]);
-        const tradeDate = parseDate(String(trade["청산 시간"]));
+        const tradeDate = parseDate(String(trade["청산 시각"]));
 
         // 현재 자금이 최고 자금보다 크거나, 같지만 더 최신인 경우 업데이트
         if (currentBalance > highestBalanceValue ||
             (currentBalance === highestBalanceValue &&
                 tradeDate &&
                 highestBalanceTrade &&
-                parseDate(String(highestBalanceTrade["청산 시간"])) !== null &&
-                tradeDate > parseDate(String(highestBalanceTrade["청산 시간"]))!)) {
+                parseDate(String(highestBalanceTrade["청산 시각"])) !== null &&
+                tradeDate > parseDate(String(highestBalanceTrade["청산 시각"]))!)) {
             highestBalanceValue = currentBalance;
             highestBalanceTrade = trade;
         }
@@ -46,18 +46,18 @@ export const calculateBalanceMetrics = (
             (currentBalance === lowestBalanceValue &&
                 tradeDate &&
                 lowestBalanceTrade &&
-                parseDate(String(lowestBalanceTrade["청산 시간"])) !== null &&
-                tradeDate > parseDate(String(lowestBalanceTrade["청산 시간"]))!)) {
+                parseDate(String(lowestBalanceTrade["청산 시각"])) !== null &&
+                tradeDate > parseDate(String(lowestBalanceTrade["청산 시각"]))!)) {
             lowestBalanceValue = currentBalance;
             lowestBalanceTrade = trade;
         }
     });
 
     const highestBalanceTime = highestBalanceTrade && Number(highestBalanceTrade["거래 번호"]) !== 0
-        ? formatDateTimeWithWeekday(parseDate(String(highestBalanceTrade["청산 시간"])))
+        ? formatDateTimeWithWeekday(parseDate(String(highestBalanceTrade["청산 시각"])))
         : '-';
     const lowestBalanceTime = lowestBalanceTrade && Number(lowestBalanceTrade["거래 번호"]) !== 0
-        ? formatDateTimeWithWeekday(parseDate(String(lowestBalanceTrade["청산 시간"])))
+        ? formatDateTimeWithWeekday(parseDate(String(lowestBalanceTrade["청산 시각"])))
         : '-';
 
     const highestBalancePercentage = calculatePercentage(highestBalanceValue, initialBalance);

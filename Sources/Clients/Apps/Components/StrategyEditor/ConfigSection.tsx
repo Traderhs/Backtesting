@@ -288,7 +288,7 @@ export default function ConfigSection() {
                                                     handleConfigChange('backtestPeriodStart', value);
                                                     handleConfigChange('useBacktestPeriodStart', !value.trim());
                                                 }}
-                                                placeholder="백테스팅 시작 시간"
+                                                placeholder="백테스팅 시작 시각"
                                                 className="strategy-editor-input w-full"
                                                 style={{fontSize: '13px'}}
                                             />
@@ -308,8 +308,8 @@ export default function ConfigSection() {
                                                         }
                                                     }}
                                                     className="strategy-editor-file-selector-button"
-                                                    title="백테스팅 시작 시간 입력"
-                                                    aria-label="백테스팅 시작 시간 입력"
+                                                    title="백테스팅 시작 시각 입력"
+                                                    aria-label="백테스팅 시작 시각 입력"
                                                     disabled={engineConfig.useBacktestPeriodStart}
                                                 >
                                                     <CalendarIcon size={18}/>
@@ -350,7 +350,7 @@ export default function ConfigSection() {
                                                     handleConfigChange('backtestPeriodEnd', value);
                                                     handleConfigChange('useBacktestPeriodEnd', !value.trim());
                                                 }}
-                                                placeholder="백테스팅 종료 시간"
+                                                placeholder="백테스팅 종료 시각"
                                                 className="strategy-editor-input w-full"
                                                 style={{fontSize: '13px'}}
                                             />
@@ -370,8 +370,8 @@ export default function ConfigSection() {
                                                         }
                                                     }}
                                                     className="strategy-editor-file-selector-button"
-                                                    title="백테스팅 종료 시간 입력"
-                                                    aria-label="백테스팅 종료 시간 입력"
+                                                    title="백테스팅 종료 시각 입력"
+                                                    aria-label="백테스팅 종료 시각 입력"
                                                     disabled={engineConfig.useBacktestPeriodEnd}
                                                 >
                                                     <CalendarIcon size={18}/>

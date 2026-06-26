@@ -316,7 +316,7 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
 
     // 백테스팅 실행
     const handleRunSingleBacktesting = async () => {
-        // 백테스팅 시작 시간
+        // 백테스팅 시작 시각
         const backtestingStartTime = Date.now();
 
         // 로그 초기화
@@ -390,12 +390,12 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
         // 엔진 설정 검사
         // 백테스팅 기간 체크 박스 검증: 체크 안되어있는데 칸이 비워져 있는 경우
         if (!engineConfig.useBacktestPeriodStart && !engineConfig.backtestPeriodStart.trim()) {
-            addLog('ERROR', '백테스팅 시작 시간을 입력하거나 [처음부터] 체크 박스를 선택해 주세요.');
+            addLog('ERROR', '백테스팅 시작 시각을 입력하거나 [처음부터] 체크 박스를 선택해 주세요.');
             return;
         }
 
         if (!engineConfig.useBacktestPeriodEnd && !engineConfig.backtestPeriodEnd.trim()) {
-            addLog('ERROR', '백테스팅 종료 시간을 입력하거나 [끝까지] 체크 박스를 선택해 주세요.');
+            addLog('ERROR', '백테스팅 종료 시각을 입력하거나 [끝까지] 체크 박스를 선택해 주세요.');
             return;
         }
 

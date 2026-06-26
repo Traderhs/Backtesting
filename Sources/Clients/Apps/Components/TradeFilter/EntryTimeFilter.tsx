@@ -42,12 +42,12 @@ const EntryTimeFilter: React.FC<EntryTimeFilterProps> = ({timeframe = "1h"}) => 
     // 실제 거래(거래 번호 0 제외)가 존재하는지 여부 확인
     const hasValidTrades = useMemo(() => allTrades.some(trade => Number(trade["거래 번호"]) !== 0), [allTrades]);
 
-    // 진입 시간 관련 모든 필터 초기화 함수
+    // 진입 시각 관련 모든 필터 초기화 함수
     const resetFilter = () => {
         // 거래 번호 0번을 제외한 실제 거래 데이터만 필터링
         const validTrades = allTrades.filter(trade => {
             const tradeNumber = Number(trade["거래 번호"]);
-            return tradeNumber !== 0 && trade["진입 시간"];
+            return tradeNumber !== 0 && trade["진입 시각"];
         });
 
         if (validTrades.length === 0) {
@@ -55,8 +55,8 @@ const EntryTimeFilter: React.FC<EntryTimeFilterProps> = ({timeframe = "1h"}) => 
             return;
         }
 
-        // 전체 데이터에서 실제 최소/최대 진입 시간 찾기 (GMT 기준으로 처리)
-        const entryTimes = validTrades.map(trade => String(trade["진입 시간"])).filter(time => time && time !== "-");
+        // 전체 데이터에서 실제 최소/최대 진입 시각 찾기 (GMT 기준으로 처리)
+        const entryTimes = validTrades.map(trade => String(trade["진입 시각"])).filter(time => time && time !== "-");
 
         if (entryTimes.length === 0) {
             return;
@@ -84,7 +84,7 @@ const EntryTimeFilter: React.FC<EntryTimeFilterProps> = ({timeframe = "1h"}) => 
         let maxYear = Number.MIN_SAFE_INTEGER;
 
         validTrades.forEach(trade => {
-            const entryTimeStr = String(trade["진입 시간"]);
+            const entryTimeStr = String(trade["진입 시각"]);
             const entryDate = new Date(entryTimeStr.includes('T') ? entryTimeStr : entryTimeStr + 'Z');
             const year = entryDate.getUTCFullYear();
 
@@ -104,7 +104,7 @@ const EntryTimeFilter: React.FC<EntryTimeFilterProps> = ({timeframe = "1h"}) => 
         const minutesArray = Array.from({length: 60}, (_, i) => i); // 0-59분
         const secondsArray = Array.from({length: 60}, (_, i) => i); // 0-59초
 
-        // 모든 진입 시간 관련 필터 초기화
+        // 모든 진입 시각 관련 필터 초기화
         setFilter(prev => ({
             ...prev,
             entryTimeMin: startTime,
@@ -289,7 +289,7 @@ const EntryTimeFilter: React.FC<EntryTimeFilterProps> = ({timeframe = "1h"}) => 
         <div>
             <div className="filter-section-title" style={{display: 'flex', alignItems: 'center', marginBottom: '8px'}}>
                 <ResetFilterButton onClick={resetFilter}/>
-                <span>진입 시간</span>
+                <span>진입 시각</span>
             </div>
 
             <div className="time-filter-buttons">
@@ -336,7 +336,7 @@ const EntryTimeFilter: React.FC<EntryTimeFilterProps> = ({timeframe = "1h"}) => 
                                 flex: 1
                             }}
                         >
-                            <span style={{fontSize: '14px', fontWeight: '500'}}>시작 시간</span>
+                            <span style={{fontSize: '14px', fontWeight: '500'}}>시작 시각</span>
                             <span style={{fontSize: '13px', opacity: 0.8}}>
                                 {formatDate(filter.entryTimeMin)}
                             </span>
@@ -385,7 +385,7 @@ const EntryTimeFilter: React.FC<EntryTimeFilterProps> = ({timeframe = "1h"}) => 
                                 flex: 1
                             }}
                         >
-                            <span style={{fontSize: '14px', fontWeight: '500'}}>종료 시간</span>
+                            <span style={{fontSize: '14px', fontWeight: '500'}}>종료 시각</span>
                             <span style={{fontSize: '13px', opacity: 0.8}}>
                                 {formatDate(filter.entryTimeMax)}
                             </span>
@@ -397,7 +397,7 @@ const EntryTimeFilter: React.FC<EntryTimeFilterProps> = ({timeframe = "1h"}) => 
             {/* 캘린더 컴포넌트 */}
             {isEntryTimeMinOpen && (
                 <FilterCalendar
-                    title="[진입 시간]  시작 시간"
+                    title="[진입 시각]  시작 시각"
                     timeframe={timeframe}
                     onClose={handleEntryTimeMinClose}
                     onDateTimeSelected={handleEntryTimeMinSelected}
@@ -407,7 +407,7 @@ const EntryTimeFilter: React.FC<EntryTimeFilterProps> = ({timeframe = "1h"}) => 
             )}
             {isEntryTimeMaxOpen && (
                 <FilterCalendar
-                    title="[진입 시간]  종료 시간"
+                    title="[진입 시각]  종료 시각"
                     timeframe={timeframe}
                     onClose={handleEntryTimeMaxClose}
                     onDateTimeSelected={handleEntryTimeMaxSelected}
