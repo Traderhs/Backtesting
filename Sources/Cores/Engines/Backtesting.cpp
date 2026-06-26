@@ -1,4 +1,4 @@
-﻿
+
 // =============================================================================
 // Copyright (c) 2024-2026 Traderhs
 //
@@ -211,7 +211,7 @@ void Backtesting::RunSingleBacktesting(const string& json_str) {
 
     const json& json_config = json::parse(json_str);
 
-    // 백테스팅 시작 시간 설정
+    // 백테스팅 시작 시각 설정
     const int64_t start_ms =
         json_config.at("backtestingStartTime").get<int64_t>();
 

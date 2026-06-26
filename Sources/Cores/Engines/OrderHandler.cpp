@@ -110,7 +110,7 @@ bool OrderHandler::MarketEntry(const string& entry_name,
         current_bar_idx < bar_data->GetNumBars(symbol_idx) - 1) {
       const auto& next_bar = bar_data->GetBar(symbol_idx, current_bar_idx + 1);
 
-      // On Close 전략일 시 주문 시간과 주문 가격은 다음 봉의 Open Time과 Open
+      // On Close 전략일 시 주문 시각과 주문 가격은 다음 봉의 Open Time과 Open
       order_time = next_bar.open_time;
       order_price = next_bar.open;
 
@@ -122,7 +122,7 @@ bool OrderHandler::MarketEntry(const string& entry_name,
       WARN_AND_RET_FALSE()
     }
   } else {
-    // After Entry, After Exit 전략일 시 주문 시간은 현재 바의 Open Time,
+    // After Entry, After Exit 전략일 시 주문 시각은 현재 바의 Open Time,
     // 주문 가격은 마지막 진입 가격 혹은 마지막 청산 가격
     order_time = engine_->GetCurrentOpenTime();
 
@@ -200,7 +200,7 @@ bool OrderHandler::LimitEntry(const string& entry_name,
         current_bar_idx < bar_data->GetNumBars(symbol_idx) - 1) {
       const auto& next_bar = bar_data->GetBar(symbol_idx, current_bar_idx + 1);
 
-      // On Close 전략일 시 주문 시간과 기준 가격은 다음 봉의 Open Time과 Open
+      // On Close 전략일 시 주문 시각과 기준 가격은 다음 봉의 Open Time과 Open
       order_time = next_bar.open_time;
       base_price = next_bar.open;
     } else [[unlikely]] {
@@ -210,7 +210,7 @@ bool OrderHandler::LimitEntry(const string& entry_name,
       WARN_AND_RET_FALSE()
     }
   } else {
-    // After Entry 혹은 After Exit 전략일 시 주문 시간은 현재 바의 Open Time,
+    // After Entry 혹은 After Exit 전략일 시 주문 시각은 현재 바의 Open Time,
     // 기준 가격은 마지막 진입 가격 혹은 마지막 청산 가격
     order_time = engine_->GetCurrentOpenTime();
 
@@ -572,11 +572,11 @@ bool OrderHandler::MarketExit(const string& exit_name,
     exit_now = true;
   };
 
-  // 청산 시간 및 청산 가격을 결정
+  // 청산 시각 및 청산 가격을 결정
   // 해당 심볼의 트레이딩이 끝나지 않았다면 세부 로직에 따라 처리.
   // 끝났다면 종가에 청산.
   if (!engine_->IsTradingEnded(symbol_idx)) {
-    // 리버스 청산일 시 주문 시간과 주문 가격은 현재 봉의 Open Time과
+    // 리버스 청산일 시 주문 시각과 주문 가격은 현재 봉의 Open Time과
     // 리버스 목표 진입 주문의 진입 주문 가격
     if (is_reverse_exit_) {
       order_time = engine_->GetCurrentOpenTime();
@@ -594,7 +594,7 @@ bool OrderHandler::MarketExit(const string& exit_name,
         const auto& next_bar =
             bar_data->GetBar(symbol_idx, current_bar_idx + 1);
 
-        // On Close 전략일 시 주문 시간과 주문 가격은 다음 봉의 Open Time과 Open
+        // On Close 전략일 시 주문 시각과 주문 가격은 다음 봉의 Open Time과 Open
         order_time = next_bar.open_time;
         order_price = next_bar.open;
 
@@ -604,7 +604,7 @@ bool OrderHandler::MarketExit(const string& exit_name,
         market_exit_on_close();
       }
     } else {
-      // After Entry, After Exit 전략일 시 주문 시간은 현재 바의 Open Time,
+      // After Entry, After Exit 전략일 시 주문 시각은 현재 바의 Open Time,
       // 주문 가격은 마지막 진입 가격 혹은 마지막 청산 가격
       order_time = engine_->GetCurrentOpenTime();
 
@@ -735,7 +735,7 @@ bool OrderHandler::LimitExit(const string& exit_name, const string& target_name,
         current_bar_idx < bar_data->GetNumBars(symbol_idx) - 1) {
       const auto& next_bar = bar_data->GetBar(symbol_idx, current_bar_idx + 1);
 
-      // On Close 전략일 시 주문 시간과 주문 가격은 다음 봉의 Open Time과 Open
+      // On Close 전략일 시 주문 시각과 주문 가격은 다음 봉의 Open Time과 Open
       order_time = next_bar.open_time;
       base_price = next_bar.open;
     } else [[unlikely]] {
@@ -745,7 +745,7 @@ bool OrderHandler::LimitExit(const string& exit_name, const string& target_name,
       WARN_AND_RET_FALSE()
     }
   } else {
-    // After Entry 혹은 After Exit 전략일 시 주문 시간은 현재 바의 Open Time,
+    // After Entry 혹은 After Exit 전략일 시 주문 시각은 현재 바의 Open Time,
     // 기준 가격은 마지막 진입 가격 혹은 마지막 청산 가격
     order_time = engine_->GetCurrentOpenTime();
 

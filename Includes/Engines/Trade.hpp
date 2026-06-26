@@ -119,8 +119,8 @@ class BACKTESTING_API Trade final {
   string entry_direction_;  // 진입 방향
 
   // 시간 정보
-  string entry_time_;    // 진입 시간
-  string exit_time_;     // 청산 시간
+  string entry_time_;    // 진입 시각
+  string exit_time_;     // 청산 시각
   string holding_time_;  // 보유 시간
 
   // 진입 정보

@@ -159,7 +159,7 @@ class BACKTESTING_API Order {
                                         진입할지 결정하는 값 */
 
   // 시장가, 지정가 진입 주문 시 업데이트
-  int64_t entry_order_time_;  // 진입 주문 시간
+  int64_t entry_order_time_;  // 진입 주문 시각
   double entry_order_price_;  // 진입 주문 가격
   double entry_order_size_;   // 진입 주문 수량
 
@@ -183,7 +183,7 @@ class BACKTESTING_API Order {
                                        청산할지 결정 */
 
   // 시장가, 지정가 청산 주문 시 업데이트
-  int64_t exit_order_time_;  // 청산 주문 시간
+  int64_t exit_order_time_;  // 청산 주문 시각
   double exit_order_price_;  // 청산 주문 가격
   double exit_order_size_;   // 청산 주문 수량
 
