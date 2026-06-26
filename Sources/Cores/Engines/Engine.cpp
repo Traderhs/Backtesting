@@ -712,7 +712,7 @@ void Engine::IsValidDateRange() {
               UtcDatetimeToUtcTimestamp(start_time, format);
           start_time_ts < begin_open_time_) {
         throw runtime_error(std::format(
-            "지정된 백테스팅 시작 시간 [{}]은(는) 바 데이터 최소 "
+            "지정된 백테스팅 시작 시각 [{}]은(는) 바 데이터 최소 "
             "시간 [{}]의 전으로 지정할 수 없습니다.",
             start_time, UtcTimestampToUtcDatetime(begin_open_time_)));
       } else {
@@ -725,7 +725,7 @@ void Engine::IsValidDateRange() {
       if (const auto end_time_ts = UtcDatetimeToUtcTimestamp(end_time, format);
           end_time_ts > end_close_time_) {
         throw runtime_error(
-            std::format("지정된 백테스팅 종료 시간 [{}]은(는) 바 데이터 최대 "
+            std::format("지정된 백테스팅 종료 시각 [{}]은(는) 바 데이터 최대 "
                         "시간 [{}]의 후로 지정할 수 없습니다.",
                         end_time, UtcTimestampToUtcDatetime(end_close_time_)));
       } else {
@@ -738,8 +738,8 @@ void Engine::IsValidDateRange() {
       if (UtcDatetimeToUtcTimestamp(start_time, format) >
           UtcDatetimeToUtcTimestamp(end_time, format)) {
         throw runtime_error(
-            std::format("지정된 백테스팅 시작 시간 [{}]은(는) 지정된 백테스팅 "
-                        "종료 시간 [{}]의 후로 지정할 수 없습니다.",
+            std::format("지정된 백테스팅 시작 시각 [{}]은(는) 지정된 백테스팅 "
+                        "종료 시각 [{}]의 후로 지정할 수 없습니다.",
                         start_time, end_time));
       }
     }
@@ -949,10 +949,10 @@ void Engine::InitializeEngine() {
   current_open_time_ = begin_open_time_;
   current_close_time_ = begin_open_time_ + trading_bar_time_diff_ - 1;
 
-  // 월 경계 초기화 (백테스팅 시작 시간 기준)
+  // 월 경계 초기화 (백테스팅 시작 시각 기준)
   next_month_boundary_ = CalculateNextMonthBoundary(current_open_time_);
 
-  // 시작 시간까지 트레이딩 바 인덱스 및 마크 가격 바 인덱스를 이동
+  // 시작 시각까지 트레이딩 바 인덱스 및 마크 가격 바 인덱스를 이동
   bar_->ProcessBarIndices(TRADING, "", current_close_time_);
   if (!use_bar_magnifier_) {
     bar_->ProcessBarIndices(MARK_PRICE, "", current_close_time_);
@@ -966,7 +966,7 @@ void Engine::InitializeEngine() {
        symbol_idx++) {
     bar_->SetCurrentSymbolIndex(symbol_idx);
 
-    // 첫 시작 시간이 begin_open_time과 같다면 바로 시작하는 Symbol
+    // 첫 시작 시각이 begin_open_time과 같다면 바로 시작하는 Symbol
     if (trading_bar_data_->GetBar(symbol_idx, bar_->GetCurrentBarIndex())
             .open_time == begin_open_time_) {
       trading_began_[symbol_idx] = true;
@@ -1435,7 +1435,7 @@ void Engine::BacktestingMain() {
     // current_close_time_
     // -> 1. UpdateTradingStatus에서 현재 트레이딩 바 Close Time까지
     //       바 돋보기를 사용할 수 있는지 검증하기 위하여 사용
-    //    2. 백테스팅 종료 시간 확인을 위해 사용
+    //    2. 백테스팅 종료 시각 확인을 위해 사용
     current_open_time_ += trading_bar_time_diff_;
     current_close_time_ += trading_bar_time_diff_;
   }
@@ -1591,7 +1591,7 @@ void Engine::UpdateTradingStatus() {
 
       // ※ 1. 돋보기 바의 데이터가 아직 시작되지 않았으면 트레이딩 불가
       // 한 트레이딩 바 중간부터 돋보기 바가 시작해도 진행 로직에는
-      // 문제가 없으므로, 다음 트레이딩 바의 돋보기 시작 시간인
+      // 문제가 없으므로, 다음 트레이딩 바의 돋보기 시작 시각인
       // current_close_time_부터 문제 발생 (메인 로직 참고)
       if (moved_close_time >= current_close_time_) {
         /* 돋보기 바 데이터가 사용 불가능하면 트레이딩은 불가능하지만,
@@ -1601,7 +1601,7 @@ void Engine::UpdateTradingStatus() {
         logger_->Log(
             WARN_L,
             format("[{}] 돋보기 바 데이터가 아직 시작되지 않아 해당 심볼의 "
-                   "트레이딩을 진행할 수 없습니다. (돋보기 바 시작 시간: [{}])",
+                   "트레이딩을 진행할 수 없습니다. (돋보기 바 시작 시각: [{}])",
                    symbol_names_[symbol_idx],
                    UtcTimestampToUtcDatetime(
                        magnifier_bar_data_->GetBar(symbol_idx, moved_bar_idx)
@@ -1676,14 +1676,14 @@ void Engine::ExecuteAllTradingEnd() {
       bar_->SetCurrentBarDataType(TRADING, "");
       bar_->SetCurrentBarIndex(bar_->GetCurrentBarIndex() - 1);
 
-      order_handler_->CancelAll("백테스팅 종료 시간");
+      order_handler_->CancelAll("백테스팅 종료 시각");
       order_handler_->CloseAll();
 
       // 트레이딩이 모두 종료된 전량 청산은 Just Exited로 판단하지 않음
       order_handler_->InitializeJustExited();
 
       logger_->Log(INFO_L,
-                   format("백테스팅 종료 시간에 의해 [{}] 심볼의 "
+                   format("백테스팅 종료 시각에 의해 [{}] 심볼의 "
                           "백테스팅을 종료합니다.",
                           symbol_names_[symbol_idx]),
                    __FILE__, __LINE__, true);

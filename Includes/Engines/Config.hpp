@@ -47,8 +47,8 @@ struct BACKTESTING_API Period {
   [[nodiscard]] string GetFormat() const { return format; }
 
  private:
-  string start_time;  // 백테스팅 시작 시간
-  string end_time;    // 백테스팅 종료 시간
+  string start_time;  // 백테스팅 시작 시각
+  string end_time;    // 백테스팅 종료 시각
   string format;      // 시간 문자열 포맷
 };
 

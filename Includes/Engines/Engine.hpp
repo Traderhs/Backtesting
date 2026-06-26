@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 
 // 표준 라이브러리
 #include <mutex>
@@ -107,7 +107,7 @@ class BACKTESTING_API Engine final : public BaseEngine {
     void operator()(const Engine* p) const;
   };
 
-  // 백테스팅 시작 시간
+  // 백테스팅 시작 시각
   static chrono::steady_clock::time_point backtesting_start_time_;
 
   static mutex mutex_;

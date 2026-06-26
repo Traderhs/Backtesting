@@ -39,7 +39,7 @@ Numeric<double> EndOfDay::Calculate() {
   // UTC 기준으로 하루 중 몇 초인지 계산 (86400초 = 24시간)
   const int bar_seconds_of_day = static_cast<int>(close_time_sec % 86400);
 
-  // 바의 종료 시간이 지정된 시간 이상인지 확인
+  // 바의 종료 시각이 지정된 시간 이상인지 확인
   return bar_seconds_of_day >= close_seconds_of_day_ ? 1.0 : 0.0;
 }
 
