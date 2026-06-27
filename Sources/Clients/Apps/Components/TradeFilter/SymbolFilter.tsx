@@ -116,7 +116,13 @@ const SymbolFilter: React.FC = () => {
                         }}
                         className="custom-checkbox"
                     />
-                    <label htmlFor={`SymbolFilter-${option.name}`} className="checkbox-label">{option.name}</label>
+                    <label
+                        htmlFor={`SymbolFilter-${option.name}`}
+                        className="checkbox-label"
+                        title={option.name}
+                    >
+                        {option.name}
+                    </label>
                 </div>
             ))}
         </div>

@@ -119,7 +119,13 @@ const StrategyFilter: React.FC = () => {
                         onChange={e => handleCheckboxChange(option.name, e.target.checked)}
                         className="custom-checkbox"
                     />
-                    <label htmlFor={`StrategyFilter-${option.name}`} className="checkbox-label">{option.name}</label>
+                    <label
+                        htmlFor={`StrategyFilter-${option.name}`}
+                        className="checkbox-label"
+                        title={option.name}
+                    >
+                        {option.name}
+                    </label>
                 </div>
             ))}
         </div>
