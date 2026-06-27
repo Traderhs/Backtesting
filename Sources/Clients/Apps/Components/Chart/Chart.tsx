@@ -1216,7 +1216,7 @@ const Chart: React.FC<{
             {/* 캘린더 로딩 중일 때 블러 처리된 오버레이와 스피너 */}
             {isCalendarLoading && (
                 <div style={{
-                    position: "fixed",
+                    position: "absolute",
                     top: 0,
                     left: 0,
                     right: 0,
