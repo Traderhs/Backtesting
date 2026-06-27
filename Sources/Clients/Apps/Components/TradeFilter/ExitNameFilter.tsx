@@ -121,7 +121,13 @@ const ExitNameFilter: React.FC = () => {
                         }}
                         className="custom-checkbox"
                     />
-                    <label htmlFor={`ExitNameFilter-${option.name}`} className="checkbox-label">{option.name}</label>
+                    <label
+                        htmlFor={`ExitNameFilter-${option.name}`}
+                        className="checkbox-label"
+                        title={option.name}
+                    >
+                        {option.name}
+                    </label>
                 </div>
             ))}
         </div>

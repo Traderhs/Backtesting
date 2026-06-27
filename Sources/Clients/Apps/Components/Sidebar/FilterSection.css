@@ -596,6 +596,14 @@
     color: rgb(255 215 0 / 100%) !important;
 }
 
+.tab-content-basic .checkbox-container .checkbox-label {
+    display: block;
+    max-width: 128px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /* =================================================================
    Time Filter Button Styles
    ================================================================= */
