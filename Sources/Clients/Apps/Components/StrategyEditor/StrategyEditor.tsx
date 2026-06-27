@@ -255,6 +255,7 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
 
     // 설정의 이전 해시값 저장 (변경 감지용)
     const previousConfigHash = useRef<string>('');
+    const barDataNeedsReloadRef = useRef(false);
 
     // 준비 완료 신호 중복 방지를 위한 플래그
     const fullyLoadedCalledRef = useRef(false);
@@ -277,6 +278,10 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
         const handleMessage = (event: MessageEvent) => {
             try {
                 const data = JSON.parse(event.data);
+
+                if (data.action === 'fetchSuccess') {
+                    barDataNeedsReloadRef.current = true;
+                }
 
                 if (data.action === 'backtestingSuccess' ||
                     data.action === 'backtestingFailed' ||
@@ -506,7 +511,8 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
 
         // 해시가 없거나 (최초 실행) 해시가 변경된 경우에만 clear and add
         const needsClearAndAdd = previousConfigHash.current === '' ||
-            currentHash !== previousConfigHash.current;
+            currentHash !== previousConfigHash.current ||
+            barDataNeedsReloadRef.current;
 
         ws.send(JSON.stringify({
             action: 'runSingleBacktesting',
@@ -525,6 +531,7 @@ function StrategyEditorContent({isActive, onFullyLoaded}: { isActive: boolean, o
 
         // 현재 해시값 저장
         previousConfigHash.current = currentHash;
+        barDataNeedsReloadRef.current = false;
     };
 
     // 백테스팅 중지
