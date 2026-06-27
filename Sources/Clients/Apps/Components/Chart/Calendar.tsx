@@ -14,6 +14,7 @@ interface CalendarProps {
     onDateTimeSelected: (date: Date, time: string) => void; // 날짜/시간 선택 시 부모에게 알리는 콜백
     symbol: string;
     result: string;
+    resultVersion: number;
     onLoadingStart: () => void; // 캘린더 로딩 시작 콜백
     onLoadingEnd: () => void; // 캘린더 로딩 종료 콜백
     config: any;
@@ -154,6 +155,7 @@ const Calendar: React.FC<CalendarProps> = ({
                                                onDateTimeSelected,
                                                symbol,
                                                result,
+                                               resultVersion,
                                                onLoadingStart,
                                                onLoadingEnd,
                                                config
@@ -964,6 +966,7 @@ const Calendar: React.FC<CalendarProps> = ({
                 action: "loadChartData",
                 symbol: symbol,
                 result: result,
+                resultVersion: resultVersion,
                 indicators: indicatorsToLoad,
                 fileRequest: {
                     type: "date",

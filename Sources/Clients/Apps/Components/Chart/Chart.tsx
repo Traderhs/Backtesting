@@ -34,6 +34,29 @@ export interface IndicatorDataPoint {
 
 type IndicatorDataMap = Record<string, IndicatorDataPoint[]>;
 
+function candleTime(candle: CandleData): number {
+    return Number(candle.time);
+}
+
+function normalizeCandleData(data: CandleData[]): CandleData[] {
+    const sorted = [...data].sort((a, b) => candleTime(a) - candleTime(b));
+    const deduped: CandleData[] = [];
+    let lastTime: number | null = null;
+
+    sorted.forEach(candle => {
+        const time = candleTime(candle);
+
+        if (lastTime === time) {
+            deduped[deduped.length - 1] = candle;
+        } else {
+            deduped.push(candle);
+            lastTime = time;
+        }
+    });
+
+    return deduped;
+}
+
 const Second = 1000;
 const Minute = 60 * Second;
 const Hour = 60 * Minute;
@@ -86,6 +109,7 @@ const Chart: React.FC<{
     pricePrecision: number;
     config: any;
     result: string;
+    resultVersion: number;
     onChartLoaded?: () => void
 }> = ({
           symbol,
@@ -94,6 +118,7 @@ const Chart: React.FC<{
           pricePrecision,
           config,
           result,
+          resultVersion,
           onChartLoaded
       }) => {
     const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -111,6 +136,12 @@ const Chart: React.FC<{
     const loadedFromRef = useRef<number | null>(null);
     const loadedToRef = useRef<number | null>(null);
     const pendingRequestRef = useRef<boolean>(false);
+    const requestIdRef = useRef<number>(0);
+    const latestRequestIdRef = useRef<number | null>(null);
+    const initialRangeRestorePendingRef = useRef<boolean>(false);
+    const initialRenderFinalizePendingRef = useRef<boolean>(false);
+    const initialRangeScheduledPassDoneRef = useRef<boolean>(false);
+    const postSpinnerRangeRestorePendingRef = useRef<boolean>(false);
 
     // 지표 데이터 관련
     const pendingIndicatorRequestsRef = useRef<{ [key: string]: boolean }>({});
@@ -189,6 +220,27 @@ const Chart: React.FC<{
         setIsCalendarLoading(false);
     }, []);
 
+    const applyInitialVisibleRange = useCallback(() => {
+        if (!chartRef.current || dataCacheRef.current.length === 0) {
+            return;
+        }
+
+        const firstPointIndex = 0;
+        const visibleBars = Math.floor((chartRef.current.timeScale().width() / 10) * 0.8);
+
+        chartRef.current.timeScale().setVisibleLogicalRange({
+            from: firstPointIndex - Math.floor(visibleBars / 2),
+            to: firstPointIndex + Math.floor(visibleBars / 2)
+        });
+    }, []);
+
+    const finishChartLoading = useCallback(() => {
+        if (isLoadingRef.current) {
+            setIsLoading(false);
+            isLoadingRef.current = false;
+        }
+    }, []);
+
     // 지표 페인 생성 완료 콜백
     const handlePanesCreated = useCallback((paneCount: number) => {
         if (!chartRef.current) {
@@ -228,13 +280,24 @@ const Chart: React.FC<{
             }
         }
 
-        // 3. 로딩 상태 해제
-        if (isLoadingRef.current) {
-            setIsLoading(false);
-            isLoadingRef.current = false;
+        if (initialRangeRestorePendingRef.current) {
+            applyInitialVisibleRange();
+            initialRangeRestorePendingRef.current = false;
         }
 
-    }, []);
+        if (initialRenderFinalizePendingRef.current) {
+            if (initialRangeScheduledPassDoneRef.current) {
+                initialRenderFinalizePendingRef.current = false;
+                postSpinnerRangeRestorePendingRef.current = true;
+                finishChartLoading();
+            }
+            return;
+        }
+
+        // 3. 로딩 상태 해제
+        finishChartLoading();
+
+    }, [applyInitialVisibleRange, finishChartLoading]);
 
     // 특정 시간으로 차트 이동
     const moveToTimestamp = useCallback((timestamp: number) => {
@@ -303,9 +366,13 @@ const Chart: React.FC<{
             action: "loadChartData",
             symbol,
             result,
+            resultVersion,
+            requestId: requestIdRef.current + 1,
             indicators: indicatorsToLoad,
             fileRequest: {} // 파일 요청 객체 초기화
         };
+        requestIdRef.current = requestPayload.requestId;
+        latestRequestIdRef.current = requestPayload.requestId;
 
 
         // 캔들 데이터의 시간 범위(from, to) 계산
@@ -513,11 +580,30 @@ const Chart: React.FC<{
             }
             try {
                 const msg = JSON.parse(event.data);
-                const isInitialLoadResponse = dataCacheRef.current.length === 0; // 더 명확한 초기 로드 응답 감지
 
                 if (msg.action === "loadChartDataResponse") {
+                    if (typeof msg.requestId === "number" && msg.requestId !== latestRequestIdRef.current) {
+                        return;
+                    }
+                    if (msg.symbol !== undefined && msg.symbol !== symbol) {
+                        return;
+                    }
+                    if (msg.result !== undefined && msg.result !== result) {
+                        return;
+                    }
+                    if (msg.resultVersion !== undefined && msg.resultVersion !== resultVersion) {
+                        return;
+                    }
+
+                    const hasResponseRequestType = typeof msg.fileRequestType === "string";
+                    const responseRequestType = typeof msg.fileRequestType === "string"
+                        ? msg.fileRequestType
+                        : currentRequestTypeRef.current;
+                    const isInitialLoadResponse = responseRequestType === "initial" || dataCacheRef.current.length === 0;
+
                     // Calendar에서 온 date 요청인지 확인 (전역적으로 저장된 플래그 확인)
-                    const isCalendarDateRequest = (window as any).lastCalendarDateRequest === true;
+                    const isCalendarDateRequest = responseRequestType === "date" ||
+                        (!hasResponseRequestType && (window as any).lastCalendarDateRequest === true);
                     if (isCalendarDateRequest) {
                         (window as any).lastCalendarDateRequest = false; // 플래그 리셋
                     }
@@ -548,10 +634,9 @@ const Chart: React.FC<{
                                 loadedFromRef.current = null;
                                 loadedToRef.current = null;
                             }
-                            dataCacheRef.current = candleData;
+                            dataCacheRef.current = normalizeCandleData(candleData);
                         } else {
-                            // 시간 순 정렬된 데이터이므로 단순 concat으로 빠른 병합
-                            dataCacheRef.current = dataCacheRef.current.concat(candleData);
+                            dataCacheRef.current = normalizeCandleData(dataCacheRef.current.concat(candleData));
                         }
 
                         if (dataCacheRef.current.length > 0) {
@@ -665,7 +750,7 @@ const Chart: React.FC<{
                         const hasIndicators = config && config['지표'] && config['지표'].some((indicator: any) =>
                             indicator['플롯']?.['플롯 종류'] !== '비활성화' && indicator['데이터 경로']);
 
-                        if (!hasIndicators) {
+                        if (!hasIndicators && !candleDataReceived) {
                             setIsLoading(false);
                             isLoadingRef.current = false;
                         }
@@ -691,6 +776,10 @@ const Chart: React.FC<{
                                 const hasIndicators = config && config['지표'] && config['지표'].some((indicator: any) =>
                                     indicator['플롯']?.['플롯 종류'] !== '비활성화' && indicator['데이터 경로']);
 
+                                initialRangeRestorePendingRef.current = isInitialLoadResponse && !isCalendarDateRequest && hasIndicators;
+                                initialRenderFinalizePendingRef.current = isInitialLoadResponse && !isCalendarDateRequest;
+                                initialRangeScheduledPassDoneRef.current = false;
+
                                 // 시리즈 초기화 로직 분리
                                 if (hasIndicators) {
                                     // 지표가 있는 경우: 볼륨만 먼저 생성 -> 지표 생성 -> handlePanesCreated에서 메인 캔들 생성
@@ -712,32 +801,17 @@ const Chart: React.FC<{
                                         return;
                                     }
 
-                                    // Calendar 요청의 경우, 불필요한 fitContent/초기 중앙 이동을 생략하여
-                                    // 로딩 후 직접 목표 시간으로 깔끔하게 이동
-                                    if (!isCalendarDateRequest) {
-                                        chartRef.current.timeScale().fitContent();
-                                    }
-
                                     // 2단계 렌더링 보장
                                     setTimeout(() => {
-                                        // 차트가 완전히 초기화된 후에 요청 허용
-                                        setIsChartInitialized(true);
-                                        setIsTimeSliderLocked(false); // 초기 로드 및 모든 처리 완료 후 슬라이더 잠금 해제
+                                        if (candleStickRendererRef.current && isChartVisible) {
+                                            // 마지막 업데이트 강제
+                                            candleStickRendererRef.current.updateData([...dataCacheRef.current], {});
+                                        }
 
                                         // 초기 데이터 로드 시만 기본 중앙 위치로 이동
                                         if (chartRef.current && dataCacheRef.current.length > 0 && isChartVisible) {
                                             if (!isCalendarDateRequest) {
-                                                // 첫 데이터 포인트의 인덱스는 0
-                                                const firstPointIndex = 0;
-
-                                                // 화면 너비의 절반 정도를 확보하여 첫 포인트가 화면 중앙에 오도록 설정
-                                                const visibleBars = Math.floor((chartRef.current.timeScale().width() / 10) * 0.8); // 대략적인 화면에 표시되는 바 개수
-
-                                                // 첫 포인트가 화면 중앙에 오도록 범위 설정
-                                                chartRef.current.timeScale().setVisibleLogicalRange({
-                                                    from: firstPointIndex - Math.floor(visibleBars / 2),
-                                                    to: firstPointIndex + Math.floor(visibleBars / 2)
-                                                });
+                                                applyInitialVisibleRange();
                                             } else {
                                                 // 캘린더 요청인 경우: 초기 중앙 이동은 생략하고
                                                 // Calendar -> Chart 흐름에서 Calendar가 완료 신호를 받은 후
@@ -745,9 +819,15 @@ const Chart: React.FC<{
                                             }
                                         }
 
-                                        if (candleStickRendererRef.current && isChartVisible) {
-                                            // 마지막 업데이트 강제
-                                            candleStickRendererRef.current.updateData([...dataCacheRef.current], {});
+                                        // 차트가 완전히 초기화된 후에 요청 허용
+                                        setIsChartInitialized(true);
+                                        setIsTimeSliderLocked(false); // 초기 로드 및 모든 처리 완료 후 슬라이더 잠금 해제
+
+                                        initialRangeScheduledPassDoneRef.current = true;
+                                        if (initialRenderFinalizePendingRef.current && !initialRangeRestorePendingRef.current) {
+                                            initialRenderFinalizePendingRef.current = false;
+                                            postSpinnerRangeRestorePendingRef.current = true;
+                                            finishChartLoading();
                                         }
 
                                         // Calendar 요청인 경우 완료 신호 전송
@@ -934,6 +1014,17 @@ const Chart: React.FC<{
                 if (isUnmountingRef.current) return;
                 setShowSpinner(false);
 
+                if (postSpinnerRangeRestorePendingRef.current) {
+                    postSpinnerRangeRestorePendingRef.current = false;
+                    requestAnimationFrame(() => {
+                        requestAnimationFrame(() => {
+                            if (!isUnmountingRef.current) {
+                                applyInitialVisibleRange();
+                            }
+                        });
+                    });
+                }
+
                 // 스피너 숨김 후 로딩 완료 콜백 호출
                 if (onChartLoaded) {
                     onChartLoaded();
@@ -947,7 +1038,7 @@ const Chart: React.FC<{
                 clearTimeout(timerId);
             }
         };
-    }, [isLoading, onChartLoaded]);
+    }, [isLoading, onChartLoaded, applyInitialVisibleRange]);
 
     // 지표 로딩 완료 감지해서 isLoading 상태 업데이트
     useEffect(() => {
@@ -956,6 +1047,10 @@ const Chart: React.FC<{
             const allIndicatorsReceived =
                 pendingIndicators.length === 0 ||
                 pendingIndicators.every(key => !pendingIndicatorRequestsRef.current[key]);
+
+            if (initialRenderFinalizePendingRef.current) {
+                return;
+            }
 
             if (allIndicatorsReceived && isCandleReady && isLoadingRef.current && !pendingRequestRef.current) {
                 setIsLoading(false);
@@ -994,7 +1089,12 @@ const Chart: React.FC<{
         };
 
         // 데이터 로드 후 일정 시간 지연 후 초기화 완료 설정
-        if (isCandleReady && dataCacheRef.current.length > 0 && !isChartInitialized) {
+        if (
+            isCandleReady &&
+            dataCacheRef.current.length > 0 &&
+            !isChartInitialized &&
+            !initialRenderFinalizePendingRef.current
+        ) {
             initTimer = setTimeout(completeInitialization, 1000);
         }
 
@@ -1172,6 +1272,7 @@ const Chart: React.FC<{
                                     timeframe={timeframe}
                                     symbol={symbol}
                                     result={result}
+                                    resultVersion={resultVersion}
                                     // 저장된 달력 상태 전달 (처음 열 때는 null 전달하여 첫 데이터 사용)
                                     lastSelectedDate={isCalendarFirstOpen ? null : calendarLastSelectedDate}
                                     lastSelectedTime={isCalendarFirstOpen ? '' : (calendarLastSelectedTime || '00:00')}
@@ -1188,7 +1289,7 @@ const Chart: React.FC<{
                                 />
                             )}
                             <IndicatorSeriesContainer
-                                key={symbol}
+                                key={`${symbol}::${timeframe}::${result}`}
                                 chart={chartRef.current}
                                 indicatorDataMap={indicatorDataMap}
                                 priceStep={priceStep}
