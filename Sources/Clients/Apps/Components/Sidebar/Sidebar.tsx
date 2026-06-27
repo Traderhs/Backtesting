@@ -406,19 +406,6 @@ export default function Sidebar({
             <div
                 className="sidebar-content"
             >
-                {/* 사이드바 상단 헤더 영역 - 로고 */}
-                <div className="sidebar-header">
-                    <motion.h2
-                        initial={{opacity: 0}}
-                        animate={{opacity: 1}}
-                        transition={{delay: 0.2}}
-                        className="sidebar-logo"
-                    >
-                        <span className="icon-placeholder"></span>
-                        BackBoard
-                    </motion.h2>
-                </div>
-
                 {/* 사이드바 내비게이션 버튼 영역 */}
                 <div className="space-y-5 mt-2 flex flex-col">
                     {/* 전략 에디터 버튼 - 백테스팅 전략 편집 및 실행 */}
@@ -836,7 +823,7 @@ export default function Sidebar({
                                 </motion.div>
 
                                 {/* 백테스팅 로그 버튼 밑 공간 */}
-                                <div style={{height: '50px'}}></div>
+                                <div style={{height: '118px'}}></div>
                             </div>
                             {/* --- 하단 탭 그룹 끝 --- */}
                         </>
