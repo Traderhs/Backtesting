@@ -326,6 +326,34 @@ const parquetReaderCache = {};
 const indicatorReaderCache = {};
 const fileInfoCache = {};
 
+async function closeCachedReaders(cache) {
+    const readers = Object.values(cache);
+    Object.keys(cache).forEach(key => {
+        delete cache[key];
+    });
+
+    await Promise.all(readers.map(async (reader) => {
+        try {
+            if (reader && typeof reader.close === 'function') {
+                await reader.close();
+            }
+        } catch (e) {
+            // 캐시 정리는 best-effort
+        }
+    }));
+}
+
+async function clearChartDataCaches() {
+    await Promise.all([
+        closeCachedReaders(parquetReaderCache),
+        closeCachedReaders(indicatorReaderCache)
+    ]);
+
+    Object.keys(fileInfoCache).forEach(key => {
+        delete fileInfoCache[key];
+    });
+}
+
 async function getParquetReader(filePath, cache) {
     if (cache[filePath]) {
         return cache[filePath];
@@ -337,14 +365,35 @@ async function getParquetReader(filePath, cache) {
     return reader;
 }
 
+function sortFileInfos(fileInfos) {
+    return fileInfos.sort((a, b) => a.start - b.start || a.end - b.end || a.file.localeCompare(b.file));
+}
+
+function normalizeTimeSeries(data) {
+    data.sort((a, b) => a.time - b.time);
+
+    const deduped = [];
+    let lastTime = null;
+
+    data.forEach(item => {
+        if (item.time === lastTime) {
+            deduped[deduped.length - 1] = item;
+        } else {
+            deduped.push(item);
+            lastTime = item.time;
+        }
+    });
+
+    return deduped;
+}
+
 async function getCandleDataByFiles(directory, fileRequest) {
     const {type, count, referenceTime} = fileRequest;
-    const pathParts = directory.split(/[/\\]/);
-    const symbolName = pathParts[pathParts.length - 2] || "unknown";
+    const cacheKey = path.resolve(directory);
 
     let fileInfos;
-    if (fileInfoCache[symbolName]) {
-        fileInfos = fileInfoCache[symbolName];
+    if (fileInfoCache[cacheKey]) {
+        fileInfos = fileInfoCache[cacheKey];
     } else {
         try {
             let files = await fsPromises.readdir(directory);
@@ -355,7 +404,8 @@ async function getCandleDataByFiles(directory, fileRequest) {
                 const parts = file.slice(0, -8).split("_");
                 return {file, start: Number(parts[0]), end: Number(parts[1])};
             }).filter(info => !isNaN(info.start) && !isNaN(info.end));
-            fileInfoCache[symbolName] = fileInfos;
+            sortFileInfos(fileInfos);
+            fileInfoCache[cacheKey] = fileInfos;
         } catch (err) {
             return [];
         }
@@ -434,7 +484,8 @@ async function getCandleDataByFiles(directory, fileRequest) {
         } catch (err) {
         }
     }
-    return allResults;
+
+    return normalizeTimeSeries(allResults);
 }
 
 async function getIndicatorDataByTimeRange(directory, timeRange, symbol) {
@@ -442,7 +493,7 @@ async function getIndicatorDataByTimeRange(directory, timeRange, symbol) {
         return [];
     }
 
-    const cacheKey = path.basename(directory);
+    const cacheKey = path.resolve(directory);
     let fileInfos;
     if (fileInfoCache[cacheKey]) {
         fileInfos = fileInfoCache[cacheKey];
@@ -455,6 +506,7 @@ async function getIndicatorDataByTimeRange(directory, timeRange, symbol) {
                 const parts = file.slice(0, -8).split("_");
                 return {file, start: Number(parts[0]), end: Number(parts[1])};
             }).filter(info => !isNaN(info.start) && !isNaN(info.end));
+            sortFileInfos(fileInfos);
             fileInfoCache[cacheKey] = fileInfos;
         } catch (err) {
             return [];
@@ -509,15 +561,14 @@ async function getIndicatorDataByTimeRange(directory, timeRange, symbol) {
         } catch (err) {
         }
     }
-    allResults.sort((a, b) => a.time - b.time);
-    return allResults;
+    return normalizeTimeSeries(allResults);
 }
 
 // Result 기반의 경로 로딩 캐시
-const resultConfigCache = {}; // { [resultName]: { ts: number, dataPaths: {}, indicatorPaths: {} } }
+const resultConfigCache = {}; // { [resultName]: { ts: number, resultVersion?: number, cfgPath: string, configMtimeMs: number, configSize: number, dataPaths: {}, indicatorPaths: {} } }
 const RESULT_CACHE_TTL = 60 * 1000; // 1분
 
-async function loadPathsForResult(resultName) {
+async function loadPathsForResult(resultName, resultVersion) {
     if (!resultName || typeof resultName !== 'string') {
         return null;
     }
@@ -525,12 +576,6 @@ async function loadPathsForResult(resultName) {
     const safeName = path.basename(resultName);
     if (safeName !== resultName) {
         return null;
-    }
-
-    const now = Date.now();
-    const cached = resultConfigCache[resultName];
-    if (cached && (now - cached.ts) < RESULT_CACHE_TTL) {
-        return cached;
     }
 
     const projectDir = process.env.PROJECT_DIR || process.cwd();
@@ -551,6 +596,30 @@ async function loadPathsForResult(resultName) {
     }
 
     try {
+        const now = Date.now();
+        const cfgStat = await fsPromises.stat(cfgPath);
+        const cached = resultConfigCache[resultName];
+        const configChanged = cached && (
+            cached.resultVersion !== resultVersion ||
+            cached.cfgPath !== cfgPath ||
+            cached.configMtimeMs !== cfgStat.mtimeMs ||
+            cached.configSize !== cfgStat.size
+        );
+        if (
+            cached &&
+            cached.resultVersion === resultVersion &&
+            cached.cfgPath === cfgPath &&
+            cached.configMtimeMs === cfgStat.mtimeMs &&
+            cached.configSize === cfgStat.size &&
+            (now - cached.ts) < RESULT_CACHE_TTL
+        ) {
+            return cached;
+        }
+
+        if (configChanged) {
+            await clearChartDataCaches();
+        }
+
         const _raw = await fsPromises.readFile(cfgPath, 'utf8');
         let txt = String(_raw);
         if (txt && typeof txt.charCodeAt === 'function' && txt.charCodeAt(0) === 0xFEFF) {
@@ -593,7 +662,15 @@ async function loadPathsForResult(resultName) {
             });
         }
 
-        const entry = {ts: Date.now(), dataPaths, indicatorPaths};
+        const entry = {
+            ts: Date.now(),
+            resultVersion,
+            cfgPath,
+            configMtimeMs: cfgStat.mtimeMs,
+            configSize: cfgStat.size,
+            dataPaths,
+            indicatorPaths
+        };
         resultConfigCache[resultName] = entry;
 
         return entry;
@@ -603,19 +680,24 @@ async function loadPathsForResult(resultName) {
 }
 
 async function handleLoadChartData(ws, msg) {
-    const {symbol, indicators, fileRequest, result} = msg;
+    const {symbol, indicators, fileRequest, result, resultVersion} = msg;
 
     // Result 기반 경로를 미리 캐시
     let resultPaths = null;
     if (result && typeof result === 'string') {
-        resultPaths = await loadPathsForResult(result);
+        resultPaths = await loadPathsForResult(result, resultVersion);
     }
 
     // 서버는 Result 기반 경로만 허용
-    const rp = await loadPathsForResult(result);
+    const rp = await loadPathsForResult(result, resultVersion);
     if (!rp || !rp.dataPaths || !rp.dataPaths[symbol]) {
         ws.send(JSON.stringify({
             action: "loadChartDataResponse",
+            requestId: msg.requestId,
+            fileRequestType: fileRequest && fileRequest.type,
+            symbol,
+            result,
+            resultVersion,
             error: `Results/${result}에 심볼 '${symbol}'의 캔들 데이터 경로가 없습니다. config.json을 확인하세요.`,
             candleData: [],
             indicatorResults: (indicators || []).map(name => ({
@@ -681,6 +763,11 @@ async function handleLoadChartData(ws, msg) {
 
         const response = {
             action: "loadChartDataResponse",
+            requestId: msg.requestId,
+            fileRequestType: fileRequest && fileRequest.type,
+            symbol,
+            result,
+            resultVersion,
             candleData: candleResult.data || [],
             indicatorResults: filteredIndicatorResults,
         };
@@ -691,6 +778,11 @@ async function handleLoadChartData(ws, msg) {
     } catch (err) {
         ws.send(JSON.stringify({
             action: "loadChartDataResponse",
+            requestId: msg.requestId,
+            fileRequestType: fileRequest && fileRequest.type,
+            symbol,
+            result,
+            resultVersion,
             error: "통합 데이터 처리 중 전체 오류",
             candleData: [],
             indicatorResults: indicators.map(name => ({indicatorName: name, error: "전체 오류로 데이터 못 가져옴", data: []})),

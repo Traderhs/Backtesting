@@ -62,7 +62,7 @@ function AppContent() {
     const [prevTab, setPrevTab] = useState("StrategyEditor");
     const [animationDirection, setAnimationDirection] = useState<"" | "slide-in-left" | "slide-in-right">("");
     const [isAnimating, setIsAnimating] = useState(false);
-    const {selectedResult, isSelectingResult} = useResults();
+    const {selectedResult, isSelectingResult, selectedResultVersion} = useResults();
 
     // 탭 순서 정의
     const tabOrder = ["StrategyEditor", "Overview", "Performance", "Plot", "Chart", "TradeList", "Config", "Log"];
@@ -400,9 +400,10 @@ function AppContent() {
 
             for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                 try {
+                    const configUrl = `/api/config?result=${encodeURIComponent(selectedResult)}&version=${selectedResultVersion}`;
                     const data = await (window.__resultsFetchParsed
-                        ? window.__resultsFetchParsed(`/api/config?result=${encodeURIComponent(selectedResult)}`)
-                        : (await (await fetch(`/api/config?result=${encodeURIComponent(selectedResult)}`)).json()));
+                        ? window.__resultsFetchParsed(configUrl)
+                        : (await (await fetch(configUrl)).json()));
 
                     if (cancelled) {
                         return;
@@ -452,7 +453,7 @@ function AppContent() {
         return () => {
             cancelled = true;
         };
-    }, [selectedResult]);
+    }, [selectedResult, selectedResultVersion]);
 
     // 초기 설정 (줌 방지 등)
     useEffect(() => {
@@ -654,13 +655,14 @@ function AppContent() {
                         {visitedTabs["Chart"] && chartConfig && config && configResult === (selectedResult || '') && (
                             <Suspense fallback={<div/>}>
                                 <Chart
-                                    key={`${chartConfig.symbol}::${selectedResult || 'no-result'}`} // 심볼혹은 Result 변경 시 강제 리마운트
+                                    key={`${chartConfig.symbol}::${chartConfig.timeframe}::${selectedResult || 'no-result'}::${selectedResultVersion}`}
                                     symbol={chartConfig.symbol}
                                     timeframe={chartConfig.timeframe}
                                     priceStep={chartConfig.priceStep}
                                     pricePrecision={chartConfig.pricePrecision}
                                     config={config}
                                     result={selectedResult || ''}
+                                    resultVersion={selectedResultVersion}
                                     onChartLoaded={handleChartLoaded}
                                 />
                             </Suspense>
