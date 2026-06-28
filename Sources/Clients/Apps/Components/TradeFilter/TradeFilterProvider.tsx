@@ -106,6 +106,17 @@ export const TradeFilterProvider = ({children}: { children: React.ReactNode }) =
     // 달력 상태 관리 추가
     const [openCalendar, setOpenCalendar] = useState<string | null>(null);
 
+    useEffect(() => {
+        const handleCloseFilterCalendar = () => {
+            setOpenCalendar(null);
+        };
+
+        window.addEventListener('closeFilterCalendar', handleCloseFilterCalendar);
+        return () => {
+            window.removeEventListener('closeFilterCalendar', handleCloseFilterCalendar);
+        };
+    }, []);
+
     const [tradeListError, setTradeListError] = useState(false)
     const [allTrades, setAllTrades] = useState<TradeItem[]>([]);
     const [filteredTrades, setFilteredTrades] = useState<TradeItem[]>([]);
