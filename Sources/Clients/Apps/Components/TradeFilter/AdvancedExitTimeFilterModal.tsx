@@ -162,19 +162,14 @@ const AdvancedExitTimeFilterModal: React.FC<AdvancedExitTimeFilterModalProps> = 
         requestAnimationFrame(() => {
             if (!modalRef.current) return;
 
-            const sidebarWidthRem = 18;
-            const sidebarWidthPx = sidebarWidthRem * 16;
-
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-
-            const mainContentWidth = windowWidth - sidebarWidthPx;
-
             const modalWidth = modalRef.current.offsetWidth;
             const modalHeight = modalRef.current.offsetHeight;
+            const overlayEl = modalRef.current.parentElement as HTMLElement;
+            const overlayWidth = overlayEl ? overlayEl.clientWidth : window.innerWidth;
+            const overlayHeight = overlayEl ? overlayEl.clientHeight : window.innerHeight;
 
-            const centerLeft = Math.max(0, (mainContentWidth - modalWidth) / 2);
-            const centerTop = Math.max(0, (windowHeight - modalHeight) / 2);
+            const centerLeft = Math.max(0, (overlayWidth - modalWidth) / 2);
+            const centerTop = Math.max(0, (overlayHeight - modalHeight) / 2);
 
             modalRef.current.style.position = 'absolute';
             modalRef.current.style.left = `${centerLeft}px`;
@@ -272,18 +267,17 @@ const AdvancedExitTimeFilterModal: React.FC<AdvancedExitTimeFilterModalProps> = 
                 const deltaY = e.clientY - startDragPos.y;
 
                 if (modalRef.current) {
-                    const sidebarWidthPx = 18 * 16; // 18rem = 288px
-                    const windowWidth = window.innerWidth;
-                    const windowHeight = window.innerHeight;
-                    const mainContentWidth = windowWidth - sidebarWidthPx;
                     const modalWidth = modalRef.current.offsetWidth;
                     const modalHeight = modalRef.current.offsetHeight;
+                    const overlayEl = modalRef.current.parentElement as HTMLElement;
+                    const overlayWidth = overlayEl ? overlayEl.clientWidth : window.innerWidth;
+                    const overlayHeight = overlayEl ? overlayEl.clientHeight : window.innerHeight;
 
                     let newLeft = startDragPos.initialLeft + deltaX;
                     let newTop = startDragPos.initialTop + deltaY;
 
-                    newLeft = Math.max(0, Math.min(newLeft, mainContentWidth - modalWidth));
-                    newTop = Math.max(0, Math.min(newTop, windowHeight - modalHeight));
+                    newLeft = Math.max(0, Math.min(newLeft, overlayWidth - modalWidth));
+                    newTop = Math.max(0, Math.min(newTop, overlayHeight - modalHeight));
 
                     modalRef.current.style.position = 'absolute';
                     modalRef.current.style.left = `${newLeft}px`;

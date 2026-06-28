@@ -27,7 +27,7 @@
 }
 
 .advanced-filter-modal-container {
-    z-index: 10000;
+    z-index: 30001;
     pointer-events: auto;
     user-select: none;
 }
