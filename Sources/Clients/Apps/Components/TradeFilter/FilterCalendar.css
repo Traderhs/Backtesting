@@ -1,13 +1,13 @@
 .filter-calendar-overlay {
     position: fixed;
-    z-index: 9999;
+    z-index: 30000;
     display: flex;
     justify-content: center;
     align-items: center;
     background-color: transparent;
     animation: fade-in 0.2s ease-in-out;
     pointer-events: none;
-    inset: 0 0 0 18rem; /* 사이드바 너비만큼 오프셋하여 메인 탭 영역에 배치 */
+    inset: 40px 0 0 18rem; /* 타이틀바와 사이드바를 제외한 메인 탭 영역에 배치 */
 }
 
 @keyframes fade-in {
@@ -22,7 +22,7 @@
 
 .filter-calendar-container {
     position: relative;
-    z-index: 10000;
+    z-index: 30001;
     width: 300px;
     margin: 0;
     overflow: hidden;

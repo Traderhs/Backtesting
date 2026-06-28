@@ -63,7 +63,7 @@
 /* 모달 크기 조정 */
 .advanced-filter-modal-container {
     width: 750px !important;
-    max-width: 95vw !important;
+    max-width: calc(100vw - 18rem - 24px) !important;
 }
 
 /* 체크박스 컨테이너 스타일 조정 */

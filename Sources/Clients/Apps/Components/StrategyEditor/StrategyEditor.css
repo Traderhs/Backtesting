@@ -684,7 +684,7 @@
 
 .strategy-editor-modal-overlay {
     position: fixed;
-    z-index: 10000;
+    z-index: 30000;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -692,10 +692,12 @@
     animation: modal-fade-in 0.2s ease;
     pointer-events: auto;
     user-select: none;
-    inset: 0;
+    inset: 40px 0 0 18rem;
 }
 
 .strategy-editor-modal-container {
+    position: relative;
+    z-index: 30001;
     min-width: 400px;
     max-height: 600px;
     padding: 1.5rem;

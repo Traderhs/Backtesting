@@ -428,30 +428,20 @@ const Calendar: React.FC<CalendarProps> = ({
 
                 // 달력 컨테이너 위치 변경
                 if (calendarRef.current) {
-                    // 사이드바 너비는 App.tsx에 정의된 대로 18rem (288px)
-                    const sidebarWidthRem = 18;
-                    const sidebarWidthPx = sidebarWidthRem * 16; // 1rem = 16px (일반적인 경우)
-
-                    // 윈도우 전체 너비
-                    const windowWidth = window.innerWidth;
-                    const windowHeight = window.innerHeight;
-
-                    // 차트 영역 너비 (윈도우 전체 너비 - 사이드바 너비)
-                    const chartWidth = windowWidth - sidebarWidthPx;
-
                     // 달력 요소의 크기 가져오기
                     const calendarWidth = calendarRef.current.offsetWidth;
                     const calendarHeight = calendarRef.current.offsetHeight;
+                    const overlayEl = calendarRef.current.parentElement as HTMLElement;
+                    const overlayWidth = overlayEl ? overlayEl.clientWidth : window.innerWidth;
+                    const overlayHeight = overlayEl ? overlayEl.clientHeight : window.innerHeight;
 
                     // 새로운 위치 계산 (드래그 이동)
                     let newLeft = startDragPos.initialLeft + deltaX;
                     let newTop = startDragPos.initialTop + deltaY;
 
-                    // 경계 제한: 좌/우/상/하 모두 차트 영역 내로 제한
-                    // 왼쪽(0부터 시작), 오른쪽(차트 너비 - 달력 너비까지)
-                    newLeft = Math.max(0, Math.min(newLeft, chartWidth - calendarWidth));
-                    // 상단(0부터 시작), 하단(창 높이 - 달력 높이까지)
-                    newTop = Math.max(0, Math.min(newTop, windowHeight - calendarHeight));
+                    // 경계 제한: 오버레이 내부 영역에서만 이동
+                    newLeft = Math.max(0, Math.min(newLeft, overlayWidth - calendarWidth));
+                    newTop = Math.max(0, Math.min(newTop, overlayHeight - calendarHeight));
 
                     // 위치 적용
                     calendarRef.current.style.position = 'absolute';
@@ -494,24 +484,16 @@ const Calendar: React.FC<CalendarProps> = ({
         const handleResize = () => {
             if (!calendarRef.current) return;
 
-            // 사이드바 너비는 App.tsx에 정의된 대로 18rem (288px)
-            const sidebarWidthRem = 18;
-            const sidebarWidthPx = sidebarWidthRem * 16; // 1rem = 16px (일반적인 경우)
-
-            // 윈도우 전체 너비
-            const windowWidth = window.innerWidth;
-            const windowHeight = window.innerHeight;
-
-            // 차트 영역 너비 (윈도우 전체 너비 - 사이드바 너비)
-            const chartWidth = windowWidth - sidebarWidthPx;
-
             // 달력 요소의 크기 가져오기
             const calendarWidth = calendarRef.current.offsetWidth;
             const calendarHeight = calendarRef.current.offsetHeight;
+            const overlayEl = calendarRef.current.parentElement as HTMLElement;
+            const overlayWidth = overlayEl ? overlayEl.clientWidth : window.innerWidth;
+            const overlayHeight = overlayEl ? overlayEl.clientHeight : window.innerHeight;
 
             // 리사이즈 시 무조건 중앙으로 이동
-            const centerLeft = Math.max(0, (chartWidth - calendarWidth) / 2);
-            const centerTop = Math.max(0, (windowHeight - calendarHeight) / 2);
+            const centerLeft = Math.max(0, (overlayWidth - calendarWidth) / 2);
+            const centerTop = Math.max(0, (overlayHeight - calendarHeight) / 2);
 
             calendarRef.current.style.position = 'absolute';
             calendarRef.current.style.left = `${centerLeft}px`;
