@@ -19,6 +19,7 @@ const getSearchResultKey = (lineIndex: number, startIndex: number, endIndex: num
 
 const SEARCH_MARKER_TRACK_MARGIN = 2;
 const SEARCH_MARKER_SCROLLBAR_SIZE = 10;
+const LAST_ROW_BOTTOM_PADDING = 0;
 
 // 한 줄 렌더러
 const LogRow: React.FC<{
@@ -59,8 +60,6 @@ const LogRow: React.FC<{
 
     // 청크의 마지막 라인인지 확인
     const isChunkLastItem = index === data.lines.length - 1;
-
-    const paddingAmount = 20;
 
     const adjustedStyle = {
         ...style,
@@ -267,10 +266,10 @@ const LogRow: React.FC<{
                 fontSize: '14px',
                 lineHeight: '1.4',
                 color: '#ffffff', // 기본 흰색
-                padding: isChunkLastItem ? `0px 10px ${paddingAmount}px 25px` : '0px 10px 0px 25px', // 각 청크의 마지막 아이템에 패딩, 마지막 청크는 중복 방지
+                padding: isChunkLastItem ? `0px 10px ${LAST_ROW_BOTTOM_PADDING}px 25px` : '0px 10px 0px 25px', // 각 청크의 마지막 아이템에 패딩, 마지막 청크는 중복 방지
                 boxSizing: 'border-box',
                 display: 'flex',
-                alignItems: 'center',
+                alignItems: isChunkLastItem ? 'flex-start' : 'center',
                 width: `${rowMinWidth}px`,
                 minWidth: `${rowMinWidth}px`,
                 backgroundColor: isCurrentSearchLine ? 'rgba(255, 165, 0, 0.1)' : 'transparent',
@@ -861,8 +860,7 @@ const Log: React.FC = () => {
             // 각 청크의 마지막 아이템에 패딩 추가, 마지막 청크는 중복 방지
             const isChunkLastItem = index === logLines.length - 1;
             if (isChunkLastItem) {
-                const paddingAmount = 20;
-                const height = baseHeight + paddingAmount;
+                const height = baseHeight + LAST_ROW_BOTTOM_PADDING;
                 rowHeights.current[index] = height;
                 return height;
             } else {
