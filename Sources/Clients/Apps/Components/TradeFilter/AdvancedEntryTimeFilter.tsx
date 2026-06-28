@@ -1,4 +1,4 @@
-import React, {useCallback, useMemo, useState} from "react";
+import React, {useCallback, useEffect, useMemo, useState} from "react";
 import AdvancedEntryTimeFilterModal, {AdvancedEntryTimeFilterValues} from "./AdvancedEntryTimeFilterModal";
 import {useTradeFilter} from "./index.ts";
 import {Button} from "@/Components/UI/Button.tsx";
@@ -35,6 +35,17 @@ const AdvancedEntryTimeFilter: React.FC = () => {
 
     // 실제 거래(거래 번호 0 제외)가 존재하는지 여부 확인
     const hasValidTrades = useMemo(() => allTrades.some(trade => Number(trade["거래 번호"]) !== 0), [allTrades]);
+
+    useEffect(() => {
+        const handleCloseFilterCalendar = () => {
+            setModalOpen(false);
+        };
+
+        window.addEventListener('closeFilterCalendar', handleCloseFilterCalendar);
+        return () => {
+            window.removeEventListener('closeFilterCalendar', handleCloseFilterCalendar);
+        };
+    }, []);
 
     const handleMouseDown = () => {
         setButtonPressed(true);

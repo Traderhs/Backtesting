@@ -220,6 +220,10 @@ const Calendar: React.FC<CalendarProps> = ({
     // 월 이름
     const months = ['1월', '2월', '3월', '4월', '5월', '6월', '7월', '8월', '9월', '10월', '11월', '12월'];
 
+    useEffect(() => {
+        window.dispatchEvent(new CustomEvent('closeFilterCalendar'));
+    }, []);
+
     // 현재 달의 일수 계산
     const getDaysInMonth = (year: number, month: number) => {
         return new Date(year, month + 1, 0).getDate();
