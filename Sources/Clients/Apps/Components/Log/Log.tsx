@@ -14,6 +14,9 @@ interface SearchResult {
     endIndex: number;
 }
 
+const getSearchResultKey = (lineIndex: number, startIndex: number, endIndex: number) =>
+    `${lineIndex}:${startIndex}:${endIndex}`;
+
 // 한 줄 렌더러
 const LogRow: React.FC<{
     index: number;
@@ -25,6 +28,8 @@ const LogRow: React.FC<{
         searchResults: SearchResult[],
         currentChunkStart: number,
         allLogLinesLength: number,
+        searchResultIndexByPosition: Map<string, number>,
+        onSearchResultClick: (index: number) => void,
         maxTextWidth?: number // 현재 청크의 최대 텍스트 너비
     }
 }> = React.memo(({index, style, data}) => {
@@ -65,6 +70,10 @@ const LogRow: React.FC<{
     const currentSearchResult = searchResults[currentSearchIndex];
     const isCurrentSearchLine = currentSearchResult && currentSearchResult.lineIndex === index;
     const isSeparator = /^=+$/.test(line.trim());
+    const normalizedSearchTerm = searchTerm.toLowerCase();
+    const searchSplitRegex = searchTerm
+        ? new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi')
+        : null;
 
     if (isSeparator) {
         // 현재 청크의 최대 텍스트 너비를 기준으로 구분선 길이 계산
@@ -149,13 +158,11 @@ const LogRow: React.FC<{
                 return <span style={{color}}>{text}</span>;
             }
 
-            const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            const regex = new RegExp(`(${escapedSearchTerm})`, 'gi');
-            const parts = text.split(regex);
+            const parts = searchSplitRegex ? text.split(searchSplitRegex) : [text];
             let currentIndex = textStartIndex;
 
             return parts.map((part, i) => {
-                const isMatch = part.toLowerCase() === searchTerm.toLowerCase();
+                const isMatch = part.toLowerCase() === normalizedSearchTerm;
                 const partStartIndex = currentIndex;
                 const partEndIndex = currentIndex + part.length;
                 currentIndex = partEndIndex;
@@ -166,10 +173,14 @@ const LogRow: React.FC<{
                     currentSearchResult &&
                     partStartIndex >= currentSearchResult.startIndex &&
                     partEndIndex <= currentSearchResult.endIndex;
+                const searchResultIndex = isMatch
+                    ? data.searchResultIndexByPosition.get(getSearchResultKey(index, partStartIndex, partEndIndex)) ?? -1
+                    : -1;
 
                 return (
                     <span
                         key={i}
+                        onClick={searchResultIndex >= 0 ? () => data.onSearchResultClick(searchResultIndex) : undefined}
                         style={{
                             color,
                             backgroundColor: isMatch ?
@@ -177,6 +188,7 @@ const LogRow: React.FC<{
                             padding: isMatch ? '1px 2px' : '0',
                             borderRadius: '2px',
                             border: isMatch && isCurrentMatch ? '1px solid rgba(255, 165, 0, 0.8)' : 'none',
+                            cursor: searchResultIndex >= 0 ? 'text' : 'inherit',
                         }}
                     >
             {part}
@@ -877,6 +889,12 @@ const Log: React.FC = () => {
         }
     };
 
+    const handleSearchResultClick = useCallback((index: number) => {
+        if (index >= 0 && index < searchResults.length) {
+            setCurrentSearchIndex(index);
+        }
+    }, [searchResults.length]);
+
     const handleSearchChange = (value: string) => {
         setSearchTerm(value);
         setCurrentSearchIndex(0);
@@ -952,6 +970,65 @@ const Log: React.FC = () => {
     const handleScroll = ({scrollOffset}: { scrollOffset: number }) => {
         scrollOffsetRef.current = scrollOffset;
     };
+
+    const searchResultIndexByPosition = useMemo(() => {
+        const indexByPosition = new Map<string, number>();
+
+        searchResults.forEach((result, index) => {
+            indexByPosition.set(getSearchResultKey(result.lineIndex, result.startIndex, result.endIndex), index);
+        });
+
+        return indexByPosition;
+    }, [searchResults]);
+
+    const searchMarkers = useMemo(() => {
+        if (!searchTerm || searchResults.length === 0 || itemOffsets.length === 0 || logLines.length === 0) {
+            return [];
+        }
+
+        const totalHeight = itemOffsets[logLines.length - 1] + getRowHeight(logLines.length - 1);
+        if (totalHeight <= 0) {
+            return [];
+        }
+
+        const maxMarkerCount = 720;
+        if (searchResults.length <= maxMarkerCount) {
+            return searchResults.map((result, index) => ({
+                index,
+                topPercent: Math.max(0, Math.min(100, (itemOffsets[result.lineIndex] / totalHeight) * 100))
+            }));
+        }
+
+        const markerStepPercent = 100 / maxMarkerCount;
+        const markersByBucket = new Map<number, { index: number; topPercent: number }>();
+
+        searchResults.forEach((result, index) => {
+            const topPercent = Math.max(0, Math.min(100, (itemOffsets[result.lineIndex] / totalHeight) * 100));
+            const bucket = Math.round(topPercent / markerStepPercent);
+
+            if (!markersByBucket.has(bucket)) {
+                markersByBucket.set(bucket, {index, topPercent});
+            }
+        });
+
+        return Array.from(markersByBucket.values());
+    }, [searchTerm, searchResults, itemOffsets, logLines.length, getRowHeight]);
+
+    const currentSearchMarkerTop = useMemo(() => {
+        if (!searchTerm || currentSearchIndex < 0 || currentSearchIndex >= searchResults.length || itemOffsets.length === 0 || logLines.length === 0) {
+            return null;
+        }
+
+        const currentResult = searchResults[currentSearchIndex];
+        const totalHeight = itemOffsets[logLines.length - 1] + getRowHeight(logLines.length - 1);
+        if (!currentResult || totalHeight <= 0) {
+            return null;
+        }
+
+        return Math.max(0, Math.min(100, (itemOffsets[currentResult.lineIndex] / totalHeight) * 100));
+    }, [searchTerm, currentSearchIndex, searchResults, itemOffsets, logLines.length, getRowHeight]);
+
+    const hasSearchMarkers = searchMarkers.length > 0 || currentSearchMarkerTop !== null;
 
     const controlButtonVariants = {
         hover: {
@@ -1410,6 +1487,8 @@ const Log: React.FC = () => {
                                                     searchResults,
                                                     currentChunkStart,
                                                     allLogLinesLength: allLogLines.length,
+                                                    searchResultIndexByPosition,
+                                                    onSearchResultClick: handleSearchResultClick,
                                                     maxTextWidth
                                                 }}
                                                 estimatedItemSize={28}
@@ -1425,6 +1504,50 @@ const Log: React.FC = () => {
                                         )
                                     }}
                                 </AutoSizer>
+                                {hasSearchMarkers && (
+                                    <div
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            right: '8px',
+                                            bottom: 0,
+                                            width: '7px',
+                                            pointerEvents: 'none',
+                                            zIndex: 3,
+                                        }}
+                                    >
+                                        {searchMarkers.map(marker => (
+                                            <div
+                                                key={`${marker.index}-${marker.topPercent}`}
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: `${marker.topPercent}%`,
+                                                    right: 0,
+                                                    width: '5px',
+                                                    height: '3px',
+                                                    transform: 'translateY(-50%)',
+                                                    borderRadius: '2px',
+                                                    backgroundColor: 'rgba(255, 202, 80, 0.58)',
+                                                }}
+                                            />
+                                        ))}
+                                        {currentSearchMarkerTop !== null && (
+                                            <div
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: `${currentSearchMarkerTop}%`,
+                                                    right: 0,
+                                                    width: '7px',
+                                                    height: '5px',
+                                                    transform: 'translateY(-50%)',
+                                                    borderRadius: '2px',
+                                                    backgroundColor: 'rgba(255, 165, 0, 0.95)',
+                                                    boxShadow: '0 0 6px rgba(255, 165, 0, 0.8)',
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+                                )}
                             </>
                         )}
 
