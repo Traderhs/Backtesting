@@ -416,20 +416,13 @@ const Report: React.FC<ReportProps> = ({onReady, config}) => {
                                     </div>
                                 </td>
                             ) : metric === 'MDD' ? (
-                                <td className="p-0 text-center align-middle overflow-hidden">
-                                    <div className="flex justify-around items-center h-full">
-                                        <div
-                                            className="flex-grow text-center px-1 py-2 border-r last:border-r-0 overflow-hidden"
-                                            style={{borderRightColor: 'rgba(255, 215, 0, 0.4)'}}>
-                                            <span
-                                                className="text-xs text-[#fff2b3] mb-1 block truncate header-text">MDD</span>
-                                            <span
-                                                className="truncate"
-                                                style={{color: metrics && parseFloat(metrics.riskRewardMetrics.mdd) === 0 ? '#008000' : '#a01722'}}>
+                                <td
+                                    className="p-0 text-center align-middle overflow-hidden">
+                                    <span
+                                        className="truncate"
+                                        style={{color: metrics && parseFloat(metrics.riskRewardMetrics.mdd) === 0 ? '#008000' : '#a01722'}}>
                                                 {metrics && formatPercent(metrics.riskRewardMetrics.mdd)}
-                                            </span>
-                                        </div>
-                                    </div>
+                                    </span>
                                 </td>
                             ) : metric === '수익 효율성 지수' ? (
                                 <td className="p-0 text-center align-middle overflow-hidden">
