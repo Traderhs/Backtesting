@@ -66,6 +66,7 @@ const LogRow: React.FC<{
         ...style,
         top: `${topOffset}px`
     } as React.CSSProperties;
+    const rowMinWidth = Math.max(1500, data.maxTextWidth || 1000) + 35;
 
     const searchTerm = data.searchTerm;
     const currentSearchIndex = data.currentSearchIndex;
@@ -270,6 +271,8 @@ const LogRow: React.FC<{
                 boxSizing: 'border-box',
                 display: 'flex',
                 alignItems: 'center',
+                width: `${rowMinWidth}px`,
+                minWidth: `${rowMinWidth}px`,
                 backgroundColor: isCurrentSearchLine ? 'rgba(255, 165, 0, 0.1)' : 'transparent',
                 opacity: 1,
                 fontSmooth: 'always',

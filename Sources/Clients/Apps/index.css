@@ -403,3 +403,7 @@ button:focus-visible {
 .log-container {
     isolation: isolate;
 }
+
+.log-list-outer {
+    overflow-x: scroll !important;
+}
