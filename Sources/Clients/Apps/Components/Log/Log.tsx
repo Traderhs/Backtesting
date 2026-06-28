@@ -17,6 +17,9 @@ interface SearchResult {
 const getSearchResultKey = (lineIndex: number, startIndex: number, endIndex: number) =>
     `${lineIndex}:${startIndex}:${endIndex}`;
 
+const SEARCH_MARKER_TRACK_MARGIN = 2;
+const SEARCH_MARKER_SCROLLBAR_SIZE = 10;
+
 // 한 줄 렌더러
 const LogRow: React.FC<{
     index: number;
@@ -296,6 +299,8 @@ const Log: React.FC = () => {
     const [visibleStopIndex, setVisibleStopIndex] = useState<number>(0);
     const scrollOffsetRef = useRef(0);
     const listHeightRef = useRef(0);
+    const listOuterRef = useRef<HTMLDivElement | null>(null);
+    const [listViewportHeight, setListViewportHeight] = useState(0);
     const animationFrameRef = useRef<number | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const fetchLogAbortRef = useRef<AbortController | null>(null);
@@ -725,6 +730,29 @@ const Log: React.FC = () => {
     const listRef = useRef<List>(null);
     const rowHeights = useRef<{ [key: number]: number }>({});
 
+    const getSearchMarkerRailHeight = useCallback((element: HTMLDivElement | null) => {
+        if (!element) {
+            return Math.max(0, listHeightRef.current - SEARCH_MARKER_SCROLLBAR_SIZE - SEARCH_MARKER_TRACK_MARGIN * 2);
+        }
+
+        return Math.max(0, element.offsetHeight - SEARCH_MARKER_SCROLLBAR_SIZE - SEARCH_MARKER_TRACK_MARGIN * 2);
+    }, []);
+
+    const updateSearchMarkerRailHeight = useCallback(() => {
+        const markerRailHeight = getSearchMarkerRailHeight(listOuterRef.current);
+        setListViewportHeight(prev => prev === markerRailHeight ? prev : markerRailHeight);
+    }, [getSearchMarkerRailHeight]);
+
+    const handleListOuterRef = useCallback((element: HTMLDivElement | null) => {
+        listOuterRef.current = element;
+
+        if (element) {
+            element.style.overflowX = 'scroll';
+            updateSearchMarkerRailHeight();
+            requestAnimationFrame(updateSearchMarkerRailHeight);
+        }
+    }, [updateSearchMarkerRailHeight]);
+
     useEffect(() => {
         fetchLog().then();
     }, [fetchLog]);
@@ -965,10 +993,12 @@ const Log: React.FC = () => {
 
     const handleItemsRendered = ({visibleStopIndex}: { visibleStopIndex: number }) => {
         setVisibleStopIndex(visibleStopIndex);
+        updateSearchMarkerRailHeight();
     };
 
     const handleScroll = ({scrollOffset}: { scrollOffset: number }) => {
         scrollOffsetRef.current = scrollOffset;
+        updateSearchMarkerRailHeight();
     };
 
     const searchResultIndexByPosition = useMemo(() => {
@@ -991,28 +1021,39 @@ const Log: React.FC = () => {
             return [];
         }
 
+        const viewportHeight = listViewportHeight || getSearchMarkerRailHeight(listOuterRef.current);
+        const getSearchMarkerTopPx = (result: SearchResult, markerHeight = 3) => {
+            const itemHeight = getRowHeight(result.lineIndex);
+            const itemCenterOffset = itemOffsets[result.lineIndex] + itemHeight / 2;
+            const markerTop = totalHeight > 0
+                ? (itemCenterOffset / totalHeight) * viewportHeight - markerHeight / 2
+                : 0;
+
+            return Math.max(0, Math.min(Math.max(0, viewportHeight - markerHeight), markerTop));
+        };
+
         const maxMarkerCount = 720;
         if (searchResults.length <= maxMarkerCount) {
             return searchResults.map((result, index) => ({
                 index,
-                topPercent: Math.max(0, Math.min(100, (itemOffsets[result.lineIndex] / totalHeight) * 100))
+                topPx: getSearchMarkerTopPx(result)
             }));
         }
 
-        const markerStepPercent = 100 / maxMarkerCount;
-        const markersByBucket = new Map<number, { index: number; topPercent: number }>();
+        const markerStepPx = viewportHeight / maxMarkerCount;
+        const markersByBucket = new Map<number, { index: number; topPx: number }>();
 
         searchResults.forEach((result, index) => {
-            const topPercent = Math.max(0, Math.min(100, (itemOffsets[result.lineIndex] / totalHeight) * 100));
-            const bucket = Math.round(topPercent / markerStepPercent);
+            const topPx = getSearchMarkerTopPx(result);
+            const bucket = markerStepPx > 0 ? Math.round(topPx / markerStepPx) : 0;
 
             if (!markersByBucket.has(bucket)) {
-                markersByBucket.set(bucket, {index, topPercent});
+                markersByBucket.set(bucket, {index, topPx});
             }
         });
 
         return Array.from(markersByBucket.values());
-    }, [searchTerm, searchResults, itemOffsets, logLines.length, getRowHeight]);
+    }, [searchTerm, searchResults, itemOffsets, logLines.length, getRowHeight, listViewportHeight, getSearchMarkerRailHeight]);
 
     const currentSearchMarkerTop = useMemo(() => {
         if (!searchTerm || currentSearchIndex < 0 || currentSearchIndex >= searchResults.length || itemOffsets.length === 0 || logLines.length === 0) {
@@ -1025,8 +1066,15 @@ const Log: React.FC = () => {
             return null;
         }
 
-        return Math.max(0, Math.min(100, (itemOffsets[currentResult.lineIndex] / totalHeight) * 100));
-    }, [searchTerm, currentSearchIndex, searchResults, itemOffsets, logLines.length, getRowHeight]);
+        const viewportHeight = listViewportHeight || getSearchMarkerRailHeight(listOuterRef.current);
+        const itemHeight = getRowHeight(currentResult.lineIndex);
+        const itemCenterOffset = itemOffsets[currentResult.lineIndex] + itemHeight / 2;
+        const markerTop = totalHeight > 0
+            ? (itemCenterOffset / totalHeight) * viewportHeight - 2.5
+            : 0;
+
+        return Math.max(0, Math.min(Math.max(0, viewportHeight - 5), markerTop));
+    }, [searchTerm, currentSearchIndex, searchResults, itemOffsets, logLines.length, getRowHeight, listViewportHeight, getSearchMarkerRailHeight]);
 
     const hasSearchMarkers = searchMarkers.length > 0 || currentSearchMarkerTop !== null;
 
@@ -1476,6 +1524,8 @@ const Log: React.FC = () => {
                                         return (
                                             <List
                                                 ref={listRef}
+                                                className="log-list-outer"
+                                                outerRef={handleListOuterRef}
                                                 height={height}
                                                 width={width}
                                                 itemCount={logLines.length}
@@ -1508,24 +1558,24 @@ const Log: React.FC = () => {
                                     <div
                                         style={{
                                             position: 'absolute',
-                                            top: 0,
+                                            top: SEARCH_MARKER_TRACK_MARGIN,
                                             right: '8px',
-                                            bottom: 0,
+                                            height: `${listViewportHeight || Math.max(0, listHeightRef.current - SEARCH_MARKER_SCROLLBAR_SIZE - SEARCH_MARKER_TRACK_MARGIN * 2)}px`,
                                             width: '7px',
+                                            overflow: 'hidden',
                                             pointerEvents: 'none',
                                             zIndex: 3,
                                         }}
                                     >
                                         {searchMarkers.map(marker => (
                                             <div
-                                                key={`${marker.index}-${marker.topPercent}`}
+                                                key={`${marker.index}-${marker.topPx}`}
                                                 style={{
                                                     position: 'absolute',
-                                                    top: `${marker.topPercent}%`,
+                                                    top: `${marker.topPx}px`,
                                                     right: 0,
                                                     width: '5px',
                                                     height: '3px',
-                                                    transform: 'translateY(-50%)',
                                                     borderRadius: '2px',
                                                     backgroundColor: 'rgba(255, 202, 80, 0.58)',
                                                 }}
@@ -1535,11 +1585,10 @@ const Log: React.FC = () => {
                                             <div
                                                 style={{
                                                     position: 'absolute',
-                                                    top: `${currentSearchMarkerTop}%`,
+                                                    top: `${currentSearchMarkerTop}px`,
                                                     right: 0,
                                                     width: '7px',
                                                     height: '5px',
-                                                    transform: 'translateY(-50%)',
                                                     borderRadius: '2px',
                                                     backgroundColor: 'rgba(255, 165, 0, 0.95)',
                                                     boxShadow: '0 0 6px rgba(255, 165, 0, 0.8)',
