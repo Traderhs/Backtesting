@@ -1,11 +1,55 @@
 import React, {memo, useCallback, useEffect, useRef, useState} from "react"
 import {AnimatePresence, motion} from "framer-motion"
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter';
-import {oneDark} from 'react-syntax-highlighter/dist/esm/styles/prism';
 import {FormControl, InputLabel, MenuItem, Select, SelectChangeEvent} from '@mui/material';
 import NoDataMessage from '../Common/NoDataMessage';
 import "./StrategyIndicatorCard.css";
 import {useResults} from '@/Contexts/ResultsContext';
+
+const gerryDark = {
+    'code[class*="language-"]': {
+        background: '#1e1f22',
+        color: '#afb9c3',
+        fontFamily: '"Fira Code", "Fira Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace',
+        lineHeight: 1.5,
+        textShadow: 'none',
+        whiteSpace: 'pre'
+    },
+    'pre[class*="language-"]': {
+        background: '#1e1f22',
+        color: '#afb9c3',
+        fontFamily: '"Fira Code", "Fira Mono", Menlo, Consolas, "DejaVu Sans Mono", monospace',
+        lineHeight: 1.5,
+        margin: 0,
+        padding: 0,
+        textShadow: 'none'
+    },
+    comment: {color: '#808080'},
+    prolog: {color: '#808080'},
+    doctype: {color: '#808080'},
+    cdata: {color: '#808080'},
+    punctuation: {color: '#afb9c3'},
+    keyword: {color: '#c88cdc'},
+    operator: {color: '#afb9c3'},
+    boolean: {color: '#96be78'},
+    number: {color: '#96be78'},
+    constant: {color: '#96be78'},
+    symbol: {color: '#96be78'},
+    string: {color: '#96be78'},
+    char: {color: '#96be78'},
+    builtin: {color: '#ffc86e'},
+    function: {color: '#ffc86e'},
+    'class-name': {color: '#96be78'},
+    namespace: {color: '#96be78'},
+    property: {color: '#ff9696'},
+    parameter: {color: '#61afe1'},
+    variable: {color: '#afb9c3'},
+    'attr-name': {color: '#ffc86e'},
+    tag: {color: '#ff9696'},
+    deleted: {color: '#ff5c7c'},
+    inserted: {color: '#96be78'},
+    url: {color: '#61afe1'}
+};
 
 // CSS 스타일 추가
 const styles = {
@@ -499,7 +543,7 @@ const StrategyIndicatorCard = memo(({
                         <div key={idx} className="code-line-content">
                             <SyntaxHighlighter
                                 language="cpp"
-                                style={oneDark}
+                                style={gerryDark}
                                 showLineNumbers={false}
                                 customStyle={{
                                     margin: 0,
