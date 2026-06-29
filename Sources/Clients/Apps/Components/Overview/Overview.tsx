@@ -11,7 +11,7 @@ import NoDataMessage from '@/Components/Common/NoDataMessage';
 // 지표 정보 정의
 const metrics = [
     {id: 'totalProfitLoss', title: '순손익'},
-    {id: 'totalProfitLossPercent', title: '순손익률'},
+    {id: 'cagr', title: 'CAGR'},
     {id: 'mdd', title: 'MDD'},
     {id: 'winRate', title: '승률'},
     {id: 'profitFactor', title: '손익비'},
@@ -47,6 +47,13 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
                     return isNaN(numVal) ? '0%' : Math.round(numVal).toLocaleString('en-US') + '%';
                 }
                 return formatPercent(percent);
+            case 'cagr':
+                const cagr = data.agrMetrics.cagr;
+                if (removeDecimal) {
+                    const numVal = parseFloat(cagr);
+                    return isNaN(numVal) ? '-' : Math.round(numVal).toLocaleString('en-US') + '%';
+                }
+                return formatPercent(cagr);
             case 'mdd':
                 const mdd = data.riskRewardMetrics.mdd;
                 if (removeDecimal) {
@@ -96,6 +103,7 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
         ? displayValue.value
         : rawMetricValue;
     const currentFontSize = displayValue?.sourceValue === rawMetricValue ? fontSize : 27;
+    const totalProfitLossPercent = getMetricValue('totalProfitLossPercent', metricsData);
 
     // 텍스트 크기 조정 함수
     const adjustTextSize = useCallback(() => {
@@ -237,6 +245,12 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
             return isProfitPositive ? '#4caf50' : '#f23645';
         } else if (metricId === 'totalProfitLossPercent') {
             return isProfitPositive ? '#4caf50' : '#f23645';
+        } else if (metricId === 'cagr') {
+            const cagr = parseFloat(String(data.agrMetrics.cagr).replace('%', '').replace(/,/g, ''));
+            if (!cagr) {
+                return '#ffffff';
+            }
+            return isProfitPositive ? '#4caf50' : '#f23645';
         } else if (metricId === 'mdd') {
             return parseFloat(data.riskRewardMetrics.mdd) === 0 ? '#008000' : '#f23645';
         } else {
@@ -355,6 +369,17 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
                             transform: 'translateY(-3px)'
                         }}>
                             {currentDisplayValue}
+                            {metric.id === 'totalProfitLoss' && (
+                                <div style={{
+                                    marginTop: 6,
+                                    fontSize: Math.max(currentFontSize - 8, 10) + 'px',
+                                    color: getMetricColor('totalProfitLossPercent', metricsData),
+                                    opacity: 0.88,
+                                    lineHeight: '1'
+                                }}>
+                                    {totalProfitLossPercent}
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
