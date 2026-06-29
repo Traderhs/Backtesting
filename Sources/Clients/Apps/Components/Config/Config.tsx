@@ -390,7 +390,7 @@ const Config = memo(({config: rawConfig}: ConfigProps) => {
                         transformStr !== '' &&
                         transformStr !== 'none' &&
                         (/\btranslate(?:3d)?\b/i.test(transformStr) || /\bmatrix(?:3d)?\b/i.test(transformStr));
-                    const isInteractive = el.matches('button, a, input, textarea, select, [role="button"], .MuiSelect-select, .MuiMenuItem-root');
+                    const isInteractive = el.matches('button, a, input, textarea, select, [role="button"], .MuiSelect-select, .MuiMenuItem-root, .MuiInputLabel-root, .MuiFormLabel-root');
 
                     if ((shouldNeutralizeTransform && !isInteractive) || willChangeTransform || backfaceHidden) {
                         if (shouldNeutralizeTransform && !isInteractive) {
