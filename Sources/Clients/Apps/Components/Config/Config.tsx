@@ -131,6 +131,7 @@ const Config = memo(({config: rawConfig}: ConfigProps) => {
     const [parsedConfig, setParsedConfig] = useState<ConfigJson | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [showContent, setShowContent] = useState(false);
+    const configRootRef = useRef<HTMLDivElement>(null);
 
     // 이 컴포넌트가 현재 화면에 보이는지 여부를 추적
     const isVisible = useRef(true);
@@ -321,6 +322,126 @@ const Config = memo(({config: rawConfig}: ConfigProps) => {
         };
     }, []);
 
+    useEffect(() => {
+        if (!showContent) {
+            return;
+        }
+
+        const fadeDuration = 300;
+        const getFadeTargets = (): HTMLElement[] => {
+            return configRootRef.current ? [configRootRef.current] : [];
+        };
+
+        const fadeIn = () => {
+            const targets = getFadeTargets();
+            if (targets.length === 0) {
+                return;
+            }
+
+            targets.forEach(target => {
+                target.style.transition = `opacity ${fadeDuration}ms ease-out`;
+                target.style.visibility = 'visible';
+                target.style.pointerEvents = 'auto';
+                target.style.opacity = '0';
+            });
+
+            targets.forEach(target => void target.offsetHeight);
+            requestAnimationFrame(() => targets.forEach(target => (target.style.opacity = '1')));
+        };
+
+        const fadeOut = () => {
+            const targets = getFadeTargets();
+            if (targets.length === 0) {
+                return;
+            }
+
+            targets.forEach(target => {
+                target.style.transition = `opacity ${fadeDuration}ms ease-out`;
+                target.style.opacity = '0';
+                target.style.pointerEvents = 'none';
+            });
+
+            window.setTimeout(() => {
+                getFadeTargets().forEach(target => (target.style.visibility = 'hidden'));
+            }, fadeDuration + 20);
+        };
+
+        const neutralize = (target: HTMLElement | null) => {
+            if (!target) {
+                return;
+            }
+
+            const walker = document.createTreeWalker(target, NodeFilter.SHOW_ELEMENT, null);
+            const nodes: HTMLElement[] = [];
+
+            let cur = walker.currentNode as HTMLElement | null;
+            while (cur) {
+                nodes.push(cur);
+                cur = walker.nextNode() as HTMLElement | null;
+            }
+
+            for (const el of nodes) {
+                try {
+                    const cs = window.getComputedStyle(el);
+                    const transformStr = cs.transform || '';
+                    const willChangeTransform = cs.willChange && cs.willChange.includes('transform');
+                    const backfaceHidden = cs.backfaceVisibility === 'hidden';
+                    const shouldNeutralizeTransform =
+                        transformStr !== '' &&
+                        transformStr !== 'none' &&
+                        (/\btranslate(?:3d)?\b/i.test(transformStr) || /\bmatrix(?:3d)?\b/i.test(transformStr));
+                    const isInteractive = el.matches('button, a, input, textarea, select, [role="button"], .MuiSelect-select, .MuiMenuItem-root');
+
+                    if ((shouldNeutralizeTransform && !isInteractive) || willChangeTransform || backfaceHidden) {
+                        if (shouldNeutralizeTransform && !isInteractive) {
+                            el.style.transform = 'none';
+                        }
+
+                        if (willChangeTransform) {
+                            el.style.willChange = 'auto';
+                        }
+
+                        if (backfaceHidden) {
+                            el.style.backfaceVisibility = 'visible';
+                        }
+                    }
+                } catch (e) {
+                    // 접근 불가 요소 무시
+                }
+            }
+
+            void target.offsetHeight;
+        };
+
+        const handleTabActive = () => {
+            window.setTimeout(() => {
+                fadeIn();
+
+                window.setTimeout(() => {
+                    getFadeTargets().forEach(neutralize);
+                }, fadeDuration + 30);
+            }, 550);
+        };
+
+        const handleTabInactive = () => {
+            fadeOut();
+        };
+
+        const configTab = configRootRef.current?.closest('.tab-content');
+        if (!configTab) {
+            return;
+        }
+
+        configTab.addEventListener('tabActive', handleTabActive);
+        configTab.addEventListener('tabInactive', handleTabInactive);
+        handleTabActive();
+
+        return () => {
+            configTab.removeEventListener('tabActive', handleTabActive);
+            configTab.removeEventListener('tabInactive', handleTabInactive);
+        };
+    }, [showContent]);
+
     if (!parsedConfig) {
         return isLoading ? <LoadingSpinner/> : null;
     }
@@ -331,6 +452,7 @@ const Config = memo(({config: rawConfig}: ConfigProps) => {
 
     return (
         <div
+            ref={configRootRef}
             className="flex flex-col h-full overflow-y-auto"
             style={{overflowY: 'auto'}} /* 명시적으로 스크롤 설정 */
         >
