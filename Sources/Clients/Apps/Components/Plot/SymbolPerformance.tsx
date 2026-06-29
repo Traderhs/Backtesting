@@ -11,6 +11,10 @@ const Hour = 60 * Minute;
 const Day = 24 * Hour;
 const Week = 7 * Day;
 const Month = 30 * Day; // 대략적인 한 달
+const TOTAL_SYMBOL = '전체';
+const TOTAL_LINE_COLOR = 'rgb(236, 239, 243)';
+type ChartDataPoint = { time: number; value: number };
+type SymbolChartData = { symbol: string; data: ChartDataPoint[] };
 
 // timeframe 파싱 함수 - 초 단위로 반환
 function parseTimeframe(timeframe: string): number {
@@ -383,34 +387,221 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
         setIsDropdownOpen(prev => !prev);
     }, []);
 
+    const interpolateData = (data: ChartDataPoint[], allTimes: number[]) => {
+        if (data.length === 0) return allTimes.map(time => ({time, value: 0}));
+
+        const interpolatedData: ChartDataPoint[] = [];
+        let currentIndex = 0;
+        let currentValue = 0;
+
+        for (const time of allTimes) {
+            while (currentIndex < data.length && data[currentIndex].time <= time) {
+                currentValue = data[currentIndex].value;
+                currentIndex++;
+            }
+
+            interpolatedData.push({time, value: currentValue});
+        }
+
+        return interpolatedData;
+    };
+
+    const getInitialTotalData = (allTimes: number[]) => allTimes.length > 0 ? [{time: allTimes[0], value: 0}] : [];
+
+    const addTotalSeries = (metric: string, allTimes: number[], symbolDataArray: SymbolChartData[]) => {
+        const totalData = (() => {
+            if (metric === '승률') {
+                const data = getInitialTotalData(allTimes);
+                let wins = 0;
+                let total = 0;
+
+                [...preprocessedData.tradeResults]
+                    .sort((a, b) => new Date(a.exitTime).getTime() - new Date(b.exitTime).getTime())
+                    .forEach((result) => {
+                        total += 1;
+                        if (result.isWin) wins += 1;
+
+                        data.push({
+                            time: new Date(result.exitTime).getTime() / 1000,
+                            value: total > 0 ? (wins / total) * 100 : 0
+                        });
+                    });
+
+                return data;
+            }
+
+            if (metric === '손익비') {
+                const data = getInitialTotalData(allTimes);
+                const wins: number[] = [];
+                const losses: number[] = [];
+
+                [...preprocessedData.tradeResults]
+                    .sort((a, b) => new Date(a.exitTime).getTime() - new Date(b.exitTime).getTime())
+                    .forEach((result) => {
+                        if (result.isWin) {
+                            wins.push(result.totalPnl);
+                        } else {
+                            losses.push(Math.abs(result.totalPnl));
+                        }
+
+                        const avgWin = wins.length > 0 ? wins.reduce((a, b) => a + b, 0) / wins.length : 0;
+                        const avgLoss = losses.length > 0 ? losses.reduce((a, b) => a + b, 0) / losses.length : 0;
+                        const ratio = avgLoss > 0 ? (avgWin > 0 ? avgWin / avgLoss : 0) : (avgWin > 0 ? null : 0);
+
+                        if (ratio !== null) {
+                            data.push({
+                                time: new Date(result.exitTime).getTime() / 1000,
+                                value: ratio
+                            });
+                        }
+                    });
+
+                return data;
+            }
+
+            if (metric === '기대값') {
+                const data = getInitialTotalData(allTimes);
+                const wins: number[] = [];
+                const losses: number[] = [];
+                let totalTrades = 0;
+
+                [...preprocessedData.tradeResults]
+                    .sort((a, b) => new Date(a.exitTime).getTime() - new Date(b.exitTime).getTime())
+                    .forEach((result) => {
+                        totalTrades += 1;
+
+                        if (result.isWin) {
+                            wins.push(result.totalPnl);
+                        } else {
+                            losses.push(Math.abs(result.totalPnl));
+                        }
+
+                        const winRate = totalTrades > 0 ? wins.length / totalTrades : 0;
+                        const lossRate = 1 - winRate;
+                        const avgWin = wins.length > 0 ? wins.reduce((a, b) => a + b, 0) / wins.length : 0;
+                        const avgLoss = losses.length > 0 ? losses.reduce((a, b) => a + b, 0) / losses.length : 0;
+
+                        data.push({
+                            time: new Date(result.exitTime).getTime() / 1000,
+                            value: (winRate * avgWin) - (lossRate * Math.abs(avgLoss))
+                        });
+                    });
+
+                return data;
+            }
+
+            if (metric === '보유 시간 합계') {
+                const data = getInitialTotalData(allTimes);
+                const timeRanges: { start: number; end: number }[] = [];
+                let totalHoldingTime = 0;
+
+                [...actualTrades]
+                    .filter((trade: any) => {
+                        const holdingTimeStr = String(trade["보유 시간"]);
+                        const holdingTimeSeconds = parseHoldingTime(holdingTimeStr);
+                        return holdingTimeSeconds !== null && holdingTimeSeconds > 0;
+                    })
+                    .sort((a: any, b: any) => {
+                        const timeA = new Date(a["청산 시각"] as string).getTime();
+                        const timeB = new Date(b["청산 시각"] as string).getTime();
+                        return timeA - timeB;
+                    })
+                    .forEach((trade: any) => {
+                        const entryTime = new Date(trade["진입 시각"] as string).getTime() / 1000;
+                        const exitTime = new Date(trade["청산 시각"] as string).getTime() / 1000;
+                        const newRange = {start: entryTime, end: exitTime};
+                        const overlappingRanges: number[] = [];
+                        let mergedRange = {...newRange};
+
+                        for (let i = 0; i < timeRanges.length; i++) {
+                            const existing = timeRanges[i];
+
+                            if (newRange.start <= existing.end && newRange.end >= existing.start) {
+                                overlappingRanges.push(i);
+                                mergedRange.start = Math.min(mergedRange.start, existing.start);
+                                mergedRange.end = Math.max(mergedRange.end, existing.end);
+                            }
+                        }
+
+                        if (overlappingRanges.length > 0) {
+                            let removedTime = 0;
+                            for (let i = overlappingRanges.length - 1; i >= 0; i--) {
+                                const idx = overlappingRanges[i];
+                                const removedRange = timeRanges.splice(idx, 1)[0];
+                                removedTime += removedRange.end - removedRange.start;
+                            }
+
+                            timeRanges.push(mergedRange);
+                            totalHoldingTime += (mergedRange.end - mergedRange.start) - removedTime;
+                        } else {
+                            timeRanges.push(newRange);
+                            totalHoldingTime += newRange.end - newRange.start;
+                        }
+
+                        data.push({
+                            time: exitTime,
+                            value: totalHoldingTime
+                        });
+                    });
+
+                return data;
+            }
+
+            const interpolatedDataBySymbol = symbolDataArray.map(({data}) => interpolateData(data, allTimes));
+
+            return allTimes.map((time, timeIndex) => ({
+                time,
+                value: interpolatedDataBySymbol.reduce((sum, data) => sum + (data[timeIndex]?.value || 0), 0)
+            }));
+        })();
+
+        return {
+            allTimes,
+            symbolDataArray: [{symbol: TOTAL_SYMBOL, data: totalData}, ...symbolDataArray]
+        };
+    };
+
     // 데이터 생성 함수들 - 전처리된 데이터 활용
     const generateDataForMetric = useCallback((metric: string) => {
         if (!preprocessedData || preprocessedData.allExitTimes.length === 0) {
             return {allTimes: [], symbolDataArray: []};
         }
 
+        let result;
         switch (metric) {
             case '누적 순손익':
-                return generateCumPnlData();
+                result = generateCumPnlData();
+                break;
             case '진입 횟수':
-                return generateEntryCountData();
+                result = generateEntryCountData();
+                break;
             case '강제 청산 횟수':
-                return generateLiquidationCountData();
+                result = generateLiquidationCountData();
+                break;
             case '펀딩 횟수':
-                return generateFundingCountData();
+                result = generateFundingCountData();
+                break;
             case '펀딩비':
-                return generateFundingFeeData();
+                result = generateFundingFeeData();
+                break;
             case '승률':
-                return generateWinRateData();
+                result = generateWinRateData();
+                break;
             case '손익비':
-                return generateProfitLossRatioData();
+                result = generateProfitLossRatioData();
+                break;
             case '기대값':
-                return generateExpectedValueData();
+                result = generateExpectedValueData();
+                break;
             case '보유 시간 합계':
-                return generateHoldingTimeTotalData();
+                result = generateHoldingTimeTotalData();
+                break;
             default:
-                return generateCumPnlData();
+                result = generateCumPnlData();
+                break;
         }
+
+        return addTotalSeries(metric, result.allTimes, result.symbolDataArray);
     }, [preprocessedData, timeframePeriod, configSymbols]);
 
     // 누적 순손익 데이터 생성 - 최적화된 버전
@@ -1664,12 +1855,15 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
                             valueColor = value > 0 ? '#4caf50' : value == 0 ? '#ffffff' : '#f23645';
                         }
 
-                        const logoUrl = (logoMapRef.current && logoMapRef.current.get && logoMapRef.current.get(symbol)) || `/Logos/${symbol.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
+                        const logoUrl = symbol === TOTAL_SYMBOL ? '' : (logoMapRef.current && logoMapRef.current.get && logoMapRef.current.get(symbol)) || `/Logos/${symbol.replace(/[^a-zA-Z0-9]/g, '_')}.png`;
+                        const symbolMarkerHtml = symbol === TOTAL_SYMBOL
+                            ? `<span style="width:16px;height:2px;margin-right:6px;background:${TOTAL_LINE_COLOR};display:inline-block;flex:0 0 auto;"></span>`
+                            : `<img src="${logoUrl}" style="width:16px;height:16px;border-radius:50%;margin-right:6px;object-fit:cover;flex:0 0 auto;" alt=""/>`;
 
                         return `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; gap: 6px;">
               <div style="display:flex; align-items:center; min-width:100px; max-width:200px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">
-                <img src="${logoUrl}" style="width:16px;height:16px;border-radius:50%;margin-right:6px;object-fit:cover;flex:0 0 auto;" alt=""/>
+                ${symbolMarkerHtml}
                 <span style="color: ${color}; font-size: 13px; overflow:hidden; text-overflow:ellipsis;">${symbol}</span>
               </div>
               
@@ -1950,12 +2144,15 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
 
 
         // 심볼별 라인 시리즈 생성 (보간 적용) - 순서 보장
-        const symbols = configSymbols; // config 순서가 보장된 배열 사용
-        const colors = generateRainbowColors(symbols.length);
+        const symbols = [TOTAL_SYMBOL, ...configSymbols]; // 전체를 심볼 목록 위에 표시
+        const symbolColors = generateRainbowColors(configSymbols.length);
+        const colors = [TOTAL_LINE_COLOR, ...symbolColors];
 
         // ref에 저장 (툴팁에서 사용)
         symbolsRef.current = symbols;
         colorsRef.current = colors;
+        seriesRefs.current.clear();
+        mainSeriesRef.current = null;
 
         symbols.forEach((symbol: string, index: number) => {
             const symbolDataItem = symbolDataArray.find((item: {
@@ -1976,7 +2173,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
 
             const series = chart.addSeries(LineSeries, {
                 color: colors[index],
-                lineWidth: 2,
+                lineWidth: symbol === TOTAL_SYMBOL ? 3 : 2,
                 lastValueVisible: false,
                 priceLineVisible: false,
                 priceFormat: {
@@ -1990,7 +2187,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
             const timeToTradeMap = new Map<number, any[]>();
 
             // 해당 심볼의 원본 거래 데이터로부터 거래번호 매핑 생성
-            const symbolTrades = preprocessedData.tradesBySymbol.get(symbol) || [];
+            const symbolTrades = symbol === TOTAL_SYMBOL ? [] : preprocessedData.tradesBySymbol.get(symbol) || [];
             symbolTrades.forEach((trade: any) => {
                 const timestamp = new Date(trade["청산 시각"] as string).getTime() / 1000;
                 if (!timeToTradeMap.has(timestamp)) {
@@ -2040,7 +2237,7 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
             {time: endTime as any, value: 0},
         ];
         const initialLine = chart.addSeries(LineSeries, {
-            color: 'rgb(255, 255, 255)',
+            color: TOTAL_LINE_COLOR,
             lineWidth: 2,
             lineStyle: LineStyle.Dashed,
             lastValueVisible: false,
@@ -2144,9 +2341,9 @@ const SymbolPerformance: React.FC<SymbolPerformanceProps> = ({config}) => {
         };
     }, [filteredTrades, loading, handleCrosshairMove, selectedMetric, timeframeStr, drawYearGridLines]);
 
-    // 마운트/업데이트 시 configSymbols로 심볼 ref 동기화
+    // 마운트/업데이트 시 툴팁 심볼 ref 동기화
     useEffect(() => {
-        symbolsRef.current = configSymbols;
+        symbolsRef.current = [TOTAL_SYMBOL, ...configSymbols];
     }, [configSymbols]);
 
     if (loading) {
