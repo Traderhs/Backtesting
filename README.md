@@ -1,4 +1,4 @@
-<img src="Docs/Images/backboard.ico" alt="BackBoard" width="80" align="left" />
+<img src="Docs/Images/backboard.ico" alt="BackBoard" width="60" align="left" />
 
 # Backtesting
 
@@ -14,7 +14,7 @@ This system is designed to simulate the intricacies of the Binance Futures ecosy
 1. **Market Data Ingestion**: High-efficiency Parquet time series (OHLCV, Mark Price) located in `Data/`.
 2. **Core Simulation**: A C++ engine executing vectorized bar processing with precise handling of isolated margin, funding rates, and fee structures specific to Binance.
 3. **Result Generation**: Comprehensive output generation in timestamped directories under `Results/`.
-4. **Visualization**: Interactive analysis via BackBoard, reading directly from `Results/<run>/BackBoard/*`.
+4. **Visualization**: Interactive analysis via BackBoard, reading saved run data from `Results/<run>/` or `Results/<run>/BackBoard/`.
 
 The engine supports **multi-symbol portfolio backtesting in a single execution**, maintaining explicit control over execution logic including bar assumptions, magnifier bar granularity, and isolated margin mechanics.
 
@@ -40,6 +40,10 @@ Approximate scale (order-of-magnitude; depends on date range and missing bars):
 ---
 
 ## Gallery
+
+[![Strategy editor](Docs/Images/strategy_editor.png)](Docs/Images/strategy_editor.png)
+*Figure: Edit the strategy and run a backtest.*
+<br><br>
 
 [![Overview](Docs/Images/overview.png)](Docs/Images/overview.png)
 *Figure: Run overview — equity curve and key metrics.*
@@ -109,7 +113,7 @@ int main() {
 }
 ```
 
-After a run completes, open the newest folder under `Results/` and point BackBoard to `Results/<run>/BackBoard/`.
+After a run completes, BackBoard lists valid folders under `Results/` and loads the selected run.
 
 ---
 
@@ -129,7 +133,7 @@ After a run completes, open the newest folder under `Results/` and point BackBoa
     - `Funding Rates/` (JSON)
     - `exchange_info.json`, `leverage_bracket.json`
 - **Backtest outputs:** `Results/<YYYYMMDD_HHMMSS>/`
-- **BackBoard runtime directory:** `BackBoard/` (stores config, logs, trade data for active sessions)
+- **BackBoard runtime directory:** `BackBoard/` (stores `editor.json`, icons/logos, and C++ runtime binaries under `Cores/`)
 
 ---
 
@@ -146,6 +150,11 @@ After a run completes, open the newest folder under `Results/` and point BackBoa
 - **Isolated margin entries**
     - Each entry manages its own margin; concurrent entries are restricted to a single direction per symbol (no
       hedge-style long+short concurrency).
+- **Funding and margin accounting**
+    - Funding fees are reflected on isolated margin, and funding receive/pay counts and amounts are exported per trade.
+    - Positions can add margin during a run, and liquidation-price changes caused by funding are logged.
+- **Slippage models**
+    - The engine supports both percentage slippage and market-impact slippage through `Config::SetSlippage(...)`.
 - **Single-strategy constraint per run**
     - The engine runs **one** `Strategy` per backtest execution.
     - BackBoard can be used to compare/compose results across multiple independent runs.
@@ -180,6 +189,23 @@ Each run creates a timestamped directory:
 
 ```
 Results/<YYYYMMDD_HHMMSS>/
+  config.json
+  trade_list.json
+  backtesting.log
+  Indicators/
+    <IndicatorName>/
+      <IndicatorName>.parquet
+  Sources/
+    <StrategyClass>.cpp
+    <StrategyClass>.hpp
+    <IndicatorClass>.cpp
+    <IndicatorClass>.hpp
+```
+
+When the engine is run outside BackBoard server mode, the same payload is stored under `BackBoard/`:
+
+```
+Results/<YYYYMMDD_HHMMSS>/
   BackBoard/
     config.json
     trade_list.json
@@ -197,11 +223,12 @@ Results/<YYYYMMDD_HHMMSS>/
 
 Notes:
 
-- `BackBoard/config.json` is a comprehensive run manifest (symbols, bar coverage, exchange/leverage/funding metadata,
+- BackBoard resolves result files from `Results/<run>/` first, then falls back to `Results/<run>/BackBoard/`.
+- `config.json` is a comprehensive run manifest (symbols, bar coverage, exchange/leverage/funding metadata,
   engine settings, strategy/indicator descriptors).
-- `BackBoard/trade_list.json` is exported as UTF-8 with BOM for compatibility.
-- `BackBoard/Indicators/*` stores indicator time series for plotted (non-OHLCV) indicators.
-- `BackBoard/Sources/*` stores copies of the strategy/indicator source/header files when paths are available.
+- `trade_list.json` is exported as UTF-8 with BOM for compatibility.
+- `Indicators/*` stores indicator time series for plotted (non-OHLCV) indicators.
+- `Sources/*` stores copies of the strategy/indicator source/header files when paths are available.
 - If a local BackBoard package is present at `Sources/Clients/BackBoard Package`, it is copied into the run directory;
   otherwise, the engine can fetch a packaged BackBoard from a GitHub release as a fallback.
 
@@ -220,10 +247,14 @@ After a backtest completes, BackBoard provides:
 
 - **Overview**: Equity curve, Sharpe ratio, max drawdown, and key performance metrics
 - **Performance Analysis**: Detailed statistics (win rate, profit factor, average trade duration, etc.)
-- **Symbol Performance**: Per-symbol breakdown with individual equity curves
+- **Plot**: Equity/drawdown, net PnL by time reference, holding-time PnL distribution, and per-symbol performance
 - **Chart View**: Interactive price charts with indicators and executed trades
 - **Trade List**: Comprehensive trade history with filtering and sorting capabilities
-- **Config & Logs**: Run configuration and execution logs
+- **Trade Filter**: Sidebar filter controls for symbols, strategies, entry/exit names, time ranges, holding time, and numeric trade fields
+- **Config**: Run configuration and source/indicator metadata
+- **Logs**: Execution logs with search/navigation support
+    - Log search supports result counting, previous/next navigation, direct click-to-select on highlighted matches,
+      chunk navigation for large logs, and scrollbar-side search markers.
 
 ### Strategy Editor
 
@@ -240,6 +271,7 @@ The Strategy Editor is a complete IDE for backtesting, accessible directly from 
     - Configure multiple timeframes (Trading, Magnifier, Reference, Mark Price)
     - Support for standard timeframes (1m, 5m, 15m, 1h, 4h, 1d, etc.)
     - Automatic data path detection from `Data/Continuous Klines/`
+    - Download or update configured bar data from BackBoard
 
 - **Exchange Settings**
     - Exchange info and leverage bracket configuration
@@ -259,34 +291,40 @@ The Strategy Editor is a complete IDE for backtesting, accessible directly from 
 - **Strategy Selection**
     - Browse and select strategy DLLs
     - Configure header/source directory paths for strategies and indicators
+    - Build strategy/indicator sources into `Builds/Strategies/<StrategyName>/<StrategyName>.dll`
     - Automatic source file detection
 
 - **Backtest Execution**
     - One-click backtest launch
+    - Strategy build before backtest execution
     - Real-time log streaming
     - Progress monitoring
-    - Stop/restart capabilities
+    - Stop capabilities for backtest and data fetch/update flows
     - Automatic result directory creation
+    - Automatic result list refresh and selection after a successful run
 
 #### Technical Architecture
 
 The Strategy Editor is implemented as a React/TypeScript application with:
 
 - **State Management**: Context-based architecture (`StrategyContext`) managing all configuration state
+- **Result Selection**: `ResultsContext` loads valid result folders from `Results/` and shares the selected run across tabs
 - **WebSocket Communication**: Real-time bidirectional communication between UI and C++ engine
 - **Configuration Persistence**: Settings saved to `BackBoard/editor.json`
 - **Process Management**: Direct integration with backtesting engine via WebSocket server
+- **Filtering Workers**: Trade filters use worker-side processing for large trade lists
 
 #### Workflow
 
 1. Open BackBoard and switch to "Strategy Editor" tab
 2. Configure symbols, bar data, exchange settings, and engine parameters
-3. Select or create a strategy DLL
+3. Configure strategy/header/source paths and indicator header/source directories
 4. Click "Run Backtest" to launch
-5. Monitor real-time logs during execution
-6. View results automatically in the Results Viewer upon completion
+5. BackBoard builds the strategy DLL, then starts the backtest
+6. Monitor real-time logs during execution
+7. View the automatically selected result in the Results Viewer upon completion
 
-The editor eliminates the need for manual configuration files or command-line compilation, providing a seamless development and testing experience.
+The editor eliminates the need for manual configuration files or command-line compilation for the normal BackBoard workflow.
 
 ---
 
