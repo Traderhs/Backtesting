@@ -103,7 +103,11 @@ const MetricsCard = React.memo(({metric, index, metricsData}: MetricsCardProps) 
         ? displayValue.value
         : rawMetricValue;
     const currentFontSize = displayValue?.sourceValue === rawMetricValue ? fontSize : 27;
-    const totalProfitLossPercent = getMetricValue('totalProfitLossPercent', metricsData);
+    const totalProfitLossPercent = getMetricValue(
+        'totalProfitLossPercent',
+        metricsData,
+        metric.id === 'totalProfitLoss' && currentDisplayValue !== rawMetricValue
+    );
 
     // 텍스트 크기 조정 함수
     const adjustTextSize = useCallback(() => {
