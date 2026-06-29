@@ -210,7 +210,7 @@ const SymbolCard = memo(({
         if (isDropdownOpen) {
             // DOM이 렌더링된 후 실행
             requestAnimationFrame(() => {
-                const selectedMenuItem = document.querySelector('.symbol-dropdown-paper .mui-menu-item-root.Mui-selected');
+                const selectedMenuItem = document.querySelector('.symbol-dropdown-paper .MuiMenuItem-root.Mui-selected');
                 if (selectedMenuItem) {
                     selectedMenuItem.scrollIntoView({block: 'nearest'});
                 }
@@ -1359,12 +1359,12 @@ const SymbolCard = memo(({
                     }
                     
                     /* 호버 시 로고에 금색 테두리 추가 */
-                    .mui-menu-item-root:hover .symbol-dropdown-icon-wrapper {
+                    .MuiMenuItem-root:hover .symbol-dropdown-icon-wrapper {
                         border-color: rgba(255, 215, 0, 0.6) !important;
                         box-shadow: 0 0 6px rgba(255, 215, 0, 0.3) !important;
                     }
                     
-                    .mui-menu-item-root:hover .symbol-dropdown-icon {
+                    .MuiMenuItem-root:hover .symbol-dropdown-icon {
                         transform: scale(1.1);
                         filter: brightness(1.1);
                         transition: all 0.2s ease;
