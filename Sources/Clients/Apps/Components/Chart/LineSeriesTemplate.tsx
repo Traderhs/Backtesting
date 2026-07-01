@@ -18,6 +18,7 @@ export interface LineSeriesProps {
     pointMarkersRadius?: number;
     indicatorName: string;
     initialData?: DataPoint[];
+    plotFormat?: string;
     priceStep: number;
     pricePrecision: number;
 }
@@ -39,6 +40,7 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
         pointMarkersRadius,
         indicatorName,
         initialData = [],
+        plotFormat,
         priceStep,
         pricePrecision
     } = props;
@@ -52,6 +54,8 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
     useEffect(() => {
         if (!chart) return;
 
+        const isMainPaneVolumeSeries = paneIndex === 0 && plotFormat === "거래량";
+
         seriesRef.current = chart.addSeries(LineSeries, {
             color: lineColor,
             lineStyle: lineStyle,
@@ -59,7 +63,10 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
             lineType: lineType,
             pointMarkersVisible: pointMarkersVisible,
             pointMarkersRadius: pointMarkersRadius,
-            priceFormat: {
+            ...(isMainPaneVolumeSeries ? {priceScaleId: "volume"} : {}),
+            priceFormat: isMainPaneVolumeSeries ? {
+                type: 'volume'
+            } : {
                 type: 'price',
                 minMove: priceStep,
                 precision: pricePrecision
@@ -124,6 +131,7 @@ const LineSeriesTemplate = forwardRef<LineSeriesHandle, LineSeriesProps>((props,
         pointMarkersVisible,
         pointMarkersRadius,
         indicatorName,
+        plotFormat,
         priceStep,
         pricePrecision
     ]);

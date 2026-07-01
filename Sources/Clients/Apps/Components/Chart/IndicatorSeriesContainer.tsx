@@ -189,16 +189,21 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
                 paneIndex = 0;
             } else if (plot["메인 차트에 지표 겹치기"] === "비활성화") {
                 const paneName = plot["페인 이름"];
+                const usesMainVolumeScale = paneName === "volume" && plot["포맷"] === "거래량";
 
-                if (!paneMapping[paneName]) {
+                if (usesMainVolumeScale) {
+                    paneIndex = 0;
+                } else if (!paneMapping[paneName]) {
                     paneMapping[paneName] = nextPaneIndex++;
 
                     if (window.paneCount !== undefined) {
                         window.paneCount++;
                     }
-                }
 
-                paneIndex = paneMapping[paneName];
+                    paneIndex = paneMapping[paneName];
+                } else {
+                    paneIndex = paneMapping[paneName];
+                }
             }
 
             if (plotType === "영역") {
@@ -289,6 +294,7 @@ const IndicatorSeriesContainer: React.FC<IndicatorSeriesContainerProps> = ({
                         pointMarkersRadius={pointMarkersRadius}
                         indicatorName={indicatorName}
                         initialData={indicatorDataMap[indicatorName] || []}
+                        plotFormat={plot["포맷"]}
                         priceStep={priceStep}
                         pricePrecision={pricePrecision}
                     />

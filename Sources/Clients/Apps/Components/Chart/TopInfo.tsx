@@ -84,7 +84,7 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
                     symbolConfigRef.current['거래소 정보']['가격 소수점 정밀도'] : 0;
             } else if (format === "퍼센트" || format === "달러") {
                 precisionValue = 2;
-            } else if (format === "볼륨") {
+            } else if (format === "거래량") {
                 // 1000 미만은 수량 최소 단위 정밀도
                 precisionValue = value < 1000 ? volumePrecisionRef.current : 2;
             }
@@ -111,7 +111,7 @@ const TopInfo: React.FC<TopInfoProps> = ({symbol, chart, candleStickData, priceP
                 minimumFractionDigits: precisionValue,
                 maximumFractionDigits: precisionValue
             })}`;
-        } else if (format === "볼륨") {
+        } else if (format === "거래량" || format === "볼륨") {
             // 볼륨 포맷 (1000 이상일 때 K, M, B, T 표시)
             if (value >= 1000) {
                 const units = ['', 'K', 'M', 'B', 'T'];
