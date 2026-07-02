@@ -76,6 +76,15 @@ shared_ptr<OrderHandler>& OrderHandler::GetOrderHandler() {
   return instance_;
 }
 
+bool OrderHandler::AdjustLeverage(const int leverage) {
+  const int symbol_idx = bar_->GetCurrentSymbolIndex();
+  warn_msg = "레버리지 변경 실패";
+
+  RET_FALSE_IF_INVALID(BaseOrderHandler::AdjustLeverage(leverage, symbol_idx))
+
+  return true;
+}
+
 void OrderHandler::ResetOrderHandler() {
   lock_guard lock(mutex_);
 
@@ -1783,7 +1792,8 @@ bool OrderHandler::FillMarketEntry(const shared_ptr<Order>& market_entry,
   // 반대 방향 주문을 확실하게 청산하고 목표하는 레버리지로 확실하게 진입할 수
   // 있게 하기 위함과, 목표 레버리지를 진입 시점에 직접 변경하는 것보다 엔진
   // 내부 처리가 편리하기 때문
-  RET_FALSE_IF_INVALID(AdjustLeverage(market_entry->GetLeverage(), symbol_idx))
+  RET_FALSE_IF_INVALID(
+      BaseOrderHandler::AdjustLeverage(market_entry->GetLeverage(), symbol_idx))
 
   // 시장가 진입 마진을 계산 후 설정
   const double entry_margin = CalculateMargin(
@@ -2285,8 +2295,8 @@ void OrderHandler::FillPendingLimitEntry(const shared_ptr<Order>& limit_entry,
   // 반대 방향 주문을 확실하게 청산하고 목표하는 레버리지로 확실하게 진입할 수
   // 있게 하기 위함과, 목표 레버리지를 진입 시점에 직접 변경하는 것보다 엔진
   // 내부 처리가 편리하기 때문
-  if (const auto& warn =
-          AdjustLeverage(limit_entry->GetLeverage(), symbol_idx)) {
+  if (const auto& warn = BaseOrderHandler::AdjustLeverage(
+          limit_entry->GetLeverage(), symbol_idx)) {
     // 레버리지 변경이 실패하면 체결 실패
     // 사용한 마진(예약 증거금) 감소
     LogFormattedInfo(WARN_L, *warn, __FILE__, __LINE__);

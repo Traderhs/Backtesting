@@ -63,6 +63,14 @@ class BACKTESTING_API OrderHandler final : public BaseOrderHandler {
   /// OrderHandler의 싱글톤 인스턴스를 반환하는 함수
   static shared_ptr<OrderHandler>& GetOrderHandler();
 
+  /// 현재 심볼의 레버리지를 변경하는 함수
+  ///
+  /// 현재 심볼에 체결된 주문이 없는 경우에만 변경 가능
+  ///
+  /// @param leverage 변경할 레버리지
+  /// @return 변경 성공 여부
+  bool AdjustLeverage(int leverage);
+
   // ===========================================================================
   // 전략 구현부에서 사용하는 진입 함수들
   // ===========================================================================
