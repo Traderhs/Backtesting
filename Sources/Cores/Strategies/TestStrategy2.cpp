@@ -12,12 +12,6 @@ TestStrategy2::TestStrategy2(const string& name)
       sma2(AddIndicator<ExponentialMovingAverage>(
           "sma2", "1d", Line(Rgba::red, 2, SOLID, SIMPLE, false, 0, true),
           daily_close_, 5)),
-      highest_(AddIndicator<SwingHigh>(
-          "Highest", trading_timeframe,
-          Line(Rgba::white, 2, SOLID, SIMPLE, false, 0, true), 5)),
-      lowest_(AddIndicator<SwingLow>(
-          "Lowest", trading_timeframe,
-          Line(Rgba::white, 2, SOLID, SIMPLE, false, 0, true), 5)),
       std_(AddIndicator<StandardDeviation>(
           "std", trading_timeframe,
           Line(Rgba::orange, 2, SOLID, SIMPLE, false, 0, false, "123"), close,
