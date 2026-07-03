@@ -1,7 +1,7 @@
 {
   "name": "BackBoard",
   "private": true,
-  "version": "3.0.0",
+  "version": "3.1.0",
   "description": "Dashboard for Binance Futures Backtesting Execution and Analysis",
   "author": "Haseung Ryu <dice000908@gmail.com>",
   "license": "SEE LICENSE IN LICENSE",

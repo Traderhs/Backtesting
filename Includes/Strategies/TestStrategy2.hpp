@@ -21,8 +21,5 @@ class BACKTESTING_API TestStrategy2 final : public Strategy {
   // ReSharper disable once CppInconsistentNaming
   ExponentialMovingAverage& sma2;
 
-  SwingHigh& highest_;
-  SwingLow& lowest_;
-
   StandardDeviation& std_;
 };
