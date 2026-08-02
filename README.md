@@ -558,4 +558,4 @@ written permission from the author. Refer to `LICENSE` for the complete terms.
 
 ## Contact
 
-For commercial licensing inquiries: `dice000908@gmail.com`
+For commercial licensing inquiries: `haseung.ryu.ai@gmail.com`
