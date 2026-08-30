@@ -23,6 +23,7 @@ Indicator::Indicator(const string& name, const string& timeframe,
                      const Plot& plot)
     : is_calculated_(false),
       is_higher_timeframe_indicator_(false),
+      direct_bar_member_(nullptr),
       cached_symbol_idx_(SIZE_MAX),
       cached_trading_bar_idx_(SIZE_MAX),
       cached_target_bar_idx_(SIZE_MAX),
@@ -134,7 +135,13 @@ Numeric<double> Indicator::operator[](const size_t index) {
 
     const auto target_bar_idx = bar_idx - index;
 
-    return output_[bar_->GetCurrentSymbolIndex()][target_bar_idx];
+    const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+    if (direct_bar_member_ != nullptr) {
+      return reference_bar_data_->GetBar(symbol_idx, target_bar_idx).*
+             direct_bar_member_;
+    }
+
+    return output_[symbol_idx][target_bar_idx];
   }
 
   // =========================================================================
@@ -153,7 +160,13 @@ Numeric<double> Indicator::operator[](const size_t index) {
 
     const auto target_bar_idx = bar_idx - index;
 
-    return output_[bar_->GetCurrentSymbolIndex()][target_bar_idx];
+    const auto symbol_idx = bar_->GetCurrentSymbolIndex();
+    if (direct_bar_member_ != nullptr) {
+      return reference_bar_data_->GetBar(symbol_idx, target_bar_idx).*
+             direct_bar_member_;
+    }
+
+    return output_[symbol_idx][target_bar_idx];
   }
 
   // =========================================================================
@@ -187,6 +200,11 @@ Numeric<double> Indicator::operator[](const size_t index) {
     // 캐시된 결과가 NaN인 경우 (해당되는 Close Time이 없는 경우)
     if (cached_ref_bar_idx_ == SIZE_MAX) {
       return NAN;
+    }
+
+    if (direct_bar_member_ != nullptr) {
+      return reference_bar_data_->GetBar(symbol_idx, cached_ref_bar_idx_).*
+             direct_bar_member_;
     }
 
     return output_[symbol_idx][cached_ref_bar_idx_];
@@ -277,6 +295,11 @@ Numeric<double> Indicator::operator[](const size_t index) {
   bar_->SetCurrentBarDataType(original_bar_data_type,
                               original_reference_timeframe);
 
+  if (direct_bar_member_ != nullptr) {
+    return reference_bar_data_->GetBar(symbol_idx, ref_bar_idx).*
+           direct_bar_member_;
+  }
+
   return output_[symbol_idx][ref_bar_idx];
 }
 
@@ -307,6 +330,31 @@ void Indicator::CalculateIndicator() {
     // ===========================================================================
     // 사전 설정 - 공통 변수들 미리 캐시
     const int num_symbols = reference_bar_data_->GetNumSymbols();
+
+    // 전략에 자동 추가되는 OHLCV는 전체 복사본을 만들지 않고 operator[]에서
+    // 같은 인덱스의 바 값을 직접 반환
+    if (direct_bar_member_ != nullptr) {
+      output_.clear();
+      reference_num_bars_.resize(num_symbols);
+      bar_->SetCurrentBarDataType(REFERENCE, timeframe_);
+
+      for (int symbol_idx = 0; symbol_idx < num_symbols; ++symbol_idx) {
+        bar_->SetCurrentSymbolIndex(symbol_idx);
+        reference_num_bars_[symbol_idx] =
+            reference_bar_data_->GetNumBars(symbol_idx);
+      }
+
+      if (num_symbols > 0) {
+        bar_->SetCurrentBarIndex(0);
+      }
+
+      is_calculated_ = true;
+      logger_->Log(
+          INFO_L,
+          format("[{} {}] 지표 계산이 완료되었습니다.", name_, timeframe_),
+          __FILE__, __LINE__, true);
+      return;
+    }
 
     // 계산 상태 설정
     is_calculating_ = true;
@@ -423,5 +471,9 @@ void Indicator::ResetIndicator() {
 }
 
 void Indicator::IncreaseCreationCounter() { creation_counter_++; }
+
+void Indicator::SetDirectBarMember(double Bar::* member) {
+  direct_bar_member_ = member;
+}
 
 }  // namespace backtesting::indicator

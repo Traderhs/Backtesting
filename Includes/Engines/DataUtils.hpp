@@ -4,6 +4,7 @@
 #include <any>
 #include <future>
 #include <locale>
+#include <memory>
 #include <regex>
 #include <string>
 
@@ -16,9 +17,18 @@
 // 전방 선언
 namespace arrow {
 class Array;
+class MemoryPool;
+class Schema;
 class Table;
 struct Scalar;
+namespace io {
+class OutputStream;
+}  // namespace io
 }  // namespace arrow
+
+namespace parquet::arrow {
+class FileWriter;
+}  // namespace parquet::arrow
 
 // 네임스페이스
 using namespace std;
@@ -138,6 +148,15 @@ BACKTESTING_API void TableToParquet(const shared_ptr<arrow::Table>& table,
                                     const string& file_name,
                                     bool save_split_files,
                                     bool reset_directory);
+
+/// Parquet 출력 스트림을 여는 함수
+[[nodiscard]] BACKTESTING_API shared_ptr<arrow::io::OutputStream>
+OpenParquetOutputStream(const string& file_path);
+
+/// Parquet writer를 여는 함수
+[[nodiscard]] BACKTESTING_API unique_ptr<parquet::arrow::FileWriter>
+OpenParquetFileWriter(const arrow::Schema& schema, arrow::MemoryPool* pool,
+                      const shared_ptr<arrow::io::OutputStream>& output_stream);
 
 /// Json을 지정된 경로에 파일로 저장하는 함수
 BACKTESTING_API void JsonToFile(future<json> data, const string& file_path);

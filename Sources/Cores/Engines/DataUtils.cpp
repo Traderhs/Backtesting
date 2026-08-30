@@ -425,6 +425,30 @@ void TableToParquet(const shared_ptr<arrow::Table>& table,
   }
 }
 
+shared_ptr<arrow::io::OutputStream> OpenParquetOutputStream(
+    const string& file_path) {
+  auto result = arrow::io::FileOutputStream::Open(file_path);
+  if (!result.ok()) {
+    throw runtime_error(
+        format("Parquet 저장을 위해 [{}] 파일을 여는 데 실패했습니다. {}",
+               file_path, result.status().ToString()));
+  }
+
+  return result.ValueOrDie();
+}
+
+unique_ptr<parquet::arrow::FileWriter> OpenParquetFileWriter(
+    const arrow::Schema& schema, arrow::MemoryPool* pool,
+    const shared_ptr<arrow::io::OutputStream>& output_stream) {
+  auto result = parquet::arrow::FileWriter::Open(schema, pool, output_stream);
+  if (!result.ok()) {
+    throw runtime_error(format("Parquet writer를 여는 데 실패했습니다. {}",
+                               result.status().ToString()));
+  }
+
+  return move(result).ValueOrDie();
+}
+
 void JsonToFile(future<json> data, const string& file_path) {
   if (ofstream file(file_path); file.is_open()) {
     file << data.get().dump(4);  // 4는 들여쓰기를 위한 인자
