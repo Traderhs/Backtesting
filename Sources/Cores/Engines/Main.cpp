@@ -1,6 +1,5 @@
 // 내부 헤더
 #include "Engines/Backtesting.hpp"
-#include "Strategies/DiceSystem.hpp"
 
 // 네임 스페이스
 using namespace std;
@@ -8,10 +7,11 @@ using namespace backtesting;
 
 void RunLocal() {
   /*
-    try {
-      // 거래소 설정
-      Backtesting::SetMarketDataDirectory("D:/Dev/Backtesting/Data");
-      Backtesting::SetApiEnvVars("BINANCE_API_KEY", "BINANCE_API_SECRET");
+  try {
+    // 거래소 설정
+    Backtesting::SetMarketDataDirectory("D:/Dev/Backtesting/Data");
+    Backtesting::SetApiEnvVars("BINANCE_LIVE_API_KEY",
+                               "BINANCE_LIVE_API_SECRET");
 
       const auto& exchange_info_path =
           "D:/Dev/Backtesting/Data/exchange_info.json";

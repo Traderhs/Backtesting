@@ -19,6 +19,14 @@ Strategy::Strategy(const string& name)
       low(AddIndicator<Low>("Low", trading_timeframe)),
       close(AddIndicator<Close>("Close", trading_timeframe)),
       volume(AddIndicator<Volume>("Volume", trading_timeframe)) {
+  // 전략 편의용으로 자동 추가되는 OHLCV는 원본 바와 동일하므로
+  // 전체 지표 복사본을 저장하지 않고 필요한 인덱스를 직접 참조
+  open.SetDirectBarMember(&Bar::open);
+  high.SetDirectBarMember(&Bar::high);
+  low.SetDirectBarMember(&Bar::low);
+  close.SetDirectBarMember(&Bar::close);
+  volume.SetDirectBarMember(&Bar::volume);
+
   // AddStrategy 함수를 거치지 않은 전략 생성자는 오류
   if (!used_creation_function_) {
     logger->Log(ERROR_L,

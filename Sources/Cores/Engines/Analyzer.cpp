@@ -13,13 +13,13 @@
 #include <ranges>
 #include <set>
 #include <thread>
-#include <unordered_set>
 
 // 외부 라이브러리
 #include "arrow/array/builder_decimal.h"
 #include "arrow/array/builder_primitive.h"
 #include "arrow/table.h"
 #include "nlohmann/json.hpp"
+#include "parquet/arrow/writer.h"
 
 // 파일 헤더
 #include "Engines/Analyzer.hpp"
@@ -183,52 +183,104 @@ void Analyzer::SaveIndicatorData() {
 
     // 기본 시간 벡터 생성
     vector<int64_t> time_vector;
-    {
-      // 예상 크기 계산 및 메모리 예약
-      size_t estimated_size = 0;
-      for (int symbol_idx = 0; symbol_idx < num_symbols; symbol_idx++) {
-        estimated_size += trading_bar_data->GetNumBars(symbol_idx);
-      }
-
-      time_vector.reserve(estimated_size);
-
-      // 모든 심볼의 모든 바를 순회하며 open_time 값을 수집
-      for (int symbol_idx = 0; symbol_idx < num_symbols; symbol_idx++) {
+    if (num_symbols > 0) {
+      // 정렬 여부 확인
+      bool all_symbols_sorted = true;
+      for (int symbol_idx = 0; symbol_idx < num_symbols && all_symbols_sorted;
+           ++symbol_idx) {
         const auto num_bars = trading_bar_data->GetNumBars(symbol_idx);
-        for (size_t bar_idx = 0; bar_idx < num_bars; bar_idx++) {
-          time_vector.push_back(
-              trading_bar_data->GetBar(symbol_idx, bar_idx).open_time);
+        if (num_bars < 2) {
+          continue;
+        }
+
+        auto previous_time = trading_bar_data->GetBar(symbol_idx, 0).open_time;
+        for (size_t bar_idx = 1; bar_idx < num_bars; ++bar_idx) {
+          const auto current_time =
+              trading_bar_data->GetBar(symbol_idx, bar_idx).open_time;
+
+          if (current_time < previous_time) {
+            all_symbols_sorted = false;
+            break;
+          }
+
+          previous_time = current_time;
         }
       }
 
-      // 중복 제거 및 정렬 (unordered_set 사용으로 최적화)
-      unordered_set unique_times(time_vector.begin(), time_vector.end());
-      time_vector.assign(unique_times.begin(), unique_times.end());
-      sort(execution::par_unseq, time_vector.begin(), time_vector.end());
-    }
+      if (all_symbols_sorted) {
+        const auto first_num_bars = trading_bar_data->GetNumBars(0);
+        time_vector.reserve(first_num_bars);
 
-    // time 배열 생성
-    shared_ptr<arrow::Array> time_array;
-    {
-      arrow::TimestampBuilder time_builder(timestamp(arrow::TimeUnit::MILLI),
-                                           pool);
-      auto status = time_builder.AppendValues(time_vector);
-      if (status.ok()) {
-        status = time_builder.Finish(&time_array);
+        // 첫 번째 심볼 시간 추가
+        for (size_t bar_idx = 0; bar_idx < first_num_bars; ++bar_idx) {
+          const auto value = trading_bar_data->GetBar(0, bar_idx).open_time;
+          if (time_vector.empty() || time_vector.back() != value) {
+            time_vector.push_back(value);
+          }
+        }
+
+        // 나머지 심볼 시간 병합
+        for (int symbol_idx = 1; symbol_idx < num_symbols; ++symbol_idx) {
+          const auto num_bars = trading_bar_data->GetNumBars(symbol_idx);
+          vector<int64_t> merged;
+          merged.reserve(time_vector.size() + num_bars);
+
+          size_t left_idx = 0;
+          size_t right_idx = 0;
+          while (left_idx < time_vector.size() || right_idx < num_bars) {
+            int64_t value;
+            const bool has_left = left_idx < time_vector.size();
+            const bool has_right = right_idx < num_bars;
+            const int64_t right_time =
+                has_right
+                    ? trading_bar_data->GetBar(symbol_idx, right_idx).open_time
+                    : 0;
+
+            if (!has_right ||
+                (has_left && time_vector[left_idx] < right_time)) {
+              value = time_vector[left_idx++];
+            } else if (!has_left || right_time < time_vector[left_idx]) {
+              value = right_time;
+              ++right_idx;
+            } else {
+              value = time_vector[left_idx];
+              ++left_idx;
+              ++right_idx;
+            }
+
+            if (merged.empty() || merged.back() != value) {
+              merged.push_back(value);
+            }
+          }
+
+          time_vector.swap(merged);
+        }
+      } else {
+        // 비정렬 데이터 호환 처리
+        size_t estimated_size = 0;
+        for (int symbol_idx = 0; symbol_idx < num_symbols; ++symbol_idx) {
+          estimated_size += trading_bar_data->GetNumBars(symbol_idx);
+        }
+
+        time_vector.reserve(estimated_size);
+
+        for (int symbol_idx = 0; symbol_idx < num_symbols; ++symbol_idx) {
+          const auto num_bars = trading_bar_data->GetNumBars(symbol_idx);
+          for (size_t bar_idx = 0; bar_idx < num_bars; ++bar_idx) {
+            time_vector.push_back(
+                trading_bar_data->GetBar(symbol_idx, bar_idx).open_time);
+          }
+        }
+
+        sort(execution::par_unseq, time_vector.begin(), time_vector.end());
+        time_vector.erase(unique(time_vector.begin(), time_vector.end()),
+                          time_vector.end());
       }
-
-      if (!status.ok()) {
-        throw runtime_error(status.message());
-      }
     }
-
-    // 테이블 스키마 생성
-    vector schema_fields = {field("time", timestamp(arrow::TimeUnit::MILLI))};
-    auto base_schema = make_shared<arrow::Schema>(schema_fields);
-    auto base_table = arrow::Table::Make(
-        base_schema, {make_shared<arrow::ChunkedArray>(time_array)});
 
     const size_t total_rows = time_vector.size();
+    constexpr int64_t full_chunk_size = 100000;
+    constexpr int64_t split_chunk_size = 10000;
 
     // 모든 전략의 각 지표를 순회하며 저장
     for (const auto& indicator : indicators) {
@@ -245,9 +297,6 @@ void Analyzer::SaveIndicatorData() {
           indicator->plot_type_ == "Null") {
         continue;
       }
-
-      // 테이블 복사
-      auto table = base_table;
 
       // 지표의 타임프레임이 트레이딩 바 타임프레임보다 큰지 확인
       const auto& timeframe = indicator->GetTimeframe();
@@ -292,158 +341,224 @@ void Analyzer::SaveIndicatorData() {
 
       const auto& indicator_output = indicator->output_;
       const auto num_indicator_symbols = indicator_output.size();
-
-      // 심볼별 처리를 병렬화
-      vector<pair<string, shared_ptr<arrow::Array>>> symbol_arrays(
-          num_indicator_symbols);
       vector<int> symbol_indices(num_indicator_symbols);
       iota(symbol_indices.begin(), symbol_indices.end(), 0);
 
-      for_each(
-          execution::par_unseq, symbol_indices.begin(), symbol_indices.end(),
-          [&](const int symbol_idx) {
-            vector<double> value_vector(total_rows);
-
-            if (is_indicator_timeframe_larger) {
-              // 지표의 타임프레임이 트레이딩 바보다 큰 경우 특별 처리
-              const auto& output = indicator_output[symbol_idx];
-              const auto& reference_close_times =
-                  reference_close_times_cache[symbol_idx];
-              const size_t reference_num_bars = reference_close_times.size();
-              const int64_t last_trading_close_time =
-                  last_trading_close_times[symbol_idx];
-
-              // 포워드 필 제한 시간: 참조 바 마지막 close_time +
-              // 참조 바 time diff - 트레이딩 바 time diff
-              const int64_t forward_fill_limit =
-                  reference_close_times[reference_num_bars - 1] +
-                  reference_time_diff - trading_time_diff;
-
-              // 시간 정렬이 보장되므로, 마지막으로 사용한 인덱스부터 검색
-              size_t last_found_idx = 0;
-
-              for (size_t row_idx = 0; row_idx < total_rows; row_idx++) {
-                const int64_t current_time = time_vector[row_idx];
-                // 현재 트레이딩 바의 close_time
-                const int64_t current_bar_close_time =
-                    current_time + trading_time_diff - 1;
-
-                // 1. 해당 심볼의 트레이딩 바 Close Time을 초과하면 종료
-                if (current_bar_close_time > last_trading_close_time) {
-                  value_vector[row_idx] = NAN;
-                  continue;
-                }
-
-                // 지표 바의 인덱스 찾기
-                size_t reference_bar_idx = 0;
-                bool found = false;
-
-                // 시간이 순차적으로 증가하므로 이전에 찾은 인덱스부터 시작
-                for (size_t bar_idx = last_found_idx;
-                     bar_idx < reference_num_bars; bar_idx++) {
-                  // 현재 트레이딩 바의 close_time이 참조 바의
-                  // close_time보다 작으면 아직 완성되지 않은 참조 바이므로
-                  // 이전 바 사용
-                  if (current_bar_close_time < reference_close_times[bar_idx]) {
-                    // 첫 참조 바는 미해당
-                    if (bar_idx > 0) {
-                      reference_bar_idx = bar_idx - 1;
-                      found = true;
-                      last_found_idx = bar_idx - 1;  // 다음 검색 시작점
-                    }
-
-                    break;
-                  }
-
-                  // 마지막 참조 바이거나 현재 참조 바의 close_time과
-                  // 정확히 일치하면
-                  if (bar_idx == reference_num_bars - 1 ||
-                      current_bar_close_time ==
-                          reference_close_times[bar_idx]) {
-                    reference_bar_idx = bar_idx;
-                    found = true;
-                    last_found_idx = bar_idx;  // 다음 검색 시작점
-
-                    break;
-                  }
-                }
-
-                // 아직 첫 번째 지표 바가 완성되지 않은 경우 또는
-                // 지표 바를 찾지 못한 경우
-                if (!found || reference_bar_idx >= output.size()) {
-                  value_vector[row_idx] = NAN;
-                  continue;
-                }
-
-                // 2. 포워드 필 제한: 참조 바가 트레이딩 바보다 먼저 끝난 경우
-                //    다음 참조 바 업데이트 시점 전 트레이딩 바까지만 포워드 필
-                if (reference_bar_idx == reference_num_bars - 1 &&
-                    current_bar_close_time > forward_fill_limit) {
-                  value_vector[row_idx] = NAN;
-                  continue;
-                }
-
-                // 현재 트레이딩 바에 대응하는 지표 값 할당
-                value_vector[row_idx] = output[reference_bar_idx];
-              }
-            } else {
-              // 타임프레임이 같은 경우
-              // 시간 벡터는 모든 심볼의 최대 시간 범위이므로,
-              // output의 시간 범위는 시간 벡터 범위와 다름
-              const auto& output = indicator_output[symbol_idx];
-              size_t bar_idx = 0;
-
-              for (size_t row_idx = 0; row_idx < total_rows; row_idx++) {
-                if (bar_idx < reference_bar_data->GetNumBars(symbol_idx)) {
-                  if (const int64_t current_time = time_vector[row_idx];
-                      current_time ==
-                      reference_bar_data->GetBar(symbol_idx, bar_idx)
-                          .open_time) {
-                    value_vector[row_idx] = output[bar_idx];
-                    bar_idx++;
-                  } else {
-                    value_vector[row_idx] = NAN;
-                  }
-                } else {
-                  value_vector[row_idx] = NAN;
-                }
-              }
-            }
-
-            // 값 배열 생성
-            shared_ptr<arrow::Array> value_array;
-            arrow::DoubleBuilder value_builder(pool);
-            auto status = value_builder.AppendValues(value_vector);
-
-            if (status.ok()) {
-              status = value_builder.Finish(&value_array);
-            }
-
-            if (!status.ok()) {
-              throw runtime_error(status.message());
-            }
-
-            symbol_arrays[symbol_idx] = make_pair(
-                engine_->symbol_names_[symbol_idx], move(value_array));
-          });
-
-      // 테이블에 컬럼 추가
-      for (const auto& [symbol_name, value_array] : symbol_arrays) {
-        auto value_field = field(symbol_name, arrow::float64());
-        table = table
-                    ->AddColumn(table->num_columns(), value_field,
-                                make_shared<arrow::ChunkedArray>(value_array))
-                    .ValueOrDie();
-      }
-
-      // 테이블을 parquet로 저장
+      // 지표 데이터 저장 경로 생성
       const string& indicators_base =
           Backtesting::IsServerMode()
               ? format("{}/Indicators", main_directory_)
               : format("{}/BackBoard/Indicators", main_directory_);
 
-      TableToParquet(table, format("{}/{}", indicators_base, indicator_name),
-                     indicator_name + ".parquet", true, false);
+      const string indicator_directory =
+          format("{}/{}", indicators_base, indicator_name);
+
+      fs::create_directories(indicator_directory);
+
+      // 지표 스키마 생성
+      vector<shared_ptr<arrow::Field>> schema_fields;
+      schema_fields.reserve(num_indicator_symbols + 1);
+      schema_fields.push_back(field("time", timestamp(arrow::TimeUnit::MILLI)));
+
+      for (size_t symbol_idx = 0; symbol_idx < num_indicator_symbols;
+           ++symbol_idx) {
+        schema_fields.push_back(
+            field(engine_->symbol_names_[symbol_idx], arrow::float64()));
+      }
+
+      const auto schema = arrow::schema(schema_fields);
+
+      const string full_file_path =
+          format("{}/{}.parquet", indicator_directory, indicator_name);
+
+      // 전체 Parquet writer 생성
+      const auto output_file = OpenParquetOutputStream(full_file_path);
+      auto writer = OpenParquetFileWriter(*schema, pool, output_file);
+
+      // 심볼별 지표 진행 인덱스
+      vector<size_t> same_timeframe_bar_indices(num_indicator_symbols, 0);
+      vector<size_t> last_found_indices(num_indicator_symbols, 0);
+
+      // 행 청크별 지표 데이터 계산 및 저장
+      for (size_t offset = 0; offset < total_rows; offset += full_chunk_size) {
+        const int64_t current_chunk_size = static_cast<int64_t>(
+            min<size_t>(full_chunk_size, total_rows - offset));
+        vector<shared_ptr<arrow::Array>> arrays(num_indicator_symbols + 1);
+
+        arrow::TimestampBuilder time_builder(timestamp(arrow::TimeUnit::MILLI),
+                                             pool);
+
+        auto status = time_builder.AppendValues(time_vector.data() + offset,
+                                                current_chunk_size);
+
+        if (status.ok()) {
+          status = time_builder.Finish(&arrays[0]);
+        }
+
+        if (!status.ok()) {
+          throw runtime_error(status.message());
+        }
+
+        // 심볼별 값 배열 병렬 생성
+        exception_ptr first_exception;
+        mutex exception_mutex;
+        atomic failed{false};
+
+        for_each(
+            execution::par, symbol_indices.begin(), symbol_indices.end(),
+            [&](const int symbol_idx) {
+              if (failed.load(memory_order_acquire)) {
+                return;
+              }
+
+              try {
+                vector<double> values(current_chunk_size);
+                const auto& output = indicator_output[symbol_idx];
+
+                if (is_indicator_timeframe_larger) {
+                  // 큰 타임프레임 지표 매핑
+                  const auto& reference_close_times =
+                      reference_close_times_cache[symbol_idx];
+
+                  const size_t reference_num_bars =
+                      reference_close_times.size();
+
+                  const int64_t last_trading_close_time =
+                      last_trading_close_times[symbol_idx];
+
+                  const int64_t forward_fill_limit =
+                      reference_close_times[reference_num_bars - 1] +
+                      reference_time_diff - trading_time_diff;
+
+                  size_t& last_found_idx = last_found_indices[symbol_idx];
+
+                  for (int64_t chunk_idx = 0; chunk_idx < current_chunk_size;
+                       ++chunk_idx) {
+                    const int64_t current_bar_close_time =
+                        time_vector[offset + chunk_idx] + trading_time_diff - 1;
+
+                    if (current_bar_close_time > last_trading_close_time) {
+                      values[chunk_idx] = NAN;
+                      continue;
+                    }
+
+                    size_t reference_bar_idx = 0;
+                    bool found = false;
+
+                    for (size_t bar_idx = last_found_idx;
+                         bar_idx < reference_num_bars; ++bar_idx) {
+                      if (current_bar_close_time <
+                          reference_close_times[bar_idx]) {
+                        if (bar_idx > 0) {
+                          reference_bar_idx = bar_idx - 1;
+                          found = true;
+                          last_found_idx = bar_idx - 1;
+                        }
+
+                        break;
+                      }
+
+                      if (bar_idx == reference_num_bars - 1 ||
+                          current_bar_close_time ==
+                              reference_close_times[bar_idx]) {
+                        reference_bar_idx = bar_idx;
+                        found = true;
+                        last_found_idx = bar_idx;
+
+                        break;
+                      }
+                    }
+
+                    if (!found || reference_bar_idx >= output.size() ||
+                        (reference_bar_idx == reference_num_bars - 1 &&
+                         current_bar_close_time > forward_fill_limit)) {
+                      values[chunk_idx] = NAN;
+                    } else {
+                      values[chunk_idx] = output[reference_bar_idx];
+                    }
+                  }
+                } else {
+                  // 동일 타임프레임 지표 매핑
+                  size_t& bar_idx = same_timeframe_bar_indices[symbol_idx];
+                  const auto num_bars =
+                      reference_bar_data->GetNumBars(symbol_idx);
+
+                  for (int64_t chunk_idx = 0; chunk_idx < current_chunk_size;
+                       ++chunk_idx) {
+                    if (bar_idx < num_bars &&
+                        time_vector[offset + chunk_idx] ==
+                            reference_bar_data->GetBar(symbol_idx, bar_idx)
+                                .open_time) {
+                      values[chunk_idx] = output[bar_idx++];
+                    } else {
+                      values[chunk_idx] = NAN;
+                    }
+                  }
+                }
+
+                // 값 배열 생성
+                arrow::DoubleBuilder value_builder(pool);
+                auto value_status = value_builder.AppendValues(values);
+                if (value_status.ok()) {
+                  value_status = value_builder.Finish(&arrays[symbol_idx + 1]);
+                }
+
+                if (!value_status.ok()) {
+                  throw runtime_error(value_status.message());
+                }
+              } catch (...) {
+                lock_guard lock(exception_mutex);
+
+                if (!first_exception) {
+                  first_exception = current_exception();
+                  failed.store(true, memory_order_release);
+                }
+              }
+            });
+
+        if (first_exception) {
+          rethrow_exception(first_exception);
+        }
+
+        // 전체 파일 row group 기록
+        const auto chunk_table = arrow::Table::Make(schema, arrays);
+        status = writer->WriteTable(*chunk_table, current_chunk_size);
+        if (!status.ok()) {
+          throw runtime_error(status.message());
+        }
+
+        // 분할 파일 10,000행 단위 저장
+        for (int64_t split_offset = 0; split_offset < current_chunk_size;
+             split_offset += split_chunk_size) {
+          const int64_t current_split_size =
+              min(split_chunk_size, current_chunk_size - split_offset);
+
+          const auto split_table =
+              chunk_table->Slice(split_offset, current_split_size);
+
+          const int64_t start_time_sec =
+              time_vector[offset + split_offset] / 1000;
+
+          const int64_t end_time_sec =
+              time_vector[offset + split_offset + current_split_size - 1] /
+              1000;
+
+          TableToParquet(split_table, indicator_directory,
+                         format("{}_{}.parquet", start_time_sec, end_time_sec),
+                         false, false);
+        }
+      }
+
+      // Parquet writer 종료
+      auto status = writer->Close();
+      if (!status.ok()) {
+        throw runtime_error(status.message());
+      }
+
+      status = output_file->Close();
+      if (!status.ok()) {
+        throw runtime_error(status.message());
+      }
     }
 
     logger_->Log(INFO_L, "지표 데이터가 저장되었습니다.", __FILE__, __LINE__,
@@ -468,6 +583,7 @@ void Analyzer::SaveTradeList() const {
   }
 
   ordered_json trade_list_json = json::array();  // JSON 배열로 시작
+  trade_list_json.get_ref<ordered_json::array_t&>().reserve(trade_list_.size());
   const string& strategy_name =
       engine_->strategy_->GetStrategyName();  // 전략 이름 캐싱
 
@@ -652,9 +768,16 @@ void Analyzer::SaveConfig() {
         symbol["참조 바 데이터"] = ordered_json::array();
 
         for (const auto& [timeframe, bar_data] : reference_bar_data) {
-          const auto& [reference_missing_count, reference_missing_times] =
-              FindMissingBars(bar_data, symbol_idx,
-                              engine_->reference_bar_time_diff_.at(timeframe));
+          // TRADING/REFERENCE 동일 타임프레임 공유 시
+          // 트레이딩 누락 정보 재사용
+          const auto reference_missing =
+              bar_data == trading_bar_data &&
+                      timeframe == trading_bar_data->GetTimeframe()
+                  ? pair<int, vector<string>>{trading_missing_count,
+                                              trading_missing_times}
+                  : FindMissingBars(
+                        bar_data, symbol_idx,
+                        engine_->reference_bar_time_diff_.at(timeframe));
 
           const auto reference_num_bars = bar_data->GetNumBars(symbol_idx);
 
@@ -670,8 +793,8 @@ void Analyzer::SaveConfig() {
                {"타임프레임", timeframe},
                {"바 개수", reference_num_bars},
                {"누락된 바",
-                {{"개수", reference_missing_count},
-                 {"시간", reference_missing_times}}}});
+                {{"개수", reference_missing.first},
+                 {"시간", reference_missing.second}}}});
         }
 
         // 마크 가격 바 정보 저장
@@ -1062,12 +1185,17 @@ pair<int, vector<string>> Analyzer::FindMissingBars(
   // 누락 구간 안에 있는지 표시하는 플래그
   bool in_range = false;
 
+  const size_t num_bars = bar_data->GetNumBars(symbol_idx);
+  if (num_bars < 2) {
+    return {missing_count, missing_ranges};
+  }
+
+  int64_t previous_open_time = bar_data->GetBar(symbol_idx, 0).open_time;
+
   // 모든 바를 순회하면서 누락된 시간을 확인
-  for (size_t bar_idx = 1; bar_idx < bar_data->GetNumBars(symbol_idx);
-       ++bar_idx) {
+  for (size_t bar_idx = 1; bar_idx < num_bars; ++bar_idx) {
     // 다음 예상 시간은 이전 바의 open_time에 interval의 합
-    int64_t expected =
-        bar_data->GetBar(symbol_idx, bar_idx - 1).open_time + interval;
+    int64_t expected = previous_open_time + interval;
 
     // 현재 바의 실제 open_time
     const int64_t current = bar_data->GetBar(symbol_idx, bar_idx).open_time;
@@ -1101,6 +1229,8 @@ pair<int, vector<string>> Analyzer::FindMissingBars(
       // 다음 누락 구간 추적을 위해 초기화
       in_range = false;
     }
+
+    previous_open_time = current;
   }
 
   return {missing_count, missing_ranges};

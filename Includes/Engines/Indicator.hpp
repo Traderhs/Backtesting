@@ -347,6 +347,7 @@ class BACKTESTING_API Indicator {
   bool
       is_higher_timeframe_indicator_;  /// 트레이딩 바의 타임프레임보다 큰
                                        /// 타임프레임의 지표인지 확인하는 플래그
+  double Bar::* direct_bar_member_;    /// 전략 기본 OHLCV는 바 멤버를 직접 참조
 
   // 성능 최적화를 위한 캐시 변수들
   mutable shared_ptr<BarData> trading_bar_data_;  // 트레이딩 바 데이터
@@ -366,6 +367,9 @@ class BACKTESTING_API Indicator {
 
   /// 지표 생성 카운터를 증가시키는 함수
   static void IncreaseCreationCounter();
+
+  /// 전략에 자동 추가되는 OHLCV 인스턴스만 바 직접 참조로 설정하는 함수
+  void SetDirectBarMember(double Bar::* member);
 };
 
 }  // namespace backtesting::indicator
